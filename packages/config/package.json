@@ -12,5 +12,8 @@
   },
   "dependencies": {
     "@platform/schemas": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0"
   }
 }
