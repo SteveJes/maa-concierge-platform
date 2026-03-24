@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "outDir": "dist",
+    "baseUrl": ".",
+    "paths": {
+      "@platform/schemas": ["packages/schemas/src/index.ts"],
+      "@platform/prompts": ["packages/prompts/src/index.ts"],
+      "@platform/agent-runtime": ["packages/agent-runtime/src/index.ts"],
+      "@platform/retrieval": ["packages/retrieval/src/index.ts"],
+      "@platform/ui-chat": ["packages/ui-chat/src/index.tsx"],
+      "@platform/config": ["packages/config/src/index.ts"],
+      "@platform/shared": ["packages/shared/src/index.ts"]
+    }
+  }
+}
