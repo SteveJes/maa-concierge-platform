@@ -36,6 +36,9 @@ importers:
         specifier: ^5.2.0
         version: 5.8.4
     devDependencies:
+      '@types/node':
+        specifier: ^25.5.0
+        version: 25.5.0
       tsx:
         specifier: ^4.20.0
         version: 4.21.0

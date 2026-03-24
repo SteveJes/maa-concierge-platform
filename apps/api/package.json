@@ -12,14 +12,15 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "fastify": "^5.2.0",
     "@fastify/cors": "^11.0.0",
-    "@platform/schemas": "workspace:*",
     "@platform/agent-runtime": "workspace:*",
     "@platform/config": "workspace:*",
-    "@platform/retrieval": "workspace:*"
+    "@platform/retrieval": "workspace:*",
+    "@platform/schemas": "workspace:*",
+    "fastify": "^5.2.0"
   },
   "devDependencies": {
+    "@types/node": "^25.5.0",
     "tsx": "^4.20.0"
   }
 }

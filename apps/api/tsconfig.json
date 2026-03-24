@@ -1,8 +1,14 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist"
+    "rootDir": "../..",
+    "outDir": "dist",
+    "types": ["node"]
   },
-  "include": ["src"]
+  "include": [
+    "src",
+    "../../packages/config/src",
+    "../../packages/retrieval/src",
+    "../../packages/schemas/src"
+  ]
 }
