@@ -1,0 +1,3 @@
+{"id":"greeting","input":"Hi, can you help?","expected_contains":["help"]}
+{"id":"fallback_clarify","input":"I need support but details are vague.","expected_contains":["one clarifying question","Calendly","callback"]}
+{"id":"fallback_optional_vapi","input":"I prefer phone support now.","expected_contains":["Vapi","callback"]}

@@ -1,0 +1,20 @@
+{
+  "name": "ai-customer-service-platform",
+  "private": true,
+  "version": "0.2.0",
+  "description": "OpenAI-first reusable customer-service monorepo",
+  "packageManager": "pnpm@10.6.0",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "test": "turbo test",
+    "typecheck": "turbo typecheck",
+    "ingest:maa:web": "pnpm --filter @platform/api ingest:web",
+    "ingest:maa:web:smoke": "pnpm --filter @platform/api ingest:web:smoke"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "typescript": "^5.9.2"
+  }
+}

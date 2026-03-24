@@ -1,0 +1,249 @@
+{
+  "tenantId": "maa",
+  "tenantName": "Club Sportif MAA",
+  "defaultLocale": "fr-CA",
+  "supportedLocales": [
+    "fr-CA",
+    "en-CA"
+  ],
+  "manifestLocale": "fr-CA",
+  "sources": [
+    {
+      "key": "maa_homepage_fr",
+      "section": "homepage",
+      "sourceUrl": "https://www.clubsportifmaa.com/",
+      "sourceKind": "website_page",
+      "locale": "fr-CA",
+      "priority": 1,
+      "updateStrategy": "weekly",
+      "parsingMode": "html_structured",
+      "enabled": true,
+      "crawlTargets": [
+        {
+          "url": "https://www.clubsportifmaa.com/",
+          "depth": 1,
+          "includePatterns": [
+            "/"
+          ],
+          "excludePatterns": [
+            "/en/"
+          ]
+        }
+      ],
+      "pdfTargets": [],
+      "normalizationHints": {
+        "preserveTables": false,
+        "removeNavigationBoilerplate": true,
+        "keepContactFieldsVerbatim": true
+      },
+      "uploadBatchHints": {
+        "maxChunksPerBatch": 120,
+        "preferredBatchTag": "homepage-fr"
+      },
+      "sourceType": "web_page",
+      "approved": true,
+      "active": true
+    },
+    {
+      "key": "maa_membership_fr",
+      "section": "membership",
+      "sourceUrl": "https://www.clubsportifmaa.com/abonnements/",
+      "sourceKind": "website_section",
+      "locale": "fr-CA",
+      "priority": 1,
+      "updateStrategy": "weekly",
+      "parsingMode": "html_structured",
+      "enabled": true,
+      "crawlTargets": [
+        {
+          "url": "https://www.clubsportifmaa.com/abonnements/",
+          "depth": 2,
+          "includePatterns": [
+            "abonn"
+          ],
+          "excludePatterns": []
+        }
+      ],
+      "pdfTargets": [],
+      "normalizationHints": {
+        "preserveTables": true,
+        "removeNavigationBoilerplate": true,
+        "keepContactFieldsVerbatim": true
+      },
+      "uploadBatchHints": {
+        "maxChunksPerBatch": 140,
+        "preferredBatchTag": "membership-fr"
+      },
+      "sourceType": "web_page",
+      "approved": true,
+      "active": true
+    },
+    {
+      "key": "maa_classes_fr",
+      "section": "class_schedule",
+      "sourceUrl": "https://www.clubsportifmaa.com/horaire-des-cours/",
+      "sourceKind": "website_section",
+      "locale": "fr-CA",
+      "priority": 1,
+      "updateStrategy": "daily",
+      "parsingMode": "html_structured",
+      "enabled": true,
+      "crawlTargets": [
+        {
+          "url": "https://www.clubsportifmaa.com/horaire-des-cours/",
+          "depth": 2,
+          "includePatterns": [
+            "horaire"
+          ],
+          "excludePatterns": []
+        }
+      ],
+      "pdfTargets": [],
+      "normalizationHints": {
+        "preserveTables": true,
+        "removeNavigationBoilerplate": true,
+        "keepContactFieldsVerbatim": true
+      },
+      "uploadBatchHints": {
+        "maxChunksPerBatch": 160,
+        "preferredBatchTag": "classes-fr"
+      },
+      "sourceType": "web_page",
+      "approved": true,
+      "active": true
+    },
+    {
+      "key": "maa_aquatic_fr",
+      "section": "aquatic",
+      "sourceUrl": "https://www.clubsportifmaa.com/aquatique/",
+      "sourceKind": "website_section",
+      "locale": "fr-CA",
+      "priority": 1,
+      "updateStrategy": "weekly",
+      "parsingMode": "html_structured",
+      "enabled": true,
+      "crawlTargets": [
+        {
+          "url": "https://www.clubsportifmaa.com/aquatique/",
+          "depth": 2,
+          "includePatterns": [
+            "aquatique"
+          ],
+          "excludePatterns": []
+        }
+      ],
+      "pdfTargets": [],
+      "normalizationHints": {
+        "preserveTables": true,
+        "removeNavigationBoilerplate": true,
+        "keepContactFieldsVerbatim": true
+      },
+      "uploadBatchHints": {
+        "maxChunksPerBatch": 120,
+        "preferredBatchTag": "aquatic-fr"
+      },
+      "sourceType": "web_page",
+      "approved": true,
+      "active": true
+    },
+    {
+      "key": "maa_tour_fr",
+      "section": "book_a_tour",
+      "sourceUrl": "https://www.clubsportifmaa.com/reserver-une-visite/",
+      "sourceKind": "website_page",
+      "locale": "fr-CA",
+      "priority": 1,
+      "updateStrategy": "weekly",
+      "parsingMode": "html_readability",
+      "enabled": true,
+      "crawlTargets": [
+        {
+          "url": "https://www.clubsportifmaa.com/reserver-une-visite/",
+          "depth": 1,
+          "includePatterns": [
+            "visite"
+          ],
+          "excludePatterns": []
+        }
+      ],
+      "pdfTargets": [],
+      "normalizationHints": {
+        "preserveTables": false,
+        "removeNavigationBoilerplate": true,
+        "keepContactFieldsVerbatim": true
+      },
+      "uploadBatchHints": {
+        "maxChunksPerBatch": 80,
+        "preferredBatchTag": "tour-fr"
+      },
+      "sourceType": "web_page",
+      "approved": true,
+      "active": true
+    },
+    {
+      "key": "maa_contact_fr",
+      "section": "contact",
+      "sourceUrl": "https://www.clubsportifmaa.com/contact/",
+      "sourceKind": "website_page",
+      "locale": "fr-CA",
+      "priority": 1,
+      "updateStrategy": "monthly",
+      "parsingMode": "html_readability",
+      "enabled": true,
+      "crawlTargets": [
+        {
+          "url": "https://www.clubsportifmaa.com/contact/",
+          "depth": 1,
+          "includePatterns": [
+            "contact"
+          ],
+          "excludePatterns": []
+        }
+      ],
+      "pdfTargets": [],
+      "normalizationHints": {
+        "preserveTables": false,
+        "removeNavigationBoilerplate": true,
+        "keepContactFieldsVerbatim": true
+      },
+      "uploadBatchHints": {
+        "maxChunksPerBatch": 60,
+        "preferredBatchTag": "contact-fr"
+      },
+      "sourceType": "web_page",
+      "approved": true,
+      "active": true
+    },
+    {
+      "key": "maa_policies_fr",
+      "section": "policies",
+      "sourceUrl": "https://www.clubsportifmaa.com/reglements/",
+      "sourceKind": "pdf_document",
+      "locale": "fr-CA",
+      "priority": 1,
+      "updateStrategy": "monthly",
+      "parsingMode": "pdf_text",
+      "enabled": true,
+      "crawlTargets": [],
+      "pdfTargets": [
+        {
+          "label": "Règlements généraux",
+          "url": "https://www.clubsportifmaa.com/wp-content/uploads/reglements-generaux.pdf",
+          "expectedLocale": "fr-CA"
+        }
+      ],
+      "normalizationHints": {
+        "preserveTables": true,
+        "removeNavigationBoilerplate": true,
+        "keepContactFieldsVerbatim": true
+      },
+      "uploadBatchHints": {
+        "maxChunksPerBatch": 180,
+        "preferredBatchTag": "policies-fr"
+      },
+      "sourceType": "pdf",
+      "approved": true,
+      "active": true
+    }
+  ]
+}
