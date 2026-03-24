@@ -97,6 +97,10 @@ importers:
       react:
         specifier: ^19.0.0
         version: 19.2.4
+    devDependencies:
+      '@types/react':
+        specifier: ^19.0.12
+        version: 19.2.14
 
 packages:
 
@@ -504,6 +508,9 @@ packages:
     cpu: [arm64]
     os: [win32]
 
+  '@types/react@19.2.14':
+    resolution: {integrity: sha512-ilcTH/UniCkMdtexkoCN0bI7pMcJDvmQFPvuPvmEaYA/NSfFTAgdUSLAoVjaRJm7+6PvcM+q1zYOwS4wTYMF9w==}
+
   abstract-logging@2.0.1:
     resolution: {integrity: sha512-2BjRTZxTPvheOvGbBslFSYOUkr+SjPtOnrLP33f+VIWLzezQpZcqVg7ja3L4dBXmzzgwT+a029jRx5PCi3JuiA==}
 
@@ -534,6 +541,9 @@ packages:
   cookie@1.1.1:
     resolution: {integrity: sha512-ei8Aos7ja0weRpFzJnEA9UHJ/7XQmqglbRwnf2ATjcB9Wq874VKH9kfjjirM6UhU2/E5fFYadylyhFldcqSidQ==}
     engines: {node: '>=18'}
+
+  csstype@3.2.3:
+    resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
 
   dequal@2.0.3:
     resolution: {integrity: sha512-0je+qPKHEMohvfRTCEo3CrPG6cAzAYgmzKyxRiYSSDkS6eGJdyVJm7WaYA5ECaAD9wLB2T4EEeymA5aFVcYXCA==}
@@ -1022,6 +1032,10 @@ snapshots:
   '@turbo/windows-arm64@2.8.20':
     optional: true
 
+  '@types/react@19.2.14':
+    dependencies:
+      csstype: 3.2.3
+
   abstract-logging@2.0.1: {}
 
   ajv-formats@3.0.1(ajv@8.18.0):
@@ -1047,6 +1061,8 @@ snapshots:
   client-only@0.0.1: {}
 
   cookie@1.1.1: {}
+
+  csstype@3.2.3: {}
 
   dequal@2.0.3: {}
 
