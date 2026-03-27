@@ -33,6 +33,14 @@ export interface IngestionRunRow {
   notes?: string | null;
 }
 
+export interface IngestionRunPatch {
+  status?: "completed" | "failed";
+  document_count?: number;
+  error_count?: number;
+  finished_at?: string | null;
+  notes?: string | null;
+}
+
 export interface SourceRow {
   Id?: number;
   uuid?: string | null;
@@ -72,6 +80,11 @@ export interface DocumentRow {
   indexed_at?: string | null;
   effective_from: string;
   effective_to?: string | null;
+}
+
+export interface DocumentPatch {
+  indexed?: boolean;
+  indexed_at?: string | null;
 }
 
 export function getNocoConfig(): NocoConfig {
@@ -294,4 +307,40 @@ export async function createDocument(
   );
 
   return payload;
+}
+
+export async function updateIngestionRunById(
+  id: number,
+  patch: IngestionRunPatch,
+): Promise<unknown> {
+  const cfg = assertNocoConfigPresent();
+
+  return nocoRequest(
+    `/api/v2/tables/${cfg.ingestionRunsTableId}/records`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        Id: id,
+        ...patch,
+      }),
+    },
+  );
+}
+
+export async function updateDocumentById(
+  id: number,
+  patch: DocumentPatch,
+): Promise<unknown> {
+  const cfg = assertNocoConfigPresent();
+
+  return nocoRequest(
+    `/api/v2/tables/${cfg.documentsTableId}/records`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        Id: id,
+        ...patch,
+      }),
+    },
+  );
 }

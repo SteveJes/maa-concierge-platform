@@ -10,6 +10,8 @@ import {
   findTenantByCode,
   getNextDocumentVersion,
   newUuid,
+  updateDocumentById,
+  updateIngestionRunById,
   updateSourceById,
 } from "./nocodb.js";
 
@@ -77,6 +79,8 @@ export async function runMaaWebIngestion(
   const now = new Date().toISOString();
   const sourceResults = [];
   const documentResults = [];
+  let createdDocumentCount = 0;
+  let errorCount = 0;
 
   for (const source of selected) {
     const sourceResult = await findOrCreateSource({
@@ -164,6 +168,15 @@ export async function runMaaWebIngestion(
       effective_to: null,
     });
 
+    if (document.Id) {
+      await updateDocumentById(document.Id, {
+        indexed: true,
+        indexed_at: now,
+      });
+    }
+
+createdDocumentCount += 1;
+
     documentResults.push({
       key: source.key,
       locale: source.locale,
@@ -177,6 +190,18 @@ export async function runMaaWebIngestion(
       rawTextLength: rawText.length,
     });
   }
+
+    if ((run as { Id?: number }).Id) {
+      await updateIngestionRunById((run as { Id?: number }).Id!, {
+        status: "completed",
+        document_count: createdDocumentCount,
+        error_count: errorCount,
+        finished_at: new Date().toISOString(),
+        notes: options.smoke
+          ? `Completed smoke run. Created ${createdDocumentCount} documents.`
+          : `Completed full run. Created ${createdDocumentCount} documents.`,
+      });
+    }
 
   console.log(
     JSON.stringify(
