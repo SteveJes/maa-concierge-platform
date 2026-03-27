@@ -2,6 +2,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadApprovedSourceRegistry } from "@platform/config";
 import type { ApprovedSourceConfig } from "@platform/schemas";
+import {
+  createDocument,
+  createIngestionRun,
+  findOrCreateSource,
+  findTenantByCode,
+  getNextDocumentVersion,
+  newUuid,
+} from "./nocodb.js";
 
 export interface MaaWebIngestionOptions {
   smoke: boolean;
@@ -12,38 +20,138 @@ function isApprovedActiveWebSource(source: ApprovedSourceConfig): boolean {
   return source.enabled && source.sourceKind === "website_page";
 }
 
+async function fetchPageHtml(url: string): Promise<string> {
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${url}: ${response.status}`);
+  }
+
+  return response.text();
+}
+
+function normalizeHtmlToText(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export async function runMaaWebIngestion(
   options: MaaWebIngestionOptions,
 ): Promise<void> {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
-
-  // apps/api/src/ingestion -> repo root
   const repoRoot =
     options.repoRoot ?? path.resolve(__dirname, "../../../../");
 
   const registry = await loadApprovedSourceRegistry("maa", repoRoot);
-
   const webSources = registry.sources.filter(isApprovedActiveWebSource);
   const selected = options.smoke ? webSources.slice(0, 2) : webSources;
 
-  const summary = selected.map((source, index) => ({
-    index: index + 1,
-    key: source.key,
-    section: source.section,
-    locale: source.locale,
-    url: source.sourceUrl,
-  }));
+  const tenant = await findTenantByCode("maa");
+
+  const run = await createIngestionRun({
+    tenant_uuid: tenant.uuid,
+    run_type: "manual",
+    status: "started",
+    source_count: selected.length,
+    document_count: 0,
+    error_count: 0,
+    started_at: new Date().toISOString(),
+    finished_at: null,
+    notes: options.smoke
+      ? "Smoke run: tenant resolved and ingestion run created."
+      : "Full run: tenant resolved and ingestion run created.",
+  });
+
+  const now = new Date().toISOString();
+  const sourceResults = [];
+  const documentResults = [];
+
+  for (const source of selected) {
+    const sourceResult = await findOrCreateSource({
+      uuid: newUuid(),
+      tenant_uuid: tenant.uuid,
+      locale: source.locale,
+      source_type: "web_page",
+      title: source.key,
+      canonical_url: source.sourceUrl,
+      file_url: null,
+      source_hash: null,
+      approved: true,
+      active: true,
+      last_synced_at: now,
+      notes: options.smoke
+        ? `Smoke run source seed: ${source.key}`
+        : `Full run source seed: ${source.key}`,
+    });
+
+    sourceResults.push({
+      key: source.key,
+      locale: source.locale,
+      url: source.sourceUrl,
+      created: sourceResult.created,
+      sourceId: sourceResult.row.Id ?? null,
+      sourceUuid: sourceResult.row.uuid ?? null,
+    });
+
+    if (!sourceResult.row.uuid) {
+      throw new Error(
+        `Source row for ${source.sourceUrl} is missing uuid. Please fill the uuid field in NocoDB sources table.`,
+      );
+    }
+
+    const html = await fetchPageHtml(source.sourceUrl);
+    const rawText = normalizeHtmlToText(html);
+    const version = await getNextDocumentVersion(sourceResult.row.uuid);
+
+    const document = await createDocument({
+      uuid: newUuid(),
+      tenant_uuid: tenant.uuid,
+      source_uuid: sourceResult.row.uuid,
+      locale: source.locale,
+      version,
+      title: source.key,
+      doc_type: "page",
+      raw_text: rawText,
+      extracted_json: null,
+      citation_label: source.sourceUrl,
+      approved: true,
+      indexed: false,
+      indexed_at: null,
+      effective_from: now,
+      effective_to: null,
+    });
+
+    documentResults.push({
+      key: source.key,
+      locale: source.locale,
+      sourceUuid: sourceResult.row.uuid,
+      version,
+      documentId: document.Id ?? null,
+      documentUuid: document.uuid ?? null,
+      rawTextLength: rawText.length,
+    });
+  }
 
   console.log(
     JSON.stringify(
       {
         tenantCode: "maa",
+        tenantUuid: tenant.uuid,
         mode: options.smoke ? "smoke" : "full",
-        repoRoot,
-        totalApprovedWebSources: webSources.length,
         selectedCount: selected.length,
-        selectedSources: summary,
+        ingestionRun: run,
+        sourceResults,
+        documentResults,
       },
       null,
       2,
