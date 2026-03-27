@@ -11,7 +11,8 @@
     "test": "node -e \"console.log('test placeholder: api')\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "ingest:maa:web": "tsx src/scripts/ingest-maa-web.ts",
-    "ingest:maa:web:smoke": "tsx src/scripts/ingest-maa-web.ts --smoke"
+    "ingest:maa:web:smoke": "tsx src/scripts/ingest-maa-web.ts --smoke",
+    "discover:maa": "tsx src/scripts/discover-maa.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.0.0",
