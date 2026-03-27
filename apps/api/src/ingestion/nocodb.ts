@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+
 export type TenantCode = "maa";
 
 export interface NocoConfig {
@@ -43,6 +45,12 @@ export interface SourceRow {
   source_hash?: string | null;
   approved: boolean;
   active: boolean;
+  last_synced_at?: string | null;
+  notes?: string | null;
+}
+
+export interface SourcePatch {
+  source_hash?: string | null;
   last_synced_at?: string | null;
   notes?: string | null;
 }
@@ -135,6 +143,10 @@ export function newUuid(): string {
   return crypto.randomUUID();
 }
 
+export function computeSourceHash(content: string): string {
+  return crypto.createHash("sha256").update(content, "utf8").digest("hex");
+}
+
 export async function findTenantByCode(code: TenantCode): Promise<TenantRow> {
   const cfg = assertNocoConfigPresent();
 
@@ -205,6 +217,24 @@ export async function createSource(input: SourceRow): Promise<SourceRow> {
   );
 
   return payload;
+}
+
+export async function updateSourceById(
+  id: number,
+  patch: SourcePatch,
+): Promise<unknown> {
+  const cfg = assertNocoConfigPresent();
+
+  return nocoRequest(
+    `/api/v2/tables/${cfg.sourcesTableId}/records`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        Id: id,
+        ...patch,
+      }),
+    },
+  );
 }
 
 export async function findOrCreateSource(

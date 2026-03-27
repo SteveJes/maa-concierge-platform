@@ -3,12 +3,14 @@ import { fileURLToPath } from "node:url";
 import { loadApprovedSourceRegistry } from "@platform/config";
 import type { ApprovedSourceConfig } from "@platform/schemas";
 import {
+  computeSourceHash,
   createDocument,
   createIngestionRun,
   findOrCreateSource,
   findTenantByCode,
   getNextDocumentVersion,
   newUuid,
+  updateSourceById,
 } from "./nocodb.js";
 
 export interface MaaWebIngestionOptions {
@@ -101,6 +103,7 @@ export async function runMaaWebIngestion(
       created: sourceResult.created,
       sourceId: sourceResult.row.Id ?? null,
       sourceUuid: sourceResult.row.uuid ?? null,
+      previousHash: sourceResult.row.source_hash ?? null,
     });
 
     if (!sourceResult.row.uuid) {
@@ -109,8 +112,38 @@ export async function runMaaWebIngestion(
       );
     }
 
+    if (!sourceResult.row.Id) {
+      throw new Error(
+        `Source row for ${source.sourceUrl} is missing Id. Cannot update source hash.`,
+      );
+    }
+
     const html = await fetchPageHtml(source.sourceUrl);
     const rawText = normalizeHtmlToText(html);
+    const currentHash = computeSourceHash(rawText);
+    const previousHash = sourceResult.row.source_hash ?? null;
+    const changed = previousHash !== currentHash;
+
+    await updateSourceById(sourceResult.row.Id, {
+      source_hash: currentHash,
+      last_synced_at: now,
+      notes: changed
+        ? `Content changed or hash initialized: ${source.key}`
+        : `No content change detected: ${source.key}`,
+    });
+
+    if (!changed) {
+      documentResults.push({
+        key: source.key,
+        locale: source.locale,
+        sourceUuid: sourceResult.row.uuid,
+        skipped: true,
+        reason: "unchanged",
+        rawTextLength: rawText.length,
+      });
+      continue;
+    }
+
     const version = await getNextDocumentVersion(sourceResult.row.uuid);
 
     const document = await createDocument({
@@ -135,6 +168,9 @@ export async function runMaaWebIngestion(
       key: source.key,
       locale: source.locale,
       sourceUuid: sourceResult.row.uuid,
+      changed: true,
+      previousHash,
+      currentHash,
       version,
       documentId: document.Id ?? null,
       documentUuid: document.uuid ?? null,
