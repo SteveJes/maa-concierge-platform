@@ -2,351 +2,746 @@
   "tenantId": "maa",
   "tenantName": "Club Sportif MAA",
   "defaultLocale": "fr-CA",
-  "supportedLocales": ["fr-CA", "en-CA"],
+  "supportedLocales": [
+    "fr-CA",
+    "en-CA"
+  ],
   "sources": [
     {
-      "key": "maa_homepage_fr",
+      "key": "maa_en_en",
+      "locale": "en-CA",
       "section": "homepage",
-      "sourceUrl": "https://www.clubsportifmaa.com/",
       "sourceKind": "website_page",
-      "locale": "fr-CA",
-      "priority": 1,
-      "updateStrategy": "weekly",
-      "parsingMode": "html_structured",
+      "sourceUrl": "https://www.clubsportifmaa.com/en",
       "enabled": true,
-      "crawlTargets": [
-        { "url": "https://www.clubsportifmaa.com/", "depth": 1, "includePatterns": ["/"], "excludePatterns": ["/en/"] }
-      ],
-      "pdfTargets": [],
-      "normalizationHints": {
-        "preserveTables": false,
-        "removeNavigationBoilerplate": true,
-        "keepContactFieldsVerbatim": true
-      },
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
       "uploadBatchHints": {
-        "maxChunksPerBatch": 120,
-        "preferredBatchTag": "homepage-fr"
-      }
+        "preferredBatchTag": "homepage"
+      },
+      "tags": []
     },
     {
-      "key": "maa_homepage_en",
+      "key": "maa_en_athletic-therapy_en",
+      "locale": "en-CA",
+      "section": "athletic_therapy",
+      "sourceKind": "website_page",
+      "sourceUrl": "https://www.clubsportifmaa.com/en/athletic-therapy",
+      "enabled": true,
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "athletic_therapy"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_en_book-a-tour-gym-montreal_en",
+      "locale": "en-CA",
+      "section": "book_a_tour",
+      "sourceKind": "website_page",
+      "sourceUrl": "https://www.clubsportifmaa.com/en/book-a-tour-gym-montreal",
+      "enabled": true,
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "book_a_tour"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_en_contact-us_en",
+      "locale": "en-CA",
+      "section": "contact",
+      "sourceKind": "website_page",
+      "sourceUrl": "https://www.clubsportifmaa.com/en/contact-us",
+      "enabled": true,
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "contact"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_en_massage-therapy_en",
+      "locale": "en-CA",
+      "section": "massage_therapy",
+      "sourceKind": "website_page",
+      "sourceUrl": "https://www.clubsportifmaa.com/en/massage-therapy",
+      "enabled": true,
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "massage_therapy"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_en_membership_en",
+      "locale": "en-CA",
+      "section": "membership",
+      "sourceKind": "website_page",
+      "sourceUrl": "https://www.clubsportifmaa.com/en/membership",
+      "enabled": true,
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "membership"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_en_nursing-services_en",
+      "locale": "en-CA",
+      "section": "nursing_services",
+      "sourceKind": "website_page",
+      "sourceUrl": "https://www.clubsportifmaa.com/en/nursing-services",
+      "enabled": true,
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "nursing_services"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_en_nutrition_en",
+      "locale": "en-CA",
+      "section": "nutrition",
+      "sourceKind": "website_page",
+      "sourceUrl": "https://www.clubsportifmaa.com/en/nutrition",
+      "enabled": true,
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "nutrition"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_en_physician-services_en",
+      "locale": "en-CA",
+      "section": "medical_services",
+      "sourceKind": "website_page",
+      "sourceUrl": "https://www.clubsportifmaa.com/en/physician-services",
+      "enabled": true,
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "medical_services"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_en_physiotherapy_en",
+      "locale": "en-CA",
+      "section": "physiotherapy",
+      "sourceKind": "website_page",
+      "sourceUrl": "https://www.clubsportifmaa.com/en/physiotherapy",
+      "enabled": true,
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "physiotherapy"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_en_pilates-on-apparatus_en",
+      "locale": "en-CA",
+      "section": "pilates",
+      "sourceKind": "website_page",
+      "sourceUrl": "https://www.clubsportifmaa.com/en/pilates-on-apparatus",
+      "enabled": true,
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "pilates"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_en_privacy-policy_en",
+      "locale": "en-CA",
+      "section": "policies",
+      "sourceKind": "website_page",
+      "sourceUrl": "https://www.clubsportifmaa.com/en/privacy-policy",
+      "enabled": true,
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "policies"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_en_reciprocal-clubs_en",
+      "locale": "en-CA",
+      "section": "reciprocal_clubs",
+      "sourceKind": "website_page",
+      "sourceUrl": "https://www.clubsportifmaa.com/en/reciprocal-clubs",
+      "enabled": true,
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "reciprocal_clubs"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_en_relaxation-room_en",
+      "locale": "en-CA",
+      "section": "relaxation_room",
+      "sourceKind": "website_page",
+      "sourceUrl": "https://www.clubsportifmaa.com/en/relaxation-room",
+      "enabled": true,
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "relaxation_room"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_en_restaurant-le-1881_en",
+      "locale": "en-CA",
+      "section": "restaurant",
+      "sourceKind": "website_page",
+      "sourceUrl": "https://www.clubsportifmaa.com/en/restaurant-le-1881",
+      "enabled": true,
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "restaurant"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_en_spa_en",
+      "locale": "en-CA",
+      "section": "spa",
+      "sourceKind": "website_page",
+      "sourceUrl": "https://www.clubsportifmaa.com/en/spa",
+      "enabled": true,
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "spa"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_fr_fr",
+      "locale": "fr-CA",
       "section": "homepage",
-      "sourceUrl": "https://www.clubsportifmaa.com/en/",
       "sourceKind": "website_page",
-      "locale": "en-CA",
-      "priority": 2,
-      "updateStrategy": "weekly",
-      "parsingMode": "html_structured",
+      "sourceUrl": "https://www.clubsportifmaa.com/fr",
       "enabled": true,
-      "crawlTargets": [
-        { "url": "https://www.clubsportifmaa.com/en/", "depth": 1, "includePatterns": ["/en/"], "excludePatterns": [] }
-      ],
-      "pdfTargets": [],
-      "normalizationHints": {
-        "preserveTables": false,
-        "removeNavigationBoilerplate": true,
-        "keepContactFieldsVerbatim": true
-      },
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
       "uploadBatchHints": {
-        "maxChunksPerBatch": 100,
-        "preferredBatchTag": "homepage-en"
-      }
+        "preferredBatchTag": "homepage"
+      },
+      "tags": []
     },
     {
-      "key": "maa_membership_fr",
+      "key": "maa_fr_abonnement-gym-montreal_fr",
+      "locale": "fr-CA",
       "section": "membership",
-      "sourceUrl": "https://www.clubsportifmaa.com/abonnements/",
-      "sourceKind": "website_section",
-      "locale": "fr-CA",
-      "priority": 1,
-      "updateStrategy": "weekly",
-      "parsingMode": "html_structured",
-      "enabled": true,
-      "crawlTargets": [
-        { "url": "https://www.clubsportifmaa.com/abonnements/", "depth": 2, "includePatterns": ["abonn"], "excludePatterns": [] }
-      ],
-      "pdfTargets": [],
-      "normalizationHints": {
-        "preserveTables": true,
-        "removeNavigationBoilerplate": true,
-        "keepContactFieldsVerbatim": true
-      },
-      "uploadBatchHints": {
-        "maxChunksPerBatch": 140,
-        "preferredBatchTag": "membership-fr"
-      }
-    },
-    {
-      "key": "maa_membership_en",
-      "section": "membership",
-      "sourceUrl": "https://www.clubsportifmaa.com/en/membership/",
-      "sourceKind": "website_section",
-      "locale": "en-CA",
-      "priority": 2,
-      "updateStrategy": "weekly",
-      "parsingMode": "html_structured",
-      "enabled": true,
-      "crawlTargets": [
-        { "url": "https://www.clubsportifmaa.com/en/membership/", "depth": 2, "includePatterns": ["membership"], "excludePatterns": [] }
-      ],
-      "pdfTargets": [],
-      "normalizationHints": {
-        "preserveTables": true,
-        "removeNavigationBoilerplate": true,
-        "keepContactFieldsVerbatim": true
-      },
-      "uploadBatchHints": {
-        "maxChunksPerBatch": 120,
-        "preferredBatchTag": "membership-en"
-      }
-    },
-    {
-      "key": "maa_classes_fr",
-      "section": "class_schedule",
-      "sourceUrl": "https://www.clubsportifmaa.com/horaire-des-cours/",
-      "sourceKind": "website_section",
-      "locale": "fr-CA",
-      "priority": 1,
-      "updateStrategy": "daily",
-      "parsingMode": "html_structured",
-      "enabled": true,
-      "crawlTargets": [
-        { "url": "https://www.clubsportifmaa.com/horaire-des-cours/", "depth": 2, "includePatterns": ["horaire"], "excludePatterns": [] }
-      ],
-      "pdfTargets": [],
-      "normalizationHints": {
-        "preserveTables": true,
-        "removeNavigationBoilerplate": true,
-        "keepContactFieldsVerbatim": true
-      },
-      "uploadBatchHints": {
-        "maxChunksPerBatch": 160,
-        "preferredBatchTag": "classes-fr"
-      }
-    },
-    {
-      "key": "maa_classes_en",
-      "section": "class_schedule",
-      "sourceUrl": "https://www.clubsportifmaa.com/en/class-schedule/",
-      "sourceKind": "website_section",
-      "locale": "en-CA",
-      "priority": 2,
-      "updateStrategy": "daily",
-      "parsingMode": "html_structured",
-      "enabled": true,
-      "crawlTargets": [
-        { "url": "https://www.clubsportifmaa.com/en/class-schedule/", "depth": 2, "includePatterns": ["class-schedule"], "excludePatterns": [] }
-      ],
-      "pdfTargets": [],
-      "normalizationHints": {
-        "preserveTables": true,
-        "removeNavigationBoilerplate": true,
-        "keepContactFieldsVerbatim": true
-      },
-      "uploadBatchHints": {
-        "maxChunksPerBatch": 140,
-        "preferredBatchTag": "classes-en"
-      }
-    },
-    {
-      "key": "maa_aquatic_fr",
-      "section": "aquatic",
-      "sourceUrl": "https://www.clubsportifmaa.com/aquatique/",
-      "sourceKind": "website_section",
-      "locale": "fr-CA",
-      "priority": 1,
-      "updateStrategy": "weekly",
-      "parsingMode": "html_structured",
-      "enabled": true,
-      "crawlTargets": [
-        { "url": "https://www.clubsportifmaa.com/aquatique/", "depth": 2, "includePatterns": ["aquatique"], "excludePatterns": [] }
-      ],
-      "pdfTargets": [],
-      "normalizationHints": {
-        "preserveTables": true,
-        "removeNavigationBoilerplate": true,
-        "keepContactFieldsVerbatim": true
-      },
-      "uploadBatchHints": {
-        "maxChunksPerBatch": 120,
-        "preferredBatchTag": "aquatic-fr"
-      }
-    },
-    {
-      "key": "maa_aquatic_en",
-      "section": "aquatic",
-      "sourceUrl": "https://www.clubsportifmaa.com/en/aquatics/",
-      "sourceKind": "website_section",
-      "locale": "en-CA",
-      "priority": 2,
-      "updateStrategy": "weekly",
-      "parsingMode": "html_structured",
-      "enabled": true,
-      "crawlTargets": [
-        { "url": "https://www.clubsportifmaa.com/en/aquatics/", "depth": 2, "includePatterns": ["aquatic"], "excludePatterns": [] }
-      ],
-      "pdfTargets": [],
-      "normalizationHints": {
-        "preserveTables": true,
-        "removeNavigationBoilerplate": true,
-        "keepContactFieldsVerbatim": true
-      },
-      "uploadBatchHints": {
-        "maxChunksPerBatch": 120,
-        "preferredBatchTag": "aquatic-en"
-      }
-    },
-    {
-      "key": "maa_tour_fr",
-      "section": "book_a_tour",
-      "sourceUrl": "https://www.clubsportifmaa.com/reserver-une-visite/",
       "sourceKind": "website_page",
+      "sourceUrl": "https://www.clubsportifmaa.com/fr/abonnement-gym-montreal",
+      "enabled": true,
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "membership"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_fr_clubs-affilies_fr",
       "locale": "fr-CA",
-      "priority": 1,
-      "updateStrategy": "weekly",
-      "parsingMode": "html_readability",
-      "enabled": true,
-      "crawlTargets": [
-        { "url": "https://www.clubsportifmaa.com/reserver-une-visite/", "depth": 1, "includePatterns": ["visite"], "excludePatterns": [] }
-      ],
-      "pdfTargets": [],
-      "normalizationHints": {
-        "preserveTables": false,
-        "removeNavigationBoilerplate": true,
-        "keepContactFieldsVerbatim": true
-      },
-      "uploadBatchHints": {
-        "maxChunksPerBatch": 80,
-        "preferredBatchTag": "tour-fr"
-      }
-    },
-    {
-      "key": "maa_tour_en",
-      "section": "book_a_tour",
-      "sourceUrl": "https://www.clubsportifmaa.com/en/book-a-tour/",
+      "section": "reciprocal_clubs",
       "sourceKind": "website_page",
-      "locale": "en-CA",
-      "priority": 2,
-      "updateStrategy": "weekly",
-      "parsingMode": "html_readability",
+      "sourceUrl": "https://www.clubsportifmaa.com/fr/clubs-affilies",
       "enabled": true,
-      "crawlTargets": [
-        { "url": "https://www.clubsportifmaa.com/en/book-a-tour/", "depth": 1, "includePatterns": ["tour"], "excludePatterns": [] }
-      ],
-      "pdfTargets": [],
-      "normalizationHints": {
-        "preserveTables": false,
-        "removeNavigationBoilerplate": true,
-        "keepContactFieldsVerbatim": true
-      },
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
       "uploadBatchHints": {
-        "maxChunksPerBatch": 80,
-        "preferredBatchTag": "tour-en"
-      }
+        "preferredBatchTag": "reciprocal_clubs"
+      },
+      "tags": []
     },
     {
-      "key": "maa_contact_fr",
+      "key": "maa_fr_massotherapie_fr",
+      "locale": "fr-CA",
+      "section": "massage_therapy",
+      "sourceKind": "website_page",
+      "sourceUrl": "https://www.clubsportifmaa.com/fr/massotherapie",
+      "enabled": true,
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "massage_therapy"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_fr_nous-joindre-gym-montreal_fr",
+      "locale": "fr-CA",
       "section": "contact",
-      "sourceUrl": "https://www.clubsportifmaa.com/contact/",
       "sourceKind": "website_page",
-      "locale": "fr-CA",
-      "priority": 1,
-      "updateStrategy": "monthly",
-      "parsingMode": "html_readability",
+      "sourceUrl": "https://www.clubsportifmaa.com/fr/nous-joindre-gym-montreal",
       "enabled": true,
-      "crawlTargets": [
-        { "url": "https://www.clubsportifmaa.com/contact/", "depth": 1, "includePatterns": ["contact"], "excludePatterns": [] }
-      ],
-      "pdfTargets": [],
-      "normalizationHints": {
-        "preserveTables": false,
-        "removeNavigationBoilerplate": true,
-        "keepContactFieldsVerbatim": true
-      },
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
       "uploadBatchHints": {
-        "maxChunksPerBatch": 60,
-        "preferredBatchTag": "contact-fr"
-      }
+        "preferredBatchTag": "contact"
+      },
+      "tags": []
     },
     {
-      "key": "maa_contact_en",
-      "section": "contact",
-      "sourceUrl": "https://www.clubsportifmaa.com/en/contact/",
+      "key": "maa_fr_nutrition_fr",
+      "locale": "fr-CA",
+      "section": "nutrition",
       "sourceKind": "website_page",
-      "locale": "en-CA",
-      "priority": 2,
-      "updateStrategy": "monthly",
+      "sourceUrl": "https://www.clubsportifmaa.com/fr/nutrition",
+      "enabled": true,
+      "priority": 5,
+      "updateStrategy": "manual",
       "parsingMode": "html_readability",
-      "enabled": true,
-      "crawlTargets": [
-        { "url": "https://www.clubsportifmaa.com/en/contact/", "depth": 1, "includePatterns": ["contact"], "excludePatterns": [] }
-      ],
-      "pdfTargets": [],
-      "normalizationHints": {
-        "preserveTables": false,
-        "removeNavigationBoilerplate": true,
-        "keepContactFieldsVerbatim": true
-      },
+      "normalizationHints": {},
       "uploadBatchHints": {
-        "maxChunksPerBatch": 60,
-        "preferredBatchTag": "contact-en"
-      }
+        "preferredBatchTag": "nutrition"
+      },
+      "tags": []
     },
     {
-      "key": "maa_policies_fr",
-      "section": "policies",
-      "sourceUrl": "https://www.clubsportifmaa.com/reglements/",
-      "sourceKind": "pdf_document",
+      "key": "maa_fr_physiotherapie_fr",
       "locale": "fr-CA",
-      "priority": 1,
-      "updateStrategy": "monthly",
-      "parsingMode": "pdf_text",
+      "section": "physiotherapy",
+      "sourceKind": "website_page",
+      "sourceUrl": "https://www.clubsportifmaa.com/fr/physiotherapie",
       "enabled": true,
-      "crawlTargets": [],
-      "pdfTargets": [
-        {
-          "label": "Règlements généraux",
-          "url": "https://www.clubsportifmaa.com/wp-content/uploads/reglements-generaux.pdf",
-          "expectedLocale": "fr-CA"
-        }
-      ],
-      "normalizationHints": {
-        "preserveTables": true,
-        "removeNavigationBoilerplate": true,
-        "keepContactFieldsVerbatim": true
-      },
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
       "uploadBatchHints": {
-        "maxChunksPerBatch": 180,
-        "preferredBatchTag": "policies-fr"
-      }
+        "preferredBatchTag": "physiotherapy"
+      },
+      "tags": []
     },
     {
-      "key": "maa_policies_en",
-      "section": "policies",
-      "sourceUrl": "https://www.clubsportifmaa.com/en/policies/",
-      "sourceKind": "pdf_document",
-      "locale": "en-CA",
-      "priority": 2,
-      "updateStrategy": "monthly",
-      "parsingMode": "pdf_text",
+      "key": "maa_fr_pilates-sur-appareils_fr",
+      "locale": "fr-CA",
+      "section": "pilates",
+      "sourceKind": "website_page",
+      "sourceUrl": "https://www.clubsportifmaa.com/fr/pilates-sur-appareils",
       "enabled": true,
-      "crawlTargets": [],
-      "pdfTargets": [
-        {
-          "label": "General policies",
-          "url": "https://www.clubsportifmaa.com/wp-content/uploads/general-policies.pdf",
-          "expectedLocale": "en-CA"
-        }
-      ],
-      "normalizationHints": {
-        "preserveTables": true,
-        "removeNavigationBoilerplate": true,
-        "keepContactFieldsVerbatim": true
-      },
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
       "uploadBatchHints": {
-        "maxChunksPerBatch": 180,
-        "preferredBatchTag": "policies-en"
-      }
+        "preferredBatchTag": "pilates"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_fr_planifier-une-visite-gym-montreal_fr",
+      "locale": "fr-CA",
+      "section": "book_a_tour",
+      "sourceKind": "website_page",
+      "sourceUrl": "https://www.clubsportifmaa.com/fr/planifier-une-visite-gym-montreal",
+      "enabled": true,
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "book_a_tour"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_fr_politique-de-confidentialite_fr",
+      "locale": "fr-CA",
+      "section": "policies",
+      "sourceKind": "website_page",
+      "sourceUrl": "https://www.clubsportifmaa.com/fr/politique-de-confidentialite",
+      "enabled": true,
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "policies"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_fr_restaurant-le-1881_fr",
+      "locale": "fr-CA",
+      "section": "restaurant",
+      "sourceKind": "website_page",
+      "sourceUrl": "https://www.clubsportifmaa.com/fr/restaurant-le-1881",
+      "enabled": true,
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "restaurant"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_fr_salle-de-detente_fr",
+      "locale": "fr-CA",
+      "section": "relaxation_room",
+      "sourceKind": "website_page",
+      "sourceUrl": "https://www.clubsportifmaa.com/fr/salle-de-detente",
+      "enabled": true,
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "relaxation_room"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_fr_service-soins-infirmiers_fr",
+      "locale": "fr-CA",
+      "section": "nursing_services",
+      "sourceKind": "website_page",
+      "sourceUrl": "https://www.clubsportifmaa.com/fr/service-soins-infirmiers",
+      "enabled": true,
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "nursing_services"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_fr_services-medicaux_fr",
+      "locale": "fr-CA",
+      "section": "medical_services",
+      "sourceKind": "website_page",
+      "sourceUrl": "https://www.clubsportifmaa.com/fr/services-medicaux",
+      "enabled": true,
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "medical_services"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_fr_spa_fr",
+      "locale": "fr-CA",
+      "section": "spa",
+      "sourceKind": "website_page",
+      "sourceUrl": "https://www.clubsportifmaa.com/fr/spa",
+      "enabled": true,
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "spa"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_fr_therapie-sportive_fr",
+      "locale": "fr-CA",
+      "section": "athletic_therapy",
+      "sourceKind": "website_page",
+      "sourceUrl": "https://www.clubsportifmaa.com/fr/therapie-sportive",
+      "enabled": true,
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "html_readability",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "athletic_therapy"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_wp-content_uploads_2023_04_MAA_centre_sportif.pdf_fr",
+      "locale": "fr-CA",
+      "section": "general",
+      "sourceKind": "pdf_document",
+      "sourceUrl": "https://www.clubsportifmaa.com/wp-content/uploads/2023/04/MAA_centre_sportif.pdf",
+      "enabled": true,
+      "priority": 4,
+      "updateStrategy": "manual",
+      "parsingMode": "pdf_text",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "general"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_wp-content_uploads_2025_03_MAA_Clinic_Fees_Border_Mar14-25_En.pdf_en",
+      "locale": "en-CA",
+      "section": "general",
+      "sourceKind": "pdf_document",
+      "sourceUrl": "https://www.clubsportifmaa.com/wp-content/uploads/2025/03/MAA_Clinic_Fees_Border_Mar14-25_En.pdf",
+      "enabled": false,
+      "priority": 4,
+      "updateStrategy": "manual",
+      "parsingMode": "pdf_text",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "general"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_wp-content_uploads_2025_05_MAA_Clinic_Fees_Border_May26-25_Fr.pdf_fr",
+      "locale": "fr-CA",
+      "section": "general",
+      "sourceKind": "pdf_document",
+      "sourceUrl": "https://www.clubsportifmaa.com/wp-content/uploads/2025/05/MAA_Clinic_Fees_Border_May26-25_Fr.pdf",
+      "enabled": true,
+      "priority": 4,
+      "updateStrategy": "manual",
+      "parsingMode": "pdf_text",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "general"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_wp-content_uploads_2025_09_MAA_Pilates_Reformer_Flyer_Sept15-25.pdf_fr",
+      "locale": "fr-CA",
+      "section": "pilates",
+      "sourceKind": "pdf_document",
+      "sourceUrl": "https://www.clubsportifmaa.com/wp-content/uploads/2025/09/MAA_Pilates_Reformer_Flyer_Sept15-25.pdf",
+      "enabled": true,
+      "priority": 4,
+      "updateStrategy": "manual",
+      "parsingMode": "pdf_text",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "pilates"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_wp-content_uploads_2025_10_MAA_Clinic_Fees_Border_Nov1-2025_En.pdf_en",
+      "locale": "en-CA",
+      "section": "general",
+      "sourceKind": "pdf_document",
+      "sourceUrl": "https://www.clubsportifmaa.com/wp-content/uploads/2025/10/MAA_Clinic_Fees_Border_Nov1-2025_En.pdf",
+      "enabled": true,
+      "priority": 4,
+      "updateStrategy": "manual",
+      "parsingMode": "pdf_text",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "general"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_wp-content_uploads_2025_10_MAA_Clinic_Fees_Border_Nov1-2025_Fr.pdf_fr",
+      "locale": "fr-CA",
+      "section": "general",
+      "sourceKind": "pdf_document",
+      "sourceUrl": "https://www.clubsportifmaa.com/wp-content/uploads/2025/10/MAA_Clinic_Fees_Border_Nov1-2025_Fr.pdf",
+      "enabled": true,
+      "priority": 4,
+      "updateStrategy": "manual",
+      "parsingMode": "pdf_text",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "general"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_wp-content_uploads_2025_10_MAA_Clinic_Fees_Border_Nov1-25_En.pdf_en",
+      "locale": "en-CA",
+      "section": "general",
+      "sourceKind": "pdf_document",
+      "sourceUrl": "https://www.clubsportifmaa.com/wp-content/uploads/2025/10/MAA_Clinic_Fees_Border_Nov1-25_En.pdf",
+      "enabled": true,
+      "priority": 4,
+      "updateStrategy": "manual",
+      "parsingMode": "pdf_text",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "general"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_wp-content_uploads_2025_10_MAA_Clinic_Fees_Border_Nov1-25_Fr.pdf_fr",
+      "locale": "fr-CA",
+      "section": "general",
+      "sourceKind": "pdf_document",
+      "sourceUrl": "https://www.clubsportifmaa.com/wp-content/uploads/2025/10/MAA_Clinic_Fees_Border_Nov1-25_Fr.pdf",
+      "enabled": true,
+      "priority": 4,
+      "updateStrategy": "manual",
+      "parsingMode": "pdf_text",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "general"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_wp-content_uploads_2025_10_MAA_Pilates_Reformer_Horaire-Schedule_Oct16-2025.pdf_fr",
+      "locale": "fr-CA",
+      "section": "pilates",
+      "sourceKind": "pdf_document",
+      "sourceUrl": "https://www.clubsportifmaa.com/wp-content/uploads/2025/10/MAA_Pilates_Reformer_Horaire-Schedule_Oct16-2025.pdf",
+      "enabled": true,
+      "priority": 4,
+      "updateStrategy": "manual",
+      "parsingMode": "pdf_text",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "pilates"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_wp-content_uploads_2025_12_MAA_Aerial-Circus_Winter2026.pdf_fr",
+      "locale": "fr-CA",
+      "section": "general",
+      "sourceKind": "pdf_document",
+      "sourceUrl": "https://www.clubsportifmaa.com/wp-content/uploads/2025/12/MAA_Aerial-Circus_Winter2026.pdf",
+      "enabled": true,
+      "priority": 4,
+      "updateStrategy": "manual",
+      "parsingMode": "pdf_text",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "general"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_wp-content_uploads_2025_12_MAA_Piscine_Programmme_Hiver-Winter_2026.pdf_fr",
+      "locale": "fr-CA",
+      "section": "general",
+      "sourceKind": "pdf_document",
+      "sourceUrl": "https://www.clubsportifmaa.com/wp-content/uploads/2025/12/MAA_Piscine_Programmme_Hiver-Winter_2026.pdf",
+      "enabled": true,
+      "priority": 4,
+      "updateStrategy": "manual",
+      "parsingMode": "pdf_text",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "general"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_wp-content_uploads_2025_12_MAA_PowerWatts_Hiver-Winter_2026.pdf_fr",
+      "locale": "fr-CA",
+      "section": "general",
+      "sourceKind": "pdf_document",
+      "sourceUrl": "https://www.clubsportifmaa.com/wp-content/uploads/2025/12/MAA_PowerWatts_Hiver-Winter_2026.pdf",
+      "enabled": true,
+      "priority": 4,
+      "updateStrategy": "manual",
+      "parsingMode": "pdf_text",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "general"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_wp-content_uploads_2026_01_MAA_ClubTriathlon_Programme-Offres-FR_Jan26.pdf_fr",
+      "locale": "fr-CA",
+      "section": "general",
+      "sourceKind": "pdf_document",
+      "sourceUrl": "https://www.clubsportifmaa.com/wp-content/uploads/2026/01/MAA_ClubTriathlon_Programme-Offres-FR_Jan26.pdf",
+      "enabled": true,
+      "priority": 4,
+      "updateStrategy": "manual",
+      "parsingMode": "pdf_text",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "general"
+      },
+      "tags": []
+    },
+    {
+      "key": "maa_wp-content_uploads_2026_03_MAA_Piscine_Programmme_Spring2026.pdf_fr",
+      "locale": "fr-CA",
+      "section": "general",
+      "sourceKind": "pdf_document",
+      "sourceUrl": "https://www.clubsportifmaa.com/wp-content/uploads/2026/03/MAA_Piscine_Programmme_Spring2026.pdf",
+      "enabled": true,
+      "priority": 4,
+      "updateStrategy": "manual",
+      "parsingMode": "pdf_text",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "general"
+      },
+      "tags": []
     }
   ]
 }

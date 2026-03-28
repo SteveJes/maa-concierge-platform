@@ -46,7 +46,7 @@ export interface SourceRow {
   uuid?: string | null;
   tenant_uuid: string;
   locale: string;
-  source_type: "web_page";
+  source_type: "web_page" | "pdf" | "manual_faq";
   title: string;
   canonical_url: string;
   file_url?: string | null;
@@ -71,7 +71,7 @@ export interface DocumentRow {
   locale: string;
   version: number;
   title: string;
-  doc_type: "page";
+  doc_type: "page" | "pdf";
   raw_text: string;
   extracted_json?: unknown;
   citation_label: string;
@@ -124,22 +124,38 @@ async function nocoRequest<T>(
   init?: RequestInit,
 ): Promise<T> {
   const cfg = assertNocoConfigPresent();
+  const maxAttempts = 6;
 
-  const response = await fetch(`${cfg.baseUrl}${path}`, {
-    ...init,
-    headers: {
-      "xc-token": cfg.apiToken!,
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-  });
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const response = await fetch(`${cfg.baseUrl}${path}`, {
+      ...init,
+      headers: {
+        "xc-token": cfg.apiToken!,
+        "Content-Type": "application/json",
+        ...(init?.headers ?? {}),
+      },
+    });
 
-  if (!response.ok) {
+    if (response.ok) {
+      return (await response.json()) as T;
+    }
+
+    if (response.status === 429 && attempt < maxAttempts) {
+      const retryAfterHeader = response.headers.get("retry-after");
+      const retryAfterMs =
+        retryAfterHeader && !Number.isNaN(Number(retryAfterHeader))
+          ? Number(retryAfterHeader) * 1000
+          : attempt * 2000;
+
+      await new Promise((resolve) => setTimeout(resolve, retryAfterMs));
+      continue;
+    }
+
     const text = await response.text();
     throw new Error(`NocoDB request failed: ${response.status} ${text}`);
   }
 
-  return (await response.json()) as T;
+  throw new Error("NocoDB request failed after retries.");
 }
 
 function pickRecords(payload: unknown): unknown[] {
@@ -229,9 +245,12 @@ export async function createSource(input: SourceRow): Promise<SourceRow> {
     },
   );
 
-  return payload;
+  return {
+    ...input,
+    ...payload,
+    uuid: payload?.uuid ?? input.uuid ?? null,
+  };
 }
-
 export async function updateSourceById(
   id: number,
   patch: SourcePatch,

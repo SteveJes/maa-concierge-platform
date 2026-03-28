@@ -34,7 +34,7 @@ export const UploadBatchHintsSchema = z.object({
 
 export const ApprovedSourceConfigSchema = z.object({
   key: z.string().min(1),
-  section: z.enum(["homepage", "membership", "class_schedule", "aquatic", "book_a_tour", "contact", "policies"]),
+  section: z.string().min(1),
   sourceUrl: z.string().url(),
   sourceKind: SourceKindSchema,
   locale: LocaleSchema,
