@@ -13,7 +13,8 @@
   "ingest:maa:web:smoke": "tsx src/scripts/ingest-maa-web.ts --smoke",
   "discover:maa": "tsx src/scripts/discover-maa.ts",
   "generate:maa:approved-sources": "tsx src/scripts/generate-approved-sources-maa.ts",
-  "ingest:maa:pdf": "tsx src/scripts/ingest-maa-pdf.ts"
+  "ingest:maa:pdf": "tsx src/scripts/ingest-maa-pdf.ts",
+  "index:maa:documents": "tsx src/scripts/index-maa-documents.ts"
 },
   "dependencies": {
     "@fastify/cors": "^11.0.0",

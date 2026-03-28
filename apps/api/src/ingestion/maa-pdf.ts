@@ -11,7 +11,6 @@ import {
   findTenantByCode,
   getNextDocumentVersion,
   newUuid,
-  updateDocumentById,
   updateIngestionRunById,
   updateSourceById,
 } from "./nocodb.js";
@@ -180,13 +179,6 @@ export async function runMaaPdfIngestion(
         effective_from: now,
         effective_to: null,
       });
-
-      if (document.Id) {
-        await updateDocumentById(document.Id, {
-          indexed: true,
-          indexed_at: now,
-        });
-      }
 
       createdDocumentCount += 1;
 

@@ -10,6 +10,7 @@ export interface NocoConfig {
   sourcesTableId: string | undefined;
   documentsTableId: string | undefined;
   ingestionRunsTableId: string | undefined;
+  documentChunksTableId: string | undefined;
 }
 
 export interface TenantRow {
@@ -87,6 +88,23 @@ export interface DocumentPatch {
   indexed_at?: string | null;
 }
 
+export interface DocumentChunkRow {
+  Id?: number;
+  uuid?: string;
+  tenant_uuid: string;
+  source_uuid: string;
+  document_uuid: string;
+  locale: string;
+  chunk_index: number;
+  content: string;
+  content_hash: string;
+  char_count: number;
+  citation_label: string;
+  approved: boolean;
+  active: boolean;
+  created_at?: string | null;
+}
+
 export function getNocoConfig(): NocoConfig {
   return {
     baseUrl: process.env.NOCODB_BASE_URL,
@@ -96,6 +114,7 @@ export function getNocoConfig(): NocoConfig {
     sourcesTableId: process.env.NOCODB_TABLE_SOURCES,
     documentsTableId: process.env.NOCODB_TABLE_DOCUMENTS,
     ingestionRunsTableId: process.env.NOCODB_TABLE_INGESTION_RUNS,
+    documentChunksTableId: process.env.NOCODB_TABLE_DOCUMENT_CHUNKS,
   };
 }
 
@@ -109,10 +128,11 @@ export function assertNocoConfigPresent(): NocoConfig {
     !cfg.tenantsTableId ||
     !cfg.sourcesTableId ||
     !cfg.documentsTableId ||
-    !cfg.ingestionRunsTableId
+    !cfg.ingestionRunsTableId ||
+    !cfg.documentChunksTableId
   ) {
     throw new Error(
-      "Missing NocoDB env vars. Expected NOCODB_BASE_URL, NOCODB_API_TOKEN, NOCODB_PROJECT_ID, NOCODB_TABLE_TENANTS, NOCODB_TABLE_SOURCES, NOCODB_TABLE_DOCUMENTS, and NOCODB_TABLE_INGESTION_RUNS.",
+      "Missing NocoDB env vars. Expected NOCODB_BASE_URL, NOCODB_API_TOKEN, NOCODB_PROJECT_ID, NOCODB_TABLE_TENANTS, NOCODB_TABLE_SOURCES, NOCODB_TABLE_DOCUMENTS, NOCODB_TABLE_INGESTION_RUNS, and NOCODB_TABLE_DOCUMENT_CHUNKS.",
     );
   }
 
@@ -251,6 +271,7 @@ export async function createSource(input: SourceRow): Promise<SourceRow> {
     uuid: payload?.uuid ?? input.uuid ?? null,
   };
 }
+
 export async function updateSourceById(
   id: number,
   patch: SourcePatch,
@@ -286,15 +307,30 @@ export async function findOrCreateSource(
   return { row: created, created: true };
 }
 
-export async function listDocuments(): Promise<DocumentRow[]> {
+export async function listDocuments(limit = 500): Promise<DocumentRow[]> {
   const cfg = assertNocoConfigPresent();
 
   const payload = await nocoRequest<unknown>(
-    `/api/v2/tables/${cfg.documentsTableId}/records?limit=200`,
+    `/api/v2/tables/${cfg.documentsTableId}/records?limit=${limit}`,
     { method: "GET" },
   );
 
   return pickRecords(payload) as DocumentRow[];
+}
+
+export async function listDocumentChunksByDocumentUuid(
+  documentUuid: string,
+  limit = 500,
+): Promise<DocumentChunkRow[]> {
+  const cfg = assertNocoConfigPresent();
+  const where = encodeURIComponent(`(document_uuid,eq,${documentUuid})`);
+
+  const payload = await nocoRequest<unknown>(
+    `/api/v2/tables/${cfg.documentChunksTableId}/records?where=${where}&limit=${limit}`,
+    { method: "GET" },
+  );
+
+  return pickRecords(payload) as DocumentChunkRow[];
 }
 
 export async function getNextDocumentVersion(
@@ -326,6 +362,26 @@ export async function createDocument(
   );
 
   return payload;
+}
+
+export async function createDocumentChunk(
+  input: DocumentChunkRow,
+): Promise<DocumentChunkRow> {
+  const cfg = assertNocoConfigPresent();
+
+  const payload = await nocoRequest<DocumentChunkRow>(
+    `/api/v2/tables/${cfg.documentChunksTableId}/records`,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+  );
+
+  return {
+    ...input,
+    ...payload,
+    uuid: payload?.uuid ?? input.uuid,
+  };
 }
 
 export async function updateIngestionRunById(

@@ -10,7 +10,6 @@ import {
   findTenantByCode,
   getNextDocumentVersion,
   newUuid,
-  updateDocumentById,
   updateIngestionRunById,
   updateSourceById,
 } from "./nocodb.js";
@@ -83,125 +82,130 @@ export async function runMaaWebIngestion(
   let errorCount = 0;
 
   for (const source of selected) {
-    const sourceResult = await findOrCreateSource({
-      uuid: newUuid(),
-      tenant_uuid: tenant.uuid,
-      locale: source.locale,
-      source_type: "web_page",
-      title: source.key,
-      canonical_url: source.sourceUrl,
-      file_url: null,
-      source_hash: null,
-      approved: true,
-      active: true,
-      last_synced_at: now,
-      notes: options.smoke
-        ? `Smoke run source seed: ${source.key}`
-        : `Full run source seed: ${source.key}`,
-    });
+    try {
+      const sourceResult = await findOrCreateSource({
+        uuid: newUuid(),
+        tenant_uuid: tenant.uuid,
+        locale: source.locale,
+        source_type: "web_page",
+        title: source.key,
+        canonical_url: source.sourceUrl,
+        file_url: null,
+        source_hash: null,
+        approved: true,
+        active: true,
+        last_synced_at: now,
+        notes: options.smoke
+          ? `Smoke run source seed: ${source.key}`
+          : `Full run source seed: ${source.key}`,
+      });
 
-    sourceResults.push({
-      key: source.key,
-      locale: source.locale,
-      url: source.sourceUrl,
-      created: sourceResult.created,
-      sourceId: sourceResult.row.Id ?? null,
-      sourceUuid: sourceResult.row.uuid ?? null,
-      previousHash: sourceResult.row.source_hash ?? null,
-    });
+      sourceResults.push({
+        key: source.key,
+        locale: source.locale,
+        url: source.sourceUrl,
+        created: sourceResult.created,
+        sourceId: sourceResult.row.Id ?? null,
+        sourceUuid: sourceResult.row.uuid ?? null,
+        previousHash: sourceResult.row.source_hash ?? null,
+      });
 
-    if (!sourceResult.row.uuid) {
-      throw new Error(
-        `Source row for ${source.sourceUrl} is missing uuid. Please fill the uuid field in NocoDB sources table.`,
-      );
-    }
+      if (!sourceResult.row.uuid) {
+        throw new Error(
+          `Source row for ${source.sourceUrl} is missing uuid. Please fill the uuid field in NocoDB sources table.`,
+        );
+      }
 
-    if (!sourceResult.row.Id) {
-      throw new Error(
-        `Source row for ${source.sourceUrl} is missing Id. Cannot update source hash.`,
-      );
-    }
+      if (!sourceResult.row.Id) {
+        throw new Error(
+          `Source row for ${source.sourceUrl} is missing Id. Cannot update source hash.`,
+        );
+      }
 
-    const html = await fetchPageHtml(source.sourceUrl);
-    const rawText = normalizeHtmlToText(html);
-    const currentHash = computeSourceHash(rawText);
-    const previousHash = sourceResult.row.source_hash ?? null;
-    const changed = previousHash !== currentHash;
+      const html = await fetchPageHtml(source.sourceUrl);
+      const rawText = normalizeHtmlToText(html);
+      const currentHash = computeSourceHash(rawText);
+      const previousHash = sourceResult.row.source_hash ?? null;
+      const changed = previousHash !== currentHash;
 
-    await updateSourceById(sourceResult.row.Id, {
-      source_hash: currentHash,
-      last_synced_at: now,
-      notes: changed
-        ? `Content changed or hash initialized: ${source.key}`
-        : `No content change detected: ${source.key}`,
-    });
+      await updateSourceById(sourceResult.row.Id, {
+        source_hash: currentHash,
+        last_synced_at: now,
+        notes: changed
+          ? `Content changed or hash initialized: ${source.key}`
+          : `No content change detected: ${source.key}`,
+      });
 
-    if (!changed) {
+      if (!changed) {
+        documentResults.push({
+          key: source.key,
+          locale: source.locale,
+          sourceUuid: sourceResult.row.uuid,
+          skipped: true,
+          reason: "unchanged",
+          rawTextLength: rawText.length,
+        });
+        continue;
+      }
+
+      const version = await getNextDocumentVersion(sourceResult.row.uuid);
+
+      const document = await createDocument({
+        uuid: newUuid(),
+        tenant_uuid: tenant.uuid,
+        source_uuid: sourceResult.row.uuid,
+        locale: source.locale,
+        version,
+        title: source.key,
+        doc_type: "page",
+        raw_text: rawText,
+        extracted_json: null,
+        citation_label: source.sourceUrl,
+        approved: true,
+        indexed: false,
+        indexed_at: null,
+        effective_from: now,
+        effective_to: null,
+      });
+
+      createdDocumentCount += 1;
+
       documentResults.push({
         key: source.key,
         locale: source.locale,
         sourceUuid: sourceResult.row.uuid,
-        skipped: true,
-        reason: "unchanged",
+        changed: true,
+        previousHash,
+        currentHash,
+        version,
+        documentId: document.Id ?? null,
+        documentUuid: document.uuid ?? null,
         rawTextLength: rawText.length,
       });
-      continue;
-    }
+    } catch (error) {
+      errorCount += 1;
 
-    const version = await getNextDocumentVersion(sourceResult.row.uuid);
-
-    const document = await createDocument({
-      uuid: newUuid(),
-      tenant_uuid: tenant.uuid,
-      source_uuid: sourceResult.row.uuid,
-      locale: source.locale,
-      version,
-      title: source.key,
-      doc_type: "page",
-      raw_text: rawText,
-      extracted_json: null,
-      citation_label: source.sourceUrl,
-      approved: true,
-      indexed: false,
-      indexed_at: null,
-      effective_from: now,
-      effective_to: null,
-    });
-
-    if (document.Id) {
-      await updateDocumentById(document.Id, {
-        indexed: true,
-        indexed_at: now,
+      documentResults.push({
+        key: source.key,
+        locale: source.locale,
+        url: source.sourceUrl,
+        failed: true,
+        error: error instanceof Error ? error.message : String(error),
       });
     }
-
-createdDocumentCount += 1;
-
-    documentResults.push({
-      key: source.key,
-      locale: source.locale,
-      sourceUuid: sourceResult.row.uuid,
-      changed: true,
-      previousHash,
-      currentHash,
-      version,
-      documentId: document.Id ?? null,
-      documentUuid: document.uuid ?? null,
-      rawTextLength: rawText.length,
-    });
   }
 
-    if ((run as { Id?: number }).Id) {
-      await updateIngestionRunById((run as { Id?: number }).Id!, {
-        status: "completed",
-        document_count: createdDocumentCount,
-        error_count: errorCount,
-        finished_at: new Date().toISOString(),
-        notes: options.smoke
-          ? `Completed smoke run. Created ${createdDocumentCount} documents.`
-          : `Completed full run. Created ${createdDocumentCount} documents.`,
-      });
-    }
+  if ((run as { Id?: number }).Id) {
+    await updateIngestionRunById((run as { Id?: number }).Id!, {
+      status: "completed",
+      document_count: createdDocumentCount,
+      error_count: errorCount,
+      finished_at: new Date().toISOString(),
+      notes: options.smoke
+        ? `Completed smoke run. Created ${createdDocumentCount} documents. Errors: ${errorCount}.`
+        : `Completed full run. Created ${createdDocumentCount} documents. Errors: ${errorCount}.`,
+    });
+  }
 
   console.log(
     JSON.stringify(
