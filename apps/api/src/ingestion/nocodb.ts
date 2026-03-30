@@ -318,6 +318,43 @@ export async function listDocuments(limit = 500): Promise<DocumentRow[]> {
   return pickRecords(payload) as DocumentRow[];
 }
 
+export async function findDocumentByUuid(
+  documentUuid: string,
+): Promise<DocumentRow | undefined> {
+  const rows = await listDocuments(1000);
+  return rows.find((row) => row.uuid === documentUuid);
+}
+
+export async function listDocumentChunks(
+  limit = 5000,
+): Promise<DocumentChunkRow[]> {
+  const cfg = assertNocoConfigPresent();
+
+  const allRows: DocumentChunkRow[] = [];
+  const pageSize = 100;
+
+  for (let offset = 0; offset < limit; offset += pageSize) {
+    const payload = await nocoRequest<unknown>(
+      `/api/v2/tables/${cfg.documentChunksTableId}/records?limit=${pageSize}&offset=${offset}`,
+      { method: "GET" },
+    );
+
+    const rows = pickRecords(payload) as DocumentChunkRow[];
+
+    if (rows.length === 0) {
+      break;
+    }
+
+    allRows.push(...rows);
+
+    if (rows.length < pageSize) {
+      break;
+    }
+  }
+
+  return allRows.slice(0, limit);
+}
+
 export async function listDocumentChunksByDocumentUuid(
   documentUuid: string,
   limit = 500,
