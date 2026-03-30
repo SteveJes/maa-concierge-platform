@@ -2,25 +2,40 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import { loadApprovedSourceRegistry } from "@platform/config";
 import {
-  buildIngestionExecutionPlan,
-  ingestPdfFiles,
-  ingestWebsitePages,
-  normalizeDocuments,
-  prepareChunks,
-  prepareForOpenAIFileSearch
-} from "@platform/retrieval";
+  answerMaaChat,
+  type MaaChatRequest,
+  type MaaChatResponse,
+} from "./services/maa-chat.js";
+
+type TenantRouteParams = {
+  tenantId: string;
+};
+
+type ChatRouteBody = {
+  message: string;
+  locale?: string;
+  maxResults?: number;
+};
 
 export function createServer() {
   const app = Fastify({ logger: true });
 
   app.register(cors, {
-    origin: true
+    origin: true,
   });
 
   app.get("/health", async () => ({ status: "ok" }));
 
-  app.get("/v1/tenants/:tenantId/sources", async (request) => {
-    const tenantId = (request.params as { tenantId: string }).tenantId;
+  app.get("/v1/tenants/:tenantId/sources", async (request, reply) => {
+    const { tenantId } = request.params as TenantRouteParams;
+
+    if (tenantId !== "maa") {
+      return reply.code(404).send({
+        error: "tenant_not_supported",
+        message: `Unsupported tenant: ${tenantId}`,
+      });
+    }
+
     const registry = await loadApprovedSourceRegistry(tenantId);
 
     return {
@@ -28,42 +43,42 @@ export function createServer() {
       tenantName: registry.tenantName,
       defaultLocale: registry.defaultLocale,
       supportedLocales: registry.supportedLocales,
-      sources: registry.sources
+      sources: registry.sources,
     };
   });
 
-  app.get("/v1/tenants/:tenantId/ingestion/plan", async (request) => {
-    const tenantId = (request.params as { tenantId: string }).tenantId;
-    const registry = await loadApprovedSourceRegistry(tenantId);
-    const plan = buildIngestionExecutionPlan(registry);
+  app.post("/v1/tenants/:tenantId/chat", async (request, reply) => {
+    const { tenantId } = request.params as TenantRouteParams;
+    const body = (request.body ?? {}) as Partial<ChatRouteBody>;
 
-    return {
-      status: "planned",
-      tenantId,
-      plan
-    };
-  });
-
-  app.post("/v1/tenants/:tenantId/ingestion/prepare", async (request) => {
-    const tenantId = (request.params as { tenantId: string }).tenantId;
-    const registry = await loadApprovedSourceRegistry(tenantId);
-
-    const uploadPreview = [] as Array<{ sourceKey: string; count: number }>;
-
-    for (const source of registry.sources.filter((item) => item.enabled)) {
-      const rawDocs = source.sourceKind.startsWith("website") ? await ingestWebsitePages(source) : await ingestPdfFiles(source);
-      const normalized = normalizeDocuments(rawDocs);
-      const chunks = prepareChunks(normalized);
-      const uploadItems = prepareForOpenAIFileSearch(chunks, source.key);
-
-      uploadPreview.push({ sourceKey: source.key, count: uploadItems.length });
+    if (tenantId !== "maa") {
+      return reply.code(404).send({
+        error: "tenant_not_supported",
+        message: `Unsupported tenant: ${tenantId}`,
+      });
     }
 
+    if (!body.message || typeof body.message !== "string" || !body.message.trim()) {
+      return reply.code(400).send({
+        error: "invalid_request",
+        message: "Body.message is required.",
+      });
+    }
+
+    const chatRequest: MaaChatRequest = {
+      userMessage: body.message.trim(),
+      locale: body.locale,
+      maxResults: body.maxResults,
+    };
+
+    const result: MaaChatResponse = await answerMaaChat(chatRequest);
+
     return {
-      status: "prepared",
       tenantId,
-      uploadPreview,
-      message: "Scaffolding only. No external APIs called."
+      assistantMessage: result.assistantMessage,
+      followUpMode: result.followUpMode,
+      citations: result.citations,
+      retrieval: result.retrieval,
     };
   });
 
