@@ -55,6 +55,16 @@ interface OpenAiJsonResponse {
   usedCitations: number[];
 }
 
+interface SearchableChunkCacheEntry {
+  cachedAt: number;
+  chunks: SearchableChunk[];
+}
+
+const SEARCHABLE_CHUNK_CACHE_TTL_MS = 5 * 60 * 1000;
+
+const searchableChunkCache = new Map<string, SearchableChunkCacheEntry>();
+const searchableChunkBuilds = new Map<string, Promise<SearchableChunk[]>>();
+
 function getOpenAiConfig(): { apiKey: string; model: string } {
   const apiKey = process.env.OPENAI_API_KEY;
   const model = process.env.OPENAI_MODEL ?? "gpt-4.1-mini";
@@ -135,6 +145,40 @@ async function buildSearchableChunksForTenant(
   }
 
   return searchableChunks;
+}
+
+async function getSearchableChunksForTenant(
+  tenantUuid: string,
+): Promise<SearchableChunk[]> {
+  const now = Date.now();
+  const cached = searchableChunkCache.get(tenantUuid);
+
+  if (cached && now - cached.cachedAt < SEARCHABLE_CHUNK_CACHE_TTL_MS) {
+    return cached.chunks;
+  }
+
+  const inflight = searchableChunkBuilds.get(tenantUuid);
+  if (inflight) {
+    return inflight;
+  }
+
+  const buildPromise = buildSearchableChunksForTenant(tenantUuid)
+    .then((chunks) => {
+      searchableChunkCache.set(tenantUuid, {
+        cachedAt: Date.now(),
+        chunks,
+      });
+      searchableChunkBuilds.delete(tenantUuid);
+      return chunks;
+    })
+    .catch((error) => {
+      searchableChunkBuilds.delete(tenantUuid);
+      throw error;
+    });
+
+  searchableChunkBuilds.set(tenantUuid, buildPromise);
+
+  return buildPromise;
 }
 
 function trimEvidenceContent(content: string, maxLength = 1400): string {
@@ -256,7 +300,7 @@ export async function answerMaaChat(
   request: MaaChatRequest,
 ): Promise<MaaChatResponse> {
   const tenant = await findTenantByCode("maa");
-  const searchableChunks = await buildSearchableChunksForTenant(tenant.uuid);
+  const searchableChunks = await getSearchableChunksForTenant(tenant.uuid);
 
   const requiresDeterministicFloor =
     isPricingQuestion(request.userMessage) ||
