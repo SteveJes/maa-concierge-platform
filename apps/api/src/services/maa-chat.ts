@@ -4,15 +4,19 @@ import {
   type SearchResult,
 } from "@platform/retrieval";
 import {
-  findDocumentByUuid,
   findTenantByCode,
   listDocumentChunks,
+  listDocuments,
 } from "../ingestion/nocodb.js";
 import { buildMaaChatSystemPrompt } from "../prompts/maa-chat-system.js";
 import {
   isPricingQuestion,
   tryAnswerPricingQuestion,
 } from "./maa-pricing.js";
+import {
+  isScheduleQuestion,
+  tryAnswerScheduleQuestion,
+} from "./maa-schedule.js";
 
 export type MaaFollowUpMode =
   | "clarify"
@@ -75,8 +79,8 @@ function buildFallbackResponse(
 
   return {
     assistantMessage: isFrench
-      ? "Je n’ai pas assez d’information fiable pour répondre correctement à cette question. Pouvez-vous préciser ce que vous voulez savoir? Si vous préférez, je peux aussi vous orienter vers une prise de rendez-vous ou une demande de rappel."
-      : "I do not have enough reliable information to answer that safely. Could you clarify what you want to know? If you prefer, I can also point you to booking or a callback request.",
+      ? "Je n’ai pas assez d’information fiable pour répondre correctement à cette question. Pouvez-vous préciser ce que vous voulez savoir? Je peux aussi vous orienter vers une prise de rendez-vous ou une demande de rappel."
+      : "I do not have enough reliable information to answer that safely. Could you clarify what you want to know? I can also point you to booking or a callback request.",
     followUpMode: "clarify",
     citations: [],
     retrieval: {
@@ -91,10 +95,13 @@ async function buildSearchableChunksForTenant(
   tenantUuid: string,
 ): Promise<SearchableChunk[]> {
   const chunkRows = await listDocumentChunks();
-  const documentCache = new Map<
-    string,
-    Awaited<ReturnType<typeof findDocumentByUuid>>
-  >();
+  const documents = await listDocuments(1000);
+
+  const documentMap = new Map(
+    documents
+      .filter((document) => typeof document.uuid === "string")
+      .map((document) => [document.uuid as string, document]),
+  );
 
   const searchableChunks: SearchableChunk[] = [];
 
@@ -112,14 +119,7 @@ async function buildSearchableChunksForTenant(
       continue;
     }
 
-    if (!documentCache.has(chunk.document_uuid)) {
-      documentCache.set(
-        chunk.document_uuid,
-        await findDocumentByUuid(chunk.document_uuid),
-      );
-    }
-
-    const document = documentCache.get(chunk.document_uuid);
+    const document = documentMap.get(chunk.document_uuid);
 
     searchableChunks.push({
       chunkId: chunk.uuid,
@@ -258,7 +258,11 @@ export async function answerMaaChat(
   const tenant = await findTenantByCode("maa");
   const searchableChunks = await buildSearchableChunksForTenant(tenant.uuid);
 
-    const effectiveMaxResults = isPricingQuestion(request.userMessage)
+  const requiresDeterministicFloor =
+    isPricingQuestion(request.userMessage) ||
+    isScheduleQuestion(request.userMessage);
+
+  const effectiveMaxResults = requiresDeterministicFloor
     ? Math.max(request.maxResults ?? 5, 12)
     : request.maxResults ?? 5;
 
@@ -296,6 +300,35 @@ export async function answerMaaChat(
     return {
       assistantMessage: pricingAnswer.assistantMessage,
       followUpMode: pricingAnswer.followUpMode,
+      citations,
+      retrieval: {
+        query: request.userMessage,
+        chunkCount: searchableChunks.length,
+        resultCount: searchResults.length,
+      },
+    };
+  }
+
+  const scheduleAnswer = tryAnswerScheduleQuestion(
+    request.userMessage,
+    searchResults,
+  );
+
+  if (scheduleAnswer) {
+    const citations = scheduleAnswer.usedCitations.map((index) => {
+      const result = searchResults[index]!;
+
+      return {
+        citationLabel: result.citationLabel,
+        sourceTitle: result.sourceTitle,
+        chunkIndex: result.chunkIndex,
+        score: result.score,
+      };
+    });
+
+    return {
+      assistantMessage: scheduleAnswer.assistantMessage,
+      followUpMode: scheduleAnswer.followUpMode,
       citations,
       retrieval: {
         query: request.userMessage,

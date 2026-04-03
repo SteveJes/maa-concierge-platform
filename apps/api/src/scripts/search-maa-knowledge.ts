@@ -1,8 +1,8 @@
 import { searchKnowledgeBase, type SearchableChunk } from "@platform/retrieval";
 import {
-  findDocumentByUuid,
   findTenantByCode,
   listDocumentChunks,
+  listDocuments,
 } from "../ingestion/nocodb.js";
 
 async function main(): Promise<void> {
@@ -14,6 +14,13 @@ async function main(): Promise<void> {
 
   const tenant = await findTenantByCode("maa");
   const chunkRows = await listDocumentChunks();
+  const documents = await listDocuments(1000);
+
+  const documentMap = new Map(
+    documents
+      .filter((document) => typeof document.uuid === "string")
+      .map((document) => [document.uuid as string, document]),
+  );
 
   const searchableChunks: SearchableChunk[] = [];
 
@@ -24,12 +31,14 @@ async function main(): Promise<void> {
       chunk.approved !== true ||
       typeof chunk.uuid !== "string" ||
       typeof chunk.document_uuid !== "string" ||
-      typeof chunk.source_uuid !== "string"
+      typeof chunk.source_uuid !== "string" ||
+      typeof chunk.content !== "string" ||
+      chunk.content.trim().length === 0
     ) {
       continue;
     }
 
-    const document = await findDocumentByUuid(chunk.document_uuid);
+    const document = documentMap.get(chunk.document_uuid);
 
     searchableChunks.push({
       chunkId: chunk.uuid,
@@ -48,7 +57,7 @@ async function main(): Promise<void> {
     {
       tenantId: tenant.uuid,
       query,
-      maxResults: 5,
+      maxResults: 10,
     },
     searchableChunks,
   );
