@@ -17,6 +17,10 @@ import {
   isScheduleQuestion,
   tryAnswerScheduleQuestion,
 } from "./maa-schedule.js";
+import {
+  isPolicyQuestion,
+  tryAnswerPolicyQuestion,
+} from "./maa-policy.js";
 
 export type MaaFollowUpMode =
   | "clarify"
@@ -85,7 +89,7 @@ function buildFallbackResponse(
   const isFrench =
     locale === "fr-CA" ||
     /[àâçéèêëîïôûùüÿœ]/i.test(userMessage) ||
-    /\b(piscine|abonnement|horaire|spa|visite|cours)\b/i.test(userMessage);
+    /\b(piscine|abonnement|horaire|spa|visite|cours|politique)\b/i.test(userMessage);
 
   return {
     assistantMessage: isFrench
@@ -267,6 +271,7 @@ async function callOpenAiForAnswer(
             "If the evidence already answers the question, answer directly and cite the supporting evidence indexes.",
             "Important: preserve pricing qualifiers exactly, especially words like monthly, yearly, promo, initiation fee, senior, and student.",
             "Do not rewrite a table row into a different pricing meaning.",
+            "Do not invent policies or restrictions that are not explicitly supported by the evidence.",
             "Only choose calendly, callback, or vapi if the evidence is insufficient or the user clearly wants a human handoff.",
           ].join("\n"),
         },
@@ -304,7 +309,8 @@ export async function answerMaaChat(
 
   const requiresDeterministicFloor =
     isPricingQuestion(request.userMessage) ||
-    isScheduleQuestion(request.userMessage);
+    isScheduleQuestion(request.userMessage) ||
+    isPolicyQuestion(request.userMessage);
 
   const effectiveMaxResults = requiresDeterministicFloor
     ? Math.max(request.maxResults ?? 5, 12)
@@ -373,6 +379,35 @@ export async function answerMaaChat(
     return {
       assistantMessage: scheduleAnswer.assistantMessage,
       followUpMode: scheduleAnswer.followUpMode,
+      citations,
+      retrieval: {
+        query: request.userMessage,
+        chunkCount: searchableChunks.length,
+        resultCount: searchResults.length,
+      },
+    };
+  }
+
+  const policyAnswer = tryAnswerPolicyQuestion(
+    request.userMessage,
+    searchResults,
+  );
+
+  if (policyAnswer) {
+    const citations = policyAnswer.usedCitations.map((index) => {
+      const result = searchResults[index]!;
+
+      return {
+        citationLabel: result.citationLabel,
+        sourceTitle: result.sourceTitle,
+        chunkIndex: result.chunkIndex,
+        score: result.score,
+      };
+    });
+
+    return {
+      assistantMessage: policyAnswer.assistantMessage,
+      followUpMode: policyAnswer.followUpMode,
       citations,
       retrieval: {
         query: request.userMessage,
