@@ -22,6 +22,35 @@ function loadEnvFiles(): void {
   }
 }
 
+type ChatRouteResponse = {
+  tenantId: string;
+  conversationId: string | null;
+  assistantMessage: string;
+  followUpMode: string;
+  citations: unknown[];
+  retrieval: {
+    query: string;
+    chunkCount: number;
+    resultCount: number;
+  };
+  persistence: {
+    enabled: boolean;
+    saved: boolean;
+    error: string | null;
+  };
+  callbackPersistence: {
+    enabled: boolean;
+    saved: boolean;
+    requestId: string | null;
+    error: string | null;
+  };
+};
+
+type ErrorResponse = {
+  error: string;
+  message: string;
+};
+
 async function testEnglishCallbackFlow(): Promise<void> {
   const app = createServer();
 
@@ -45,29 +74,7 @@ async function testEnglishCallbackFlow(): Promise<void> {
 
     assert.equal(response.statusCode, 200, "Expected HTTP 200 from English chat route");
 
-    const body = response.json() as {
-      tenantId: string;
-      conversationId: string | null;
-      assistantMessage: string;
-      followUpMode: string;
-      citations: unknown[];
-      retrieval: {
-        query: string;
-        chunkCount: number;
-        resultCount: number;
-      };
-      persistence: {
-        enabled: boolean;
-        saved: boolean;
-        error: string | null;
-      };
-      callbackPersistence: {
-        enabled: boolean;
-        saved: boolean;
-        requestId: string | null;
-        error: string | null;
-      };
-    };
+    const body = response.json() as ChatRouteResponse;
 
     assert.equal(body.tenantId, "maa");
     assert.ok(body.conversationId, "Expected English conversationId to be returned");
@@ -130,29 +137,7 @@ async function testFrenchCallbackFlow(): Promise<void> {
 
     assert.equal(response.statusCode, 200, "Expected HTTP 200 from French chat route");
 
-    const body = response.json() as {
-      tenantId: string;
-      conversationId: string | null;
-      assistantMessage: string;
-      followUpMode: string;
-      citations: unknown[];
-      retrieval: {
-        query: string;
-        chunkCount: number;
-        resultCount: number;
-      };
-      persistence: {
-        enabled: boolean;
-        saved: boolean;
-        error: string | null;
-      };
-      callbackPersistence: {
-        enabled: boolean;
-        saved: boolean;
-        requestId: string | null;
-        error: string | null;
-      };
-    };
+    const body = response.json() as ChatRouteResponse;
 
     assert.equal(body.tenantId, "maa");
     assert.ok(body.conversationId, "Expected French conversationId to be returned");
@@ -192,16 +177,139 @@ async function testFrenchCallbackFlow(): Promise<void> {
   }
 }
 
+async function testMissingCallbackPhone(): Promise<void> {
+  const app = createServer();
+
+  try {
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/tenants/maa/chat",
+      payload: {
+        message: "Please call me back.",
+        locale: "en",
+        callback: {
+          consentToContact: true,
+        },
+      },
+    });
+
+    assert.equal(response.statusCode, 400, "Expected HTTP 400 when callback.phone is missing");
+
+    const body = response.json() as ErrorResponse;
+
+    assert.equal(body.error, "invalid_request");
+    assert.equal(body.message, "Body.callback.phone is required when callback is provided.");
+
+    console.log(
+      JSON.stringify(
+        {
+          ok: true,
+          message: "MAA callback validation regression passed for missing phone.",
+        },
+        null,
+        2,
+      ),
+    );
+  } finally {
+    await app.close();
+  }
+}
+
+async function testConsentMustBeTrue(): Promise<void> {
+  const app = createServer();
+
+  try {
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/tenants/maa/chat",
+      payload: {
+        message: "Please call me back.",
+        locale: "en",
+        callback: {
+          phone: "514-555-0303",
+          consentToContact: false,
+        },
+      },
+    });
+
+    assert.equal(
+      response.statusCode,
+      400,
+      "Expected HTTP 400 when callback.consentToContact is not true",
+    );
+
+    const body = response.json() as ErrorResponse;
+
+    assert.equal(body.error, "invalid_request");
+    assert.equal(
+      body.message,
+      "Body.callback.consentToContact must be true when callback is provided.",
+    );
+
+    console.log(
+      JSON.stringify(
+        {
+          ok: true,
+          message: "MAA callback validation regression passed for consent enforcement.",
+        },
+        null,
+        2,
+      ),
+    );
+  } finally {
+    await app.close();
+  }
+}
+
+async function testInvalidCallbackShape(): Promise<void> {
+  const app = createServer();
+
+  try {
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/tenants/maa/chat",
+      payload: {
+        message: "Please call me back.",
+        locale: "en",
+        callback: "bad-shape",
+      },
+    });
+
+    assert.equal(response.statusCode, 400, "Expected HTTP 400 for invalid callback object shape");
+
+    const body = response.json() as ErrorResponse;
+
+    assert.equal(body.error, "invalid_request");
+    assert.equal(body.message, "Body.callback must be an object when provided.");
+
+    console.log(
+      JSON.stringify(
+        {
+          ok: true,
+          message: "MAA callback validation regression passed for invalid callback shape.",
+        },
+        null,
+        2,
+      ),
+    );
+  } finally {
+    await app.close();
+  }
+}
+
 async function main(): Promise<void> {
   loadEnvFiles();
   await testEnglishCallbackFlow();
   await testFrenchCallbackFlow();
+  await testMissingCallbackPhone();
+  await testConsentMustBeTrue();
+  await testInvalidCallbackShape();
 
   console.log(
     JSON.stringify(
       {
         ok: true,
-        message: "MAA callback regression passed for English and French.",
+        message: "MAA callback regression passed for happy path and validation cases.",
       },
       null,
       2,
