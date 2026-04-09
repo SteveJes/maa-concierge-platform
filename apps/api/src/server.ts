@@ -10,7 +10,9 @@ import {
   createCallbackRequest,
   createConversation,
   createMessage,
+  findBookingConfigForTenantLocale,
   findTenantByCode,
+  isBookingConfigConfigured,
   isCallbackPersistenceConfigured,
   isChatPersistenceConfigured,
   newUuid,
@@ -56,6 +58,20 @@ function isFrenchLocale(locale: string | null): boolean {
   return normalized === "fr" || normalized.startsWith("fr-");
 }
 
+function looksLikeBookingIntent(userMessage: string, locale: string | null): boolean {
+  const normalized = userMessage.trim().toLowerCase();
+
+  if (isFrenchLocale(locale)) {
+    return /(?:réserver|reserver|réservation|reservation|rendez-vous|planifier|visite|visiter|équipe des ventes|equipe des ventes|ventes)/i.test(
+      normalized,
+    );
+  }
+
+  return /(?:book|booking|schedule|appointment|tour|visit|sales team|speak with sales|talk to sales|book a call)/i.test(
+    normalized,
+  );
+}
+
 function buildCallbackSuccessMessage(
   locale: string | null,
   phone: string,
@@ -86,6 +102,37 @@ function buildCallbackNotConfiguredMessage(locale: string | null): string {
   }
 
   return "Thanks — I received your callback request, but callback persistence is not configured on this server.";
+}
+
+function buildCalendlySuccessMessage(
+  locale: string | null,
+  bookingUrl: string,
+  allowCallbackFallback: boolean,
+): string {
+  if (isFrenchLocale(locale)) {
+    return allowCallbackFallback
+      ? `Pour planifier avec un membre de l’équipe du Club Sportif MAA, utilisez ce lien : ${bookingUrl}. Si vous préférez, je peux aussi prendre une demande de rappel.`
+      : `Pour planifier avec un membre de l’équipe du Club Sportif MAA, utilisez ce lien : ${bookingUrl}.`;
+  }
+
+  return allowCallbackFallback
+    ? `To book with a Club Sportif MAA team member, please use this link: ${bookingUrl}. If you prefer, I can also help capture a callback request.`
+    : `To book with a Club Sportif MAA team member, please use this link: ${bookingUrl}.`;
+}
+
+function buildCalendlyUnavailableMessage(
+  locale: string | null,
+  allowCallbackFallback: boolean,
+): string {
+  if (isFrenchLocale(locale)) {
+    return allowCallbackFallback
+      ? "Je peux vous orienter vers une réservation, mais aucun lien de prise de rendez-vous n’est configuré pour le moment. Si vous préférez, je peux aussi prendre une demande de rappel."
+      : "Je peux vous orienter vers une réservation, mais aucun lien de prise de rendez-vous n’est configuré pour le moment.";
+  }
+
+  return allowCallbackFallback
+    ? "I can direct you to booking, but no booking link is configured right now. If you prefer, I can also help capture a callback request."
+    : "I can direct you to booking, but no booking link is configured right now.";
 }
 
 export function createServer() {
@@ -168,6 +215,8 @@ export function createServer() {
     const trimmedMessage = body.message.trim();
     const locale = toNullableTrimmedString(body.locale);
     const now = new Date().toISOString();
+    const hasExplicitBookingIntent =
+      !hasCallbackPayload && looksLikeBookingIntent(trimmedMessage, locale);
 
     const chatRequest: MaaChatRequest = {
       userMessage: trimmedMessage,
@@ -178,7 +227,9 @@ export function createServer() {
     const result: MaaChatResponse = await answerMaaChat(chatRequest);
 
     let responseAssistantMessage = result.assistantMessage;
-    let responseFollowUpMode = result.followUpMode;
+    let responseFollowUpMode = hasExplicitBookingIntent
+      ? "calendly"
+      : result.followUpMode;
     let responseCitations = result.citations;
 
     let conversationId =
@@ -209,6 +260,94 @@ export function createServer() {
       saved: false,
       requestId: null as string | null,
       error: null as string | null,
+    };
+
+    const booking = {
+      enabled: false,
+      configured: false,
+      source: null as "nocodb" | "env" | null,
+      mode: null as string | null,
+      bookingUrl: null as string | null,
+      calendlyEventTypeUri: null as string | null,
+      allowCallbackFallback: false,
+      confirmationTemplateKey: null as string | null,
+      error: null as string | null,
+    };
+
+    const resolveCalendlyFollowUp = async (): Promise<void> => {
+      if (responseFollowUpMode !== "calendly") {
+        return;
+      }
+
+      const envBookingUrl = toNullableTrimmedString(process.env.CALENDLY_URL);
+
+      try {
+        if (isBookingConfigConfigured()) {
+          const resolvedTenantUuid = await getTenantUuid();
+          const config = await findBookingConfigForTenantLocale(
+            resolvedTenantUuid,
+            locale,
+          );
+
+          if (config) {
+            booking.configured = true;
+            booking.enabled = config.enabled === true;
+            booking.mode = toNullableTrimmedString(config.mode);
+            booking.calendlyEventTypeUri = toNullableTrimmedString(
+              config.calendly_event_type_uri,
+            );
+            booking.bookingUrl = toNullableTrimmedString(config.booking_url);
+            booking.allowCallbackFallback = config.allow_callback_fallback === true;
+            booking.confirmationTemplateKey = toNullableTrimmedString(
+              config.confirmation_template_key,
+            );
+          }
+        }
+      } catch (error) {
+        booking.error =
+          error instanceof Error ? error.message : "Unknown booking configuration error";
+      }
+
+      let effectiveBookingUrl: string | null = null;
+
+      if (booking.enabled && booking.bookingUrl) {
+        effectiveBookingUrl = booking.bookingUrl;
+        booking.source = "nocodb";
+      } else if (envBookingUrl) {
+        effectiveBookingUrl = envBookingUrl;
+        booking.enabled = true;
+        booking.configured = true;
+        booking.source = "env";
+        booking.bookingUrl = envBookingUrl;
+        booking.mode = booking.mode ?? "calendly";
+      }
+
+      if (effectiveBookingUrl) {
+        responseAssistantMessage = buildCalendlySuccessMessage(
+          locale,
+          effectiveBookingUrl,
+          booking.allowCallbackFallback,
+        );
+        responseCitations = [];
+        return;
+      }
+
+      if (!booking.error) {
+        if (booking.configured && booking.enabled) {
+          booking.error = "Calendly booking URL is missing for this tenant/locale.";
+        } else if (booking.configured && !booking.enabled) {
+          booking.error = "Calendly booking is disabled for this tenant/locale.";
+        } else {
+          booking.error =
+            "Calendly booking is not configured. Expected an enabled booking_configs row or CALENDLY_URL.";
+        }
+      }
+
+      responseAssistantMessage = buildCalendlyUnavailableMessage(
+        locale,
+        booking.allowCallbackFallback,
+      );
+      responseCitations = [];
     };
 
     const persistCallbackRequest = async (): Promise<void> => {
@@ -289,6 +428,8 @@ export function createServer() {
       }
     };
 
+    await resolveCalendlyFollowUp();
+
     if (persistence.enabled) {
       if (isDryRunPersistence) {
         if (!conversationId) {
@@ -368,6 +509,7 @@ export function createServer() {
       retrieval: result.retrieval,
       persistence,
       callbackPersistence,
+      booking,
     };
   });
 

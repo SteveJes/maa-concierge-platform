@@ -20,7 +20,8 @@
     "test:maa:pricing": "tsx src/scripts/test-maa-pricing-regression.ts",
     "test:maa:schedule": "tsx src/scripts/test-maa-schedule-regression.ts",
     "test:maa:policy": "tsx src/scripts/test-maa-policy-regression.ts",
-    "test:maa:callback": "tsx src/scripts/test-maa-callback-regression.ts"
+    "test:maa:callback": "tsx src/scripts/test-maa-callback-regression.ts",
+    "test:maa:calendly": "tsx src/scripts/test-maa-calendly-regression.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.0.0",

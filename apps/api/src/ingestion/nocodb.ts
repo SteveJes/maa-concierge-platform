@@ -14,6 +14,7 @@ export interface NocoConfig {
   conversationsTableId: string | undefined;
   messagesTableId: string | undefined;
   callbackRequestsTableId: string | undefined;
+  bookingConfigsTableId: string | undefined;
 }
 
 export interface TenantRow {
@@ -151,6 +152,19 @@ export interface CallbackRequestRow {
   created_at: string;
 }
 
+export interface BookingConfigRow {
+  Id?: number;
+  uuid?: string | null;
+  tenant_uuid: string;
+  locale?: string | null;
+  enabled?: boolean | null;
+  mode?: string | null;
+  calendly_event_type_uri?: string | null;
+  booking_url?: string | null;
+  allow_callback_fallback?: boolean | null;
+  confirmation_template_key?: string | null;
+}
+
 export function getNocoConfig(): NocoConfig {
   return {
     baseUrl: process.env.NOCODB_BASE_URL,
@@ -164,6 +178,7 @@ export function getNocoConfig(): NocoConfig {
     conversationsTableId: process.env.NOCODB_TABLE_CONVERSATIONS,
     messagesTableId: process.env.NOCODB_TABLE_MESSAGES,
     callbackRequestsTableId: process.env.NOCODB_TABLE_CALLBACK_REQUESTS,
+    bookingConfigsTableId: process.env.NOCODB_TABLE_BOOKING_CONFIGS,
   };
 }
 
@@ -235,6 +250,15 @@ function pickRecords(payload: unknown): unknown[] {
     if (Array.isArray(obj.records)) return obj.records;
   }
   return [];
+}
+
+function normalizeLocaleForMatch(locale: string | null | undefined): string | null {
+  if (typeof locale !== "string") {
+    return null;
+  }
+
+  const trimmed = locale.trim().toLowerCase();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 export function newUuid(): string {
@@ -504,6 +528,67 @@ export async function updateDocumentById(
       }),
     },
   );
+}
+
+export function isBookingConfigConfigured(): boolean {
+  const cfg = getNocoConfig();
+  return Boolean(cfg.bookingConfigsTableId);
+}
+
+export async function listBookingConfigs(limit = 200): Promise<BookingConfigRow[]> {
+  const cfg = getNocoConfig();
+
+  if (!cfg.bookingConfigsTableId) {
+    return [];
+  }
+
+  const payload = await nocoRequest<unknown>(
+    `/api/v2/tables/${cfg.bookingConfigsTableId}/records?limit=${limit}`,
+    { method: "GET" },
+  );
+
+  return pickRecords(payload) as BookingConfigRow[];
+}
+
+export async function findBookingConfigForTenantLocale(
+  tenantUuid: string,
+  locale?: string | null,
+): Promise<BookingConfigRow | null> {
+  const rows = (await listBookingConfigs(200)).filter(
+    (row) => row.tenant_uuid === tenantUuid,
+  );
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  const requestedLocale = normalizeLocaleForMatch(locale);
+
+  if (!requestedLocale) {
+    const defaultRow = rows.find((row) => normalizeLocaleForMatch(row.locale) === null);
+    return defaultRow ?? rows[0] ?? null;
+  }
+
+  const exactMatch = rows.find(
+    (row) => normalizeLocaleForMatch(row.locale) === requestedLocale,
+  );
+
+  if (exactMatch) {
+    return exactMatch;
+  }
+
+  const requestedLanguage = requestedLocale.split("-")[0]!;
+  const languageMatch = rows.find((row) => {
+    const rowLocale = normalizeLocaleForMatch(row.locale);
+    return rowLocale !== null && rowLocale.split("-")[0] === requestedLanguage;
+  });
+
+  if (languageMatch) {
+    return languageMatch;
+  }
+
+  const defaultRow = rows.find((row) => normalizeLocaleForMatch(row.locale) === null);
+  return defaultRow ?? rows[0] ?? null;
 }
 
 function assertChatPersistenceConfigPresent(): {
