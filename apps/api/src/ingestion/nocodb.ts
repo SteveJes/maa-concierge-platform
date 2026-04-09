@@ -13,6 +13,7 @@ export interface NocoConfig {
   documentChunksTableId: string | undefined;
   conversationsTableId: string | undefined;
   messagesTableId: string | undefined;
+  callbackRequestsTableId: string | undefined;
 }
 
 export interface TenantRow {
@@ -107,6 +108,49 @@ export interface DocumentChunkRow {
   created_at?: string | null;
 }
 
+export interface ConversationRow {
+  Id?: number;
+  uuid?: string;
+  tenant_uuid: string;
+  channel: "web_chat";
+  locale?: string | null;
+  status: "open";
+  started_at: string;
+  updated_at: string;
+}
+
+export interface MessageRow {
+  Id?: number;
+  uuid?: string;
+  tenant_uuid: string;
+  conversation_uuid: string;
+  role: "user" | "assistant";
+  content: string;
+  locale?: string | null;
+  follow_up_mode?: string | null;
+  citations_json?: string | null;
+  retrieval_json?: string | null;
+  created_at: string;
+}
+
+export interface CallbackRequestRow {
+  Id?: number;
+  uuid?: string;
+  tenant_uuid: string;
+  conversation_uuid?: string | null;
+  locale?: string | null;
+  name?: string | null;
+  phone: string;
+  email?: string | null;
+  preferred_time_text?: string | null;
+  question_summary?: string | null;
+  status?: string | null;
+  consent_to_contact: boolean;
+  brevo_confirmation_sent: boolean;
+  crm_record_id?: string | null;
+  created_at: string;
+}
+
 export function getNocoConfig(): NocoConfig {
   return {
     baseUrl: process.env.NOCODB_BASE_URL,
@@ -119,6 +163,7 @@ export function getNocoConfig(): NocoConfig {
     documentChunksTableId: process.env.NOCODB_TABLE_DOCUMENT_CHUNKS,
     conversationsTableId: process.env.NOCODB_TABLE_CONVERSATIONS,
     messagesTableId: process.env.NOCODB_TABLE_MESSAGES,
+    callbackRequestsTableId: process.env.NOCODB_TABLE_CALLBACK_REQUESTS,
   };
 }
 
@@ -461,32 +506,6 @@ export async function updateDocumentById(
   );
 }
 
-
-export interface ConversationRow {
-  Id?: number;
-  uuid?: string;
-  tenant_uuid: string;
-  channel: "web_chat";
-  locale?: string | null;
-  status: "open";
-  started_at: string;
-  updated_at: string;
-}
-
-export interface MessageRow {
-  Id?: number;
-  uuid?: string;
-  tenant_uuid: string;
-  conversation_uuid: string;
-  role: "user" | "assistant";
-  content: string;
-  locale?: string | null;
-  follow_up_mode?: string | null;
-  citations_json?: string | null;
-  retrieval_json?: string | null;
-  created_at: string;
-}
-
 function assertChatPersistenceConfigPresent(): {
   conversationsTableId: string;
   messagesTableId: string;
@@ -505,9 +524,30 @@ function assertChatPersistenceConfigPresent(): {
   };
 }
 
+function assertCallbackPersistenceConfigPresent(): {
+  callbackRequestsTableId: string;
+} {
+  const cfg = getNocoConfig();
+
+  if (!cfg.callbackRequestsTableId) {
+    throw new Error(
+      "Missing callback persistence env var. Expected NOCODB_TABLE_CALLBACK_REQUESTS.",
+    );
+  }
+
+  return {
+    callbackRequestsTableId: cfg.callbackRequestsTableId,
+  };
+}
+
 export function isChatPersistenceConfigured(): boolean {
   const cfg = getNocoConfig();
   return Boolean(cfg.conversationsTableId && cfg.messagesTableId);
+}
+
+export function isCallbackPersistenceConfigured(): boolean {
+  const cfg = getNocoConfig();
+  return Boolean(cfg.callbackRequestsTableId);
 }
 
 export async function createConversation(
@@ -537,6 +577,26 @@ export async function createMessage(
 
   const payload = await nocoRequest<MessageRow>(
     `/api/v2/tables/${cfg.messagesTableId}/records`,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+  );
+
+  return {
+    ...input,
+    ...payload,
+    uuid: payload?.uuid ?? input.uuid,
+  };
+}
+
+export async function createCallbackRequest(
+  input: CallbackRequestRow,
+): Promise<CallbackRequestRow> {
+  const cfg = assertCallbackPersistenceConfigPresent();
+
+  const payload = await nocoRequest<CallbackRequestRow>(
+    `/api/v2/tables/${cfg.callbackRequestsTableId}/records`,
     {
       method: "POST",
       body: JSON.stringify(input),
