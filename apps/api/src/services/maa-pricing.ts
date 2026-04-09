@@ -9,7 +9,14 @@ export interface MaaPricingAnswer {
 interface MembershipPriceRow {
   label: string;
   amount: string;
+  billingText: string | null;
   sourceIndexes: number[];
+}
+
+interface MembershipRowConfig {
+  label: string;
+  patterns: RegExp[];
+  billingTextWhenMonthly: string | null;
 }
 
 function normalizeText(value: string): string {
@@ -37,7 +44,10 @@ export function isPricingQuestion(userMessage: string): boolean {
     text.includes("membership fee") ||
     text.includes("membership fees") ||
     text.includes("membership cost") ||
-    text.includes("membership costs")
+    text.includes("membership costs") ||
+    text.includes("pricing") ||
+    text.includes("membership pricing") ||
+    text.includes("annual membership")
   );
 }
 
@@ -84,31 +94,45 @@ function extractAmountFromContent(
   return null;
 }
 
+function hasMonthlyQualifier(results: SearchResult[]): boolean {
+  return results.some(
+    (result) =>
+      isMembershipSource(result) &&
+      /fees\s*\(monthly\)/i.test(result.content),
+  );
+}
+
 function extractMembershipRows(results: SearchResult[]): MembershipPriceRow[] {
-  const rowConfigs: Array<{ label: string; patterns: RegExp[] }> = [
+  const monthly = hasMonthlyQualifier(results);
+
+  const rowConfigs: MembershipRowConfig[] = [
     {
-      label: "1 year membership",
+      label: "1-year membership",
       patterns: [
         /1\s*year\s*membership[\s\S]{0,40}?\$?\s*(\d+)/i,
       ],
+      billingTextWhenMonthly: "per month for a 1-year term",
     },
     {
-      label: "Senior yearly (70+)",
+      label: "Senior membership (70+, 1-year term)",
       patterns: [
         /senior\s*yearly\s*\(?\s*70\+?\s*\)?[\s\S]{0,40}?\$?\s*(\d+)/i,
       ],
+      billingTextWhenMonthly: "per month for a 1-year term",
     },
     {
-      label: "Students yearly (25 and under)",
+      label: "Student membership (25 and under, 1-year term)",
       patterns: [
         /students?\s*yearly\s*\(?\s*25\s*and\s*under\s*\)?[\s\S]{0,40}?\$?\s*(\d+)/i,
       ],
+      billingTextWhenMonthly: "per month for a 1-year term",
     },
     {
-      label: "1 month membership",
+      label: "1-month membership",
       patterns: [
         /1\s*month\s*membership[\s\S]{0,40}?\$?\s*(\d+)/i,
       ],
+      billingTextWhenMonthly: "per month",
     },
   ];
 
@@ -136,6 +160,7 @@ function extractMembershipRows(results: SearchResult[]): MembershipPriceRow[] {
       rows.push({
         label: config.label,
         amount: foundAmount,
+        billingText: monthly ? config.billingTextWhenMonthly : null,
         sourceIndexes: uniqueNumbers(sourceIndexes),
       });
     }
@@ -163,21 +188,13 @@ function extractInitiationFee(results: SearchResult[]): {
     if (match) {
       sourceIndexes.push(index);
       return {
-        text: `Initiation fee promo: FREE ($${match[1]}, value of $${match[2]})`,
+        text: `There is currently no initiation fee ($${match[1]}, a $${match[2]} value).`,
         sourceIndexes,
       };
     }
   }
 
   return { text: null, sourceIndexes: [] };
-}
-
-function hasMonthlyQualifier(results: SearchResult[]): boolean {
-  return results.some(
-    (result) =>
-      isMembershipSource(result) &&
-      /fees\s*\(monthly\)/i.test(result.content),
-  );
 }
 
 function findPoolEvidenceIndexes(results: SearchResult[]): number[] {
@@ -190,12 +207,14 @@ function findPoolEvidenceIndexes(results: SearchResult[]): number[] {
       content.includes("swimming pool") ||
       content.includes("25m indoor pool") ||
       content.includes("pool, whirlpool") ||
-      content.includes("pool access");
+      content.includes("pool access") ||
+      content.includes("the pool");
 
     const inclusionMention =
       content.includes("included in your membership") ||
       content.includes("includes access to the swimming pool") ||
-      content.includes("membership includes");
+      content.includes("membership includes") ||
+      content.includes("included with membership");
 
     return relevantSource && poolMention && inclusionMention;
   });
@@ -204,7 +223,6 @@ function findPoolEvidenceIndexes(results: SearchResult[]): number[] {
 function buildMembershipAnswer(
   rows: MembershipPriceRow[],
   initiationFee: string | null,
-  monthly: boolean,
   poolIncluded: boolean,
 ): string {
   const parts: string[] = [];
@@ -212,25 +230,21 @@ function buildMembershipAnswer(
   if (rows.length > 0) {
     const rowText = rows
       .map((row) =>
-        monthly
-          ? `${row.label}: ${row.amount}/month`
+        row.billingText
+          ? `${row.label}: ${row.amount} ${row.billingText}`
           : `${row.label}: ${row.amount}`,
       )
       .join("; ");
 
-    if (monthly) {
-      parts.push(`The membership page lists these as monthly fees: ${rowText}.`);
-    } else {
-      parts.push(`The membership page lists these fees: ${rowText}.`);
-    }
+    parts.push(`Club Sportif MAA membership pricing currently appears as follows: ${rowText}.`);
   }
 
   if (initiationFee) {
-    parts.push(`${initiationFee}.`);
+    parts.push(initiationFee);
   }
 
   if (poolIncluded) {
-    parts.push("The retrieved evidence also says membership includes pool access.");
+    parts.push("Membership includes pool access.");
   }
 
   return parts.join(" ");
@@ -246,7 +260,6 @@ export function tryAnswerPricingQuestion(
 
   const rows = extractMembershipRows(searchResults);
   const initiation = extractInitiationFee(searchResults);
-  const monthly = hasMonthlyQualifier(searchResults);
   const poolIndexes = findPoolEvidenceIndexes(searchResults);
   const poolIncluded = poolIndexes.length > 0;
 
@@ -264,7 +277,6 @@ export function tryAnswerPricingQuestion(
     assistantMessage: buildMembershipAnswer(
       rows,
       initiation.text,
-      monthly,
       poolIncluded,
     ),
     followUpMode: "done",

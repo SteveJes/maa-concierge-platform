@@ -29,10 +29,16 @@ export type MaaFollowUpMode =
   | "vapi"
   | "done";
 
+export interface MaaConversationHistoryTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
 export interface MaaChatRequest {
   userMessage: string;
   locale?: string;
   maxResults?: number;
+  conversationHistory?: MaaConversationHistoryTurn[];
 }
 
 export interface MaaChatCitation {
@@ -65,6 +71,7 @@ interface SearchableChunkCacheEntry {
 }
 
 const SEARCHABLE_CHUNK_CACHE_TTL_MS = 5 * 60 * 1000;
+const MAX_HISTORY_TURNS = 8;
 
 const searchableChunkCache = new Map<string, SearchableChunkCacheEntry>();
 const searchableChunkBuilds = new Map<string, Promise<SearchableChunk[]>>();
@@ -80,6 +87,31 @@ function getOpenAiConfig(): { apiKey: string; model: string } {
   }
 
   return { apiKey, model };
+}
+
+function normalizeConversationHistory(
+  history: MaaConversationHistoryTurn[] | undefined,
+): MaaConversationHistoryTurn[] {
+  if (!Array.isArray(history)) {
+    return [];
+  }
+
+  return history
+    .filter(
+      (turn): turn is MaaConversationHistoryTurn =>
+        (turn?.role === "user" || turn?.role === "assistant") &&
+        typeof turn?.content === "string" &&
+        turn.content.trim().length > 0,
+    )
+    .map((turn) => ({
+      role: turn.role,
+      content: turn.content.trim(),
+    }))
+    .slice(-MAX_HISTORY_TURNS);
+}
+
+function isFrenchLocale(locale?: string): boolean {
+  return typeof locale === "string" && locale.trim().toLowerCase().startsWith("fr");
 }
 
 function buildFallbackResponse(
@@ -103,6 +135,93 @@ function buildFallbackResponse(
       resultCount: 0,
     },
   };
+}
+
+function looksLikeMembershipPricingTopic(text: string): boolean {
+  return /(?:membership|member|pricing|price|prices|fee|fees|cost|costs|annual|yearly|monthly|initiation|senior|student|abonnement|abonnements|prix|tarif|tarifs|frais|mensuel|annuel)/i.test(
+    text,
+  );
+}
+
+function isContextDependentFollowUp(userMessage: string): boolean {
+  const normalized = userMessage.trim().toLowerCase();
+
+  if (normalized.length <= 24) {
+    return true;
+  }
+
+  return /^(and|what about|how about|ok|okay|so|then|that|those|it|they|them)\b/i.test(
+    normalized,
+  ) || /^(et|pis|alors|ok|okay|ça|cela|ceux|celles|qu'en est-il|et la|et le|et les)\b/i.test(
+    normalized,
+  );
+}
+
+function resolveMembershipFollowUpIntent(
+  userMessage: string,
+  locale: string | undefined,
+  conversationHistory: MaaConversationHistoryTurn[],
+): string {
+  if (!isContextDependentFollowUp(userMessage) || conversationHistory.length === 0) {
+    return userMessage;
+  }
+
+  const recentUserText = conversationHistory
+    .filter((turn) => turn.role === "user")
+    .slice(-2)
+    .map((turn) => turn.content)
+    .join("\n");
+
+  if (!looksLikeMembershipPricingTopic(recentUserText)) {
+    return userMessage;
+  }
+
+  if (/\b(pool|piscine)\b/i.test(userMessage)) {
+    return isFrenchLocale(locale)
+      ? "L'abonnement inclut-il l'accès à la piscine ?"
+      : "Does membership include pool access?";
+  }
+
+  if (/\b(spa|massage|massothérapie|massotherapie)\b/i.test(userMessage)) {
+    return isFrenchLocale(locale)
+      ? "L'abonnement inclut-il l'accès au spa ou aux massages ?"
+      : "Does membership include spa or massage access?";
+  }
+
+  if (/\b(class|classes|cours)\b/i.test(userMessage)) {
+    return isFrenchLocale(locale)
+      ? "Quels cours sont inclus avec l'abonnement ?"
+      : "Which classes are included with membership?";
+  }
+
+  return userMessage;
+}
+
+function expandSearchQueryForMembershipPricing(
+  userMessage: string,
+  locale: string | undefined,
+): string {
+  if (isFrenchLocale(locale)) {
+    return [
+      userMessage,
+      "abonnement prix tarifs frais mensuel annuel senior étudiant initiation piscine accès inclus",
+    ].join("\n");
+  }
+
+  return [
+    userMessage,
+    "membership pricing fees monthly yearly annual senior student initiation fee pool access included",
+  ].join("\n");
+}
+
+function trimEvidenceContent(content: string, maxLength = 1400): string {
+  const trimmed = content.trim();
+
+  if (trimmed.length <= maxLength) {
+    return trimmed;
+  }
+
+  return `${trimmed.slice(0, maxLength).trim()}…`;
 }
 
 async function buildSearchableChunksForTenant(
@@ -185,16 +304,6 @@ async function getSearchableChunksForTenant(
   return buildPromise;
 }
 
-function trimEvidenceContent(content: string, maxLength = 1400): string {
-  const trimmed = content.trim();
-
-  if (trimmed.length <= maxLength) {
-    return trimmed;
-  }
-
-  return `${trimmed.slice(0, maxLength).trim()}…`;
-}
-
 function buildEvidenceBlock(results: SearchResult[]): string {
   return results
     .map(
@@ -212,12 +321,38 @@ function buildEvidenceBlock(results: SearchResult[]): string {
     .join("\n\n");
 }
 
+function buildConversationHistoryBlock(
+  conversationHistory: MaaConversationHistoryTurn[],
+): string {
+  if (conversationHistory.length === 0) {
+    return "No prior conversation context.";
+  }
+
+  return conversationHistory
+    .map((turn, index) => `${index + 1}. ${turn.role}: ${turn.content}`)
+    .join("\n");
+}
+
+function stripCitationMarkersFromAssistantMessage(message: string): string {
+  return message
+    .replace(/\s*\[\d+\]/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 async function callOpenAiForAnswer(
-  userMessage: string,
+  originalUserMessage: string,
+  resolvedUserMessage: string,
   locale: string | undefined,
   searchResults: SearchResult[],
+  conversationHistory: MaaConversationHistoryTurn[],
 ): Promise<OpenAiJsonResponse> {
   const { apiKey, model } = getOpenAiConfig();
+
+  const resolvedIntentLine =
+    resolvedUserMessage !== originalUserMessage
+      ? `Resolved follow-up intent: ${resolvedUserMessage}`
+      : "Resolved follow-up intent: same as user question";
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -262,12 +397,17 @@ async function callOpenAiForAnswer(
         {
           role: "user",
           content: [
-            `User question: ${userMessage}`,
+            `User question: ${originalUserMessage}`,
+            resolvedIntentLine,
+            "",
+            "Recent conversation context:",
+            buildConversationHistoryBlock(conversationHistory),
             "",
             "Evidence snippets:",
             buildEvidenceBlock(searchResults),
             "",
             "Answer only from the evidence above.",
+            "Use the conversation context only to resolve what the user is referring to.",
             "If the evidence already answers the question, answer directly and cite the supporting evidence indexes.",
             "Important: preserve pricing qualifiers exactly, especially words like monthly, yearly, promo, initiation fee, senior, and student.",
             "Do not rewrite a table row into a different pricing meaning.",
@@ -306,11 +446,28 @@ export async function answerMaaChat(
 ): Promise<MaaChatResponse> {
   const tenant = await findTenantByCode("maa");
   const searchableChunks = await getSearchableChunksForTenant(tenant.uuid);
+  const conversationHistory = normalizeConversationHistory(
+    request.conversationHistory,
+  );
+
+  const resolvedUserMessage = resolveMembershipFollowUpIntent(
+    request.userMessage,
+    request.locale,
+    conversationHistory,
+  );
+
+  const shouldExpandMembershipPricingSearch =
+    isPricingQuestion(resolvedUserMessage) ||
+    looksLikeMembershipPricingTopic(resolvedUserMessage);
+
+  const searchQuery = shouldExpandMembershipPricingSearch
+    ? expandSearchQueryForMembershipPricing(resolvedUserMessage, request.locale)
+    : resolvedUserMessage;
 
   const requiresDeterministicFloor =
-    isPricingQuestion(request.userMessage) ||
-    isScheduleQuestion(request.userMessage) ||
-    isPolicyQuestion(request.userMessage);
+    isPricingQuestion(resolvedUserMessage) ||
+    isScheduleQuestion(resolvedUserMessage) ||
+    isPolicyQuestion(resolvedUserMessage);
 
   const effectiveMaxResults = requiresDeterministicFloor
     ? Math.max(request.maxResults ?? 5, 12)
@@ -319,7 +476,7 @@ export async function answerMaaChat(
   const searchResults = await searchKnowledgeBase(
     {
       tenantId: tenant.uuid,
-      query: request.userMessage,
+      query: searchQuery,
       maxResults: effectiveMaxResults,
       locale: request.locale,
     },
@@ -331,7 +488,7 @@ export async function answerMaaChat(
   }
 
   const pricingAnswer = tryAnswerPricingQuestion(
-    request.userMessage,
+    resolvedUserMessage,
     searchResults,
   );
 
@@ -352,7 +509,7 @@ export async function answerMaaChat(
       followUpMode: pricingAnswer.followUpMode,
       citations,
       retrieval: {
-        query: request.userMessage,
+        query: searchQuery,
         chunkCount: searchableChunks.length,
         resultCount: searchResults.length,
       },
@@ -360,7 +517,7 @@ export async function answerMaaChat(
   }
 
   const scheduleAnswer = tryAnswerScheduleQuestion(
-    request.userMessage,
+    resolvedUserMessage,
     searchResults,
   );
 
@@ -381,7 +538,7 @@ export async function answerMaaChat(
       followUpMode: scheduleAnswer.followUpMode,
       citations,
       retrieval: {
-        query: request.userMessage,
+        query: searchQuery,
         chunkCount: searchableChunks.length,
         resultCount: searchResults.length,
       },
@@ -389,7 +546,7 @@ export async function answerMaaChat(
   }
 
   const policyAnswer = tryAnswerPolicyQuestion(
-    request.userMessage,
+    resolvedUserMessage,
     searchResults,
   );
 
@@ -410,7 +567,7 @@ export async function answerMaaChat(
       followUpMode: policyAnswer.followUpMode,
       citations,
       retrieval: {
-        query: request.userMessage,
+        query: searchQuery,
         chunkCount: searchableChunks.length,
         resultCount: searchResults.length,
       },
@@ -419,8 +576,14 @@ export async function answerMaaChat(
 
   const modelResponse = await callOpenAiForAnswer(
     request.userMessage,
+    resolvedUserMessage,
     request.locale,
     searchResults,
+    conversationHistory,
+  );
+
+  const cleanedAssistantMessage = stripCitationMarkersFromAssistantMessage(
+    modelResponse.assistantMessage,
   );
 
   const validCitationIndexes = (modelResponse.usedCitations ?? []).filter(
@@ -442,11 +605,11 @@ export async function answerMaaChat(
   });
 
   return {
-    assistantMessage: modelResponse.assistantMessage,
+    assistantMessage: cleanedAssistantMessage,
     followUpMode: modelResponse.followUpMode,
     citations,
     retrieval: {
-      query: request.userMessage,
+      query: searchQuery,
       chunkCount: searchableChunks.length,
       resultCount: searchResults.length,
     },

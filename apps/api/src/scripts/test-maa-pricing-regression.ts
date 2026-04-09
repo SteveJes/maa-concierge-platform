@@ -49,12 +49,11 @@ async function main(): Promise<void> {
 
   const message = result!.assistantMessage;
 
-  assert.match(message, /monthly fees/i);
-  assert.match(message, /1 year membership: \$225\/month/i);
-  assert.match(message, /Senior yearly \(70\+\): \$185\/month/i);
-  assert.match(message, /Students yearly \(25 and under\): \$195\/month/i);
-  assert.match(message, /1 month membership: \$295\/month/i);
-  assert.match(message, /Initiation fee promo: FREE \(\$0, value of \$250\)/i);
+  assert.match(message, /1-year membership: \$225 per month for a 1-year term/i);
+  assert.match(message, /Senior membership \(70\+, 1-year term\): \$185 per month for a 1-year term/i);
+  assert.match(message, /Student membership \(25 and under, 1-year term\): \$195 per month for a 1-year term/i);
+  assert.match(message, /1-month membership: \$295 per month/i);
+  assert.match(message, /no initiation fee \(\$0, a \$250 value\)/i);
   assert.match(message, /membership includes pool access/i);
 
   assert.deepEqual(result!.usedCitations, [0, 1]);

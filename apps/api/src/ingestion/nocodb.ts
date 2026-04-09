@@ -675,6 +675,38 @@ export async function createMessage(
   };
 }
 
+export async function listMessagesByConversationUuid(
+  conversationUuid: string,
+  limit = 12,
+): Promise<MessageRow[]> {
+  const cfg = assertChatPersistenceConfigPresent();
+  const where = encodeURIComponent(`(conversation_uuid,eq,${conversationUuid})`);
+
+  const payload = await nocoRequest<unknown>(
+    `/api/v2/tables/${cfg.messagesTableId}/records?where=${where}&limit=${Math.max(limit, 50)}`,
+    { method: "GET" },
+  );
+
+  const rows = pickRecords(payload) as MessageRow[];
+
+  rows.sort((a, b) => {
+    const aTime = Number.isNaN(Date.parse(a.created_at))
+      ? 0
+      : Date.parse(a.created_at);
+    const bTime = Number.isNaN(Date.parse(b.created_at))
+      ? 0
+      : Date.parse(b.created_at);
+
+    if (aTime !== bTime) {
+      return aTime - bTime;
+    }
+
+    return (a.Id ?? 0) - (b.Id ?? 0);
+  });
+
+  return rows.slice(-limit);
+}
+
 export async function createCallbackRequest(
   input: CallbackRequestRow,
 ): Promise<CallbackRequestRow> {

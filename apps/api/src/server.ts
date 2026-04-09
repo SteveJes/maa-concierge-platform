@@ -15,6 +15,7 @@ import {
   isBookingConfigConfigured,
   isCallbackPersistenceConfigured,
   isChatPersistenceConfigured,
+  listMessagesByConversationUuid,
   newUuid,
 } from "./ingestion/nocodb.js";
 
@@ -231,22 +232,6 @@ export function createServer() {
     const trimmedMessage = body.message.trim();
     const locale = toNullableTrimmedString(body.locale);
     const now = new Date().toISOString();
-    const hasExplicitBookingIntent =
-      !hasCallbackPayload && looksLikeBookingIntent(trimmedMessage, locale);
-
-    const chatRequest: MaaChatRequest = {
-      userMessage: trimmedMessage,
-      locale: locale ?? undefined,
-      maxResults: body.maxResults,
-    };
-
-    const result: MaaChatResponse = await answerMaaChat(chatRequest);
-
-    let responseAssistantMessage = result.assistantMessage;
-    let responseFollowUpMode = hasExplicitBookingIntent
-      ? "calendly"
-      : result.followUpMode;
-    let responseCitations = result.citations;
 
     let conversationId =
       typeof body.conversationId === "string" && body.conversationId.trim().length > 0
@@ -264,6 +249,54 @@ export function createServer() {
       tenantUuid = tenant.uuid;
       return tenantUuid;
     };
+
+    const loadConversationHistory = async (): Promise<
+      MaaChatRequest["conversationHistory"]
+    > => {
+      if (!conversationId || !isChatPersistenceConfigured()) {
+        return [];
+      }
+
+      try {
+        const rows = await listMessagesByConversationUuid(conversationId, 8);
+
+        return rows.map((row) => ({
+          role: row.role,
+          content: row.content,
+        }));
+      } catch (error) {
+        request.log.error(
+          {
+            err: error,
+            tenantId,
+            conversationId,
+          },
+          "Failed to load conversation history",
+        );
+
+        return [];
+      }
+    };
+
+    const hasExplicitBookingIntent =
+      !hasCallbackPayload && looksLikeBookingIntent(trimmedMessage, locale);
+
+    const conversationHistory = await loadConversationHistory();
+
+    const chatRequest: MaaChatRequest = {
+      userMessage: trimmedMessage,
+      locale: locale ?? undefined,
+      maxResults: body.maxResults,
+      conversationHistory,
+    };
+
+    const result: MaaChatResponse = await answerMaaChat(chatRequest);
+
+    let responseAssistantMessage = result.assistantMessage;
+    let responseFollowUpMode = hasExplicitBookingIntent
+      ? "calendly"
+      : result.followUpMode;
+    let responseCitations = result.citations;
 
     const persistence = {
       enabled: isDryRunPersistence ? true : isChatPersistenceConfigured(),
