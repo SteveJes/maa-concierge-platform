@@ -35,6 +35,7 @@ type ChatRouteBody = {
   maxResults?: number;
   conversationId?: string;
   callback?: CallbackCaptureBody;
+  dryRunPersistence?: boolean;
 };
 
 function toNullableTrimmedString(value: unknown): string | null {
@@ -136,6 +137,7 @@ export function createServer() {
     }
 
     const hasCallbackPayload = typeof body.callback !== "undefined";
+    const isDryRunPersistence = body.dryRunPersistence === true;
 
     if (
       hasCallbackPayload &&
@@ -197,13 +199,13 @@ export function createServer() {
     };
 
     const persistence = {
-      enabled: isChatPersistenceConfigured(),
+      enabled: isDryRunPersistence ? true : isChatPersistenceConfigured(),
       saved: false,
       error: null as string | null,
     };
 
     const callbackPersistence = {
-      enabled: isCallbackPersistenceConfigured(),
+      enabled: isDryRunPersistence ? true : isCallbackPersistenceConfigured(),
       saved: false,
       requestId: null as string | null,
       error: null as string | null,
@@ -211,6 +213,21 @@ export function createServer() {
 
     const persistCallbackRequest = async (): Promise<void> => {
       if (!hasCallbackPayload) {
+        return;
+      }
+
+      const preferredTimeText = toNullableTrimmedString(body.callback?.preferredTimeText);
+
+      if (isDryRunPersistence) {
+        callbackPersistence.saved = true;
+        callbackPersistence.requestId = newUuid();
+        responseAssistantMessage = buildCallbackSuccessMessage(
+          locale,
+          callbackPhone!,
+          preferredTimeText,
+        );
+        responseFollowUpMode = "callback";
+        responseCitations = [];
         return;
       }
 
@@ -226,7 +243,6 @@ export function createServer() {
       try {
         const resolvedTenantUuid = await getTenantUuid();
         const callbackRequestId = newUuid();
-        const preferredTimeText = toNullableTrimmedString(body.callback?.preferredTimeText);
 
         await createCallbackRequest({
           uuid: callbackRequestId,
@@ -274,61 +290,70 @@ export function createServer() {
     };
 
     if (persistence.enabled) {
-      try {
-        const resolvedTenantUuid = await getTenantUuid();
-
+      if (isDryRunPersistence) {
         if (!conversationId) {
           conversationId = newUuid();
-
-          await createConversation({
-            uuid: conversationId,
-            tenant_uuid: resolvedTenantUuid,
-            channel: "web_chat",
-            locale,
-            status: "open",
-            started_at: now,
-            updated_at: now,
-          });
         }
 
-        await createMessage({
-          uuid: newUuid(),
-          tenant_uuid: resolvedTenantUuid,
-          conversation_uuid: conversationId,
-          role: "user",
-          content: trimmedMessage,
-          locale,
-          created_at: now,
-        });
-
         await persistCallbackRequest();
-
-        await createMessage({
-          uuid: newUuid(),
-          tenant_uuid: resolvedTenantUuid,
-          conversation_uuid: conversationId,
-          role: "assistant",
-          content: responseAssistantMessage,
-          locale,
-          follow_up_mode: responseFollowUpMode,
-          citations_json: JSON.stringify(responseCitations),
-          retrieval_json: JSON.stringify(result.retrieval),
-          created_at: now,
-        });
-
         persistence.saved = true;
-      } catch (error) {
-        persistence.error =
-          error instanceof Error ? error.message : "Unknown persistence error";
+      } else {
+        try {
+          const resolvedTenantUuid = await getTenantUuid();
 
-        request.log.error(
-          {
-            err: error,
-            tenantId,
-            conversationId,
-          },
-          "Failed to persist chat turn",
-        );
+          if (!conversationId) {
+            conversationId = newUuid();
+
+            await createConversation({
+              uuid: conversationId,
+              tenant_uuid: resolvedTenantUuid,
+              channel: "web_chat",
+              locale,
+              status: "open",
+              started_at: now,
+              updated_at: now,
+            });
+          }
+
+          await createMessage({
+            uuid: newUuid(),
+            tenant_uuid: resolvedTenantUuid,
+            conversation_uuid: conversationId,
+            role: "user",
+            content: trimmedMessage,
+            locale,
+            created_at: now,
+          });
+
+          await persistCallbackRequest();
+
+          await createMessage({
+            uuid: newUuid(),
+            tenant_uuid: resolvedTenantUuid,
+            conversation_uuid: conversationId,
+            role: "assistant",
+            content: responseAssistantMessage,
+            locale,
+            follow_up_mode: responseFollowUpMode,
+            citations_json: JSON.stringify(responseCitations),
+            retrieval_json: JSON.stringify(result.retrieval),
+            created_at: now,
+          });
+
+          persistence.saved = true;
+        } catch (error) {
+          persistence.error =
+            error instanceof Error ? error.message : "Unknown persistence error";
+
+          request.log.error(
+            {
+              err: error,
+              tenantId,
+              conversationId,
+            },
+            "Failed to persist chat turn",
+          );
+        }
       }
     } else if (hasCallbackPayload) {
       await persistCallbackRequest();

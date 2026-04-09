@@ -61,6 +61,7 @@ async function testEnglishCallbackFlow(): Promise<void> {
       payload: {
         message: "I need help with membership options. Please have someone call me.",
         locale: "en",
+        dryRunPersistence: true,
         callback: {
           name: "Steve Test",
           phone: "514-555-0101",
@@ -124,6 +125,7 @@ async function testFrenchCallbackFlow(): Promise<void> {
       payload: {
         message: "J’ai besoin d’aide avec les abonnements. Veuillez me rappeler.",
         locale: "fr-CA",
+        dryRunPersistence: true,
         callback: {
           name: "Steve Test FR",
           phone: "514-555-0202",
@@ -187,6 +189,7 @@ async function testMissingCallbackPhone(): Promise<void> {
       payload: {
         message: "Please call me back.",
         locale: "en",
+        dryRunPersistence: true,
         callback: {
           consentToContact: true,
         },
@@ -225,6 +228,7 @@ async function testConsentMustBeTrue(): Promise<void> {
       payload: {
         message: "Please call me back.",
         locale: "en",
+        dryRunPersistence: true,
         callback: {
           phone: "514-555-0303",
           consentToContact: false,
@@ -271,6 +275,7 @@ async function testInvalidCallbackShape(): Promise<void> {
       payload: {
         message: "Please call me back.",
         locale: "en",
+        dryRunPersistence: true,
         callback: "bad-shape",
       },
     });
