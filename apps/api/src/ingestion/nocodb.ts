@@ -11,6 +11,8 @@ export interface NocoConfig {
   documentsTableId: string | undefined;
   ingestionRunsTableId: string | undefined;
   documentChunksTableId: string | undefined;
+  conversationsTableId: string | undefined;
+  messagesTableId: string | undefined;
 }
 
 export interface TenantRow {
@@ -115,6 +117,8 @@ export function getNocoConfig(): NocoConfig {
     documentsTableId: process.env.NOCODB_TABLE_DOCUMENTS,
     ingestionRunsTableId: process.env.NOCODB_TABLE_INGESTION_RUNS,
     documentChunksTableId: process.env.NOCODB_TABLE_DOCUMENT_CHUNKS,
+    conversationsTableId: process.env.NOCODB_TABLE_CONVERSATIONS,
+    messagesTableId: process.env.NOCODB_TABLE_MESSAGES,
   };
 }
 
@@ -455,4 +459,93 @@ export async function updateDocumentById(
       }),
     },
   );
+}
+
+
+export interface ConversationRow {
+  Id?: number;
+  uuid?: string;
+  tenant_uuid: string;
+  channel: "web_chat";
+  locale?: string | null;
+  status: "open";
+  started_at: string;
+  updated_at: string;
+}
+
+export interface MessageRow {
+  Id?: number;
+  uuid?: string;
+  tenant_uuid: string;
+  conversation_uuid: string;
+  role: "user" | "assistant";
+  content: string;
+  locale?: string | null;
+  follow_up_mode?: string | null;
+  citations_json?: string | null;
+  retrieval_json?: string | null;
+  created_at: string;
+}
+
+function assertChatPersistenceConfigPresent(): {
+  conversationsTableId: string;
+  messagesTableId: string;
+} {
+  const cfg = getNocoConfig();
+
+  if (!cfg.conversationsTableId || !cfg.messagesTableId) {
+    throw new Error(
+      "Missing chat persistence env vars. Expected NOCODB_TABLE_CONVERSATIONS and NOCODB_TABLE_MESSAGES.",
+    );
+  }
+
+  return {
+    conversationsTableId: cfg.conversationsTableId,
+    messagesTableId: cfg.messagesTableId,
+  };
+}
+
+export function isChatPersistenceConfigured(): boolean {
+  const cfg = getNocoConfig();
+  return Boolean(cfg.conversationsTableId && cfg.messagesTableId);
+}
+
+export async function createConversation(
+  input: ConversationRow,
+): Promise<ConversationRow> {
+  const cfg = assertChatPersistenceConfigPresent();
+
+  const payload = await nocoRequest<ConversationRow>(
+    `/api/v2/tables/${cfg.conversationsTableId}/records`,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+  );
+
+  return {
+    ...input,
+    ...payload,
+    uuid: payload?.uuid ?? input.uuid,
+  };
+}
+
+export async function createMessage(
+  input: MessageRow,
+): Promise<MessageRow> {
+  const cfg = assertChatPersistenceConfigPresent();
+
+  const payload = await nocoRequest<MessageRow>(
+    `/api/v2/tables/${cfg.messagesTableId}/records`,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+  );
+
+  return {
+    ...input,
+    ...payload,
+    uuid: payload?.uuid ?? input.uuid,
+  };
 }

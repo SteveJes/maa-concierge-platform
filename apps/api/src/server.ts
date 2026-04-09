@@ -6,6 +6,13 @@ import {
   type MaaChatRequest,
   type MaaChatResponse,
 } from "./services/maa-chat.js";
+import {
+  createConversation,
+  createMessage,
+  findTenantByCode,
+  isChatPersistenceConfigured,
+  newUuid,
+} from "./ingestion/nocodb.js";
 
 type TenantRouteParams = {
   tenantId: string;
@@ -15,6 +22,7 @@ type ChatRouteBody = {
   message: string;
   locale?: string;
   maxResults?: number;
+  conversationId?: string;
 };
 
 export function createServer() {
@@ -65,20 +73,93 @@ export function createServer() {
       });
     }
 
+    const trimmedMessage = body.message.trim();
     const chatRequest: MaaChatRequest = {
-      userMessage: body.message.trim(),
+      userMessage: trimmedMessage,
       locale: body.locale,
       maxResults: body.maxResults,
     };
 
     const result: MaaChatResponse = await answerMaaChat(chatRequest);
 
+    let conversationId =
+      typeof body.conversationId === "string" && body.conversationId.trim().length > 0
+        ? body.conversationId.trim()
+        : null;
+
+    const persistence = {
+      enabled: isChatPersistenceConfigured(),
+      saved: false,
+      error: null as string | null,
+    };
+
+    if (persistence.enabled) {
+      try {
+        const tenant = await findTenantByCode("maa");
+        const now = new Date().toISOString();
+        const locale = body.locale ?? null;
+
+        if (!conversationId) {
+          conversationId = newUuid();
+
+          await createConversation({
+            uuid: conversationId,
+            tenant_uuid: tenant.uuid,
+            channel: "web_chat",
+            locale,
+            status: "open",
+            started_at: now,
+            updated_at: now,
+          });
+        }
+
+        await createMessage({
+          uuid: newUuid(),
+          tenant_uuid: tenant.uuid,
+          conversation_uuid: conversationId,
+          role: "user",
+          content: trimmedMessage,
+          locale,
+          created_at: now,
+        });
+
+        await createMessage({
+          uuid: newUuid(),
+          tenant_uuid: tenant.uuid,
+          conversation_uuid: conversationId,
+          role: "assistant",
+          content: result.assistantMessage,
+          locale,
+          follow_up_mode: result.followUpMode,
+          citations_json: JSON.stringify(result.citations),
+          retrieval_json: JSON.stringify(result.retrieval),
+          created_at: now,
+        });
+
+        persistence.saved = true;
+      } catch (error) {
+        persistence.error =
+          error instanceof Error ? error.message : "Unknown persistence error";
+
+        request.log.error(
+          {
+            err: error,
+            tenantId,
+            conversationId,
+          },
+          "Failed to persist chat turn",
+        );
+      }
+    }
+
     return {
       tenantId,
+      conversationId,
       assistantMessage: result.assistantMessage,
       followUpMode: result.followUpMode,
       citations: result.citations,
       retrieval: result.retrieval,
+      persistence,
     };
   });
 
