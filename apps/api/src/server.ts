@@ -46,6 +46,47 @@ function toNullableTrimmedString(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function isFrenchLocale(locale: string | null): boolean {
+  if (!locale) {
+    return false;
+  }
+
+  const normalized = locale.trim().toLowerCase();
+  return normalized === "fr" || normalized.startsWith("fr-");
+}
+
+function buildCallbackSuccessMessage(
+  locale: string | null,
+  phone: string,
+  preferredTimeText: string | null,
+): string {
+  if (isFrenchLocale(locale)) {
+    return preferredTimeText
+      ? `Merci — votre demande de rappel a bien été enregistrée. Un membre de l’équipe du Club Sportif MAA pourra vous rappeler au ${phone}. Plage horaire souhaitée notée : ${preferredTimeText}.`
+      : `Merci — votre demande de rappel a bien été enregistrée. Un membre de l’équipe du Club Sportif MAA pourra vous rappeler au ${phone}.`;
+  }
+
+  return preferredTimeText
+    ? `Thanks — your callback request has been captured. A Club Sportif MAA team member can call you back at ${phone}. Preferred time noted: ${preferredTimeText}.`
+    : `Thanks — your callback request has been captured. A Club Sportif MAA team member can call you back at ${phone}.`;
+}
+
+function buildCallbackFailureMessage(locale: string | null): string {
+  if (isFrenchLocale(locale)) {
+    return "Merci — j’ai bien reçu vos coordonnées, mais un problème technique a empêché l’enregistrement de votre demande de rappel. Veuillez réessayer dans un instant.";
+  }
+
+  return "Thanks — I received your callback details, but a technical issue prevented the callback request from being saved. Please try again in a moment.";
+}
+
+function buildCallbackNotConfiguredMessage(locale: string | null): string {
+  if (isFrenchLocale(locale)) {
+    return "Merci — j’ai bien reçu votre demande de rappel, mais la persistance des rappels n’est pas configurée sur ce serveur.";
+  }
+
+  return "Thanks — I received your callback request, but callback persistence is not configured on this server.";
+}
+
 export function createServer() {
   const app = Fastify({ logger: true });
 
@@ -134,6 +175,10 @@ export function createServer() {
 
     const result: MaaChatResponse = await answerMaaChat(chatRequest);
 
+    let responseAssistantMessage = result.assistantMessage;
+    let responseFollowUpMode = result.followUpMode;
+    let responseCitations = result.citations;
+
     let conversationId =
       typeof body.conversationId === "string" && body.conversationId.trim().length > 0
         ? body.conversationId.trim()
@@ -164,6 +209,70 @@ export function createServer() {
       error: null as string | null,
     };
 
+    const persistCallbackRequest = async (): Promise<void> => {
+      if (!hasCallbackPayload) {
+        return;
+      }
+
+      if (!callbackPersistence.enabled) {
+        callbackPersistence.error =
+          "Callback persistence is not configured. Expected NOCODB_TABLE_CALLBACK_REQUESTS.";
+        responseAssistantMessage = buildCallbackNotConfiguredMessage(locale);
+        responseFollowUpMode = "callback";
+        responseCitations = [];
+        return;
+      }
+
+      try {
+        const resolvedTenantUuid = await getTenantUuid();
+        const callbackRequestId = newUuid();
+        const preferredTimeText = toNullableTrimmedString(body.callback?.preferredTimeText);
+
+        await createCallbackRequest({
+          uuid: callbackRequestId,
+          tenant_uuid: resolvedTenantUuid,
+          conversation_uuid: conversationId,
+          locale,
+          name: toNullableTrimmedString(body.callback?.name),
+          phone: callbackPhone!,
+          email: toNullableTrimmedString(body.callback?.email),
+          preferred_time_text: preferredTimeText,
+          question_summary:
+            toNullableTrimmedString(body.callback?.questionSummary) ?? trimmedMessage,
+          status: "new",
+          consent_to_contact: true,
+          brevo_confirmation_sent: false,
+          crm_record_id: null,
+          created_at: now,
+        });
+
+        callbackPersistence.saved = true;
+        callbackPersistence.requestId = callbackRequestId;
+        responseAssistantMessage = buildCallbackSuccessMessage(
+          locale,
+          callbackPhone!,
+          preferredTimeText,
+        );
+        responseFollowUpMode = "callback";
+        responseCitations = [];
+      } catch (error) {
+        callbackPersistence.error =
+          error instanceof Error ? error.message : "Unknown callback persistence error";
+        responseAssistantMessage = buildCallbackFailureMessage(locale);
+        responseFollowUpMode = "callback";
+        responseCitations = [];
+
+        request.log.error(
+          {
+            err: error,
+            tenantId,
+            conversationId,
+          },
+          "Failed to persist callback request",
+        );
+      }
+    };
+
     if (persistence.enabled) {
       try {
         const resolvedTenantUuid = await getTenantUuid();
@@ -192,15 +301,17 @@ export function createServer() {
           created_at: now,
         });
 
+        await persistCallbackRequest();
+
         await createMessage({
           uuid: newUuid(),
           tenant_uuid: resolvedTenantUuid,
           conversation_uuid: conversationId,
           role: "assistant",
-          content: result.assistantMessage,
+          content: responseAssistantMessage,
           locale,
-          follow_up_mode: result.followUpMode,
-          citations_json: JSON.stringify(result.citations),
+          follow_up_mode: responseFollowUpMode,
+          citations_json: JSON.stringify(responseCitations),
           retrieval_json: JSON.stringify(result.retrieval),
           created_at: now,
         });
@@ -219,59 +330,16 @@ export function createServer() {
           "Failed to persist chat turn",
         );
       }
-    }
-
-    if (hasCallbackPayload) {
-      if (callbackPersistence.enabled) {
-        try {
-          const resolvedTenantUuid = await getTenantUuid();
-          const callbackRequestId = newUuid();
-
-          await createCallbackRequest({
-            uuid: callbackRequestId,
-            tenant_uuid: resolvedTenantUuid,
-            conversation_uuid: conversationId,
-            locale,
-            name: toNullableTrimmedString(body.callback?.name),
-            phone: callbackPhone!,
-            email: toNullableTrimmedString(body.callback?.email),
-            preferred_time_text: toNullableTrimmedString(body.callback?.preferredTimeText),
-            question_summary:
-              toNullableTrimmedString(body.callback?.questionSummary) ?? trimmedMessage,
-            status: "new",
-            consent_to_contact: true,
-            brevo_confirmation_sent: false,
-            crm_record_id: null,
-            created_at: now,
-          });
-
-          callbackPersistence.saved = true;
-          callbackPersistence.requestId = callbackRequestId;
-        } catch (error) {
-          callbackPersistence.error =
-            error instanceof Error ? error.message : "Unknown callback persistence error";
-
-          request.log.error(
-            {
-              err: error,
-              tenantId,
-              conversationId,
-            },
-            "Failed to persist callback request",
-          );
-        }
-      } else {
-        callbackPersistence.error =
-          "Callback persistence is not configured. Expected NOCODB_TABLE_CALLBACK_REQUESTS.";
-      }
+    } else if (hasCallbackPayload) {
+      await persistCallbackRequest();
     }
 
     return {
       tenantId,
       conversationId,
-      assistantMessage: result.assistantMessage,
-      followUpMode: result.followUpMode,
-      citations: result.citations,
+      assistantMessage: responseAssistantMessage,
+      followUpMode: responseFollowUpMode,
+      citations: responseCitations,
       retrieval: result.retrieval,
       persistence,
       callbackPersistence,
