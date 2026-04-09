@@ -104,7 +104,7 @@ function buildCallbackNotConfiguredMessage(locale: string | null): string {
   return "Thanks — I received your callback request, but callback persistence is not configured on this server.";
 }
 
-function buildCalendlySuccessMessage(
+function buildDirectBookingSuccessMessage(
   locale: string | null,
   bookingUrl: string,
   allowCallbackFallback: boolean,
@@ -120,7 +120,23 @@ function buildCalendlySuccessMessage(
     : `To book with a Club Sportif MAA team member, please use this link: ${bookingUrl}.`;
 }
 
-function buildCalendlyUnavailableMessage(
+function buildPopupBookingSuccessMessage(
+  locale: string | null,
+  bookingUrl: string,
+  allowCallbackFallback: boolean,
+): string {
+  if (isFrenchLocale(locale)) {
+    return allowCallbackFallback
+      ? `Pour réserver une visite, ouvrez cette page : ${bookingUrl}. Ensuite, cliquez sur « PLANIFIER UNE VISITE » pour lancer la fenêtre de réservation. Si vous préférez rester ici, je peux aussi prendre une demande de rappel.`
+      : `Pour réserver une visite, ouvrez cette page : ${bookingUrl}. Ensuite, cliquez sur « PLANIFIER UNE VISITE » pour lancer la fenêtre de réservation.`;
+  }
+
+  return allowCallbackFallback
+    ? `To book a tour, open this page: ${bookingUrl}. Then click "Book a tour" to launch the booking widget. If you prefer to stay here, I can also capture a callback request.`
+    : `To book a tour, open this page: ${bookingUrl}. Then click "Book a tour" to launch the booking widget.`;
+}
+
+function buildBookingUnavailableMessage(
   locale: string | null,
   allowCallbackFallback: boolean,
 ): string {
@@ -274,7 +290,7 @@ export function createServer() {
       error: null as string | null,
     };
 
-    const resolveCalendlyFollowUp = async (): Promise<void> => {
+    const resolveBookingFollowUp = async (): Promise<void> => {
       if (responseFollowUpMode !== "calendly") {
         return;
       }
@@ -323,27 +339,35 @@ export function createServer() {
       }
 
       if (effectiveBookingUrl) {
-        responseAssistantMessage = buildCalendlySuccessMessage(
-          locale,
-          effectiveBookingUrl,
-          booking.allowCallbackFallback,
-        );
+        responseAssistantMessage =
+          booking.mode === "leadconnector_popup"
+            ? buildPopupBookingSuccessMessage(
+                locale,
+                effectiveBookingUrl,
+                booking.allowCallbackFallback,
+              )
+            : buildDirectBookingSuccessMessage(
+                locale,
+                effectiveBookingUrl,
+                booking.allowCallbackFallback,
+              );
+
         responseCitations = [];
         return;
       }
 
       if (!booking.error) {
         if (booking.configured && booking.enabled) {
-          booking.error = "Calendly booking URL is missing for this tenant/locale.";
+          booking.error = "Booking URL is missing for this tenant/locale.";
         } else if (booking.configured && !booking.enabled) {
-          booking.error = "Calendly booking is disabled for this tenant/locale.";
+          booking.error = "Booking is disabled for this tenant/locale.";
         } else {
           booking.error =
-            "Calendly booking is not configured. Expected an enabled booking_configs row or CALENDLY_URL.";
+            "Booking is not configured. Expected an enabled booking_configs row or CALENDLY_URL.";
         }
       }
 
-      responseAssistantMessage = buildCalendlyUnavailableMessage(
+      responseAssistantMessage = buildBookingUnavailableMessage(
         locale,
         booking.allowCallbackFallback,
       );
@@ -428,7 +452,7 @@ export function createServer() {
       }
     };
 
-    await resolveCalendlyFollowUp();
+    await resolveBookingFollowUp();
 
     if (persistence.enabled) {
       if (isDryRunPersistence) {
