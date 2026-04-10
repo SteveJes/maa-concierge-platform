@@ -1,4 +1,4 @@
-import Fastify from "fastify";
+﻿import Fastify from "fastify";
 import cors from "@fastify/cors";
 import { loadApprovedSourceRegistry } from "@platform/config";
 import {
@@ -63,7 +63,7 @@ function looksLikeBookingIntent(userMessage: string, locale: string | null): boo
   const normalized = userMessage.trim().toLowerCase();
 
   if (isFrenchLocale(locale)) {
-    return /(?:réserver|reserver|réservation|reservation|rendez-vous|planifier|visite|visiter|équipe des ventes|equipe des ventes|ventes)/i.test(
+    return /(?:rÃ©server|reserver|rÃ©servation|reservation|rendez-vous|planifier|visite|visiter|Ã©quipe des ventes|equipe des ventes|ventes)/i.test(
       normalized,
     );
   }
@@ -80,29 +80,29 @@ function buildCallbackSuccessMessage(
 ): string {
   if (isFrenchLocale(locale)) {
     return preferredTimeText
-      ? `Merci — votre demande de rappel a bien été enregistrée. Un membre de l’équipe du Club Sportif MAA pourra vous rappeler au ${phone}. Plage horaire souhaitée notée : ${preferredTimeText}.`
-      : `Merci — votre demande de rappel a bien été enregistrée. Un membre de l’équipe du Club Sportif MAA pourra vous rappeler au ${phone}.`;
+      ? `Merci â€” votre demande de rappel a bien Ã©tÃ© enregistrÃ©e. Un membre de lâ€™Ã©quipe du Club Sportif MAA pourra vous rappeler au ${phone}. Plage horaire souhaitÃ©e notÃ©e : ${preferredTimeText}.`
+      : `Merci â€” votre demande de rappel a bien Ã©tÃ© enregistrÃ©e. Un membre de lâ€™Ã©quipe du Club Sportif MAA pourra vous rappeler au ${phone}.`;
   }
 
   return preferredTimeText
-    ? `Thanks — your callback request has been captured. A Club Sportif MAA team member can call you back at ${phone}. Preferred time noted: ${preferredTimeText}.`
-    : `Thanks — your callback request has been captured. A Club Sportif MAA team member can call you back at ${phone}.`;
+    ? `Thanks â€” your callback request has been captured. A Club Sportif MAA team member can call you back at ${phone}. Preferred time noted: ${preferredTimeText}.`
+    : `Thanks â€” your callback request has been captured. A Club Sportif MAA team member can call you back at ${phone}.`;
 }
 
 function buildCallbackFailureMessage(locale: string | null): string {
   if (isFrenchLocale(locale)) {
-    return "Merci — j’ai bien reçu vos coordonnées, mais un problème technique a empêché l’enregistrement de votre demande de rappel. Veuillez réessayer dans un instant.";
+    return "Merci â€” jâ€™ai bien reÃ§u vos coordonnÃ©es, mais un problÃ¨me technique a empÃªchÃ© lâ€™enregistrement de votre demande de rappel. Veuillez rÃ©essayer dans un instant.";
   }
 
-  return "Thanks — I received your callback details, but a technical issue prevented the callback request from being saved. Please try again in a moment.";
+  return "Thanks â€” I received your callback details, but a technical issue prevented the callback request from being saved. Please try again in a moment.";
 }
 
 function buildCallbackNotConfiguredMessage(locale: string | null): string {
   if (isFrenchLocale(locale)) {
-    return "Merci — j’ai bien reçu votre demande de rappel, mais la persistance des rappels n’est pas configurée sur ce serveur.";
+    return "Merci â€” jâ€™ai bien reÃ§u votre demande de rappel, mais la persistance des rappels nâ€™est pas configurÃ©e sur ce serveur.";
   }
 
-  return "Thanks — I received your callback request, but callback persistence is not configured on this server.";
+  return "Thanks â€” I received your callback request, but callback persistence is not configured on this server.";
 }
 
 function buildDirectBookingSuccessMessage(
@@ -112,8 +112,8 @@ function buildDirectBookingSuccessMessage(
 ): string {
   if (isFrenchLocale(locale)) {
     return allowCallbackFallback
-      ? `Pour planifier avec un membre de l’équipe du Club Sportif MAA, utilisez ce lien : ${bookingUrl}. Si vous préférez, je peux aussi prendre une demande de rappel.`
-      : `Pour planifier avec un membre de l’équipe du Club Sportif MAA, utilisez ce lien : ${bookingUrl}.`;
+      ? `Pour planifier avec un membre de lâ€™Ã©quipe du Club Sportif MAA, utilisez ce lien : ${bookingUrl}. Si vous prÃ©fÃ©rez, je peux aussi prendre une demande de rappel.`
+      : `Pour planifier avec un membre de lâ€™Ã©quipe du Club Sportif MAA, utilisez ce lien : ${bookingUrl}.`;
   }
 
   return allowCallbackFallback
@@ -128,8 +128,8 @@ function buildPopupBookingSuccessMessage(
 ): string {
   if (isFrenchLocale(locale)) {
     return allowCallbackFallback
-      ? `Pour réserver une visite, ouvrez cette page : ${bookingUrl}. Ensuite, cliquez sur « PLANIFIER UNE VISITE » pour lancer la fenêtre de réservation. Si vous préférez rester ici, je peux aussi prendre une demande de rappel.`
-      : `Pour réserver une visite, ouvrez cette page : ${bookingUrl}. Ensuite, cliquez sur « PLANIFIER UNE VISITE » pour lancer la fenêtre de réservation.`;
+      ? `Pour rÃ©server une visite, ouvrez cette page : ${bookingUrl}. Ensuite, cliquez sur Â« PLANIFIER UNE VISITE Â» pour lancer la fenÃªtre de rÃ©servation. Si vous prÃ©fÃ©rez rester ici, je peux aussi prendre une demande de rappel.`
+      : `Pour rÃ©server une visite, ouvrez cette page : ${bookingUrl}. Ensuite, cliquez sur Â« PLANIFIER UNE VISITE Â» pour lancer la fenÃªtre de rÃ©servation.`;
   }
 
   return allowCallbackFallback
@@ -143,8 +143,8 @@ function buildBookingUnavailableMessage(
 ): string {
   if (isFrenchLocale(locale)) {
     return allowCallbackFallback
-      ? "Je peux vous orienter vers une réservation, mais aucun lien de prise de rendez-vous n’est configuré pour le moment. Si vous préférez, je peux aussi prendre une demande de rappel."
-      : "Je peux vous orienter vers une réservation, mais aucun lien de prise de rendez-vous n’est configuré pour le moment.";
+      ? "Je peux vous orienter vers une rÃ©servation, mais aucun lien de prise de rendez-vous nâ€™est configurÃ© pour le moment. Si vous prÃ©fÃ©rez, je peux aussi prendre une demande de rappel."
+      : "Je peux vous orienter vers une rÃ©servation, mais aucun lien de prise de rendez-vous nâ€™est configurÃ© pour le moment.";
   }
 
   return allowCallbackFallback
