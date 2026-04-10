@@ -15,5 +15,8 @@
   },
   "devDependencies": {
     "@types/react": "^19.0.12"
+  },
+  "dependencies": {
+    "@vapi-ai/web": "^2.5.2"
   }
 }
