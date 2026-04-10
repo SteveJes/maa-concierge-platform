@@ -1,4 +1,4 @@
-﻿import Fastify from "fastify";
+import Fastify from "fastify";
 import cors from "@fastify/cors";
 import { loadApprovedSourceRegistry } from "@platform/config";
 import {
@@ -41,6 +41,40 @@ type ChatRouteBody = {
   dryRunPersistence?: boolean;
 };
 
+type ChatHistoryEntry = NonNullable<MaaChatRequest["conversationHistory"]>[number];
+
+const dryRunConversationHistory = new Map<string, ChatHistoryEntry[]>();
+
+function getDryRunConversationHistory(
+  conversationId: string | null,
+): MaaChatRequest["conversationHistory"] {
+  if (!conversationId) {
+    return [];
+  }
+
+  const history = dryRunConversationHistory.get(conversationId) ?? [];
+  return history.map((entry) => ({ ...entry }));
+}
+
+function appendDryRunConversationMessage(
+  conversationId: string | null,
+  role: ChatHistoryEntry["role"],
+  content: string,
+): void {
+  if (!conversationId) {
+    return;
+  }
+
+  const history = dryRunConversationHistory.get(conversationId) ?? [];
+  history.push({ role, content });
+
+  if (history.length > 8) {
+    history.splice(0, history.length - 8);
+  }
+
+  dryRunConversationHistory.set(conversationId, history);
+}
+
 function toNullableTrimmedString(value: unknown): string | null {
   if (typeof value !== "string") {
     return null;
@@ -63,7 +97,7 @@ function looksLikeBookingIntent(userMessage: string, locale: string | null): boo
   const normalized = userMessage.trim().toLowerCase();
 
   if (isFrenchLocale(locale)) {
-    return /(?:rÃ©server|reserver|rÃ©servation|reservation|rendez-vous|planifier|visite|visiter|Ã©quipe des ventes|equipe des ventes|ventes)/i.test(
+    return /(?:rÃƒÂ©server|reserver|rÃƒÂ©servation|reservation|rendez-vous|planifier|visite|visiter|ÃƒÂ©quipe des ventes|equipe des ventes|ventes)/i.test(
       normalized,
     );
   }
@@ -80,29 +114,29 @@ function buildCallbackSuccessMessage(
 ): string {
   if (isFrenchLocale(locale)) {
     return preferredTimeText
-      ? `Merci â€” votre demande de rappel a bien Ã©tÃ© enregistrÃ©e. Un membre de lâ€™Ã©quipe du Club Sportif MAA pourra vous rappeler au ${phone}. Plage horaire souhaitÃ©e notÃ©e : ${preferredTimeText}.`
-      : `Merci â€” votre demande de rappel a bien Ã©tÃ© enregistrÃ©e. Un membre de lâ€™Ã©quipe du Club Sportif MAA pourra vous rappeler au ${phone}.`;
+      ? `Merci Ã¢â‚¬â€ votre demande de rappel a bien ÃƒÂ©tÃƒÂ© enregistrÃƒÂ©e. Un membre de lÃ¢â‚¬â„¢ÃƒÂ©quipe du Club Sportif MAA pourra vous rappeler au ${phone}. Plage horaire souhaitÃƒÂ©e notÃƒÂ©e : ${preferredTimeText}.`
+      : `Merci Ã¢â‚¬â€ votre demande de rappel a bien ÃƒÂ©tÃƒÂ© enregistrÃƒÂ©e. Un membre de lÃ¢â‚¬â„¢ÃƒÂ©quipe du Club Sportif MAA pourra vous rappeler au ${phone}.`;
   }
 
   return preferredTimeText
-    ? `Thanks â€” your callback request has been captured. A Club Sportif MAA team member can call you back at ${phone}. Preferred time noted: ${preferredTimeText}.`
-    : `Thanks â€” your callback request has been captured. A Club Sportif MAA team member can call you back at ${phone}.`;
+    ? `Thanks Ã¢â‚¬â€ your callback request has been captured. A Club Sportif MAA team member can call you back at ${phone}. Preferred time noted: ${preferredTimeText}.`
+    : `Thanks Ã¢â‚¬â€ your callback request has been captured. A Club Sportif MAA team member can call you back at ${phone}.`;
 }
 
 function buildCallbackFailureMessage(locale: string | null): string {
   if (isFrenchLocale(locale)) {
-    return "Merci â€” jâ€™ai bien reÃ§u vos coordonnÃ©es, mais un problÃ¨me technique a empÃªchÃ© lâ€™enregistrement de votre demande de rappel. Veuillez rÃ©essayer dans un instant.";
+    return "Merci Ã¢â‚¬â€ jÃ¢â‚¬â„¢ai bien reÃƒÂ§u vos coordonnÃƒÂ©es, mais un problÃƒÂ¨me technique a empÃƒÂªchÃƒÂ© lÃ¢â‚¬â„¢enregistrement de votre demande de rappel. Veuillez rÃƒÂ©essayer dans un instant.";
   }
 
-  return "Thanks â€” I received your callback details, but a technical issue prevented the callback request from being saved. Please try again in a moment.";
+  return "Thanks Ã¢â‚¬â€ I received your callback details, but a technical issue prevented the callback request from being saved. Please try again in a moment.";
 }
 
 function buildCallbackNotConfiguredMessage(locale: string | null): string {
   if (isFrenchLocale(locale)) {
-    return "Merci â€” jâ€™ai bien reÃ§u votre demande de rappel, mais la persistance des rappels nâ€™est pas configurÃ©e sur ce serveur.";
+    return "Merci Ã¢â‚¬â€ jÃ¢â‚¬â„¢ai bien reÃƒÂ§u votre demande de rappel, mais la persistance des rappels nÃ¢â‚¬â„¢est pas configurÃƒÂ©e sur ce serveur.";
   }
 
-  return "Thanks â€” I received your callback request, but callback persistence is not configured on this server.";
+  return "Thanks Ã¢â‚¬â€ I received your callback request, but callback persistence is not configured on this server.";
 }
 
 function buildDirectBookingSuccessMessage(
@@ -112,8 +146,8 @@ function buildDirectBookingSuccessMessage(
 ): string {
   if (isFrenchLocale(locale)) {
     return allowCallbackFallback
-      ? `Pour planifier avec un membre de lâ€™Ã©quipe du Club Sportif MAA, utilisez ce lien : ${bookingUrl}. Si vous prÃ©fÃ©rez, je peux aussi prendre une demande de rappel.`
-      : `Pour planifier avec un membre de lâ€™Ã©quipe du Club Sportif MAA, utilisez ce lien : ${bookingUrl}.`;
+      ? `Pour planifier avec un membre de lÃ¢â‚¬â„¢ÃƒÂ©quipe du Club Sportif MAA, utilisez ce lien : ${bookingUrl}. Si vous prÃƒÂ©fÃƒÂ©rez, je peux aussi prendre une demande de rappel.`
+      : `Pour planifier avec un membre de lÃ¢â‚¬â„¢ÃƒÂ©quipe du Club Sportif MAA, utilisez ce lien : ${bookingUrl}.`;
   }
 
   return allowCallbackFallback
@@ -128,8 +162,8 @@ function buildPopupBookingSuccessMessage(
 ): string {
   if (isFrenchLocale(locale)) {
     return allowCallbackFallback
-      ? `Pour rÃ©server une visite, ouvrez cette page : ${bookingUrl}. Ensuite, cliquez sur Â« PLANIFIER UNE VISITE Â» pour lancer la fenÃªtre de rÃ©servation. Si vous prÃ©fÃ©rez rester ici, je peux aussi prendre une demande de rappel.`
-      : `Pour rÃ©server une visite, ouvrez cette page : ${bookingUrl}. Ensuite, cliquez sur Â« PLANIFIER UNE VISITE Â» pour lancer la fenÃªtre de rÃ©servation.`;
+      ? `Pour rÃƒÂ©server une visite, ouvrez cette page : ${bookingUrl}. Ensuite, cliquez sur Ã‚Â« PLANIFIER UNE VISITE Ã‚Â» pour lancer la fenÃƒÂªtre de rÃƒÂ©servation. Si vous prÃƒÂ©fÃƒÂ©rez rester ici, je peux aussi prendre une demande de rappel.`
+      : `Pour rÃƒÂ©server une visite, ouvrez cette page : ${bookingUrl}. Ensuite, cliquez sur Ã‚Â« PLANIFIER UNE VISITE Ã‚Â» pour lancer la fenÃƒÂªtre de rÃƒÂ©servation.`;
   }
 
   return allowCallbackFallback
@@ -143,8 +177,8 @@ function buildBookingUnavailableMessage(
 ): string {
   if (isFrenchLocale(locale)) {
     return allowCallbackFallback
-      ? "Je peux vous orienter vers une rÃ©servation, mais aucun lien de prise de rendez-vous nâ€™est configurÃ© pour le moment. Si vous prÃ©fÃ©rez, je peux aussi prendre une demande de rappel."
-      : "Je peux vous orienter vers une rÃ©servation, mais aucun lien de prise de rendez-vous nâ€™est configurÃ© pour le moment.";
+      ? "Je peux vous orienter vers une rÃƒÂ©servation, mais aucun lien de prise de rendez-vous nÃ¢â‚¬â„¢est configurÃƒÂ© pour le moment. Si vous prÃƒÂ©fÃƒÂ©rez, je peux aussi prendre une demande de rappel."
+      : "Je peux vous orienter vers une rÃƒÂ©servation, mais aucun lien de prise de rendez-vous nÃ¢â‚¬â„¢est configurÃƒÂ© pour le moment.";
   }
 
   return allowCallbackFallback
@@ -253,7 +287,15 @@ export function createServer() {
     const loadConversationHistory = async (): Promise<
       MaaChatRequest["conversationHistory"]
     > => {
-      if (!conversationId || !isChatPersistenceConfigured()) {
+      if (!conversationId) {
+        return [];
+      }
+
+      if (isDryRunPersistence) {
+        return getDryRunConversationHistory(conversationId);
+      }
+
+      if (!isChatPersistenceConfigured()) {
         return [];
       }
 
@@ -493,7 +535,13 @@ export function createServer() {
           conversationId = newUuid();
         }
 
+        appendDryRunConversationMessage(conversationId, "user", trimmedMessage);
         await persistCallbackRequest();
+        appendDryRunConversationMessage(
+          conversationId,
+          "assistant",
+          responseAssistantMessage,
+        );
         persistence.saved = true;
       } else {
         try {

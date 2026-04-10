@@ -1,4 +1,4 @@
-﻿import assert from "node:assert/strict";
+import assert from "node:assert/strict";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
@@ -31,7 +31,11 @@ type ChatResponseBody = {
     saved: boolean;
     error: string | null;
   };
-  retrieval: unknown;
+  retrieval: {
+    query: string;
+    chunkCount: number;
+    resultCount: number;
+  };
 };
 
 async function main(): Promise<void> {
@@ -62,6 +66,10 @@ async function main(): Promise<void> {
     assert.match(firstTurn.assistantMessage, /\$225\s*(?:\/|per\s+)month/i);
     assert.match(firstTurn.assistantMessage, /pool/i);
     assert.doesNotMatch(firstTurn.assistantMessage, /\[\d+\]/);
+    assert.match(
+      firstTurn.retrieval.query,
+      /membership pricing fees monthly yearly annual senior student initiation fee pool access included/i,
+    );
 
     const secondResponse = await app.inject({
       method: "POST",
@@ -85,6 +93,15 @@ async function main(): Promise<void> {
     assert.match(secondTurn.assistantMessage, /pool/i);
     assert.match(secondTurn.assistantMessage, /include|included|includes/i);
     assert.doesNotMatch(secondTurn.assistantMessage, /\[\d+\]/);
+    assert.match(
+      secondTurn.retrieval.query,
+      /^Does membership include pool access\?/i,
+    );
+    assert.match(
+      secondTurn.retrieval.query,
+      /membership pricing fees monthly yearly annual senior student initiation fee pool access included/i,
+    );
+    assert.doesNotMatch(secondTurn.retrieval.query, /^And the pool\?$/i);
 
     console.log(
       JSON.stringify(
