@@ -97,7 +97,7 @@ function looksLikeBookingIntent(userMessage: string, locale: string | null): boo
   const normalized = userMessage.trim().toLowerCase();
 
   if (isFrenchLocale(locale)) {
-    return /(?:rÃƒÂ©server|reserver|rÃƒÂ©servation|reservation|rendez-vous|planifier|visite|visiter|ÃƒÂ©quipe des ventes|equipe des ventes|ventes)/i.test(
+    return /(?:réserver|reserver|réservation|reservation|rendez-vous|planifier|visite|visiter|équipe des ventes|equipe des ventes|ventes)/i.test(
       normalized,
     );
   }
@@ -106,7 +106,6 @@ function looksLikeBookingIntent(userMessage: string, locale: string | null): boo
     normalized,
   );
 }
-
 function buildCallbackSuccessMessage(
   locale: string | null,
   phone: string,
@@ -114,31 +113,28 @@ function buildCallbackSuccessMessage(
 ): string {
   if (isFrenchLocale(locale)) {
     return preferredTimeText
-      ? `Merci Ã¢â‚¬â€ votre demande de rappel a bien ÃƒÂ©tÃƒÂ© enregistrÃƒÂ©e. Un membre de lÃ¢â‚¬â„¢ÃƒÂ©quipe du Club Sportif MAA pourra vous rappeler au ${phone}. Plage horaire souhaitÃƒÂ©e notÃƒÂ©e : ${preferredTimeText}.`
-      : `Merci Ã¢â‚¬â€ votre demande de rappel a bien ÃƒÂ©tÃƒÂ© enregistrÃƒÂ©e. Un membre de lÃ¢â‚¬â„¢ÃƒÂ©quipe du Club Sportif MAA pourra vous rappeler au ${phone}.`;
+      ? `Merci - votre demande de rappel a bien été enregistrée. Un membre de l'équipe du Club Sportif MAA pourra vous rappeler au ${phone}. Plage horaire souhaitée notée : ${preferredTimeText}.`
+      : `Merci - votre demande de rappel a bien été enregistrée. Un membre de l'équipe du Club Sportif MAA pourra vous rappeler au ${phone}.`;
   }
 
   return preferredTimeText
-    ? `Thanks Ã¢â‚¬â€ your callback request has been captured. A Club Sportif MAA team member can call you back at ${phone}. Preferred time noted: ${preferredTimeText}.`
-    : `Thanks Ã¢â‚¬â€ your callback request has been captured. A Club Sportif MAA team member can call you back at ${phone}.`;
+    ? `Thanks - your callback request has been captured. A Club Sportif MAA team member can call you back at ${phone}. Preferred time noted: ${preferredTimeText}.`
+    : `Thanks - your callback request has been captured. A Club Sportif MAA team member can call you back at ${phone}.`;
 }
-
 function buildCallbackFailureMessage(locale: string | null): string {
   if (isFrenchLocale(locale)) {
-    return "Merci Ã¢â‚¬â€ jÃ¢â‚¬â„¢ai bien reÃƒÂ§u vos coordonnÃƒÂ©es, mais un problÃƒÂ¨me technique a empÃƒÂªchÃƒÂ© lÃ¢â‚¬â„¢enregistrement de votre demande de rappel. Veuillez rÃƒÂ©essayer dans un instant.";
+    return "Merci - j'ai bien reçu vos coordonnées, mais un problème technique a empêché l'enregistrement de votre demande de rappel. Veuillez réessayer dans un instant.";
   }
 
-  return "Thanks Ã¢â‚¬â€ I received your callback details, but a technical issue prevented the callback request from being saved. Please try again in a moment.";
+  return "Thanks - I received your callback details, but a technical issue prevented the callback request from being saved. Please try again in a moment.";
 }
-
 function buildCallbackNotConfiguredMessage(locale: string | null): string {
   if (isFrenchLocale(locale)) {
-    return "Merci Ã¢â‚¬â€ jÃ¢â‚¬â„¢ai bien reÃƒÂ§u votre demande de rappel, mais la persistance des rappels nÃ¢â‚¬â„¢est pas configurÃƒÂ©e sur ce serveur.";
+    return "Merci - j'ai bien reçu votre demande de rappel, mais la persistance des rappels n'est pas configurée sur ce serveur.";
   }
 
-  return "Thanks Ã¢â‚¬â€ I received your callback request, but callback persistence is not configured on this server.";
+  return "Thanks - I received your callback request, but callback persistence is not configured on this server.";
 }
-
 function buildDirectBookingSuccessMessage(
   locale: string | null,
   bookingUrl: string,
@@ -146,15 +142,14 @@ function buildDirectBookingSuccessMessage(
 ): string {
   if (isFrenchLocale(locale)) {
     return allowCallbackFallback
-      ? `Pour planifier avec un membre de lÃ¢â‚¬â„¢ÃƒÂ©quipe du Club Sportif MAA, utilisez ce lien : ${bookingUrl}. Si vous prÃƒÂ©fÃƒÂ©rez, je peux aussi prendre une demande de rappel.`
-      : `Pour planifier avec un membre de lÃ¢â‚¬â„¢ÃƒÂ©quipe du Club Sportif MAA, utilisez ce lien : ${bookingUrl}.`;
+      ? `Pour planifier avec un membre de l'équipe du Club Sportif MAA, utilisez ce lien : ${bookingUrl}. Si vous préférez, je peux aussi prendre une demande de rappel.`
+      : `Pour planifier avec un membre de l'équipe du Club Sportif MAA, utilisez ce lien : ${bookingUrl}.`;
   }
 
   return allowCallbackFallback
     ? `To book with a Club Sportif MAA team member, please use this link: ${bookingUrl}. If you prefer, I can also help capture a callback request.`
     : `To book with a Club Sportif MAA team member, please use this link: ${bookingUrl}.`;
 }
-
 function buildPopupBookingSuccessMessage(
   locale: string | null,
   bookingUrl: string,
@@ -162,30 +157,28 @@ function buildPopupBookingSuccessMessage(
 ): string {
   if (isFrenchLocale(locale)) {
     return allowCallbackFallback
-      ? `Pour rÃƒÂ©server une visite, ouvrez cette page : ${bookingUrl}. Ensuite, cliquez sur Ã‚Â« PLANIFIER UNE VISITE Ã‚Â» pour lancer la fenÃƒÂªtre de rÃƒÂ©servation. Si vous prÃƒÂ©fÃƒÂ©rez rester ici, je peux aussi prendre une demande de rappel.`
-      : `Pour rÃƒÂ©server une visite, ouvrez cette page : ${bookingUrl}. Ensuite, cliquez sur Ã‚Â« PLANIFIER UNE VISITE Ã‚Â» pour lancer la fenÃƒÂªtre de rÃƒÂ©servation.`;
+      ? `Pour réserver une visite, ouvrez cette page : ${bookingUrl}. Ensuite, cliquez sur "PLANIFIER UNE VISITE" pour lancer la fenêtre de réservation. Si vous préférez rester ici, je peux aussi prendre une demande de rappel.`
+      : `Pour réserver une visite, ouvrez cette page : ${bookingUrl}. Ensuite, cliquez sur "PLANIFIER UNE VISITE" pour lancer la fenêtre de réservation.`;
   }
 
   return allowCallbackFallback
     ? `To book a tour, open this page: ${bookingUrl}. Then click "Book a tour" to launch the booking widget. If you prefer to stay here, I can also capture a callback request.`
     : `To book a tour, open this page: ${bookingUrl}. Then click "Book a tour" to launch the booking widget.`;
 }
-
 function buildBookingUnavailableMessage(
   locale: string | null,
   allowCallbackFallback: boolean,
 ): string {
   if (isFrenchLocale(locale)) {
     return allowCallbackFallback
-      ? "Je peux vous orienter vers une rÃƒÂ©servation, mais aucun lien de prise de rendez-vous nÃ¢â‚¬â„¢est configurÃƒÂ© pour le moment. Si vous prÃƒÂ©fÃƒÂ©rez, je peux aussi prendre une demande de rappel."
-      : "Je peux vous orienter vers une rÃƒÂ©servation, mais aucun lien de prise de rendez-vous nÃ¢â‚¬â„¢est configurÃƒÂ© pour le moment.";
+      ? "Je peux vous orienter vers une réservation, mais aucun lien de prise de rendez-vous n'est configuré pour le moment. Si vous préférez, je peux aussi prendre une demande de rappel."
+      : "Je peux vous orienter vers une réservation, mais aucun lien de prise de rendez-vous n'est configuré pour le moment.";
   }
 
   return allowCallbackFallback
     ? "I can direct you to booking, but no booking link is configured right now. If you prefer, I can also help capture a callback request."
     : "I can direct you to booking, but no booking link is configured right now.";
 }
-
 export function createServer() {
   const app = Fastify({ logger: true });
 
