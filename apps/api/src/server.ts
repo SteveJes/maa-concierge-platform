@@ -43,7 +43,24 @@ type ChatRouteBody = {
 
 type ChatHistoryEntry = NonNullable<MaaChatRequest["conversationHistory"]>[number];
 
+type VapiLaunchMode = "web_call" | "phone_number" | "web_call_or_number";
+
+interface VapiHandoffRecord {
+  tenantId: string;
+  conversationId: string | null;
+  locale: string | null;
+  createdAt: string;
+  assistantId: string | null;
+  publicKey: string | null;
+  phoneNumber: string | null;
+  launchMode: VapiLaunchMode;
+  summary: string;
+  lastUserMessage: string;
+  recentTurns: NonNullable<MaaChatRequest["conversationHistory"]>;
+}
+
 const dryRunConversationHistory = new Map<string, ChatHistoryEntry[]>();
+const vapiHandoffStore = new Map<string, VapiHandoffRecord>();
 
 function getDryRunConversationHistory(
   conversationId: string | null,
@@ -106,6 +123,20 @@ function looksLikeBookingIntent(userMessage: string, locale: string | null): boo
     normalized,
   );
 }
+function looksLikePhoneIntent(userMessage: string, locale: string | null): boolean {
+  const normalized = userMessage.trim().toLowerCase();
+
+  if (isFrenchLocale(locale)) {
+    return /(?:téléphone|telephone|appel|appeler|par téléphone|par telephone|continuer par téléphone|continuer par telephone|au téléphone|au telephone)/i.test(
+      normalized,
+    );
+  }
+
+  return /(?:phone|call|phone call|continue by phone|talk by phone|call me now)/i.test(
+    normalized,
+  );
+}
+
 function buildCallbackSuccessMessage(
   locale: string | null,
   phone: string,
@@ -179,6 +210,79 @@ function buildBookingUnavailableMessage(
     ? "I can direct you to booking, but no booking link is configured right now. If you prefer, I can also help capture a callback request."
     : "I can direct you to booking, but no booking link is configured right now.";
 }
+function buildVapiContinuationMessage(
+  locale: string | null,
+  fallbackToCallback: boolean,
+): string {
+  if (isFrenchLocale(locale)) {
+    return fallbackToCallback
+      ? 'Vous pouvez continuer cette conversation par téléphone maintenant. Cliquez sur "Continuer par téléphone". Si vous préférez, je peux aussi prendre une demande de rappel.'
+      : 'Vous pouvez continuer cette conversation par téléphone maintenant. Cliquez sur "Continuer par téléphone".';
+  }
+
+  return fallbackToCallback
+    ? 'You can continue this conversation by phone now. Click "Continue by phone". If you prefer, I can also capture a callback request.'
+    : 'You can continue this conversation by phone now. Click "Continue by phone".';
+}
+
+function buildVapiUnavailableMessage(
+  locale: string | null,
+  fallbackToCallback: boolean,
+): string {
+  if (isFrenchLocale(locale)) {
+    return fallbackToCallback
+      ? "La reprise par téléphone n'est pas configurée pour le moment. Si vous préférez, je peux aussi prendre une demande de rappel."
+      : "La reprise par téléphone n'est pas configurée pour le moment.";
+  }
+
+  return fallbackToCallback
+    ? "Phone continuation is not configured right now. If you prefer, I can also capture a callback request."
+    : "Phone continuation is not configured right now.";
+}
+
+function buildVapiRecentTurns(
+  conversationHistory: MaaChatRequest["conversationHistory"],
+  currentUserMessage: string,
+): NonNullable<MaaChatRequest["conversationHistory"]> {
+  return [
+    ...(conversationHistory ?? []),
+    {
+      role: "user" as const,
+      content: currentUserMessage,
+    },
+  ].slice(-8);
+}
+
+function buildVapiHandoffSummary(
+  locale: string | null,
+  recentTurns: NonNullable<MaaChatRequest["conversationHistory"]>,
+  currentUserMessage: string,
+): string {
+  const recentUserTurns = recentTurns
+    .filter((turn) => turn.role === "user")
+    .slice(-2)
+    .map((turn) => turn.content);
+
+  const recentTopicText = recentUserTurns.join(" | ");
+  const parts: string[] = [];
+
+  if (isFrenchLocale(locale)) {
+    parts.push("Continuer la même conversation Club Sportif MAA par téléphone en français.");
+    parts.push("Dernière demande de l'utilisateur : " + currentUserMessage);
+    if (recentTopicText) {
+      parts.push("Contexte récent : " + recentTopicText);
+    }
+    return parts.join(" ");
+  }
+
+  parts.push("Continue the same Club Sportif MAA conversation by phone in English.");
+  parts.push("Latest user request: " + currentUserMessage);
+  if (recentTopicText) {
+    parts.push("Recent context: " + recentTopicText);
+  }
+  return parts.join(" ");
+}
+
 export function createServer() {
   const app = Fastify({ logger: true });
 
@@ -207,6 +311,30 @@ export function createServer() {
       supportedLocales: registry.supportedLocales,
       sources: registry.sources,
     };
+  });
+
+  app.get("/v1/tenants/:tenantId/vapi-handoffs/:handoffToken", async (request, reply) => {
+    const { tenantId, handoffToken } = request.params as TenantRouteParams & {
+      handoffToken: string;
+    };
+
+    if (tenantId !== "maa") {
+      return reply.code(404).send({
+        error: "tenant_not_supported",
+        message: `Unsupported tenant: ${tenantId}`,
+      });
+    }
+
+    const handoff = vapiHandoffStore.get(handoffToken);
+
+    if (!handoff || handoff.tenantId !== tenantId) {
+      return reply.code(404).send({
+        error: "vapi_handoff_not_found",
+        message: `Vapi handoff not found: ${handoffToken}`,
+      });
+    }
+
+    return handoff;
   });
 
   app.post("/v1/tenants/:tenantId/chat", async (request, reply) => {
@@ -315,6 +443,8 @@ export function createServer() {
 
     const hasExplicitBookingIntent =
       !hasCallbackPayload && looksLikeBookingIntent(trimmedMessage, locale);
+    const hasExplicitPhoneIntent =
+      !hasCallbackPayload && looksLikePhoneIntent(trimmedMessage, locale);
 
     const conversationHistory = await loadConversationHistory();
 
@@ -328,9 +458,11 @@ export function createServer() {
     const result: MaaChatResponse = await answerMaaChat(chatRequest);
 
     let responseAssistantMessage = result.assistantMessage;
-    let responseFollowUpMode = hasExplicitBookingIntent
-      ? "calendly"
-      : result.followUpMode;
+    let responseFollowUpMode = hasExplicitPhoneIntent
+      ? "vapi"
+      : hasExplicitBookingIntent
+        ? "calendly"
+        : result.followUpMode;
     let responseCitations = result.citations;
 
     const persistence = {
@@ -356,6 +488,109 @@ export function createServer() {
       allowCallbackFallback: false,
       confirmationTemplateKey: null as string | null,
       error: null as string | null,
+    };
+
+    const vapi = {
+      enabled: false,
+      configured: false,
+      source: null as "env" | "generated" | null,
+      assistantId: null as string | null,
+      publicKey: null as string | null,
+      phoneNumber: null as string | null,
+      handoffToken: null as string | null,
+      handoffUrl: null as string | null,
+      launchMode: null as VapiLaunchMode | null,
+      buttonLabel: isFrenchLocale(locale)
+        ? "Continuer par téléphone"
+        : "Continue by phone",
+      fallbackToCallback: true,
+      summary: null as string | null,
+      error: null as string | null,
+    };
+
+    const resolveVapiFollowUp = async (): Promise<void> => {
+      if (responseFollowUpMode !== "vapi") {
+        return;
+      }
+
+      if (!conversationId) {
+        conversationId = newUuid();
+      }
+
+      const envAssistantId = toNullableTrimmedString(process.env.VAPI_ASSISTANT_ID);
+      const envPublicKey = toNullableTrimmedString(process.env.VAPI_PUBLIC_KEY);
+      const envPhoneNumber = toNullableTrimmedString(process.env.VAPI_PHONE_NUMBER);
+      const envLaunchMode = toNullableTrimmedString(process.env.VAPI_LAUNCH_MODE);
+
+      const effectiveAssistantId =
+        envAssistantId ?? (isDryRunPersistence ? "test-vapi-assistant" : null);
+      const effectivePublicKey =
+        envPublicKey ?? (isDryRunPersistence ? "test-vapi-public-key" : null);
+      const effectivePhoneNumber =
+        envPhoneNumber ?? (isDryRunPersistence ? "+15145550100" : null);
+
+      let effectiveLaunchMode: VapiLaunchMode | null = null;
+
+      if (
+        envLaunchMode === "web_call" ||
+        envLaunchMode === "phone_number" ||
+        envLaunchMode === "web_call_or_number"
+      ) {
+        effectiveLaunchMode = envLaunchMode;
+      } else if (effectiveAssistantId && effectivePublicKey && effectivePhoneNumber) {
+        effectiveLaunchMode = "web_call_or_number";
+      } else if (effectiveAssistantId && effectivePublicKey) {
+        effectiveLaunchMode = "web_call";
+      } else if (effectivePhoneNumber) {
+        effectiveLaunchMode = "phone_number";
+      }
+
+      if (!effectiveLaunchMode) {
+        vapi.error =
+          "Vapi is not configured. Expected VAPI_PHONE_NUMBER and/or VAPI_ASSISTANT_ID with VAPI_PUBLIC_KEY.";
+        responseAssistantMessage = buildVapiUnavailableMessage(
+          locale,
+          vapi.fallbackToCallback,
+        );
+        responseCitations = [];
+        return;
+      }
+
+      const recentTurns = buildVapiRecentTurns(conversationHistory, trimmedMessage);
+      const summary = buildVapiHandoffSummary(locale, recentTurns, trimmedMessage);
+      const handoffToken = newUuid();
+
+      vapiHandoffStore.set(handoffToken, {
+        tenantId,
+        conversationId,
+        locale,
+        createdAt: now,
+        assistantId: effectiveAssistantId,
+        publicKey: effectivePublicKey,
+        phoneNumber: effectivePhoneNumber,
+        launchMode: effectiveLaunchMode,
+        summary,
+        lastUserMessage: trimmedMessage,
+        recentTurns,
+      });
+
+      vapi.enabled = true;
+      vapi.configured = true;
+      vapi.source =
+        envAssistantId || envPublicKey || envPhoneNumber ? "env" : "generated";
+      vapi.assistantId = effectiveAssistantId;
+      vapi.publicKey = effectivePublicKey;
+      vapi.phoneNumber = effectivePhoneNumber;
+      vapi.handoffToken = handoffToken;
+      vapi.handoffUrl = "/v1/tenants/" + tenantId + "/vapi-handoffs/" + handoffToken;
+      vapi.launchMode = effectiveLaunchMode;
+      vapi.summary = summary;
+
+      responseAssistantMessage = buildVapiContinuationMessage(
+        locale,
+        vapi.fallbackToCallback,
+      );
+      responseCitations = [];
     };
 
     const resolveBookingFollowUp = async (): Promise<void> => {
@@ -520,6 +755,8 @@ export function createServer() {
       }
     };
 
+    await resolveVapiFollowUp();
+
     await resolveBookingFollowUp();
 
     if (persistence.enabled) {
@@ -608,6 +845,7 @@ export function createServer() {
       persistence,
       callbackPersistence,
       booking,
+      vapi,
     };
   });
 

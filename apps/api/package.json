@@ -23,7 +23,8 @@
     "test:maa:callback": "tsx src/scripts/test-maa-callback-regression.ts",
     "test:maa:calendly": "tsx src/scripts/test-maa-calendly-regression.ts",
     "test:maa:followup": "tsx src/scripts/test-maa-followup-regression.ts",
-    "test:maa:chat:followup": "tsx src/scripts/test-maa-chat-followup-regression.ts"
+    "test:maa:chat:followup": "tsx src/scripts/test-maa-chat-followup-regression.ts",
+    "test:maa:vapi": "tsx src/scripts/test-maa-vapi-regression.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.0.0",
