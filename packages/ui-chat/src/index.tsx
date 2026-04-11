@@ -96,6 +96,16 @@ function getApiBaseUrl(): string {
   return "http://127.0.0.1:4000";
 }
 
+function isMobileDevice(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return /android|iphone|ipad|ipod|mobile/i.test(
+    window.navigator.userAgent,
+  );
+}
+
 export function ChatShell() {
   const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
   const locale = useMemo(() => detectLocale(), []);
@@ -103,6 +113,7 @@ export function ChatShell() {
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [isLaunchingPhone, setIsLaunchingPhone] = useState(false);
+  const [showPhoneFallback, setShowPhoneFallback] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: newId(),
@@ -198,6 +209,7 @@ export function ChatShell() {
 
     setIsLaunchingPhone(true);
     setErrorText(null);
+    setShowPhoneFallback(false);
 
     try {
       const handoffResponse = await fetch(
@@ -210,7 +222,7 @@ export function ChatShell() {
         );
       }
 
-      await handoffResponse.json();
+      const handoff = (await handoffResponse.json()) as Record<string, unknown>;
 
       const { publicKey, assistantId, phoneNumber, launchMode } = lastResponse.vapi;
 
@@ -219,7 +231,12 @@ export function ChatShell() {
         !publicKey &&
         phoneNumber
       ) {
-        window.location.href = `tel:${phoneNumber}`;
+        if (isMobileDevice()) {
+          window.location.href = `tel:${phoneNumber}`;
+        } else {
+          setShowPhoneFallback(true);
+        }
+
         return;
       }
 
@@ -233,9 +250,59 @@ export function ChatShell() {
 
       if (!vapiRef.current) {
         vapiRef.current = new Vapi(publicKey);
+
+        vapiRef.current.on?.("error", () => {
+          setErrorText(
+            locale === "fr-CA"
+              ? "L'appel web n'est pas disponible pour le moment."
+              : "Web calling is not available right now.",
+          );
+
+          setMessages((current) => [
+            ...current,
+            {
+              id: newId(),
+              role: "system",
+              text:
+                locale === "fr-CA"
+                  ? "Je n'ai pas pu démarrer l'appel web. J'essaie le numéro de téléphone."
+                  : "I couldn't start the web call. Trying the phone number instead.",
+            },
+          ]);
+
+          if (
+            phoneNumber &&
+            (launchMode === "phone_number" || launchMode === "web_call_or_number")
+          ) {
+            if (isMobileDevice()) {
+              window.location.href = `tel:${phoneNumber}`;
+            } else {
+              setShowPhoneFallback(true);
+            }
+          }
+        });
       }
 
-      vapiRef.current.start(assistantId);
+      try {
+        await vapiRef.current.start(assistantId);
+      } catch (error) {
+        console.error("Vapi start threw:", error);
+
+        if (
+          phoneNumber &&
+          (launchMode === "phone_number" || launchMode === "web_call_or_number")
+        ) {
+          if (isMobileDevice()) {
+            window.location.href = `tel:${phoneNumber}`;
+          } else {
+            setShowPhoneFallback(true);
+          }
+
+          return;
+        }
+
+        throw error;
+      }
 
     } catch (error) {
       const message =
@@ -375,6 +442,23 @@ export function ChatShell() {
         </div>
       ) : null}
 
+      {showPhoneFallback && lastResponse?.vapi?.phoneNumber ? (
+        <div style={{ marginBottom: 12 }}>
+          <a
+            href={`tel:${lastResponse.vapi.phoneNumber}`}
+            style={{
+              display: "inline-block",
+              padding: "10px 14px",
+              borderRadius: 10,
+              background: "#0f766e",
+              color: "white",
+              textDecoration: "none",
+            }}
+          >
+            {locale === "fr-CA" ? "Appeler maintenant" : "Call now"}
+          </a>
+        </div>
+      ) : null}
 
       {errorText ? (
         <div style={{ color: "#b91c1c", marginBottom: 12 }}>{errorText}</div>
