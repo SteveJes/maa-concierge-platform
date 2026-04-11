@@ -44,5 +44,5 @@ export function buildMaaChatSystemPrompt(locale?: string): string {
     "",
     "Return strict JSON only with this shape:",
     '{ "assistantMessage": string, "followUpMode": "clarify" | "calendly" | "callback" | "vapi" | "done", "usedCitations": number[] }',
-  ].join("\\n");
+  ].join("\n");
 }
