@@ -65,14 +65,77 @@ function newId(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
-function detectLocale(): "fr-CA" | "en-CA" {
-  if (typeof window === "undefined") {
+function detectMessageLocale(message: string): "fr-CA" | "en-CA" {
+  const normalized = message
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const tokens = normalized.split(" ").filter(Boolean);
+
+  const frenchSignals = [
+    "bonjour",
+    "salut",
+    "bonsoir",
+    "allo",
+    "coucou",
+    "merci",
+    "svp",
+    "s il",
+    "vous",
+    "votre",
+    "vos",
+    "quoi",
+    "ou",
+    "comment",
+    "pouvez",
+    "rappel",
+    "piscine",
+    "gym",
+    "cours",
+  ];
+
+  const englishSignals = [
+    "hello",
+    "hi",
+    "hey",
+    "thanks",
+    "please",
+    "what",
+    "where",
+    "how",
+    "can",
+    "do",
+    "offer",
+    "callback",
+    "call",
+    "phone",
+    "guys",
+    "pool",
+    "gym",
+    "yoga",
+  ];
+
+  const countMatches = (signals: string[]): number =>
+    signals.reduce((count, signal) => {
+      if (signal.includes(" ")) {
+        return count + (normalized.includes(signal) ? 1 : 0);
+      }
+
+      return count + (tokens.includes(signal) ? 1 : 0);
+    }, 0);
+
+  const frenchScore = countMatches(frenchSignals);
+  const englishScore = countMatches(englishSignals);
+
+  if (englishScore > frenchScore) {
     return "en-CA";
   }
 
-  return window.navigator.language.toLowerCase().startsWith("fr")
-    ? "fr-CA"
-    : "en-CA";
+  return "fr-CA";
 }
 
 function getApiBaseUrl(): string {
@@ -91,7 +154,7 @@ function isMobileDevice(): boolean {
 
 export function ChatShell() {
   const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
-  const locale = useMemo(() => detectLocale(), []);
+  const [locale, setLocale] = useState<"fr-CA" | "en-CA">("fr-CA");
 
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [input, setInput] = useState("");
@@ -110,10 +173,7 @@ export function ChatShell() {
     {
       id: newId(),
       role: "system",
-      text:
-        locale === "fr-CA"
-          ? "Bonjour. Je suis la concierge du Club Sportif MAA."
-          : "Hello. I'm the Club Sportif MAA concierge.",
+      text: "Bonjour. Je suis la concierge du Club Sportif MAA.",
     },
   ]);
 
@@ -129,6 +189,9 @@ export function ChatShell() {
       return;
     }
 
+    const requestLocale = detectMessageLocale(trimmed);
+
+    setLocale(requestLocale);
     setErrorText(null);
     setIsSending(true);
     setShowPhoneFallback(false);
@@ -152,7 +215,7 @@ export function ChatShell() {
         },
         body: JSON.stringify({
           message: trimmed,
-          locale,
+          locale: requestLocale,
           conversationId,
           dryRunPersistence: true,
         }),
@@ -166,7 +229,7 @@ export function ChatShell() {
 
       const assistantText =
         body.followUpMode === "callback" && !body.callbackPersistence.saved
-          ? locale === "fr-CA"
+          ? requestLocale === "fr-CA"
             ? "Bien sûr — remplissez le formulaire de rappel ci-dessous et un membre de l'équipe du Club Sportif MAA vous contactera."
             : "Of course — fill in the callback form below and a Club Sportif MAA team member will get back to you."
           : body.assistantMessage;
@@ -194,7 +257,7 @@ export function ChatShell() {
           id: newId(),
           role: "system",
           text:
-            locale === "fr-CA"
+            requestLocale === "fr-CA"
               ? `Erreur: ${message}`
               : `Error: ${message}`,
         },
