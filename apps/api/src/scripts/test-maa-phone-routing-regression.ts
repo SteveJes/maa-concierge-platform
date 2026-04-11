@@ -58,6 +58,8 @@ async function main(): Promise<void> {
     assert.notEqual(englishPhoneNumberBody.followUpMode, "vapi");
     assert.equal(englishPhoneNumberBody.vapi.enabled, false);
     assert.equal(englishPhoneNumberBody.vapi.handoffToken, null);
+    assert.match(englishPhoneNumberBody.assistantMessage, /\(514\)\s*845-2233/i);
+    assert.doesNotMatch(englishPhoneNumberBody.assistantMessage, /nursing service/i);
     assert.ok(englishPhoneNumberBody.conversationId);
 
     const englishLocationResponse = await app.inject({
@@ -79,6 +81,28 @@ async function main(): Promise<void> {
 
     assert.notEqual(englishLocationBody.followUpMode, "vapi");
     assert.equal(englishLocationBody.vapi.enabled, false);
+    assert.match(englishLocationBody.assistantMessage, /2070 Peel Street/i);
+
+const englishDescriptionResponse = await app.inject({
+  method: "POST",
+  url: "/v1/tenants/maa/chat",
+  payload: {
+    message: "What kind of gym are you?",
+    locale: "en-CA",
+    conversationId: englishPhoneNumberBody.conversationId,
+    dryRunPersistence: true,
+  },
+});
+
+assert.equal(englishDescriptionResponse.statusCode, 200);
+
+const englishDescriptionBody = JSON.parse(
+  englishDescriptionResponse.body,
+) as ChatResponseBody;
+
+assert.notEqual(englishDescriptionBody.followUpMode, "vapi");
+assert.equal(englishDescriptionBody.vapi.enabled, false);
+assert.match(englishDescriptionBody.assistantMessage, /premium sports club/i);
 
     const englishTransferResponse = await app.inject({
       method: "POST",
@@ -120,6 +144,8 @@ async function main(): Promise<void> {
     assert.notEqual(frenchPhoneNumberBody.followUpMode, "vapi");
     assert.equal(frenchPhoneNumberBody.vapi.enabled, false);
     assert.equal(frenchPhoneNumberBody.vapi.handoffToken, null);
+    assert.match(frenchPhoneNumberBody.assistantMessage, /514 845-2233/i);
+    assert.doesNotMatch(frenchPhoneNumberBody.assistantMessage, /directeur des ventes/i);
     assert.ok(frenchPhoneNumberBody.conversationId);
 
     const frenchTransferResponse = await app.inject({

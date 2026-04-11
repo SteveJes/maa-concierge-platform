@@ -138,6 +138,153 @@ function looksLikePhoneIntent(userMessage: string, locale: string | null): boole
   );
 }
 
+type DirectCoreFactResponse = {
+  assistantMessage: string;
+  followUpMode: "done";
+  citations: number[];
+  retrieval: {
+    query: string;
+    chunkCount: number;
+    resultCount: number;
+  };
+};
+
+type TenantCoreFacts = {
+  phoneNumberEn: string;
+  phoneNumberFr: string;
+  addressEn: string;
+  addressFr: string;
+  descriptionEn: string;
+  descriptionFr: string;
+};
+
+function getTenantCoreFacts(tenantId: string): TenantCoreFacts | null {
+  if (tenantId !== "maa") {
+    return null;
+  }
+
+  return {
+    phoneNumberEn: "Yes — you can reach Club Sportif MAA at (514) 845-2233, extension 234.",
+    phoneNumberFr: "Oui — vous pouvez joindre le Club Sportif MAA au 514 845-2233, poste 234.",
+    addressEn: "Club Sportif MAA is located at 2070 Peel Street, Montreal, QC H3A 1W6.",
+    addressFr: "Le Club Sportif MAA est situé au 2070, rue Peel, Montréal (Québec) H3A 1W6.",
+    descriptionEn:
+      "Club Sportif MAA is a premium sports club in downtown Montreal offering fitness training, aquatics, classes, squash, and wellness amenities.",
+    descriptionFr:
+      "Le Club Sportif MAA est un club sportif haut de gamme au centre-ville de Montréal offrant entraînement, aquatique, cours, squash et bien-être.",
+  };
+}
+
+function looksLikePhoneNumberQuestion(
+  userMessage: string,
+  locale: string | null,
+): boolean {
+  const normalized = userMessage.trim().toLowerCase();
+
+  if (isFrenchLocale(locale)) {
+    return /(?:numéro de téléphone|numero de telephone|numéro|numero|téléphone|telephone|joindre|vous appeler)/i.test(
+      normalized,
+    );
+  }
+
+  return /(?:phone number|telephone number|contact number|number to call|how can i reach you)/i.test(
+    normalized,
+  );
+}
+
+function looksLikeLocationQuestion(
+  userMessage: string,
+  locale: string | null,
+): boolean {
+  const normalized = userMessage.trim().toLowerCase();
+
+  if (isFrenchLocale(locale)) {
+    return /(?:où êtes-vous|ou etes-vous|où êtes vous|ou etes vous|où êtes-vous situés|ou etes-vous situes|adresse|où êtes-vous localisés|ou etes-vous localises)/i.test(
+      normalized,
+    );
+  }
+
+  return /(?:where are you located|where are you|what is your address|address|where is the club located)/i.test(
+    normalized,
+  );
+}
+
+function looksLikeClubDescriptionQuestion(
+  userMessage: string,
+  locale: string | null,
+): boolean {
+  const normalized = userMessage.trim().toLowerCase();
+
+  if (isFrenchLocale(locale)) {
+    return /(?:quel genre de club|quel type de club|quel genre de gym|quel type de gym|parlez-moi du club|c'est quel genre d'endroit)/i.test(
+      normalized,
+    );
+  }
+
+  return /(?:what kind of gym are you|what kind of club are you|tell me about the club|what type of gym is this|what kind of place is this)/i.test(
+    normalized,
+  );
+}
+
+function resolveDirectCoreFactResponse(args: {
+  tenantId: string;
+  userMessage: string;
+  locale: string | null;
+}): DirectCoreFactResponse | null {
+  const facts = getTenantCoreFacts(args.tenantId);
+
+  if (!facts) {
+    return null;
+  }
+
+  if (looksLikePhoneNumberQuestion(args.userMessage, args.locale)) {
+    return {
+      assistantMessage: isFrenchLocale(args.locale)
+        ? facts.phoneNumberFr
+        : facts.phoneNumberEn,
+      followUpMode: "done",
+      citations: [],
+      retrieval: {
+        query: "direct:phone_number",
+        chunkCount: 0,
+        resultCount: 0,
+      },
+    };
+  }
+
+  if (looksLikeLocationQuestion(args.userMessage, args.locale)) {
+    return {
+      assistantMessage: isFrenchLocale(args.locale)
+        ? facts.addressFr
+        : facts.addressEn,
+      followUpMode: "done",
+      citations: [],
+      retrieval: {
+        query: "direct:location",
+        chunkCount: 0,
+        resultCount: 0,
+      },
+    };
+  }
+
+  if (looksLikeClubDescriptionQuestion(args.userMessage, args.locale)) {
+    return {
+      assistantMessage: isFrenchLocale(args.locale)
+        ? facts.descriptionFr
+        : facts.descriptionEn,
+      followUpMode: "done",
+      citations: [],
+      retrieval: {
+        query: "direct:club_description",
+        chunkCount: 0,
+        resultCount: 0,
+      },
+    };
+  }
+
+  return null;
+}
+
 function buildCallbackSuccessMessage(
   locale: string | null,
   phone: string,
@@ -449,6 +596,12 @@ export function createServer() {
 
     const conversationHistory = await loadConversationHistory();
 
+    const directCoreFactResponse = resolveDirectCoreFactResponse({
+      tenantId,
+      userMessage: trimmedMessage,
+      locale,
+    });
+
     const chatRequest: MaaChatRequest = {
       userMessage: trimmedMessage,
       locale: locale ?? undefined,
@@ -456,7 +609,8 @@ export function createServer() {
       conversationHistory,
     };
 
-    const result: MaaChatResponse = await answerMaaChat(chatRequest);
+    const result =
+      directCoreFactResponse ?? (await answerMaaChat(chatRequest));
 
     let responseAssistantMessage = result.assistantMessage;
     let responseFollowUpMode = hasExplicitPhoneIntent
