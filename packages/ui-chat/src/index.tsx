@@ -164,6 +164,13 @@ export function ChatShell() {
 
       const body = (await response.json()) as ChatApiResponse;
 
+      const assistantText =
+        body.followUpMode === "callback" && !body.callbackPersistence.saved
+          ? locale === "fr-CA"
+            ? "Bien sûr — remplissez le formulaire de rappel ci-dessous et un membre de l'équipe du Club Sportif MAA vous contactera."
+            : "Of course — fill in the callback form below and a Club Sportif MAA team member will get back to you."
+          : body.assistantMessage;
+
       setConversationId(body.conversationId);
       setLastResponse(body);
 
@@ -172,7 +179,7 @@ export function ChatShell() {
         {
           id: newId(),
           role: "assistant",
-          text: body.assistantMessage,
+          text: assistantText,
         },
       ]);
     } catch (error) {
