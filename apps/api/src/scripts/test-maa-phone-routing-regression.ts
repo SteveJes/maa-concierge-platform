@@ -123,6 +123,46 @@ async function main(): Promise<void> {
     assert.equal(englishTypoLocationBody.vapi.enabled, false);
     assert.match(englishTypoLocationBody.assistantMessage, /2070 Peel Street/i);
 
+    const englishHoursResponse = await app.inject({
+      method: "POST",
+      url: "/v1/tenants/maa/chat",
+      payload: {
+        message: "what are your hours",
+        locale: "en-CA",
+        dryRunPersistence: true,
+      },
+    });
+
+    assert.equal(englishHoursResponse.statusCode, 200);
+
+    const englishHoursBody = JSON.parse(
+      englishHoursResponse.body,
+    ) as ChatResponseBody;
+
+    assert.notEqual(englishHoursBody.followUpMode, "vapi");
+    assert.equal(englishHoursBody.vapi.enabled, false);
+    assert.match(englishHoursBody.assistantMessage, /845-2233|hours/i);
+
+    const englishTypoHoursResponse = await app.inject({
+      method: "POST",
+      url: "/v1/tenants/maa/chat",
+      payload: {
+        message: "wat are youre ours",
+        locale: "en-CA",
+        dryRunPersistence: true,
+      },
+    });
+
+    assert.equal(englishTypoHoursResponse.statusCode, 200);
+
+    const englishTypoHoursBody = JSON.parse(
+      englishTypoHoursResponse.body,
+    ) as ChatResponseBody;
+
+    assert.notEqual(englishTypoHoursBody.followUpMode, "vapi");
+    assert.equal(englishTypoHoursBody.vapi.enabled, false);
+    assert.match(englishTypoHoursBody.assistantMessage, /845-2233|hours/i);
+
     const englishDescriptionResponse = await app.inject({
       method: "POST",
       url: "/v1/tenants/maa/chat",

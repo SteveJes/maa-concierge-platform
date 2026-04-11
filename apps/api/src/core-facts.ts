@@ -88,6 +88,8 @@ type TenantCoreFacts = {
   addressFr: string;
   descriptionEn: string;
   descriptionFr: string;
+  hoursEn: string;
+  hoursFr: string;
 };
 
 function getTenantCoreFacts(tenantId: string): TenantCoreFacts | null {
@@ -165,6 +167,40 @@ function looksLikeLocationQuestion(
   );
 }
 
+function looksLikeHoursQuestion(
+  userMessage: string,
+  locale: string | null,
+): boolean {
+  const normalized = normalizeIntentText(userMessage);
+
+  if (isFrenchLocale(locale)) {
+    return (
+      hasAnyPhrase(normalized, [
+        "heures d ouverture",
+        "horaire",
+        "horaires",
+        "quand etes vous ouverts",
+        "etes vous ouverts",
+      ]) ||
+      hasApproxToken(normalized, ["horaire", "horaires"]) ||
+      hasApproxTokenSet(normalized, ["heures", "ouverture"])
+    );
+  }
+
+  return (
+    hasAnyPhrase(normalized, [
+      "opening hours",
+      "business hours",
+      "what are your hours",
+      "when are you open",
+      "hours",
+    ]) ||
+    hasApproxTokenSet(normalized, ["opening", "hours"]) ||
+    hasApproxTokenSet(normalized, ["your", "hours"]) ||
+    hasApproxToken(normalized, ["hours"])
+  );
+}
+
 function looksLikeClubDescriptionQuestion(
   userMessage: string,
   locale: string | null,
@@ -239,6 +275,21 @@ export function resolveDirectCoreFactResponse(args: {
       citations: [],
       retrieval: {
         query: "direct:location",
+        chunkCount: 0,
+        resultCount: 0,
+      },
+    };
+  }
+
+  if (looksLikeHoursQuestion(args.userMessage, args.locale)) {
+    return {
+      assistantMessage: isFrenchLocale(args.locale)
+        ? facts.hoursFr
+        : facts.hoursEn,
+      followUpMode: "done",
+      citations: [],
+      retrieval: {
+        query: "direct:hours",
         chunkCount: 0,
         resultCount: 0,
       },
