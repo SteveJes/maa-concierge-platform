@@ -179,16 +179,12 @@ function looksLikeLocationQuestion(
         "ou etes vous situes",
         "adresse",
         "ou etes vous localises",
-        "comment se rendre",
-        "comment venir",
-        "vous etes dans quel secteur",
-        "vous etes ou exactement",
-        "pres d un metro",
+        "ou est le club",
       ]) ||
       hasApproxTokenSet(normalized, ["ou", "etes", "vous"]) ||
-      hasApproxTokenSet(normalized, ["comment", "venir"]) ||
-      hasApproxTokenSet(normalized, ["pres", "metro"]) ||
-      hasApproxToken(normalized, ["adresse"])
+      hasApproxTokenSet(normalized, ["ou", "club"]) ||
+      hasApproxToken(normalized, ["adresse"]) ||
+      normalized === "adresse"
     );
   }
 
@@ -198,19 +194,12 @@ function looksLikeLocationQuestion(
       "where are you",
       "what is your address",
       "where is the club located",
-      "where exactly are you",
-      "how do i get to you",
-      "what area are you in",
-      "are you near a metro",
-      "directions",
+      "where is the club",
       "address",
     ]) ||
     hasApproxTokenSet(normalized, ["where", "located"]) ||
     hasApproxTokenSet(normalized, ["your", "address"]) ||
-    hasApproxTokenSet(normalized, ["where", "exactly"]) ||
-    hasApproxTokenSet(normalized, ["near", "metro"]) ||
-    hasApproxTokenSet(normalized, ["how", "get"]) ||
-    hasApproxTokenSet(normalized, ["where", "locatd"]) ||
+    hasApproxTokenSet(normalized, ["where", "club"]) ||
     normalized === "address"
   );
 }

@@ -117,6 +117,9 @@ function detectMessageLocale(message: string): "fr-CA" | "en-CA" {
     "pool",
     "gym",
     "yoga",
+    "are",
+    "near",
+    "exactly",
   ];
 
   const countMatches = (signals: string[]): number =>
