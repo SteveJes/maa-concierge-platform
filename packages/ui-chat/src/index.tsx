@@ -61,23 +61,6 @@ type ChatApiResponse = {
   vapi: VapiPayload;
 };
 
-type VapiHandoffPayload = {
-  tenantId: string;
-  conversationId: string | null;
-  locale: string | null;
-  createdAt: string;
-  assistantId: string | null;
-  publicKey: string | null;
-  phoneNumber: string | null;
-  launchMode: "web_call" | "phone_number" | "web_call_or_number";
-  summary: string;
-  lastUserMessage: string;
-  recentTurns: Array<{
-    role: "user" | "assistant";
-    content: string;
-  }>;
-};
-
 function newId(): string {
   return Math.random().toString(36).slice(2, 10);
 }
@@ -109,11 +92,20 @@ function isMobileDevice(): boolean {
 export function ChatShell() {
   const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
   const locale = useMemo(() => detectLocale(), []);
+
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [isLaunchingPhone, setIsLaunchingPhone] = useState(false);
   const [showPhoneFallback, setShowPhoneFallback] = useState(false);
+
+  const [callbackName, setCallbackName] = useState("");
+  const [callbackPhone, setCallbackPhone] = useState("");
+  const [callbackEmail, setCallbackEmail] = useState("");
+  const [callbackPreferredTime, setCallbackPreferredTime] = useState("");
+  const [callbackConsent, setCallbackConsent] = useState(false);
+  const [isSubmittingCallback, setIsSubmittingCallback] = useState(false);
+
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: newId(),
@@ -124,8 +116,10 @@ export function ChatShell() {
           : "Hello. I'm the Club Sportif MAA concierge.",
     },
   ]);
+
   const [lastResponse, setLastResponse] = useState<ChatApiResponse | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
+
   const vapiRef = useRef<Vapi | null>(null);
 
   async function sendMessage(): Promise<void> {
@@ -137,6 +131,7 @@ export function ChatShell() {
 
     setErrorText(null);
     setIsSending(true);
+    setShowPhoneFallback(false);
 
     setMessages((current) => [
       ...current,
@@ -222,7 +217,7 @@ export function ChatShell() {
         );
       }
 
-      const handoff = (await handoffResponse.json()) as Record<string, unknown>;
+      await handoffResponse.json();
 
       const { publicKey, assistantId, phoneNumber, launchMode } = lastResponse.vapi;
 
@@ -243,7 +238,7 @@ export function ChatShell() {
       if (!publicKey || !assistantId) {
         throw new Error(
           locale === "fr-CA"
-            ? "Configuration Vapi incomplÃ¨te."
+            ? "Configuration Vapi incomplète."
             : "Incomplete Vapi configuration.",
         );
       }
@@ -285,9 +280,7 @@ export function ChatShell() {
 
       try {
         await vapiRef.current.start(assistantId);
-      } catch (error) {
-        console.error("Vapi start threw:", error);
-
+      } catch {
         if (
           phoneNumber &&
           (launchMode === "phone_number" || launchMode === "web_call_or_number")
@@ -301,9 +294,12 @@ export function ChatShell() {
           return;
         }
 
-        throw error;
+        throw new Error(
+          locale === "fr-CA"
+            ? "Impossible de démarrer l'appel."
+            : "Unable to start the call.",
+        );
       }
-
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Unknown Vapi launch error";
@@ -326,12 +322,100 @@ export function ChatShell() {
     }
   }
 
+  async function submitCallbackRequest(): Promise<void> {
+    if (!callbackPhone.trim() || !callbackConsent || isSubmittingCallback) {
+      return;
+    }
+
+    setIsSubmittingCallback(true);
+    setErrorText(null);
+    setShowPhoneFallback(false);
+
+    const lastUserQuestion =
+      [...messages]
+        .reverse()
+        .find((message) => message.role === "user")?.text ?? "";
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/v1/tenants/maa/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message:
+            locale === "fr-CA"
+              ? "Je souhaite un rappel."
+              : "I would like a callback.",
+          locale,
+          conversationId,
+          dryRunPersistence: true,
+          callback: {
+            name: callbackName.trim() || undefined,
+            phone: callbackPhone.trim(),
+            email: callbackEmail.trim() || undefined,
+            preferredTimeText: callbackPreferredTime.trim() || undefined,
+            questionSummary: lastUserQuestion || undefined,
+            consentToContact: true,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Callback request failed with HTTP ${response.status}`);
+      }
+
+      const body = (await response.json()) as ChatApiResponse;
+
+      setConversationId(body.conversationId);
+      setLastResponse(body);
+
+      setMessages((current) => [
+        ...current,
+        {
+          id: newId(),
+          role: "assistant",
+          text: body.assistantMessage,
+        },
+      ]);
+
+      setCallbackName("");
+      setCallbackPhone("");
+      setCallbackEmail("");
+      setCallbackPreferredTime("");
+      setCallbackConsent(false);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown callback error";
+
+      setErrorText(message);
+
+      setMessages((current) => [
+        ...current,
+        {
+          id: newId(),
+          role: "system",
+          text:
+            locale === "fr-CA"
+              ? `Erreur: ${message}`
+              : `Error: ${message}`,
+        },
+      ]);
+    } finally {
+      setIsSubmittingCallback(false);
+    }
+  }
+
   const showBookingButton =
     lastResponse?.followUpMode === "calendly" &&
     lastResponse.booking?.bookingUrl;
 
   const showPhoneButton =
     lastResponse?.followUpMode === "vapi" && lastResponse.vapi?.enabled;
+
+  const showCallbackForm =
+    lastResponse?.followUpMode === "callback" &&
+    !lastResponse.callbackPersistence?.saved;
 
   return (
     <section
@@ -346,11 +430,7 @@ export function ChatShell() {
       }}
     >
       <div style={{ marginBottom: 12 }}>
-        <strong>
-          {locale === "fr-CA"
-            ? "Concierge IA MAA"
-            : "MAA AI Concierge"}
-        </strong>
+        <strong>{locale === "fr-CA" ? "Concierge IA MAA" : "MAA AI Concierge"}</strong>
       </div>
 
       <div
@@ -436,7 +516,7 @@ export function ChatShell() {
                 : "Launching..."
               : lastResponse?.vapi?.buttonLabel ??
                 (locale === "fr-CA"
-                  ? "Continuer par tÃ©lÃ©phone"
+                  ? "Continuer par téléphone"
                   : "Continue by phone")}
           </button>
         </div>
@@ -457,6 +537,117 @@ export function ChatShell() {
           >
             {locale === "fr-CA" ? "Appeler maintenant" : "Call now"}
           </a>
+        </div>
+      ) : null}
+
+      {showCallbackForm ? (
+        <div
+          style={{
+            marginBottom: 12,
+            padding: 12,
+            border: "1px solid #e5e7eb",
+            borderRadius: 12,
+            background: "#fafafa",
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: 10 }}>
+            {locale === "fr-CA" ? "Demander un rappel" : "Request a callback"}
+          </div>
+
+          <div style={{ display: "grid", gap: 8 }}>
+            <input
+              value={callbackName}
+              onChange={(event) => setCallbackName(event.target.value)}
+              placeholder={locale === "fr-CA" ? "Nom (optionnel)" : "Name (optional)"}
+              style={{
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: "1px solid #d1d5db",
+              }}
+            />
+
+            <input
+              value={callbackPhone}
+              onChange={(event) => setCallbackPhone(event.target.value)}
+              placeholder={locale === "fr-CA" ? "Téléphone *" : "Phone *"}
+              style={{
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: "1px solid #d1d5db",
+              }}
+            />
+
+            <input
+              value={callbackEmail}
+              onChange={(event) => setCallbackEmail(event.target.value)}
+              placeholder={
+                locale === "fr-CA"
+                  ? "Courriel (optionnel)"
+                  : "Email (optional)"
+              }
+              style={{
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: "1px solid #d1d5db",
+              }}
+            />
+
+            <input
+              value={callbackPreferredTime}
+              onChange={(event) => setCallbackPreferredTime(event.target.value)}
+              placeholder={
+                locale === "fr-CA"
+                  ? "Moment préféré pour le rappel (optionnel)"
+                  : "Preferred callback time (optional)"
+              }
+              style={{
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: "1px solid #d1d5db",
+              }}
+            />
+
+            <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+              <input
+                type="checkbox"
+                checked={callbackConsent}
+                onChange={(event) => setCallbackConsent(event.target.checked)}
+              />
+              <span>
+                {locale === "fr-CA"
+                  ? "J'accepte d'être contacté par l'équipe du Club Sportif MAA."
+                  : "I agree to be contacted by the Club Sportif MAA team."}
+              </span>
+            </label>
+
+            <button
+              type="button"
+              onClick={() => void submitCallbackRequest()}
+              disabled={
+                isSubmittingCallback || !callbackPhone.trim() || !callbackConsent
+              }
+              style={{
+                padding: "10px 14px",
+                borderRadius: 10,
+                border: "none",
+                background: "#0f766e",
+                color: "white",
+                cursor:
+                  isSubmittingCallback || !callbackPhone.trim() || !callbackConsent
+                    ? "default"
+                    : "pointer",
+                width: "fit-content",
+              }}
+            >
+              {isSubmittingCallback
+                ? locale === "fr-CA"
+                  ? "Envoi..."
+                  : "Submitting..."
+                : locale === "fr-CA"
+                  ? "Envoyer la demande"
+                  : "Send request"}
+            </button>
+          </div>
         </div>
       ) : null}
 
