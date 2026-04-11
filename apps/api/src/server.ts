@@ -303,6 +303,43 @@ function buildVapiUnavailableMessage(
     : "Phone continuation is not configured right now.";
 }
 
+function humanizeAssistantMessage(
+  assistantMessage: string,
+  locale: string | null,
+): string {
+  const trimmed = assistantMessage.trim();
+
+  if (isFrenchLocale(locale)) {
+    return trimmed
+      .replace(
+        /Je ne dispose pas de suffisamment d'informations fiables pour répondre à cela en toute sécurité\.\s*/i,
+        "Je veux bien vous aider. Pouvez-vous préciser un peu ce que vous cherchez? ",
+      )
+      .replace(
+        /Je peux aussi vous orienter vers une réservation ou une demande de rappel\./i,
+        "Je peux aussi vous aider à planifier une visite ou à demander un rappel.",
+      )
+      .replace(
+        /^Le Club Sportif MAA est un club sportif unique offrant/i,
+        "Le Club Sportif MAA est un club sportif haut de gamme au centre-ville de Montréal offrant",
+      );
+  }
+
+  return trimmed
+    .replace(
+      /I do not have enough reliable information to answer that safely\.\s*/i,
+      "I'd be happy to help. Could you tell me a bit more about what you'd like to know? ",
+    )
+    .replace(
+      /I can also point you to booking or a callback request\./i,
+      "I can also help you book a visit or arrange a callback.",
+    )
+    .replace(
+      /^Club Sportif MAA is a unique sports club offering/i,
+      "Club Sportif MAA is a premium sports club in downtown Montreal offering",
+    );
+}
+
 function buildVapiRecentTurns(
   conversationHistory: MaaChatRequest["conversationHistory"],
   currentUserMessage: string,
@@ -527,7 +564,11 @@ export function createServer() {
     const result =
       directCoreFactResponse ?? (await answerMaaChat(chatRequest));
 
-    let responseAssistantMessage = result.assistantMessage;
+    let responseAssistantMessage =
+      directCoreFactResponse != null
+        ? result.assistantMessage
+        : humanizeAssistantMessage(result.assistantMessage, locale);
+
     let responseFollowUpMode = hasExplicitPhoneIntent
       ? "vapi"
       : hasExplicitBookingIntent
