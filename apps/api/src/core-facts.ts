@@ -10,12 +10,65 @@ function normalizeIntentText(value: string): string {
     .trim();
 }
 
+function tokenize(normalized: string): string[] {
+  return normalized.split(" ").filter(Boolean);
+}
+
 function hasAnyPhrase(normalized: string, phrases: string[]): boolean {
   return phrases.some((phrase) => normalized.includes(phrase));
 }
 
-function hasAllTokens(normalized: string, tokens: string[]): boolean {
-  return tokens.every((token) => normalized.includes(token));
+function levenshteinDistance(a: string, b: string): number {
+  const dp: number[][] = Array.from({ length: a.length + 1 }, () =>
+    Array.from({ length: b.length + 1 }, () => 0),
+  );
+
+  for (let i = 0; i <= a.length; i += 1) {
+    dp[i][0] = i;
+  }
+
+  for (let j = 0; j <= b.length; j += 1) {
+    dp[0][j] = j;
+  }
+
+  for (let i = 1; i <= a.length; i += 1) {
+    for (let j = 1; j <= b.length; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + cost,
+      );
+    }
+  }
+
+  return dp[a.length][b.length];
+}
+
+function fuzzyTokenMatch(token: string, target: string): boolean {
+  if (token === target) {
+    return true;
+  }
+
+  const distance = levenshteinDistance(token, target);
+
+  if (target.length <= 4) {
+    return distance <= 1;
+  }
+
+  return distance <= 2;
+}
+
+function hasApproxToken(normalized: string, targets: string[]): boolean {
+  const tokens = tokenize(normalized);
+  return targets.some((target) =>
+    tokens.some((token) => fuzzyTokenMatch(token, target)),
+  );
+}
+
+function hasApproxTokenSet(normalized: string, targets: string[]): boolean {
+  return targets.every((target) => hasApproxToken(normalized, [target]));
 }
 
 function isFrenchLocale(locale: string | null): boolean {
@@ -68,8 +121,9 @@ function looksLikePhoneNumberQuestion(
         "joindre",
         "vous appeler",
       ]) ||
-      hasAllTokens(normalized, ["numero", "telephone"]) ||
-      hasAllTokens(normalized, ["num", "telephone"])
+      hasApproxTokenSet(normalized, ["numero", "telephone"]) ||
+      hasApproxTokenSet(normalized, ["num", "telephone"]) ||
+      hasApproxToken(normalized, ["telephone"])
     );
   }
 
@@ -81,9 +135,11 @@ function looksLikePhoneNumberQuestion(
       "number to call",
       "how can i reach you",
     ]) ||
-    hasAllTokens(normalized, ["phone", "number"]) ||
-    hasAllTokens(normalized, ["telephone", "number"]) ||
-    hasAllTokens(normalized, ["reach", "you"])
+    hasApproxTokenSet(normalized, ["phone", "number"]) ||
+    hasApproxTokenSet(normalized, ["telephone", "number"]) ||
+    hasApproxTokenSet(normalized, ["reach", "you"]) ||
+    (hasApproxToken(normalized, ["phone", "telephone"]) &&
+      hasApproxToken(normalized, ["number", "numbre"]))
   );
 }
 
@@ -101,8 +157,8 @@ function looksLikeLocationQuestion(
         "adresse",
         "ou etes vous localises",
       ]) ||
-      hasAllTokens(normalized, ["ou", "etes", "vous"]) ||
-      hasAllTokens(normalized, ["adresse"])
+      hasApproxTokenSet(normalized, ["ou", "etes", "vous"]) ||
+      hasApproxToken(normalized, ["adresse"])
     );
   }
 
@@ -113,8 +169,9 @@ function looksLikeLocationQuestion(
       "what is your address",
       "where is the club located",
     ]) ||
-    hasAllTokens(normalized, ["where", "located"]) ||
-    hasAllTokens(normalized, ["your", "address"]) ||
+    hasApproxTokenSet(normalized, ["where", "located"]) ||
+    hasApproxTokenSet(normalized, ["your", "address"]) ||
+    hasApproxTokenSet(normalized, ["where", "locatd"]) ||
     normalized === "address"
   );
 }
@@ -135,9 +192,9 @@ function looksLikeClubDescriptionQuestion(
         "parlez moi du club",
         "c est quel genre d endroit",
       ]) ||
-      hasAllTokens(normalized, ["genre", "club"]) ||
-      hasAllTokens(normalized, ["type", "club"]) ||
-      hasAllTokens(normalized, ["genre", "gym"])
+      hasApproxTokenSet(normalized, ["genre", "club"]) ||
+      hasApproxTokenSet(normalized, ["type", "club"]) ||
+      hasApproxTokenSet(normalized, ["genre", "gym"])
     );
   }
 
@@ -151,10 +208,10 @@ function looksLikeClubDescriptionQuestion(
       "what type of gim is this",
       "what kind of place is this",
     ]) ||
-    hasAllTokens(normalized, ["kind", "gym"]) ||
-    hasAllTokens(normalized, ["kind", "gim"]) ||
-    hasAllTokens(normalized, ["kind", "club"]) ||
-    hasAllTokens(normalized, ["about", "club"])
+    hasApproxTokenSet(normalized, ["kind", "gym"]) ||
+    hasApproxTokenSet(normalized, ["kind", "gim"]) ||
+    hasApproxTokenSet(normalized, ["kind", "club"]) ||
+    hasApproxTokenSet(normalized, ["about", "club"])
   );
 }
 
