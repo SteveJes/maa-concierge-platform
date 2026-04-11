@@ -123,16 +123,17 @@ function looksLikeBookingIntent(userMessage: string, locale: string | null): boo
     normalized,
   );
 }
+
 function looksLikePhoneIntent(userMessage: string, locale: string | null): boolean {
   const normalized = userMessage.trim().toLowerCase();
 
   if (isFrenchLocale(locale)) {
-    return /(?:téléphone|telephone|appel|appeler|par téléphone|par telephone|continuer par téléphone|continuer par telephone|au téléphone|au telephone)/i.test(
+    return /(?:continuer(?: cette conversation)? par téléphone|continuer(?: cette conversation)? au téléphone|continuer par téléphone maintenant|continuer au téléphone maintenant|peut-on continuer par téléphone|peut on continuer par telephone|parler à quelqu'un|parler à une personne|parler à l'équipe|me faire rappeler|me rappeler|appelez-moi|appel maintenant|transférez-moi|transferer-moi|mettre en ligne)/i.test(
       normalized,
     );
   }
 
-  return /(?:phone|call|phone call|continue by phone|talk by phone|call me now)/i.test(
+  return /(?:continue by phone|continue this by phone|continue this conversation by phone|continue this conversation by phone now|can we continue by phone|can we continue this by phone|can we continue this conversation by phone|talk to someone|speak to someone|speak with someone|call me now|have someone call me|connect me by phone|transfer me to someone|put me through)/i.test(
     normalized,
   );
 }

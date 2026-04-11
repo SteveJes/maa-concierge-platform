@@ -109,12 +109,11 @@ export function ChatShell() {
       role: "system",
       text:
         locale === "fr-CA"
-          ? "Bonjour. Je suis le concierge IA du Club Sportif MAA."
-          : "Hello. I'm the Club Sportif MAA AI concierge.",
+          ? "Bonjour. Je suis la concierge du Club Sportif MAA."
+          : "Hello. I'm the Club Sportif MAA concierge.",
     },
   ]);
   const [lastResponse, setLastResponse] = useState<ChatApiResponse | null>(null);
-  const [handoffPreview, setHandoffPreview] = useState<VapiHandoffPayload | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
   const vapiRef = useRef<Vapi | null>(null);
 
@@ -211,8 +210,7 @@ export function ChatShell() {
         );
       }
 
-      const handoff = (await handoffResponse.json()) as VapiHandoffPayload;
-      setHandoffPreview(handoff);
+      await handoffResponse.json();
 
       const { publicKey, assistantId, phoneNumber, launchMode } = lastResponse.vapi;
 
@@ -239,17 +237,6 @@ export function ChatShell() {
 
       vapiRef.current.start(assistantId);
 
-      setMessages((current) => [
-        ...current,
-        {
-          id: newId(),
-          role: "system",
-          text:
-            locale === "fr-CA"
-              ? "Le lancement de l'appel Vapi a Ã©tÃ© dÃ©clenchÃ©. Le contexte de transfert a aussi Ã©tÃ© rÃ©cupÃ©rÃ© cÃ´tÃ© interface."
-              : "The Vapi call launch was triggered. The handoff context was also fetched on the UI side.",
-        },
-      ]);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Unknown Vapi launch error";
@@ -263,8 +250,8 @@ export function ChatShell() {
           role: "system",
           text:
             locale === "fr-CA"
-              ? `Erreur Vapi: ${message}`
-              : `Vapi error: ${message}`,
+              ? "Je n'ai pas pu démarrer l'appel pour le moment."
+              : "I couldn't start the phone connection right now.",
         },
       ]);
     } finally {
@@ -388,26 +375,6 @@ export function ChatShell() {
         </div>
       ) : null}
 
-      {handoffPreview ? (
-        <div
-          style={{
-            marginBottom: 12,
-            padding: 12,
-            borderRadius: 12,
-            background: "#f8fafc",
-            border: "1px solid #e5e7eb",
-          }}
-        >
-          <div style={{ fontWeight: 600, marginBottom: 6 }}>
-            {locale === "fr-CA"
-              ? "AperÃ§u du transfert Vapi"
-              : "Vapi handoff preview"}
-          </div>
-          <div style={{ fontSize: 14, whiteSpace: "pre-wrap" }}>
-            {handoffPreview.summary}
-          </div>
-        </div>
-      ) : null}
 
       {errorText ? (
         <div style={{ color: "#b91c1c", marginBottom: 12 }}>{errorText}</div>

@@ -24,7 +24,8 @@
     "test:maa:calendly": "tsx src/scripts/test-maa-calendly-regression.ts",
     "test:maa:followup": "tsx src/scripts/test-maa-followup-regression.ts",
     "test:maa:chat:followup": "tsx src/scripts/test-maa-chat-followup-regression.ts",
-    "test:maa:vapi": "tsx src/scripts/test-maa-vapi-regression.ts"
+    "test:maa:vapi": "tsx src/scripts/test-maa-vapi-regression.ts",
+    "test:maa:phone:routing": "tsx src/scripts/test-maa-phone-routing-regression.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.0.0",

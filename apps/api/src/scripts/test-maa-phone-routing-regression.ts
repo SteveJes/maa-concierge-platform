@@ -1,0 +1,172 @@
+import assert from "node:assert/strict";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import dotenv from "dotenv";
+import { createServer } from "../server.js";
+
+function loadEnvFiles(): void {
+  const currentFile = fileURLToPath(import.meta.url);
+  const scriptsDir = path.dirname(currentFile);
+  const apiRoot = path.resolve(scriptsDir, "../..");
+  const repoRoot = path.resolve(apiRoot, "../..");
+
+  const envFiles = [
+    path.join(apiRoot, ".env.local"),
+    path.join(apiRoot, ".env"),
+    path.join(repoRoot, ".env.local"),
+    path.join(repoRoot, ".env"),
+  ];
+
+  for (const envFile of envFiles) {
+    dotenv.config({ path: envFile, override: false });
+  }
+}
+
+type ChatResponseBody = {
+  conversationId: string | null;
+  assistantMessage: string;
+  followUpMode: string;
+  vapi: {
+    enabled: boolean;
+    handoffToken: string | null;
+  };
+};
+
+async function main(): Promise<void> {
+  loadEnvFiles();
+
+  const app = createServer();
+  await app.ready();
+
+  try {
+    const englishPhoneNumberResponse = await app.inject({
+      method: "POST",
+      url: "/v1/tenants/maa/chat",
+      payload: {
+        message: "Do you have a phone number?",
+        locale: "en-CA",
+        dryRunPersistence: true,
+      },
+    });
+
+    assert.equal(englishPhoneNumberResponse.statusCode, 200);
+
+    const englishPhoneNumberBody = JSON.parse(
+      englishPhoneNumberResponse.body,
+    ) as ChatResponseBody;
+
+    assert.notEqual(englishPhoneNumberBody.followUpMode, "vapi");
+    assert.equal(englishPhoneNumberBody.vapi.enabled, false);
+    assert.equal(englishPhoneNumberBody.vapi.handoffToken, null);
+    assert.ok(englishPhoneNumberBody.conversationId);
+
+    const englishLocationResponse = await app.inject({
+      method: "POST",
+      url: "/v1/tenants/maa/chat",
+      payload: {
+        message: "Where are you located?",
+        locale: "en-CA",
+        conversationId: englishPhoneNumberBody.conversationId,
+        dryRunPersistence: true,
+      },
+    });
+
+    assert.equal(englishLocationResponse.statusCode, 200);
+
+    const englishLocationBody = JSON.parse(
+      englishLocationResponse.body,
+    ) as ChatResponseBody;
+
+    assert.notEqual(englishLocationBody.followUpMode, "vapi");
+    assert.equal(englishLocationBody.vapi.enabled, false);
+
+    const englishTransferResponse = await app.inject({
+      method: "POST",
+      url: "/v1/tenants/maa/chat",
+      payload: {
+        message: "Can we continue this by phone now?",
+        locale: "en-CA",
+        conversationId: englishPhoneNumberBody.conversationId,
+        dryRunPersistence: true,
+      },
+    });
+
+    assert.equal(englishTransferResponse.statusCode, 200);
+
+    const englishTransferBody = JSON.parse(
+      englishTransferResponse.body,
+    ) as ChatResponseBody;
+
+    assert.equal(englishTransferBody.followUpMode, "vapi");
+    assert.equal(englishTransferBody.vapi.enabled, true);
+    assert.ok(englishTransferBody.vapi.handoffToken);
+
+    const frenchPhoneNumberResponse = await app.inject({
+      method: "POST",
+      url: "/v1/tenants/maa/chat",
+      payload: {
+        message: "Avez-vous un numéro de téléphone ?",
+        locale: "fr-CA",
+        dryRunPersistence: true,
+      },
+    });
+
+    assert.equal(frenchPhoneNumberResponse.statusCode, 200);
+
+    const frenchPhoneNumberBody = JSON.parse(
+      frenchPhoneNumberResponse.body,
+    ) as ChatResponseBody;
+
+    assert.notEqual(frenchPhoneNumberBody.followUpMode, "vapi");
+    assert.equal(frenchPhoneNumberBody.vapi.enabled, false);
+    assert.equal(frenchPhoneNumberBody.vapi.handoffToken, null);
+    assert.ok(frenchPhoneNumberBody.conversationId);
+
+    const frenchTransferResponse = await app.inject({
+      method: "POST",
+      url: "/v1/tenants/maa/chat",
+      payload: {
+        message: "Peut-on continuer par téléphone maintenant ?",
+        locale: "fr-CA",
+        conversationId: frenchPhoneNumberBody.conversationId,
+        dryRunPersistence: true,
+      },
+    });
+
+    assert.equal(frenchTransferResponse.statusCode, 200);
+
+    const frenchTransferBody = JSON.parse(
+      frenchTransferResponse.body,
+    ) as ChatResponseBody;
+
+    assert.equal(frenchTransferBody.followUpMode, "vapi");
+    assert.equal(frenchTransferBody.vapi.enabled, true);
+    assert.ok(frenchTransferBody.vapi.handoffToken);
+
+    console.log(
+      JSON.stringify(
+        {
+          ok: true,
+          message: "MAA phone routing regression passed.",
+          english: {
+            phoneNumberFollowUpMode: englishPhoneNumberBody.followUpMode,
+            transferFollowUpMode: englishTransferBody.followUpMode,
+          },
+          french: {
+            phoneNumberFollowUpMode: frenchPhoneNumberBody.followUpMode,
+            transferFollowUpMode: frenchTransferBody.followUpMode,
+          },
+        },
+        null,
+        2,
+      ),
+    );
+  } finally {
+    await app.close();
+  }
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
