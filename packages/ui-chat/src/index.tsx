@@ -65,7 +65,10 @@ function newId(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
-function detectMessageLocale(message: string): "fr-CA" | "en-CA" {
+function detectMessageLocale(
+  message: string,
+  previousLocale: "fr-CA" | "en-CA",
+): "fr-CA" | "en-CA" {
   const normalized = message
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -84,7 +87,6 @@ function detectMessageLocale(message: string): "fr-CA" | "en-CA" {
     "coucou",
     "merci",
     "svp",
-    "s il",
     "vous",
     "votre",
     "vos",
@@ -94,8 +96,16 @@ function detectMessageLocale(message: string): "fr-CA" | "en-CA" {
     "pouvez",
     "rappel",
     "piscine",
-    "gym",
     "cours",
+    "metro",
+    "appel",
+    "stationnement",
+    "pres",
+    "proche",
+    "plus",
+    "quelle",
+    "quel",
+    "adresse",
   ];
 
   const englishSignals = [
@@ -115,19 +125,23 @@ function detectMessageLocale(message: string): "fr-CA" | "en-CA" {
     "phone",
     "guys",
     "pool",
-    "gym",
     "yoga",
+    "metro",
     "are",
     "near",
     "exactly",
+    "is",
+    "there",
+    "parking",
+    "nearby",
+    "closest",
+    "station",
+    "from",
+    "address",
   ];
 
   const countMatches = (signals: string[]): number =>
     signals.reduce((count, signal) => {
-      if (signal.includes(" ")) {
-        return count + (normalized.includes(signal) ? 1 : 0);
-      }
-
       return count + (tokens.includes(signal) ? 1 : 0);
     }, 0);
 
@@ -138,7 +152,11 @@ function detectMessageLocale(message: string): "fr-CA" | "en-CA" {
     return "en-CA";
   }
 
-  return "fr-CA";
+  if (frenchScore > englishScore) {
+    return "fr-CA";
+  }
+
+  return previousLocale;
 }
 
 function getApiBaseUrl(): string {
@@ -192,7 +210,7 @@ export function ChatShell() {
       return;
     }
 
-    const requestLocale = detectMessageLocale(trimmed);
+    const requestLocale = detectMessageLocale(trimmed, locale);
 
     setLocale(requestLocale);
     setErrorText(null);
