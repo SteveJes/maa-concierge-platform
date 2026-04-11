@@ -1,4 +1,5 @@
 import type { MaaChatResponse } from "./services/maa-chat.js";
+import tenantCoreFacts from "./tenant-core-facts.json" with { type: "json" };
 
 function normalizeIntentText(value: string): string {
   return value
@@ -90,20 +91,8 @@ type TenantCoreFacts = {
 };
 
 function getTenantCoreFacts(tenantId: string): TenantCoreFacts | null {
-  if (tenantId !== "maa") {
-    return null;
-  }
-
-  return {
-    phoneNumberEn: "Yes — you can reach Club Sportif MAA at (514) 845-2233, extension 234.",
-    phoneNumberFr: "Oui — vous pouvez joindre le Club Sportif MAA au 514 845-2233, poste 234.",
-    addressEn: "Club Sportif MAA is located at 2070 Peel Street, Montreal, QC H3A 1W6.",
-    addressFr: "Le Club Sportif MAA est situé au 2070, rue Peel, Montréal (Québec) H3A 1W6.",
-    descriptionEn:
-      "Club Sportif MAA is a premium sports club in downtown Montreal offering fitness training, aquatics, classes, squash, and wellness amenities.",
-    descriptionFr:
-      "Le Club Sportif MAA est un club sportif haut de gamme au centre-ville de Montréal offrant entraînement, aquatique, cours, squash et bien-être.",
-  };
+  const record = (tenantCoreFacts as Record<string, TenantCoreFacts>)[tenantId];
+  return record ?? null;
 }
 
 function looksLikePhoneNumberQuestion(
