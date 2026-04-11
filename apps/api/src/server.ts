@@ -101,6 +101,24 @@ function toNullableTrimmedString(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function normalizeIntentText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function hasAnyPhrase(normalized: string, phrases: string[]): boolean {
+  return phrases.some((phrase) => normalized.includes(phrase));
+}
+
+function hasAllTokens(normalized: string, tokens: string[]): boolean {
+  return tokens.every((token) => normalized.includes(token));
+}
+
 function isFrenchLocale(locale: string | null): boolean {
   if (!locale) {
     return false;
@@ -125,18 +143,61 @@ function looksLikeBookingIntent(userMessage: string, locale: string | null): boo
 }
 
 function looksLikePhoneIntent(userMessage: string, locale: string | null): boolean {
-  const normalized = userMessage.trim().toLowerCase();
+  const normalized = normalizeIntentText(userMessage);
 
   if (isFrenchLocale(locale)) {
-    return /(?:continuer(?: cette conversation)? par téléphone|continuer(?: cette conversation)? au téléphone|continuer par téléphone maintenant|continuer au téléphone maintenant|peut-on continuer par téléphone|peut on continuer par telephone|parler à quelqu'un|parler à une personne|parler à l'équipe|me faire rappeler|me rappeler|appelez-moi|appel maintenant|transférez-moi|transferer-moi|mettre en ligne)/i.test(
-      normalized,
+    return (
+      hasAnyPhrase(normalized, [
+        "continuer par telephone",
+        "continuer cette conversation par telephone",
+        "continuer au telephone",
+        "peut on continuer par telephone",
+        "parler a quelqu un",
+        "parler a une personne",
+        "parler a l equipe",
+        "me faire rappeler",
+        "me rappeler",
+        "appelez moi",
+        "appel maintenant",
+        "transferer moi",
+        "mettre en ligne",
+      ]) ||
+      hasAllTokens(normalized, ["continuer", "telephone"]) ||
+      hasAllTokens(normalized, ["parler", "personne"]) ||
+      hasAllTokens(normalized, ["appeler", "maintenant"])
     );
   }
 
-  return /(?:continue by phone|continue this by phone|continue this conversation by phone|continue this conversation by phone now|can we continue by phone|can we continue this by phone|can we continue this conversation by phone|talk to someone|speak to someone|speak with someone|call me now|have someone call me|connect me by phone|transfer me to someone|put me through)/i.test(
-    normalized,
+  return (
+    hasAnyPhrase(normalized, [
+      "continue by phone",
+      "continue this by phone",
+      "continue this conversation by phone",
+      "can we continue by phone",
+      "can we continue this by phone",
+      "can we continue this conversation by phone",
+      "can we contnue by phone",
+      "contnue by phone",
+      "talk to someone",
+      "speak to someone",
+      "speak with someone",
+      "call me now",
+      "have someone call me",
+      "connect me by phone",
+      "transfer me to someone",
+      "put me through",
+    ]) ||
+    (normalized.includes("phone") &&
+      (normalized.includes("continue") ||
+        normalized.includes("contnue") ||
+        normalized.includes("talk") ||
+        normalized.includes("speak") ||
+        normalized.includes("call me"))) ||
+    hasAllTokens(normalized, ["talk", "someone"]) ||
+    hasAllTokens(normalized, ["speak", "someone"])
   );
 }
+
 
 type DirectCoreFactResponse = {
   assistantMessage: string;
@@ -179,16 +240,33 @@ function looksLikePhoneNumberQuestion(
   userMessage: string,
   locale: string | null,
 ): boolean {
-  const normalized = userMessage.trim().toLowerCase();
+  const normalized = normalizeIntentText(userMessage);
 
   if (isFrenchLocale(locale)) {
-    return /(?:numéro de téléphone|numero de telephone|numéro|numero|téléphone|telephone|joindre|vous appeler)/i.test(
-      normalized,
+    return (
+      hasAnyPhrase(normalized, [
+        "numero de telephone",
+        "num de telephone",
+        "telephone",
+        "joindre",
+        "vous appeler",
+      ]) ||
+      hasAllTokens(normalized, ["numero", "telephone"]) ||
+      hasAllTokens(normalized, ["num", "telephone"])
     );
   }
 
-  return /(?:phone number|telephone number|contact number|number to call|how can i reach you)/i.test(
-    normalized,
+  return (
+    hasAnyPhrase(normalized, [
+      "phone number",
+      "telephone number",
+      "contact number",
+      "number to call",
+      "how can i reach you",
+    ]) ||
+    hasAllTokens(normalized, ["phone", "number"]) ||
+    hasAllTokens(normalized, ["telephone", "number"]) ||
+    hasAllTokens(normalized, ["reach", "you"])
   );
 }
 
@@ -196,16 +274,31 @@ function looksLikeLocationQuestion(
   userMessage: string,
   locale: string | null,
 ): boolean {
-  const normalized = userMessage.trim().toLowerCase();
+  const normalized = normalizeIntentText(userMessage);
 
   if (isFrenchLocale(locale)) {
-    return /(?:où êtes-vous|ou etes-vous|où êtes vous|ou etes vous|où êtes-vous situés|ou etes-vous situes|adresse|où êtes-vous localisés|ou etes-vous localises)/i.test(
-      normalized,
+    return (
+      hasAnyPhrase(normalized, [
+        "ou etes vous",
+        "ou etes vous situes",
+        "adresse",
+        "ou etes vous localises",
+      ]) ||
+      hasAllTokens(normalized, ["ou", "etes", "vous"]) ||
+      hasAllTokens(normalized, ["adresse"])
     );
   }
 
-  return /(?:where are you located|where are you|what is your address|address|where is the club located)/i.test(
-    normalized,
+  return (
+    hasAnyPhrase(normalized, [
+      "where are you located",
+      "where are you",
+      "what is your address",
+      "where is the club located",
+    ]) ||
+    hasAllTokens(normalized, ["where", "located"]) ||
+    hasAllTokens(normalized, ["your", "address"]) ||
+    normalized === "address"
   );
 }
 
@@ -213,16 +306,38 @@ function looksLikeClubDescriptionQuestion(
   userMessage: string,
   locale: string | null,
 ): boolean {
-  const normalized = userMessage.trim().toLowerCase();
+  const normalized = normalizeIntentText(userMessage);
 
   if (isFrenchLocale(locale)) {
-    return /(?:quel genre de club|quel type de club|quel genre de gym|quel type de gym|parlez-moi du club|c'est quel genre d'endroit)/i.test(
-      normalized,
+    return (
+      hasAnyPhrase(normalized, [
+        "quel genre de club",
+        "quel type de club",
+        "quel genre de gym",
+        "quel type de gym",
+        "parlez moi du club",
+        "c est quel genre d endroit",
+      ]) ||
+      hasAllTokens(normalized, ["genre", "club"]) ||
+      hasAllTokens(normalized, ["type", "club"]) ||
+      hasAllTokens(normalized, ["genre", "gym"])
     );
   }
 
-  return /(?:what kind of gym are you|what kind of club are you|tell me about the club|what type of gym is this|what kind of place is this)/i.test(
-    normalized,
+  return (
+    hasAnyPhrase(normalized, [
+      "what kind of gym are you",
+      "what kind of gim are you",
+      "what kind of club are you",
+      "tell me about the club",
+      "what type of gym is this",
+      "what type of gim is this",
+      "what kind of place is this",
+    ]) ||
+    hasAllTokens(normalized, ["kind", "gym"]) ||
+    hasAllTokens(normalized, ["kind", "gim"]) ||
+    hasAllTokens(normalized, ["kind", "club"]) ||
+    hasAllTokens(normalized, ["about", "club"])
   );
 }
 

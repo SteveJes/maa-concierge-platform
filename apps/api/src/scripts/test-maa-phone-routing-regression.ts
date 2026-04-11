@@ -58,9 +58,29 @@ async function main(): Promise<void> {
     assert.notEqual(englishPhoneNumberBody.followUpMode, "vapi");
     assert.equal(englishPhoneNumberBody.vapi.enabled, false);
     assert.equal(englishPhoneNumberBody.vapi.handoffToken, null);
-    assert.match(englishPhoneNumberBody.assistantMessage, /\(514\)\s*845-2233/i);
+    assert.match(englishPhoneNumberBody.assistantMessage, /(?:\(?514\)?[\s-]*845-2233)/i);
     assert.doesNotMatch(englishPhoneNumberBody.assistantMessage, /nursing service/i);
     assert.ok(englishPhoneNumberBody.conversationId);
+
+    const englishTypoPhoneResponse = await app.inject({
+      method: "POST",
+      url: "/v1/tenants/maa/chat",
+      payload: {
+        message: "do you have a phone numbre",
+        locale: "en-CA",
+        dryRunPersistence: true,
+      },
+    });
+
+    assert.equal(englishTypoPhoneResponse.statusCode, 200);
+
+    const englishTypoPhoneBody = JSON.parse(
+      englishTypoPhoneResponse.body,
+    ) as ChatResponseBody;
+
+    assert.notEqual(englishTypoPhoneBody.followUpMode, "vapi");
+    assert.equal(englishTypoPhoneBody.vapi.enabled, false);
+    assert.match(englishTypoPhoneBody.assistantMessage, /(?:\(?514\)?[\s-]*845-2233)/i);
 
     const englishLocationResponse = await app.inject({
       method: "POST",
@@ -83,26 +103,86 @@ async function main(): Promise<void> {
     assert.equal(englishLocationBody.vapi.enabled, false);
     assert.match(englishLocationBody.assistantMessage, /2070 Peel Street/i);
 
-const englishDescriptionResponse = await app.inject({
-  method: "POST",
-  url: "/v1/tenants/maa/chat",
-  payload: {
-    message: "What kind of gym are you?",
-    locale: "en-CA",
-    conversationId: englishPhoneNumberBody.conversationId,
-    dryRunPersistence: true,
-  },
-});
+    const englishTypoLocationResponse = await app.inject({
+      method: "POST",
+      url: "/v1/tenants/maa/chat",
+      payload: {
+        message: "were are you locatd",
+        locale: "en-CA",
+        dryRunPersistence: true,
+      },
+    });
 
-assert.equal(englishDescriptionResponse.statusCode, 200);
+    assert.equal(englishTypoLocationResponse.statusCode, 200);
 
-const englishDescriptionBody = JSON.parse(
-  englishDescriptionResponse.body,
-) as ChatResponseBody;
+    const englishTypoLocationBody = JSON.parse(
+      englishTypoLocationResponse.body,
+    ) as ChatResponseBody;
 
-assert.notEqual(englishDescriptionBody.followUpMode, "vapi");
-assert.equal(englishDescriptionBody.vapi.enabled, false);
-assert.match(englishDescriptionBody.assistantMessage, /premium sports club/i);
+    assert.notEqual(englishTypoLocationBody.followUpMode, "vapi");
+    assert.equal(englishTypoLocationBody.vapi.enabled, false);
+    assert.match(englishTypoLocationBody.assistantMessage, /2070 Peel Street/i);
+
+    const englishDescriptionResponse = await app.inject({
+      method: "POST",
+      url: "/v1/tenants/maa/chat",
+      payload: {
+        message: "What kind of gym are you?",
+        locale: "en-CA",
+        conversationId: englishPhoneNumberBody.conversationId,
+        dryRunPersistence: true,
+      },
+    });
+
+    assert.equal(englishDescriptionResponse.statusCode, 200);
+
+    const englishDescriptionBody = JSON.parse(
+      englishDescriptionResponse.body,
+    ) as ChatResponseBody;
+
+    assert.notEqual(englishDescriptionBody.followUpMode, "vapi");
+    assert.equal(englishDescriptionBody.vapi.enabled, false);
+    assert.match(englishDescriptionBody.assistantMessage, /premium sports club/i);
+
+    const englishTypoDescriptionResponse = await app.inject({
+      method: "POST",
+      url: "/v1/tenants/maa/chat",
+      payload: {
+        message: "what kind of gim are you",
+        locale: "en-CA",
+        dryRunPersistence: true,
+      },
+    });
+
+    assert.equal(englishTypoDescriptionResponse.statusCode, 200);
+
+    const englishTypoDescriptionBody = JSON.parse(
+      englishTypoDescriptionResponse.body,
+    ) as ChatResponseBody;
+
+    assert.notEqual(englishTypoDescriptionBody.followUpMode, "vapi");
+    assert.equal(englishTypoDescriptionBody.vapi.enabled, false);
+    assert.match(englishTypoDescriptionBody.assistantMessage, /premium sports club/i);
+
+    const englishTypoTransferResponse = await app.inject({
+      method: "POST",
+      url: "/v1/tenants/maa/chat",
+      payload: {
+        message: "can we contnue by phone",
+        locale: "en-CA",
+        dryRunPersistence: true,
+      },
+    });
+
+    assert.equal(englishTypoTransferResponse.statusCode, 200);
+
+    const englishTypoTransferBody = JSON.parse(
+      englishTypoTransferResponse.body,
+    ) as ChatResponseBody;
+
+    assert.equal(englishTypoTransferBody.followUpMode, "vapi");
+    assert.equal(englishTypoTransferBody.vapi.enabled, true);
+    assert.ok(englishTypoTransferBody.vapi.handoffToken);
 
     const englishTransferResponse = await app.inject({
       method: "POST",
@@ -177,6 +257,7 @@ assert.match(englishDescriptionBody.assistantMessage, /premium sports club/i);
           english: {
             phoneNumberFollowUpMode: englishPhoneNumberBody.followUpMode,
             transferFollowUpMode: englishTransferBody.followUpMode,
+            typoTransferFollowUpMode: englishTypoTransferBody.followUpMode,
           },
           french: {
             phoneNumberFollowUpMode: frenchPhoneNumberBody.followUpMode,
