@@ -90,11 +90,51 @@ type TenantCoreFacts = {
   descriptionFr: string;
   hoursEn: string;
   hoursFr: string;
+  brandNameEn: string;
+  brandNameFr: string;
+  phoneLeadEn: string;
+  phoneLeadFr: string;
+  locationLeadEn: string;
+  locationLeadFr: string;
+  descriptionLeadEn: string;
+  descriptionLeadFr: string;
+  hoursLeadEn: string;
+  hoursLeadFr: string;
 };
 
 function getTenantCoreFacts(tenantId: string): TenantCoreFacts | null {
   const record = (tenantCoreFacts as Record<string, TenantCoreFacts>)[tenantId];
   return record ?? null;
+}
+
+function buildCoreFactMessage(
+  facts: TenantCoreFacts,
+  kind: "phone" | "location" | "description" | "hours",
+  locale: string | null,
+): string {
+  const french = isFrenchLocale(locale);
+
+  if (kind === "phone") {
+    return french
+      ? `${facts.phoneLeadFr} 514 845-2233, poste 234.`
+      : `${facts.phoneLeadEn} (514) 845-2233, extension 234.`;
+  }
+
+  if (kind === "location") {
+    return french
+      ? `${facts.locationLeadFr} 2070, rue Peel, Montréal (Québec) H3A 1W6.`
+      : `${facts.locationLeadEn} 2070 Peel Street, Montreal, QC H3A 1W6.`;
+  }
+
+  if (kind === "description") {
+    return french
+      ? `${facts.descriptionLeadFr} entraînement, aquatique, cours, squash et bien-être.`
+      : `${facts.descriptionLeadEn} fitness training, aquatics, classes, squash, and wellness amenities.`;
+  }
+
+  return french
+    ? `${facts.hoursLeadFr} 514 845-2233, poste 234, pour obtenir les heures les plus à jour.`
+    : `${facts.hoursLeadEn} (514) 845-2233, extension 234, for the most up-to-date hours.`;
 }
 
 function looksLikePhoneNumberQuestion(
@@ -253,9 +293,7 @@ export function resolveDirectCoreFactResponse(args: {
 
   if (looksLikePhoneNumberQuestion(args.userMessage, args.locale)) {
     return {
-      assistantMessage: isFrenchLocale(args.locale)
-        ? facts.phoneNumberFr
-        : facts.phoneNumberEn,
+      assistantMessage: buildCoreFactMessage(facts, "phone", args.locale),
       followUpMode: "done",
       citations: [],
       retrieval: {
@@ -268,9 +306,7 @@ export function resolveDirectCoreFactResponse(args: {
 
   if (looksLikeLocationQuestion(args.userMessage, args.locale)) {
     return {
-      assistantMessage: isFrenchLocale(args.locale)
-        ? facts.addressFr
-        : facts.addressEn,
+      assistantMessage: buildCoreFactMessage(facts, "location", args.locale),
       followUpMode: "done",
       citations: [],
       retrieval: {
@@ -283,9 +319,7 @@ export function resolveDirectCoreFactResponse(args: {
 
   if (looksLikeHoursQuestion(args.userMessage, args.locale)) {
     return {
-      assistantMessage: isFrenchLocale(args.locale)
-        ? facts.hoursFr
-        : facts.hoursEn,
+      assistantMessage: buildCoreFactMessage(facts, "hours", args.locale),
       followUpMode: "done",
       citations: [],
       retrieval: {
@@ -298,9 +332,7 @@ export function resolveDirectCoreFactResponse(args: {
 
   if (looksLikeClubDescriptionQuestion(args.userMessage, args.locale)) {
     return {
-      assistantMessage: isFrenchLocale(args.locale)
-        ? facts.descriptionFr
-        : facts.descriptionEn,
+      assistantMessage: buildCoreFactMessage(facts, "description", args.locale),
       followUpMode: "done",
       citations: [],
       retrieval: {
