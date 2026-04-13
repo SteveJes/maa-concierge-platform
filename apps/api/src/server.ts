@@ -153,19 +153,15 @@ function looksLikePhoneIntent(userMessage: string, locale: string | null): boole
         "continuer cette conversation par telephone",
         "continuer au telephone",
         "peut on continuer par telephone",
-        "parler a quelqu un",
-        "parler a une personne",
-        "parler a l equipe",
-        "me faire rappeler",
-        "me rappeler",
-        "appelez moi",
-        "appel maintenant",
-        "transferer moi",
+        "peut on continuer cette conversation par telephone",
+        "connecter par telephone",
+        "connecter moi par telephone",
+        "transferer moi a quelqu un",
         "mettre en ligne",
       ]) ||
       hasAllTokens(normalized, ["continuer", "telephone"]) ||
-      hasAllTokens(normalized, ["parler", "personne"]) ||
-      hasAllTokens(normalized, ["appeler", "maintenant"])
+      hasAllTokens(normalized, ["transferer", "quelqu"]) ||
+      hasAllTokens(normalized, ["mettre", "ligne"])
     );
   }
 
@@ -179,23 +175,14 @@ function looksLikePhoneIntent(userMessage: string, locale: string | null): boole
       "can we continue this conversation by phone",
       "can we contnue by phone",
       "contnue by phone",
-      "talk to someone",
-      "speak to someone",
-      "speak with someone",
-      "call me now",
-      "have someone call me",
       "connect me by phone",
       "transfer me to someone",
       "put me through",
     ]) ||
-    (normalized.includes("phone") &&
-      (normalized.includes("continue") ||
-        normalized.includes("contnue") ||
-        normalized.includes("talk") ||
-        normalized.includes("speak") ||
-        normalized.includes("call me"))) ||
-    hasAllTokens(normalized, ["talk", "someone"]) ||
-    hasAllTokens(normalized, ["speak", "someone"])
+    hasAllTokens(normalized, ["continue", "phone"]) ||
+    hasAllTokens(normalized, ["contnue", "phone"]) ||
+    hasAllTokens(normalized, ["transfer", "someone"]) ||
+    hasAllTokens(normalized, ["put", "through"])
   );
 }
 
@@ -620,9 +607,7 @@ export function createServer() {
     };
 
     const resolveVapiFollowUp = async (): Promise<void> => {
-      if (responseFollowUpMode !== "vapi") {
-        return;
-      }
+      const shouldForcePhoneContinuation = responseFollowUpMode === "vapi";
 
       if (!conversationId) {
         conversationId = newUuid();
@@ -659,11 +644,15 @@ export function createServer() {
       if (!effectiveLaunchMode) {
         vapi.error =
           "Vapi is not configured. Expected VAPI_PHONE_NUMBER and/or VAPI_ASSISTANT_ID with VAPI_PUBLIC_KEY.";
-        responseAssistantMessage = buildVapiUnavailableMessage(
-          locale,
-          vapi.fallbackToCallback,
-        );
-        responseCitations = [];
+
+        if (shouldForcePhoneContinuation) {
+          responseAssistantMessage = buildVapiUnavailableMessage(
+            locale,
+            vapi.fallbackToCallback,
+          );
+          responseCitations = [];
+        }
+
         return;
       }
 
@@ -697,11 +686,13 @@ export function createServer() {
       vapi.launchMode = effectiveLaunchMode;
       vapi.summary = summary;
 
-      responseAssistantMessage = buildVapiContinuationMessage(
-        locale,
-        vapi.fallbackToCallback,
-      );
-      responseCitations = [];
+      if (shouldForcePhoneContinuation) {
+        responseAssistantMessage = buildVapiContinuationMessage(
+          locale,
+          vapi.fallbackToCallback,
+        );
+        responseCitations = [];
+      }
     };
 
     const resolveBookingFollowUp = async (): Promise<void> => {
@@ -958,6 +949,190 @@ export function createServer() {
       booking,
       vapi,
     };
+  });
+
+  app.post("/v1/tenants/:tenantId/call-now", async (request, reply) => {
+    const { tenantId } = request.params as TenantRouteParams;
+
+    const body = (request.body ?? {}) as {
+      phone?: string;
+      name?: string;
+      email?: string;
+      preferredTimeText?: string;
+      locale?: string;
+      conversationId?: string;
+      questionSummary?: string;
+      chatSummary?: string;
+      dryRunPersistence?: boolean;
+    };
+
+    if (tenantId !== "maa") {
+      return reply.code(404).send({
+        error: "tenant_not_supported",
+        message: `Unsupported tenant: ${tenantId}`,
+      });
+    }
+
+    const locale = toNullableTrimmedString(body.locale);
+    const rawPhone = toNullableTrimmedString(body.phone);
+    const name = toNullableTrimmedString(body.name);
+    const email = toNullableTrimmedString(body.email);
+    const preferredTimeText = toNullableTrimmedString(body.preferredTimeText);
+    const questionSummary = toNullableTrimmedString(body.questionSummary);
+    const chatSummary = toNullableTrimmedString(body.chatSummary);
+
+    const normalizeNorthAmericanPhone = (value: string | null): string | null => {
+      if (!value) {
+        return null;
+      }
+
+      const digits = value.replace(/\D/g, "");
+
+      if (digits.length === 11 && digits.startsWith("1")) {
+        return `+${digits}`;
+      }
+
+      if (digits.length === 10) {
+        return `+1${digits}`;
+      }
+
+      if (value.startsWith("+") && digits.length >= 10) {
+        return `+${digits}`;
+      }
+
+      return null;
+    };
+
+    const normalizedPhone = normalizeNorthAmericanPhone(rawPhone);
+
+    if (!normalizedPhone) {
+      return reply.code(400).send({
+        error: "invalid_phone_number",
+        message: isFrenchLocale(locale)
+          ? "Un numéro de téléphone valide est requis."
+          : "A valid phone number is required.",
+      });
+    }
+
+    const isDryRun = body.dryRunPersistence === true;
+
+    const assistantId = toNullableTrimmedString(process.env.VAPI_ASSISTANT_ID);
+    const phoneNumberId = toNullableTrimmedString(
+      process.env.VAPI_OUTBOUND_PHONE_NUMBER_ID,
+    );
+    const apiKey = toNullableTrimmedString(process.env.VAPI_API_KEY);
+
+    const resolvedQuestionSummary =
+      questionSummary ??
+      (isFrenchLocale(locale)
+        ? "Demande de rappel depuis le site web."
+        : "Callback request from the website.");
+
+    const resolvedChatSummary =
+      chatSummary ??
+      resolvedQuestionSummary;
+
+    if (!assistantId || !phoneNumberId || !apiKey) {
+      if (isDryRun) {
+        return {
+          ok: true,
+          queued: true,
+          provider: "vapi",
+          requestId: newUuid(),
+          message: isFrenchLocale(locale)
+            ? `Parfait — nous vous appellerons bientôt au ${normalizedPhone}.`
+            : `Perfect — we will call you shortly at ${normalizedPhone}.`,
+          dryRun: true,
+        };
+      }
+
+      return reply.code(500).send({
+        error: "call_now_not_configured",
+        message: isFrenchLocale(locale)
+          ? "L'option d'appel immédiat n'est pas configurée."
+          : "The call now option is not configured.",
+      });
+    }
+
+    try {
+      const vapiResponse = await fetch("https://api.vapi.ai/call/phone", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          assistantId,
+          phoneNumberId,
+          assistantOverrides: {
+            variableValues: {
+              customer_name: name ?? "",
+              customer_phone: normalizedPhone,
+              customer_email: email ?? "",
+              callback_preferred_time: preferredTimeText ?? "",
+              callback_reason: resolvedQuestionSummary,
+              handoff_summary: resolvedChatSummary,
+              handoff_locale: locale ?? "",
+              handoff_source: "web_call_now",
+            },
+          },
+          customer: {
+            number: normalizedPhone,
+            numberE164CheckEnabled: false,
+          },
+        }),
+      });
+
+      if (!vapiResponse.ok) {
+        const errorText = await vapiResponse.text();
+
+        request.log.error(
+          {
+            tenantId,
+            normalizedPhone,
+            status: vapiResponse.status,
+            errorText,
+          },
+          "Failed to create outbound Vapi call",
+        );
+
+        return reply.code(502).send({
+          error: "call_now_failed",
+          message: isFrenchLocale(locale)
+            ? "Nous n'avons pas pu démarrer l'appel immédiatement."
+            : "We could not start the call immediately.",
+        });
+      }
+
+      const payload = (await vapiResponse.json()) as { id?: string };
+
+      return {
+        ok: true,
+        queued: true,
+        provider: "vapi",
+        requestId: payload.id ?? newUuid(),
+        message: isFrenchLocale(locale)
+          ? `Parfait — nous vous appelons maintenant au ${normalizedPhone}.`
+          : `Perfect — we are calling you now at ${normalizedPhone}.`,
+        dryRun: false,
+      };
+    } catch (error) {
+      request.log.error(
+        {
+          err: error,
+          tenantId,
+          normalizedPhone,
+        },
+        "Unexpected error while creating outbound Vapi call",
+      );
+
+      return reply.code(500).send({
+        error: "call_now_failed",
+        message: isFrenchLocale(locale)
+          ? "Nous n'avons pas pu démarrer l'appel immédiatement."
+          : "We could not start the call immediately.",
+      });
+    }
   });
 
   return app;

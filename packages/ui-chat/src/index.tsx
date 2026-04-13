@@ -61,6 +61,15 @@ type ChatApiResponse = {
   vapi: VapiPayload;
 };
 
+type CallNowApiResponse = {
+  ok: boolean;
+  queued: boolean;
+  provider: string;
+  requestId: string;
+  message: string;
+  dryRun?: boolean;
+};
+
 function newId(): string {
   return Math.random().toString(36).slice(2, 10);
 }
@@ -141,9 +150,7 @@ function detectMessageLocale(
   ];
 
   const countMatches = (signals: string[]): number =>
-    signals.reduce((count, signal) => {
-      return count + (tokens.includes(signal) ? 1 : 0);
-    }, 0);
+    signals.reduce((count, signal) => count + (tokens.includes(signal) ? 1 : 0), 0);
 
   const frenchScore = countMatches(frenchSignals);
   const englishScore = countMatches(englishSignals);
@@ -160,7 +167,12 @@ function detectMessageLocale(
 }
 
 function getApiBaseUrl(): string {
-  return "http://127.0.0.1:4000";
+  if (typeof window === "undefined") {
+    return "http://127.0.0.1:4000";
+  }
+
+  const host = window.location.hostname;
+  return `http://${host}:4000`;
 }
 
 function isMobileDevice(): boolean {
@@ -189,6 +201,7 @@ export function ChatShell() {
   const [callbackPreferredTime, setCallbackPreferredTime] = useState("");
   const [callbackConsent, setCallbackConsent] = useState(false);
   const [isSubmittingCallback, setIsSubmittingCallback] = useState(false);
+  const [isCallingNow, setIsCallingNow] = useState(false);
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -200,6 +213,8 @@ export function ChatShell() {
 
   const [lastResponse, setLastResponse] = useState<ChatApiResponse | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
+
+  const canTransferCurrentChatByPhone = Boolean(lastResponse?.vapi?.handoffUrl);
 
   const vapiRef = useRef<Vapi | null>(null);
 
@@ -238,7 +253,7 @@ export function ChatShell() {
           message: trimmed,
           locale: requestLocale,
           conversationId,
-          dryRunPersistence: true,
+          dryRunPersistence: false,
         }),
       });
 
@@ -308,7 +323,12 @@ export function ChatShell() {
         );
       }
 
-      await handoffResponse.json();
+      const handoff = (await handoffResponse.json()) as {
+        summary?: string;
+        locale?: string;
+        lastUserMessage?: string;
+        recentTurns?: Array<{ role: string; content: string }>;
+      };
 
       const { publicKey, assistantId, phoneNumber, launchMode } = lastResponse.vapi;
 
@@ -370,7 +390,25 @@ export function ChatShell() {
       }
 
       try {
-        await vapiRef.current.start(assistantId);
+        const assistantOverrides = {
+          variableValues: {
+            handoff_summary:
+              typeof handoff.summary === "string" ? handoff.summary : "",
+            handoff_locale:
+              typeof handoff.locale === "string" ? handoff.locale : locale,
+            handoff_last_user_message:
+              typeof handoff.lastUserMessage === "string"
+                ? handoff.lastUserMessage
+                : "",
+            handoff_recent_turns: Array.isArray(handoff.recentTurns)
+              ? handoff.recentTurns
+                  .map((turn) => `${turn.role}: ${turn.content}`)
+                  .join(" | ")
+              : "",
+          },
+        };
+
+        await vapiRef.current.start(assistantId, assistantOverrides);
       } catch {
         if (
           phoneNumber &&
@@ -497,6 +535,81 @@ export function ChatShell() {
     }
   }
 
+  async function submitCallNowRequest(): Promise<void> {
+    if (!callbackPhone.trim() || !callbackConsent || isCallingNow) {
+      return;
+    }
+
+    setIsCallingNow(true);
+    setErrorText(null);
+    setShowPhoneFallback(false);
+
+    const recentMessages = messages
+      .filter((message) => message.role === "user" || message.role === "assistant")
+      .slice(-6)
+      .map((message) => `${message.role === "user" ? "User" : "Assistant"}: ${message.text}`)
+      .join(" | ");
+
+    const lastUserQuestion =
+      [...messages]
+        .reverse()
+        .find((message) => message.role === "user")?.text ?? "";
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/v1/tenants/maa/call-now`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          phone: callbackPhone.trim(),
+          name: callbackName.trim() || undefined,
+          email: callbackEmail.trim() || undefined,
+          preferredTimeText: callbackPreferredTime.trim() || undefined,
+          locale,
+          conversationId,
+          questionSummary: lastUserQuestion || undefined,
+          chatSummary: recentMessages || undefined,
+          dryRunPersistence: false,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Call now request failed with HTTP ${response.status}`);
+      }
+
+      const body = (await response.json()) as CallNowApiResponse;
+
+      setMessages((current) => [
+        ...current,
+        {
+          id: newId(),
+          role: "assistant",
+          text: body.message,
+        },
+      ]);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown call now error";
+
+      setErrorText(message);
+
+      setMessages((current) => [
+        ...current,
+        {
+          id: newId(),
+          role: "system",
+          text:
+            locale === "fr-CA"
+              ? "Je n'ai pas pu démarrer l'appel immédiat pour le moment."
+              : "I couldn't start the immediate call right now.",
+        },
+      ]);
+    } finally {
+      setIsCallingNow(false);
+    }
+  }
+
   const showBookingButton =
     lastResponse?.followUpMode === "calendly" &&
     lastResponse.booking?.bookingUrl;
@@ -520,8 +633,53 @@ export function ChatShell() {
         boxSizing: "border-box",
       }}
     >
-      <div style={{ marginBottom: 12 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 12,
+          marginBottom: 8,
+        }}
+      >
         <strong>{locale === "fr-CA" ? "Concierge IA MAA" : "MAA AI Concierge"}</strong>
+
+        <button
+          type="button"
+          onClick={() => void handleContinueByPhone()}
+          disabled={!canTransferCurrentChatByPhone || isLaunchingPhone}
+          style={{
+            padding: "10px 14px",
+            borderRadius: 10,
+            border: "none",
+            background: "#1d4ed8",
+            color: "white",
+            cursor:
+              !canTransferCurrentChatByPhone || isLaunchingPhone ? "default" : "pointer",
+            opacity: !canTransferCurrentChatByPhone || isLaunchingPhone ? 0.6 : 1,
+            whiteSpace: "nowrap",
+          }}
+        >
+          {isLaunchingPhone
+            ? locale === "fr-CA"
+              ? "Lancement..."
+              : "Launching..."
+            : locale === "fr-CA"
+              ? "Transférer au téléphone"
+              : "Transfer to phone"}
+        </button>
+      </div>
+
+      <div
+        style={{
+          fontSize: 13,
+          color: "#6b7280",
+          marginBottom: 12,
+        }}
+      >
+        {locale === "fr-CA"
+          ? "Pour transférer cette conversation au téléphone, commencez le clavardage puis cliquez sur le bouton."
+          : "To transfer this conversation to a phone call, start the chat, then click the button."}
       </div>
 
       <div
@@ -711,33 +869,59 @@ export function ChatShell() {
               </span>
             </label>
 
-            <button
-              type="button"
-              onClick={() => void submitCallbackRequest()}
-              disabled={
-                isSubmittingCallback || !callbackPhone.trim() || !callbackConsent
-              }
-              style={{
-                padding: "10px 14px",
-                borderRadius: 10,
-                border: "none",
-                background: "#0f766e",
-                color: "white",
-                cursor:
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={() => void submitCallbackRequest()}
+                disabled={
                   isSubmittingCallback || !callbackPhone.trim() || !callbackConsent
-                    ? "default"
-                    : "pointer",
-                width: "fit-content",
-              }}
-            >
-              {isSubmittingCallback
-                ? locale === "fr-CA"
-                  ? "Envoi..."
-                  : "Submitting..."
-                : locale === "fr-CA"
-                  ? "Envoyer la demande"
-                  : "Send request"}
-            </button>
+                }
+                style={{
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: "#0f766e",
+                  color: "white",
+                  cursor:
+                    isSubmittingCallback || !callbackPhone.trim() || !callbackConsent
+                      ? "default"
+                      : "pointer",
+                }}
+              >
+                {isSubmittingCallback
+                  ? locale === "fr-CA"
+                    ? "Envoi..."
+                    : "Submitting..."
+                  : locale === "fr-CA"
+                    ? "Envoyer la demande"
+                    : "Send request"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void submitCallNowRequest()}
+                disabled={isCallingNow || !callbackPhone.trim() || !callbackConsent}
+                style={{
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: "#1d4ed8",
+                  color: "white",
+                  cursor:
+                    isCallingNow || !callbackPhone.trim() || !callbackConsent
+                      ? "default"
+                      : "pointer",
+                }}
+              >
+                {isCallingNow
+                  ? locale === "fr-CA"
+                    ? "Appel en cours..."
+                    : "Calling now..."
+                  : locale === "fr-CA"
+                    ? "Appelez-moi maintenant"
+                    : "Call me now"}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
