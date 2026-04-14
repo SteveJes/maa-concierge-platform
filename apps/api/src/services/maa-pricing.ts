@@ -8,15 +8,19 @@ export interface MaaPricingAnswer {
 
 interface MembershipPriceRow {
   label: string;
+  labelFr: string;
   amount: string;
   billingText: string | null;
+  billingTextFr: string | null;
   sourceIndexes: number[];
 }
 
 interface MembershipRowConfig {
   label: string;
+  labelFr: string;
   patterns: RegExp[];
   billingTextWhenMonthly: string | null;
+  billingTextWhenMonthlyFr: string | null;
 }
 
 function normalizeText(value: string): string {
@@ -47,7 +51,19 @@ export function isPricingQuestion(userMessage: string): boolean {
     text.includes("membership costs") ||
     text.includes("pricing") ||
     text.includes("membership pricing") ||
-    text.includes("annual membership")
+    text.includes("annual membership") ||
+    text.includes("abonnement") ||
+    text.includes("tarif") ||
+    text.includes("combien") ||
+    text.includes("frais") ||
+    text.includes("mensuel") ||
+    text.includes("annuel") ||
+    text.includes("discount") ||
+    text.includes("rabais") ||
+    text.includes("étudiant") ||
+    text.includes("senior") ||
+    text.includes("reduction") ||
+    text.includes("réduction")
   );
 }
 
@@ -108,31 +124,39 @@ function extractMembershipRows(results: SearchResult[]): MembershipPriceRow[] {
   const rowConfigs: MembershipRowConfig[] = [
     {
       label: "1-year membership",
+      labelFr: "Abonnement 1 an",
       patterns: [
         /1\s*year\s*membership[\s\S]{0,40}?\$?\s*(\d+)/i,
       ],
       billingTextWhenMonthly: "per month for a 1-year term",
+      billingTextWhenMonthlyFr: "par mois pour un terme de 1 an",
     },
     {
       label: "Senior membership (70+, 1-year term)",
+      labelFr: "Abonnement senior (70 ans et plus, terme de 1 an)",
       patterns: [
         /senior\s*yearly\s*\(?\s*70\+?\s*\)?[\s\S]{0,40}?\$?\s*(\d+)/i,
       ],
       billingTextWhenMonthly: "per month for a 1-year term",
+      billingTextWhenMonthlyFr: "par mois pour un terme de 1 an",
     },
     {
       label: "Student membership (25 and under, 1-year term)",
+      labelFr: "Abonnement étudiant (25 ans et moins, terme de 1 an)",
       patterns: [
         /students?\s*yearly\s*\(?\s*25\s*and\s*under\s*\)?[\s\S]{0,40}?\$?\s*(\d+)/i,
       ],
       billingTextWhenMonthly: "per month for a 1-year term",
+      billingTextWhenMonthlyFr: "par mois pour un terme de 1 an",
     },
     {
       label: "1-month membership",
+      labelFr: "Abonnement mensuel",
       patterns: [
         /1\s*month\s*membership[\s\S]{0,40}?\$?\s*(\d+)/i,
       ],
       billingTextWhenMonthly: "per month",
+      billingTextWhenMonthlyFr: "par mois",
     },
   ];
 
@@ -159,8 +183,10 @@ function extractMembershipRows(results: SearchResult[]): MembershipPriceRow[] {
     if (foundAmount) {
       rows.push({
         label: config.label,
+        labelFr: config.labelFr,
         amount: foundAmount,
         billingText: monthly ? config.billingTextWhenMonthly : null,
+        billingTextFr: monthly ? config.billingTextWhenMonthlyFr : null,
         sourceIndexes: uniqueNumbers(sourceIndexes),
       });
     }
@@ -170,7 +196,8 @@ function extractMembershipRows(results: SearchResult[]): MembershipPriceRow[] {
 }
 
 function extractInitiationFee(results: SearchResult[]): {
-  text: string | null;
+  amount: string | null;
+  value: string | null;
   sourceIndexes: number[];
 } {
   const sourceIndexes: number[] = [];
@@ -188,13 +215,14 @@ function extractInitiationFee(results: SearchResult[]): {
     if (match) {
       sourceIndexes.push(index);
       return {
-        text: `There is currently no initiation fee ($${match[1]}, a $${match[2]} value).`,
+        amount: match[1] ?? null,
+        value: match[2] ?? null,
         sourceIndexes,
       };
     }
   }
 
-  return { text: null, sourceIndexes: [] };
+  return { amount: null, value: null, sourceIndexes: [] };
 }
 
 function findPoolEvidenceIndexes(results: SearchResult[]): number[] {
@@ -222,30 +250,51 @@ function findPoolEvidenceIndexes(results: SearchResult[]): number[] {
 
 function buildMembershipAnswer(
   rows: MembershipPriceRow[],
-  initiationFee: string | null,
+  initiationFee: { amount: string | null; value: string | null },
   poolIncluded: boolean,
+  locale?: string | null,
 ): string {
+  const fr = locale != null && (locale === "fr" || locale.startsWith("fr-"));
   const parts: string[] = [];
 
   if (rows.length > 0) {
     const rowText = rows
-      .map((row) =>
-        row.billingText
-          ? `${row.label}: ${row.amount} ${row.billingText}`
-          : `${row.label}: ${row.amount}`,
-      )
+      .map((row) => {
+        const label = fr ? row.labelFr : row.label;
+        const billing = fr ? row.billingTextFr : row.billingText;
+        const sep = fr ? " : " : ": ";
+        return billing ? `${label}${sep}${row.amount} ${billing}` : `${label}${sep}${row.amount}`;
+      })
       .join("; ");
 
-    parts.push(`Club Sportif MAA membership pricing currently appears as follows: ${rowText}.`);
+    parts.push(
+      fr
+        ? `Voici nos tarifs d'abonnement actuels : ${rowText}.`
+        : `Here's what membership looks like right now: ${rowText}.`,
+    );
   }
 
-  if (initiationFee) {
-    parts.push(initiationFee);
+  if (initiationFee.amount !== null && initiationFee.value !== null) {
+    parts.push(
+      fr
+        ? `Les frais d'initiation sont présentement offerts gratuitement (0 $, une valeur de ${initiationFee.value} $).`
+        : `There is currently no initiation fee ($${initiationFee.amount}, a $${initiationFee.value} value).`,
+    );
   }
 
   if (poolIncluded) {
-    parts.push("Membership includes pool access.");
+    parts.push(
+      fr
+        ? "L'adhésion comprend l'accès à la piscine."
+        : "Membership includes pool access.",
+    );
   }
+
+  parts.push(
+    fr
+      ? "Les tarifs et promotions peuvent changer — nous vous recommandons d'appeler pour confirmer les prix actuels."
+      : "Rates and promotions may change — we recommend calling us to confirm current pricing.",
+  );
 
   return parts.join(" ");
 }
@@ -253,6 +302,7 @@ function buildMembershipAnswer(
 export function tryAnswerPricingQuestion(
   userMessage: string,
   searchResults: SearchResult[],
+  locale?: string | null,
 ): MaaPricingAnswer | null {
   if (!isPricingQuestion(userMessage)) {
     return null;
@@ -263,7 +313,7 @@ export function tryAnswerPricingQuestion(
   const poolIndexes = findPoolEvidenceIndexes(searchResults);
   const poolIncluded = poolIndexes.length > 0;
 
-  if (rows.length === 0 && !initiation.text && !poolIncluded) {
+  if (rows.length === 0 && initiation.amount === null && !poolIncluded) {
     return null;
   }
 
@@ -274,11 +324,7 @@ export function tryAnswerPricingQuestion(
   ]);
 
   return {
-    assistantMessage: buildMembershipAnswer(
-      rows,
-      initiation.text,
-      poolIncluded,
-    ),
+    assistantMessage: buildMembershipAnswer(rows, initiation, poolIncluded, locale),
     followUpMode: "done",
     usedCitations,
   };

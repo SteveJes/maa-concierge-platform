@@ -963,6 +963,7 @@ export function createServer() {
       conversationId?: string;
       questionSummary?: string;
       chatSummary?: string;
+      handoffSource?: string;
       dryRunPersistence?: boolean;
     };
 
@@ -980,6 +981,7 @@ export function createServer() {
     const preferredTimeText = toNullableTrimmedString(body.preferredTimeText);
     const questionSummary = toNullableTrimmedString(body.questionSummary);
     const chatSummary = toNullableTrimmedString(body.chatSummary);
+    const handoffSource = toNullableTrimmedString(body.handoffSource) ?? "web_call_now";
 
     const normalizeNorthAmericanPhone = (value: string | null): string | null => {
       if (!value) {
@@ -1072,8 +1074,9 @@ export function createServer() {
               callback_preferred_time: preferredTimeText ?? "",
               callback_reason: resolvedQuestionSummary,
               handoff_summary: resolvedChatSummary,
+              handoff_last_user_message: resolvedQuestionSummary,
               handoff_locale: locale ?? "",
-              handoff_source: "web_call_now",
+              handoff_source: handoffSource,
             },
           },
           customer: {

@@ -101,7 +101,6 @@ function detectMessageLocale(
     "vos",
     "quoi",
     "ou",
-    "comment",
     "pouvez",
     "rappel",
     "piscine",
@@ -175,15 +174,6 @@ function getApiBaseUrl(): string {
   return `http://${host}:4000`;
 }
 
-function isMobileDevice(): boolean {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  return /android|iphone|ipad|ipod|mobile/i.test(
-    window.navigator.userAgent,
-  );
-}
 
 export function ChatShell() {
   const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
@@ -194,6 +184,12 @@ export function ChatShell() {
   const [isSending, setIsSending] = useState(false);
   const [isLaunchingPhone, setIsLaunchingPhone] = useState(false);
   const [showPhoneFallback, setShowPhoneFallback] = useState(false);
+  const [pendingHandoffContext, setPendingHandoffContext] = useState<{
+    summary: string;
+    lastUserMessage: string;
+    locale: string;
+  } | null>(null);
+  const [isTransferCalling, setIsTransferCalling] = useState(false);
 
   const [callbackName, setCallbackName] = useState("");
   const [callbackPhone, setCallbackPhone] = useState("");
@@ -231,6 +227,7 @@ export function ChatShell() {
     setErrorText(null);
     setIsSending(true);
     setShowPhoneFallback(false);
+    setPendingHandoffContext(null);
 
     setMessages((current) => [
       ...current,
@@ -311,6 +308,7 @@ export function ChatShell() {
     setIsLaunchingPhone(true);
     setErrorText(null);
     setShowPhoneFallback(false);
+    setPendingHandoffContext(null);
 
     try {
       const handoffResponse = await fetch(
@@ -330,18 +328,18 @@ export function ChatShell() {
         recentTurns?: Array<{ role: string; content: string }>;
       };
 
-      const { publicKey, assistantId, phoneNumber, launchMode } = lastResponse.vapi;
+      const { publicKey, assistantId, launchMode } = lastResponse.vapi;
 
       if (
         (launchMode === "phone_number" || launchMode === "web_call_or_number") &&
-        !publicKey &&
-        phoneNumber
+        !publicKey
       ) {
-        if (isMobileDevice()) {
-          window.location.href = `tel:${phoneNumber}`;
-        } else {
-          setShowPhoneFallback(true);
-        }
+        setPendingHandoffContext({
+          summary: typeof handoff.summary === "string" ? handoff.summary : "",
+          lastUserMessage: typeof handoff.lastUserMessage === "string" ? handoff.lastUserMessage : "",
+          locale: typeof handoff.locale === "string" ? handoff.locale : locale,
+        });
+        setShowPhoneFallback(true);
 
         return;
       }
@@ -371,21 +369,17 @@ export function ChatShell() {
               role: "system",
               text:
                 locale === "fr-CA"
-                  ? "Je n'ai pas pu démarrer l'appel web. J'essaie le numéro de téléphone."
-                  : "I couldn't start the web call. Trying the phone number instead.",
+                  ? "Je n'ai pas pu démarrer l'appel web. Je vous propose un appel IA."
+                  : "I couldn't start the web call. I'll connect you via an AI call instead.",
             },
           ]);
 
-          if (
-            phoneNumber &&
-            (launchMode === "phone_number" || launchMode === "web_call_or_number")
-          ) {
-            if (isMobileDevice()) {
-              window.location.href = `tel:${phoneNumber}`;
-            } else {
-              setShowPhoneFallback(true);
-            }
-          }
+          setPendingHandoffContext({
+            summary: typeof handoff.summary === "string" ? handoff.summary : "",
+            lastUserMessage: typeof handoff.lastUserMessage === "string" ? handoff.lastUserMessage : "",
+            locale: typeof handoff.locale === "string" ? handoff.locale : locale,
+          });
+          setShowPhoneFallback(true);
         });
       }
 
@@ -410,31 +404,25 @@ export function ChatShell() {
 
         await vapiRef.current.start(assistantId, assistantOverrides);
       } catch {
-        if (
-          phoneNumber &&
-          (launchMode === "phone_number" || launchMode === "web_call_or_number")
-        ) {
-          if (isMobileDevice()) {
-            window.location.href = `tel:${phoneNumber}`;
-          } else {
-            setShowPhoneFallback(true);
-          }
-
-          return;
-        }
-
-        throw new Error(
-          locale === "fr-CA"
-            ? "Impossible de démarrer l'appel."
-            : "Unable to start the call.",
-        );
+        setMessages((current) => [
+          ...current,
+          {
+            id: newId(),
+            role: "system",
+            text:
+              locale === "fr-CA"
+                ? "Je n'ai pas pu démarrer l'appel web. Je vous propose un appel IA."
+                : "I couldn't start the web call. I'll connect you via an AI call instead.",
+          },
+        ]);
+        setPendingHandoffContext({
+          summary: typeof handoff.summary === "string" ? handoff.summary : "",
+          lastUserMessage: typeof handoff.lastUserMessage === "string" ? handoff.lastUserMessage : "",
+          locale: typeof handoff.locale === "string" ? handoff.locale : locale,
+        });
+        setShowPhoneFallback(true);
       }
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unknown Vapi launch error";
-
-      setErrorText(message);
-
+    } catch {
       setMessages((current) => [
         ...current,
         {
@@ -446,6 +434,8 @@ export function ChatShell() {
               : "I couldn't start the phone connection right now.",
         },
       ]);
+
+      setShowPhoneFallback(true);
     } finally {
       setIsLaunchingPhone(false);
     }
@@ -535,6 +525,45 @@ export function ChatShell() {
     }
   }
 
+  async function requestOutboundCall(params: {
+    phone: string;
+    name?: string;
+    email?: string;
+    preferredTimeText?: string;
+    callLocale: string;
+    questionSummary?: string;
+    chatSummary?: string;
+    handoffSource: string;
+  }): Promise<void> {
+    const response = await fetch(`${apiBaseUrl}/v1/tenants/maa/call-now`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        phone: params.phone,
+        name: params.name,
+        email: params.email,
+        preferredTimeText: params.preferredTimeText,
+        locale: params.callLocale,
+        conversationId,
+        questionSummary: params.questionSummary,
+        chatSummary: params.chatSummary,
+        handoffSource: params.handoffSource,
+        dryRunPersistence: false,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Call now request failed with HTTP ${response.status}`);
+    }
+
+    const result = (await response.json()) as CallNowApiResponse;
+
+    setMessages((current) => [
+      ...current,
+      { id: newId(), role: "assistant", text: result.message },
+    ]);
+  }
+
   async function submitCallNowRequest(): Promise<void> {
     if (!callbackPhone.trim() || !callbackConsent || isCallingNow) {
       return;
@@ -551,43 +580,19 @@ export function ChatShell() {
       .join(" | ");
 
     const lastUserQuestion =
-      [...messages]
-        .reverse()
-        .find((message) => message.role === "user")?.text ?? "";
+      [...messages].reverse().find((message) => message.role === "user")?.text ?? "";
 
     try {
-      const response = await fetch(`${apiBaseUrl}/v1/tenants/maa/call-now`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          phone: callbackPhone.trim(),
-          name: callbackName.trim() || undefined,
-          email: callbackEmail.trim() || undefined,
-          preferredTimeText: callbackPreferredTime.trim() || undefined,
-          locale,
-          conversationId,
-          questionSummary: lastUserQuestion || undefined,
-          chatSummary: recentMessages || undefined,
-          dryRunPersistence: false,
-        }),
+      await requestOutboundCall({
+        phone: callbackPhone.trim(),
+        name: callbackName.trim() || undefined,
+        email: callbackEmail.trim() || undefined,
+        preferredTimeText: callbackPreferredTime.trim() || undefined,
+        callLocale: locale,
+        questionSummary: lastUserQuestion || undefined,
+        chatSummary: recentMessages || undefined,
+        handoffSource: "web_call_now",
       });
-
-      if (!response.ok) {
-        throw new Error(`Call now request failed with HTTP ${response.status}`);
-      }
-
-      const body = (await response.json()) as CallNowApiResponse;
-
-      setMessages((current) => [
-        ...current,
-        {
-          id: newId(),
-          role: "assistant",
-          text: body.message,
-        },
-      ]);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Unknown call now error";
@@ -607,6 +612,47 @@ export function ChatShell() {
       ]);
     } finally {
       setIsCallingNow(false);
+    }
+  }
+
+  async function submitTransferCallNow(): Promise<void> {
+    if (!callbackPhone.trim() || !callbackConsent || isTransferCalling || !pendingHandoffContext) {
+      return;
+    }
+
+    setIsTransferCalling(true);
+    setErrorText(null);
+
+    try {
+      await requestOutboundCall({
+        phone: callbackPhone.trim(),
+        callLocale: pendingHandoffContext.locale,
+        questionSummary: pendingHandoffContext.lastUserMessage || undefined,
+        chatSummary: pendingHandoffContext.summary || undefined,
+        handoffSource: "web_transfer_phone",
+      });
+
+      setPendingHandoffContext(null);
+      setShowPhoneFallback(false);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown transfer call error";
+
+      setErrorText(message);
+
+      setMessages((current) => [
+        ...current,
+        {
+          id: newId(),
+          role: "system",
+          text:
+            pendingHandoffContext.locale === "fr-CA"
+              ? "Je n'ai pas pu démarrer l'appel pour le moment."
+              : "I couldn't start the call right now.",
+        },
+      ]);
+    } finally {
+      setIsTransferCalling(false);
     }
   }
 
@@ -771,21 +817,97 @@ export function ChatShell() {
         </div>
       ) : null}
 
-      {showPhoneFallback && lastResponse?.vapi?.phoneNumber ? (
-        <div style={{ marginBottom: 12 }}>
-          <a
-            href={`tel:${lastResponse.vapi.phoneNumber}`}
-            style={{
-              display: "inline-block",
-              padding: "10px 14px",
-              borderRadius: 10,
-              background: "#0f766e",
-              color: "white",
-              textDecoration: "none",
-            }}
-          >
-            {locale === "fr-CA" ? "Appeler maintenant" : "Call now"}
-          </a>
+      {showPhoneFallback ? (
+        <div
+          style={{
+            marginBottom: 12,
+            padding: 12,
+            border: "1px solid #e5e7eb",
+            borderRadius: 12,
+            background: "#fafafa",
+          }}
+        >
+          {pendingHandoffContext ? (
+            <>
+              <div style={{ fontWeight: 600, marginBottom: 10 }}>
+                {locale === "fr-CA" ? "Recevoir un appel IA" : "Receive an AI call"}
+              </div>
+
+              <div style={{ display: "grid", gap: 8 }}>
+                <input
+                  value={callbackPhone}
+                  onChange={(event) => setCallbackPhone(event.target.value)}
+                  placeholder={locale === "fr-CA" ? "Votre numéro de téléphone *" : "Your phone number *"}
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    border: "1px solid #d1d5db",
+                  }}
+                />
+
+                <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                  <input
+                    type="checkbox"
+                    checked={callbackConsent}
+                    onChange={(event) => setCallbackConsent(event.target.checked)}
+                  />
+                  <span>
+                    {locale === "fr-CA"
+                      ? "J'accepte d'être contacté par l'équipe du Club Sportif MAA."
+                      : "I agree to be contacted by the Club Sportif MAA team."}
+                  </span>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => void submitTransferCallNow()}
+                  disabled={isTransferCalling || !callbackPhone.trim() || !callbackConsent}
+                  style={{
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: "none",
+                    background: "#1d4ed8",
+                    color: "white",
+                    cursor:
+                      isTransferCalling || !callbackPhone.trim() || !callbackConsent
+                        ? "default"
+                        : "pointer",
+                  }}
+                >
+                  {isTransferCalling
+                    ? locale === "fr-CA"
+                      ? "Appel en cours..."
+                      : "Calling now..."
+                    : locale === "fr-CA"
+                      ? "Appelez-moi maintenant"
+                      : "Call me now"}
+                </button>
+
+                {lastResponse?.vapi?.phoneNumber ? (
+                  <a
+                    href={`tel:${lastResponse.vapi.phoneNumber}`}
+                    style={{ fontSize: 13, color: "#6b7280", textAlign: "center" }}
+                  >
+                    {locale === "fr-CA" ? "Ou composer directement" : "Or dial directly"}
+                  </a>
+                ) : null}
+              </div>
+            </>
+          ) : (
+            <div style={{ color: "#b91c1c" }}>
+              {locale === "fr-CA"
+                ? "Le contexte du transfert est manquant."
+                : "Transfer context is unavailable."}
+              {lastResponse?.vapi?.phoneNumber ? (
+                <>
+                  {" "}
+                  <a href={`tel:${lastResponse.vapi.phoneNumber}`}>
+                    {locale === "fr-CA" ? "Composer directement" : "Dial directly"}
+                  </a>
+                </>
+              ) : null}
+            </div>
+          )}
         </div>
       ) : null}
 

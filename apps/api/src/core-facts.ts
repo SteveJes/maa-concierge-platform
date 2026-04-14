@@ -182,7 +182,6 @@ function looksLikeLocationQuestion(
         "ou est le club",
       ]) ||
       hasApproxTokenSet(normalized, ["ou", "etes", "vous"]) ||
-      hasApproxTokenSet(normalized, ["ou", "club"]) ||
       hasApproxToken(normalized, ["adresse"]) ||
       normalized === "adresse"
     );
@@ -318,6 +317,28 @@ function looksLikeOfferingsQuestion(
   );
 }
 
+function looksLikePricingIntent(userMessage: string): boolean {
+  const normalized = normalizeIntentText(userMessage);
+  return (
+    normalized.includes("tarif") ||
+    normalized.includes("prix") ||
+    normalized.includes("cout") ||
+    normalized.includes("abonnement") ||
+    normalized.includes("combien") ||
+    normalized.includes("frais") ||
+    normalized.includes("mensuel") ||
+    normalized.includes("etudiant") ||
+    normalized.includes("senior") ||
+    normalized.includes("rabais") ||
+    normalized.includes("reduction") ||
+    normalized.includes("fee") ||
+    normalized.includes("price") ||
+    normalized.includes("cost") ||
+    normalized.includes("discount") ||
+    normalized.includes("membership")
+  );
+}
+
 function looksLikeClubDescriptionQuestion(
   userMessage: string,
   locale: string | null,
@@ -429,8 +450,9 @@ export function resolveDirectCoreFactResponse(args: {
   }
 
   if (
-    looksLikeOfferingsQuestion(args.userMessage, args.locale) ||
-    looksLikeClubDescriptionQuestion(args.userMessage, args.locale)
+    !looksLikePricingIntent(args.userMessage) &&
+    (looksLikeOfferingsQuestion(args.userMessage, args.locale) ||
+      looksLikeClubDescriptionQuestion(args.userMessage, args.locale))
   ) {
     return {
       assistantMessage: buildCoreFactMessage(facts, "description", args.locale),

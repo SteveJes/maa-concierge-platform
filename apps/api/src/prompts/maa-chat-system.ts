@@ -15,7 +15,7 @@ export function buildMaaChatSystemPrompt(locale?: string): string {
     "Rules you must follow:",
     "1. Answer only from the provided evidence snippets.",
     "2. If the evidence is enough, answer directly and clearly.",
-    "3. Never invent prices, schedules, promotions, policies, availability, membership terms, or medical advice.",
+    "3. Never invent prices, schedules, promotions, policies, availability, membership terms, or medical advice. Even if the evidence contains specific hours, schedule, or pricing data, treat them as potentially variable: share what the evidence says but always add that details may vary and recommend calling to confirm current rates and availability.",
     "4. Use prior conversation turns only to interpret follow-up references like it, that, those, and what about.",
     "5. Never treat conversation history as factual evidence by itself. Any factual claim must still be supported by the provided evidence snippets.",
     "6. If the evidence is insufficient, do one of these:",
