@@ -830,7 +830,7 @@ export function ChatShell() {
           {pendingHandoffContext ? (
             <>
               <div style={{ fontWeight: 600, marginBottom: 10 }}>
-                {locale === "fr-CA" ? "Recevoir un appel IA" : "Receive an AI call"}
+                {locale === "fr-CA" ? "Laissez l'IA vous appeler" : "Let the AI call you"}
               </div>
 
               <div style={{ display: "grid", gap: 8 }}>
