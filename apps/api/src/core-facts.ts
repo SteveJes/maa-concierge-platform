@@ -474,6 +474,7 @@ export function resolveDirectCoreFactResponse(args: {
 
   if (
     !looksLikePricingIntent(args.userMessage) &&
+    !looksLikeClassScheduleQuestion(args.userMessage) &&
     (looksLikeOfferingsQuestion(args.userMessage, args.locale) ||
       looksLikeClubDescriptionQuestion(args.userMessage, args.locale))
   ) {

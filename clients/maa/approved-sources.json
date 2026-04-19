@@ -742,6 +742,22 @@
         "preferredBatchTag": "general"
       },
       "tags": []
+    },
+    {
+      "key": "maa_wp-content_uploads_2026_04_MAA_CoursEnGroupe_HoraireClassifications_2070Peel_Apr6-26_fr",
+      "locale": "fr-CA",
+      "section": "general",
+      "sourceKind": "pdf_document",
+      "sourceUrl": "https://www.clubsportifmaa.com/wp-content/uploads/2026/04/MAA_CoursEnGroupe_HoraireClassifications_2070Peel_Apr6-26.pdf",
+      "enabled": true,
+      "priority": 5,
+      "updateStrategy": "manual",
+      "parsingMode": "pdf_text",
+      "normalizationHints": {},
+      "uploadBatchHints": {
+        "preferredBatchTag": "general"
+      },
+      "tags": ["classes", "schedule", "yoga", "fitness"]
     }
   ]
 }

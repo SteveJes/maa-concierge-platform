@@ -27,22 +27,30 @@
 - Callback fallback button wired in UI booking flow
 - 14/14 QA tests passing
 
-## Current uncommitted work
-- None
+## Current uncommitted work (this session — not yet committed)
+- Playwright e2e suite: 13 tests in `e2e/concierge.spec.ts` + `playwright.config.ts`
+- Widget accent color prop (`accentColor`) threads tenant brand color through all buttons
+- Floating widget mode (`mode="floating"`) — fixed-position launcher bubble + panel
+- Mobile nav overflow fix: `className="maa-nav"` + `@media (max-width:600px)` in globals.css
+- French locale detection: removed loanwords (yoga/spa/gym) from EN signals; added French function words to FR signals
+- `looksLikeClassScheduleQuestion` escape hatch in core-facts.ts (yoga/cours/class queries bypass generic hours response)
+- `looksLikeClassScheduleQuestion` guard also added to club-description path (yoga queries bypass generic description response)
+- `looksLikeBookingIntent` tightened: "schedule" requires "schedule a/an/my" (verb use only)
+- Group classes PDF ingested + indexed: `MAA_CoursEnGroupe_HoraireClassifications_2070Peel_Apr6-26.pdf` (6 new chunks, doc 52)
+- `NOCODB_TABLE_INGESTION_RUNS` env var fixed (was stale ID `m3qsgpqtr30suyi`, now correct `m5pw6b8u7xci85m`)
 
 ## Current product priorities
-1. Strong web chat experience ✓ (functional + demo-ready shell)
+1. Strong web chat experience ✓ (functional + demo-ready shell + class schedule intelligence added)
 2. Strong AI phone continuation / callback experience ✓
 3. Premium concierge tone ✓ (ongoing QA)
 4. No hallucinated business facts ✓
 5. Reusable multi-tenant architecture (next major milestone)
 
 ## Next likely priorities
-1. QA the full live demo page in browser (visual + interaction)
-2. Vapi continuation message copy polish
-3. Mid-conversation language switch verification
-4. Consider: widget accent color prop per tenant (multi-tenant prep)
-5. Consider: floating/overlay embed mode vs full-page embed
+1. KPI tracking: populate `outcome`, `summary`, `needs_followup` fields on conversations in NocoDB
+2. KPI analytics endpoint: conversations/day, language split, follow-up mode distribution, callback rate
+3. Fix messages table field mapping (server writes `follow_up_mode`/`citations_json`/`retrieval_json` but schema may differ)
+4. Commit this session's batch once stable
 
 ## Important constraints
 - Default French, switch to English if user clearly uses English
