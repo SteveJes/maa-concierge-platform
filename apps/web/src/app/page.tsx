@@ -136,7 +136,7 @@ export default function HomePage() {
         }}
       >
         <div style={{ width: "100%", maxWidth: 860 }}>
-          <ChatShell />
+          <ChatShell accentColor="#1a5c38" />
         </div>
       </main>
 

@@ -146,6 +146,31 @@ function detectMessageLocale(
     "station",
     "from",
     "address",
+    // booking / intent / topic words
+    "book",
+    "booking",
+    "tour",
+    "schedule",
+    "want",
+    "would",
+    "like",
+    "need",
+    "my",
+    "your",
+    "membership",
+    "fee",
+    "price",
+    "cost",
+    "hours",
+    "open",
+    "cancel",
+    "massage",
+    "appointment",
+    "spa",
+    "gym",
+    "class",
+    "policy",
+    "guest",
   ];
 
   const countMatches = (signals: string[]): number =>
@@ -175,7 +200,13 @@ function getApiBaseUrl(): string {
 }
 
 
-export function ChatShell() {
+export function ChatShell({
+  accentColor = "#1d4ed8",
+  mode = "inline",
+}: {
+  accentColor?: string;
+  mode?: "inline" | "floating";
+} = {}) {
   const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
   const [locale, setLocale] = useState<"fr-CA" | "en-CA">("fr-CA");
 
@@ -198,6 +229,7 @@ export function ChatShell() {
   const [callbackConsent, setCallbackConsent] = useState(false);
   const [isSubmittingCallback, setIsSubmittingCallback] = useState(false);
   const [showBookingCallbackFallback, setShowBookingCallbackFallback] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [isCallingNow, setIsCallingNow] = useState(false);
 
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -673,7 +705,7 @@ export function ChatShell() {
         showBookingCallbackFallback)) &&
     !lastResponse?.callbackPersistence?.saved;
 
-  return (
+  const widget = (
     <section
       style={{
         border: "1px solid #e5e7eb",
@@ -705,7 +737,7 @@ export function ChatShell() {
             padding: "10px 14px",
             borderRadius: 10,
             border: "none",
-            background: "#1d4ed8",
+            background: accentColor,
             color: "white",
             cursor:
               !canTransferCurrentChatByPhone || isLaunchingPhone ? "default" : "pointer",
@@ -823,7 +855,7 @@ export function ChatShell() {
             style={{
               padding: "10px 14px",
               borderRadius: 10,
-              background: "#1d4ed8",
+              background: accentColor,
               color: "white",
               border: "none",
               cursor: isLaunchingPhone ? "default" : "pointer",
@@ -890,7 +922,7 @@ export function ChatShell() {
                     padding: "10px 14px",
                     borderRadius: 10,
                     border: "none",
-                    background: "#1d4ed8",
+                    background: accentColor,
                     color: "white",
                     cursor:
                       isTransferCalling || !callbackPhone.trim() || !callbackConsent
@@ -1051,7 +1083,7 @@ export function ChatShell() {
                   padding: "10px 14px",
                   borderRadius: 10,
                   border: "none",
-                  background: "#1d4ed8",
+                  background: accentColor,
                   color: "white",
                   cursor:
                     isCallingNow || !callbackPhone.trim() || !callbackConsent
@@ -1122,4 +1154,58 @@ export function ChatShell() {
       </div>
     </section>
   );
+
+  if (mode === "floating") {
+    return (
+      <div>
+        {/* Launcher button */}
+        <button
+          type="button"
+          aria-label={isOpen ? "Fermer le concierge" : "Ouvrir le concierge"}
+          onClick={() => setIsOpen((v) => !v)}
+          style={{
+            position: "fixed",
+            bottom: 24,
+            right: 24,
+            width: 56,
+            height: 56,
+            borderRadius: "50%",
+            background: accentColor,
+            border: "none",
+            color: "white",
+            fontSize: 24,
+            cursor: "pointer",
+            zIndex: 9999,
+            boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            lineHeight: 1,
+          }}
+        >
+          {isOpen ? "✕" : "💬"}
+        </button>
+
+        {/* Chat panel */}
+        {isOpen ? (
+          <div
+            style={{
+              position: "fixed",
+              bottom: 92,
+              right: 24,
+              width: "min(420px, calc(100vw - 48px))",
+              maxHeight: "calc(100vh - 120px)",
+              zIndex: 9998,
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            {widget}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  return widget;
 }

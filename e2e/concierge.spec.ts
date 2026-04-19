@@ -41,8 +41,16 @@ test.describe("MAA concierge — chat interactions", () => {
     const input = page.locator("input[placeholder], textarea").first();
     await input.fill(message);
     await input.press("Enter");
-    // Wait for response to appear (loading state to clear)
-    await page.waitForTimeout(4000);
+    // Wait for sending state to clear (button text changes back from Sending.../Envoi...)
+    await page.waitForFunction(
+      () => {
+        const btns = Array.from(document.querySelectorAll("button"));
+        return btns.every(
+          (b) => !b.textContent?.includes("Sending") && !b.textContent?.includes("Envoi...")
+        );
+      },
+      { timeout: 15000 }
+    );
   }
 
   test("greeting in English returns English response", async ({ page }) => {
