@@ -202,10 +202,35 @@ function looksLikeLocationQuestion(
   );
 }
 
+function looksLikeClassScheduleQuestion(userMessage: string): boolean {
+  // Questions about specific class types or programme schedules should go to AI+retrieval,
+  // not the generic hours deterministic path.
+  const normalized = normalizeIntentText(userMessage);
+  return (
+    normalized.includes("yoga") ||
+    normalized.includes("pilates") ||
+    normalized.includes("cours") ||
+    normalized.includes("class") ||
+    normalized.includes("classes") ||
+    normalized.includes("programme") ||
+    normalized.includes("program") ||
+    normalized.includes("spinning") ||
+    normalized.includes("zumba") ||
+    normalized.includes("aqua") ||
+    normalized.includes("natation") ||
+    normalized.includes("swimming")
+  );
+}
+
 function looksLikeHoursQuestion(
   userMessage: string,
   locale: string | null,
 ): boolean {
+  // Let class/programme schedule questions pass through to AI+retrieval.
+  if (looksLikeClassScheduleQuestion(userMessage)) {
+    return false;
+  }
+
   const normalized = normalizeIntentText(userMessage);
 
   const frenchMatch =

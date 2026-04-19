@@ -89,88 +89,44 @@ function detectMessageLocale(
   const tokens = normalized.split(" ").filter(Boolean);
 
   const frenchSignals = [
-    "bonjour",
-    "salut",
-    "bonsoir",
-    "allo",
-    "coucou",
-    "merci",
-    "svp",
-    "vous",
-    "votre",
-    "vos",
-    "quoi",
-    "ou",
-    "pouvez",
-    "rappel",
-    "piscine",
-    "cours",
-    "metro",
-    "appel",
-    "stationnement",
-    "pres",
-    "proche",
-    "plus",
-    "quelle",
-    "quel",
-    "adresse",
+    // greetings
+    "bonjour", "salut", "bonsoir", "allo", "coucou",
+    // polite / common
+    "merci", "svp", "sil", "plaît",
+    // pronouns / articles / prepositions (unambiguous French)
+    "je", "mon", "ma", "mes", "ce", "cette", "ces",
+    "pour", "le", "la", "les", "un", "une", "des", "du", "au",
+    "et", "est", "pas", "ne", "qui", "que", "quand", "avec", "sans",
+    "en", "sur", "dans", "par",
+    // question words
+    "ou", "quoi", "quels", "quelles", "quel", "quelle", "comment",
+    "combien", "pourquoi",
+    // you forms
+    "vous", "votre", "vos", "pouvez",
+    // club-specific French nouns
+    "piscine", "cours", "rappel", "appel", "stationnement",
+    "pres", "proche", "plus", "adresse", "horaire", "horaires",
+    "abonnement", "tarif", "prix", "annulation",
   ];
 
   const englishSignals = [
-    "hello",
-    "hi",
-    "hey",
-    "thanks",
-    "please",
-    "what",
-    "where",
-    "how",
-    "can",
-    "do",
-    "offer",
-    "callback",
-    "call",
-    "phone",
-    "guys",
-    "pool",
-    "yoga",
-    "metro",
-    "are",
-    "near",
-    "exactly",
-    "is",
-    "there",
-    "parking",
-    "nearby",
-    "closest",
-    "station",
-    "from",
-    "address",
-    // booking / intent / topic words
-    "book",
-    "booking",
-    "tour",
-    "schedule",
-    "want",
-    "would",
-    "like",
-    "need",
-    "my",
-    "your",
-    "membership",
-    "fee",
-    "price",
-    "cost",
-    "hours",
-    "open",
-    "cancel",
-    "massage",
-    "appointment",
-    "spa",
-    "gym",
-    "class",
-    "policy",
-    "guest",
+    // greetings
+    "hello", "hi", "hey", "thanks", "please",
+    // question words (English-only)
+    "what", "where", "how", "are", "is", "do", "can",
+    // location/proximity
+    "near", "nearby", "closest", "exactly", "there", "from",
+    "station", "parking",
+    // contact
+    "phone", "call", "callback", "address",
+    // club topics (English-only spellings)
+    "pool", "guys", "offer", "hours", "open", "schedule",
+    "membership", "fee", "price", "cost", "cancel", "policy", "guest",
+    // booking
+    "book", "booking", "tour", "want", "would", "like", "need",
+    "my", "your", "appointment", "class",
+    // NOTE: "yoga", "spa", "gym", "massage", "metro" intentionally excluded —
+    // identical or near-identical in French; not a reliable signal
   ];
 
   const countMatches = (signals: string[]): number =>
