@@ -1,128 +1,106 @@
-# MAA Concierge Platform
+# MAA Concierge Platform — Master Project Context
 
-You are continuing an active engineering and product build. Do not restart from scratch. Do not re-suggest already completed work unless a real bug requires it.
+## Mission
+This is not a generic chatbot. It is a premium AI concierge platform for businesses, starting with Club Sportif MAA in Montreal. The assistant must feel intelligent, polished, helpful, and trustworthy. It is the front line for customer interactions across web chat and voice.
 
-## Project identity
-- Project: MAA Concierge Platform
-- First tenant: Club Sportif MAA, Montreal
-- Goal: premium bilingual AI concierge for web chat and voice, with future multi-tenant expansion
+## Product goals
+- Deliver a high-end concierge experience, not a robotic FAQ bot.
+- Answer accurately using approved data only.
+- Never hallucinate prices, schedules, policies, booking rules, contact details, or business facts.
+- Ask at most one clarifying question when truly necessary.
+- Prefer smooth resolution over long back-and-forth.
+- Capture leads cleanly when direct fulfillment is not possible.
+- Escalation path priority:
+  1. web-based direct flow
+  2. click-to-call / phone fallback
+  3. callback capture
+  4. later: premium outbound “call me now” flow via backend/Vapi
 
-## Language behavior
-- Default French (Quebec/Canada)
-- Switch to English if the user clearly uses English
-- Stay consistent in the chosen language unless the user switches
+## Current tenant
+- Primary tenant: Club Sportif MAA
+- Bilingual: fr-CA and en-CA
+- Tone: premium, human, concise, polished
+- Never sound overly automated
+- Never expose raw URLs in assistant copy when a button/UI element exists
+- Prefer concierge-style phrasing
 
-## Product priorities
-1. Strong web chat experience
-2. Strong AI phone continuation / callback experience
-3. Premium concierge tone
-4. No hallucinated business facts
-5. Reusable multi-tenant architecture
+## Non-negotiables
+- No invented facts
+- No invented pricing
+- No invented availability
+- No invented policies
+- No fake certainty
+- No “retrieved evidence” phrasing
+- No awkward bot language
+- Correct naming: “Club Sportif MAA”
+- Keep copy natural and brand-safe
 
-## Critical product rules
-- Do not treat direct club dialing as the main phone UX.
-- Preferred phone UX:
-  - FR: "Laissez l’IA vous appeler"
-  - EN: "Let the AI call you"
-- A raw `tel:` call is only a secondary/manual fallback.
-- Never hallucinate pricing, schedules, availability, booking confirmations, or callback confirmations.
-- If pricing, schedules, or availability may vary, say so and recommend confirming by phone.
+## UX philosophy
+- The AI is the first point of contact.
+- It should solve quickly when possible.
+- If booking is appropriate, guide to the booking flow cleanly.
+- If user prefers not to book directly, offer callback capture.
+- The experience should always feel premium and friction-light.
 
-## Repo / workflow
-- Repo: `maa-concierge-platform`
-- Common active branch: `feat/maa-web-ingestion-v3`
+## Architecture direction
+- Multi-tenant by design
+- Reusable concierge platform for future premium business clients
+- Shared intelligence layer with tenant-specific data/configuration
+- NocoDB for tenant/config/event data
+- n8n for workflows/integrations
+- Vapi for voice
+- OpenAI-first intelligence
 - GitHub is source of truth
-- Windows + PowerShell + GitKraken
-- Use `pnpm.cmd` in PowerShell
+- Web call first, then phone fallback, then callback option
+- Future premium “Call me now” backend-assisted outbound flow is planned
 
-## Common commands
-- `pnpm.cmd --filter @platform/web dev`
-- `pnpm.cmd --filter @platform/api dev`
-- `pnpm.cmd --filter @platform/api typecheck`
-- `pnpm.cmd --filter @platform/web typecheck`
+## Codebase shape
+- Monorepo
+- apps/web
+- apps/api
+- packages/ui-chat
+- tenant-aware APIs and retrieval/config patterns
+- Prefer changes that preserve reuse across future tenants
 
-## Monorepo structure
-- `apps/api`
-- `apps/web`
-- `packages/ui-chat`
+## Working rules for Claude
+Before making meaningful changes:
+1. Read this file fully
+2. Read the current handoff doc
+3. Summarize current goals, constraints, and affected files
+4. Then propose the smallest safe implementation plan
 
-## Important files
-- `apps/api/src/server.ts`
-- `apps/api/src/core-facts.ts`
-- `apps/api/src/prompts/maa-chat-system.ts`
-- `apps/api/src/services/maa-chat.ts`
-- `apps/api/src/services/maa-pricing.ts`
-- `apps/api/src/tenant-core-facts.json`
-- `packages/ui-chat/src/index.tsx`
+After changes:
+1. Explain exactly what changed
+2. List files changed
+3. Run typecheck/tests relevant to changed areas
+4. Run a realistic QA pass with representative prompts
+5. Call out edge cases and risks
+6. Recommend commit only if clean
 
-## Important environment note
-- Actual env file: `apps/api/.env.local`
+## Response style
+- Be direct
+- Be practical
+- Don’t oversell
+- Don’t flood with unnecessary theory
+- Flag uncertainty clearly
+- Think like a senior product engineer + QA owner + concierge UX guardian
 
-## Current working state (latest tested pass)
-- Top-right phone transfer flow now prefers a context-carrying outbound AI call instead of raw `tel:` as the primary path
-- Transfer fallback widget exists and uses shared outbound-call logic
-- `handoff_last_user_message` and dynamic `handoff_source` are passed into outbound calling
-- Deterministic pricing now includes a call-to-confirm hedge
-- French pricing routing and localization were improved
-- Language-routing false positives were fixed
-- Deterministic concierge copy was polished for description, hours, pricing intro, and address
-- AI temperature was raised from `0.1` to `0.3` for warmer tone
-- Pricing intent now wins over generic club-description interception for pricing/student-pricing questions
-- Fuzzy French location false-positive on `du` / `ou` was corrected
+## Current UX priorities
+- Booking flow must be clean and premium
+- Callback fallback must feel natural
+- Bilingual responses must be high quality
+- Typo tolerance should improve without causing fuzzy false positives
+- Routing must prefer deterministic answers where appropriate
+- Unknown-answer phrasing must be elegant and safe
 
-## QA priorities
-When running QA, prioritize:
-1. language correctness
-2. phone-transfer / callback continuity
-3. no hallucinated facts
-4. premium concierge tone
-5. typo handling
-6. deterministic-response polish
+## Current business priorities
+- Make MAA production-worthy
+- Keep future multi-tenant expansion in mind
+- Build toward a premium business concierge product, not a one-off gym bot
 
-## Operating loop
-Operate as the main engineering and QA driver.
-
-Loop:
-1. inspect current git state
-2. inspect relevant code paths
-3. run or verify local app
-4. test the live localhost app in Chrome when relevant
-5. identify the single highest-value issue
-6. propose the smallest safe fix
-7. implement after approval
-8. re-test the affected behavior
-9. continue automatically
-
-Only stop if:
-- a risky or architectural decision is needed
-- a command or test is blocked
-- approval is required
-- you are ready to recommend a commit
-
-## Coding rules
-- Make the smallest safe change first
-- Preserve multi-tenant future architecture
-- Do not refactor broadly unless justified
-- Prefer grounded fixes over speculative rewrites
-- Do not commit unless explicitly asked
-- Before suggesting a commit, inspect current git state
-- Ignore Next.js noise unless clearly relevant:
-  - `apps/web/.next/`
-  - `apps/web/next-env.d.ts`
-
-## Reporting format
-For each cycle, report briefly:
-- what you tested
-- what you changed
-- what passed
-- what still looks weak
-- the single next best fix
-
-## Short reusable handoff
-If a new session starts, continue from the current repo state rather than from scratch.
-
-Assume:
-- VS Code + Claude Code + Claude in Chrome are set up and working
-- Claude is the main operator
-- ChatGPT is used only for second-opinion review
-- The project should continue from the highest-value remaining issue, not from generic setup steps
+## If there is a conflict
+Prefer:
+1. factual accuracy
+2. brand-safe premium UX
+3. reusable multi-tenant architecture
+4. operational simplicity

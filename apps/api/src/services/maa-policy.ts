@@ -189,14 +189,14 @@ function extractMassagePolicyFacts(results: SearchResult[]): MassagePolicyFacts 
 
 function buildGuestPolicyClarify(userMessage: string): string {
   return isFrenchMessage(userMessage)
-    ? "Je n’ai pas trouvé de règle fiable récupérée au sujet des invités ou visiteurs. Je peux répondre aux politiques de massage/spa récupérées, ou vous pouvez vérifier directement auprès du Club."
-    : "I did not find reliable retrieved rules about guests or visitors. I can answer the retrieved massage/spa policies, or you can verify directly with the Club.";
+    ? "Je n’ai pas de politique confirmée sur les invités ou visiteurs. Pour les politiques de massage ou spa, je peux vous aider — sinon, contactez le Club directement pour confirmer."
+    : "I don’t have confirmed guest or visitor policy details on hand. I can help with massage or spa policies — otherwise, the Club team can confirm directly.";
 }
 
 function buildGenericPolicyClarify(userMessage: string): string {
   return isFrenchMessage(userMessage)
-    ? "Je n’ai pas trouvé assez de règles fiables récupérées pour répondre correctement à cette question de politique. Je peux répondre aux politiques de massage/spa si c’est ce que vous cherchez."
-    : "I did not find enough reliable retrieved policy evidence to answer that safely. I can answer the massage/spa policy if that is what you are looking for.";
+    ? "Je n’ai pas assez d’information confirmée pour répondre à cette question de politique. Si vous cherchez les politiques de massage ou spa, je peux vous aider."
+    : "I don’t have enough confirmed policy details to answer that one. If you’re asking about massage or spa policies, I can help with those.";
 }
 
 function buildCancellationAnswer(
@@ -207,8 +207,8 @@ function buildCancellationAnswer(
 
   if (facts.notice24Hours) {
     return isFrench
-      ? "Les preuves récupérées indiquent qu’un avis de 24 heures est requis pour annuler sans frais un rendez-vous de massage ou en modifier l’heure."
-      : "The retrieved evidence says a 24-hour notice is required to cancel a massage appointment without charge or to change its time.";
+      ? "Un avis de 24 heures est requis pour annuler sans frais un rendez-vous de massage ou en modifier l’heure."
+      : "A 24-hour notice is required to cancel a massage appointment without charge or to change the time.";
   }
 
   return buildGenericPolicyClarify(userMessage);
@@ -260,8 +260,8 @@ function buildMassagePolicyAnswer(
   const joined = parts.join("; ");
 
   return isFrench
-    ? `Les politiques récupérées pour les massages sont les suivantes : ${joined}.`
-    : `The retrieved massage policies are: ${joined}.`;
+    ? `Voici ce que nous demandons pour les massages : ${joined}.`
+    : `Here's what to know for your massage appointment: ${joined}.`;
 }
 
 export function tryAnswerPolicyQuestion(

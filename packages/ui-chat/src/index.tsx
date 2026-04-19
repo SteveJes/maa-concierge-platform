@@ -197,6 +197,7 @@ export function ChatShell() {
   const [callbackPreferredTime, setCallbackPreferredTime] = useState("");
   const [callbackConsent, setCallbackConsent] = useState(false);
   const [isSubmittingCallback, setIsSubmittingCallback] = useState(false);
+  const [showBookingCallbackFallback, setShowBookingCallbackFallback] = useState(false);
   const [isCallingNow, setIsCallingNow] = useState(false);
 
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -269,6 +270,7 @@ export function ChatShell() {
 
       setConversationId(body.conversationId);
       setLastResponse(body);
+      setShowBookingCallbackFallback(false);
 
       setMessages((current) => [
         ...current,
@@ -488,6 +490,7 @@ export function ChatShell() {
 
       setConversationId(body.conversationId);
       setLastResponse(body);
+      setShowBookingCallbackFallback(false);
 
       setMessages((current) => [
         ...current,
@@ -664,8 +667,11 @@ export function ChatShell() {
     lastResponse?.followUpMode === "vapi" && lastResponse.vapi?.enabled;
 
   const showCallbackForm =
-    lastResponse?.followUpMode === "callback" &&
-    !lastResponse.callbackPersistence?.saved;
+    (lastResponse?.followUpMode === "callback" ||
+      (lastResponse?.followUpMode === "calendly" &&
+        lastResponse.booking?.allowCallbackFallback &&
+        showBookingCallbackFallback)) &&
+    !lastResponse?.callbackPersistence?.saved;
 
   return (
     <section
@@ -787,6 +793,23 @@ export function ChatShell() {
           >
             {locale === "fr-CA" ? "Planifier une visite" : "Book a tour"}
           </a>
+          {lastResponse!.booking.allowCallbackFallback && !showBookingCallbackFallback ? (
+            <button
+              type="button"
+              onClick={() => setShowBookingCallbackFallback(true)}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#6b7280",
+                fontSize: 13,
+                cursor: "pointer",
+                padding: "10px 4px",
+                textDecoration: "underline",
+              }}
+            >
+              {locale === "fr-CA" ? "Vous préférez qu'on vous appelle ?" : "Prefer a callback instead?"}
+            </button>
+          ) : null}
         </div>
       ) : null}
 

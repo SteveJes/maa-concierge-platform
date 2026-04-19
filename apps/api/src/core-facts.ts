@@ -198,7 +198,6 @@ function looksLikeLocationQuestion(
     ]) ||
     hasApproxTokenSet(normalized, ["where", "located"]) ||
     hasApproxTokenSet(normalized, ["your", "address"]) ||
-    hasApproxTokenSet(normalized, ["where", "club"]) ||
     normalized === "address"
   );
 }
@@ -231,9 +230,7 @@ function looksLikeHoursQuestion(
       "when are you open",
       "hours",
     ]) ||
-    hasApproxTokenSet(normalized, ["opening", "hours"]) ||
-    hasApproxTokenSet(normalized, ["your", "hours"]) ||
-    hasApproxToken(normalized, ["hours"])
+    hasApproxTokenSet(normalized, ["opening", "hours"])
   );
 }
 
@@ -324,6 +321,7 @@ function looksLikePricingIntent(userMessage: string): boolean {
     normalized.includes("prix") ||
     normalized.includes("cout") ||
     normalized.includes("abonnement") ||
+    normalized.includes("abonement") ||
     normalized.includes("combien") ||
     normalized.includes("frais") ||
     normalized.includes("mensuel") ||

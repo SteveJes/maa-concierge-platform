@@ -353,27 +353,35 @@ function buildScheduleAnswer(
 ): string {
   const isFrench = isFrenchMessage(userMessage);
 
+  const hedge = isFrench
+    ? " Les horaires peuvent varier — nous vous recommandons d’appeler pour confirmer."
+    : " Hours may vary — we recommend calling to confirm current times.";
+
   if (blocks.length === 1) {
     const block = blocks[0]!;
 
-    return isFrench
-      ? `Les horaires récupérés pour ${getFacilityPhrase(block.kind, true)} sont ${block.text}.`
-      : `The retrieved ${getFacilityPhrase(block.kind, false)} hours are ${block.text}.`;
+    const answer = isFrench
+      ? `Voici les horaires de ${getFacilityPhrase(block.kind, true)} : ${block.text}.`
+      : `Here are the ${getFacilityPhrase(block.kind, false)} hours on file: ${block.text}.`;
+
+    return answer + hedge;
   }
 
   const joined = blocks
     .map((block) => `${getLabel(block.kind, isFrench)}: ${block.text}`)
     .join("; ");
 
-  return isFrench
-    ? `Les horaires récupérés sont : ${joined}.`
-    : `The retrieved hours are: ${joined}.`;
+  const answer = isFrench
+    ? `Voici les horaires : ${joined}.`
+    : `Here are the hours on file: ${joined}.`;
+
+  return answer + hedge;
 }
 
 function buildScheduleClarifyAnswer(userMessage: string): string {
   return isFrenchMessage(userMessage)
-    ? "Je n’ai pas assez d’horaires fiables récupérés pour répondre correctement. Veuillez préciser si vous voulez les horaires du club, de la piscine ou du spa."
-    : "I do not have enough reliable retrieved schedule information to answer that safely. Please specify whether you want club, pool, or spa hours.";
+    ? "Les horaires varient selon l’espace. Précisez si vous cherchez les horaires du club, de la piscine ou du spa — ou appelez-nous pour les heures à jour."
+    : "Hours vary by area. Let me know if you want club, pool, or spa hours — or give us a call for the most current schedule.";
 }
 
 export function tryAnswerScheduleQuestion(

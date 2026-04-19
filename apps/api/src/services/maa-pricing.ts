@@ -53,6 +53,7 @@ export function isPricingQuestion(userMessage: string): boolean {
     text.includes("membership pricing") ||
     text.includes("annual membership") ||
     text.includes("abonnement") ||
+    text.includes("abonement") ||
     text.includes("tarif") ||
     text.includes("combien") ||
     text.includes("frais") ||

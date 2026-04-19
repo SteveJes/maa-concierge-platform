@@ -218,33 +218,33 @@ function buildCallbackNotConfiguredMessage(locale: string | null): string {
 }
 function buildDirectBookingSuccessMessage(
   locale: string | null,
-  bookingUrl: string,
+  _bookingUrl: string,
   allowCallbackFallback: boolean,
 ): string {
   if (isFrenchLocale(locale)) {
     return allowCallbackFallback
-      ? `Pour planifier avec un membre de l'équipe du Club Sportif MAA, utilisez ce lien : ${bookingUrl}. Si vous préférez, je peux aussi prendre une demande de rappel.`
-      : `Pour planifier avec un membre de l'équipe du Club Sportif MAA, utilisez ce lien : ${bookingUrl}.`;
+      ? "Avec plaisir. Cliquez sur le bouton ci-dessous pour accéder à notre page de réservation. Vous préférez qu'on vous contacte ? Je peux aussi prendre vos coordonnées ici."
+      : "Avec plaisir. Cliquez sur le bouton ci-dessous pour accéder à notre page de réservation.";
   }
 
   return allowCallbackFallback
-    ? `To book with a Club Sportif MAA team member, please use this link: ${bookingUrl}. If you prefer, I can also help capture a callback request.`
-    : `To book with a Club Sportif MAA team member, please use this link: ${bookingUrl}.`;
+    ? "Happy to help with that. Click the button below to visit our booking page. Prefer to have us reach out instead? I can capture your contact info here."
+    : "Happy to help with that. Click the button below to visit our booking page.";
 }
 function buildPopupBookingSuccessMessage(
   locale: string | null,
-  bookingUrl: string,
+  _bookingUrl: string,
   allowCallbackFallback: boolean,
 ): string {
   if (isFrenchLocale(locale)) {
     return allowCallbackFallback
-      ? `Pour réserver une visite, ouvrez cette page : ${bookingUrl}. Ensuite, cliquez sur "PLANIFIER UNE VISITE" pour lancer la fenêtre de réservation. Si vous préférez rester ici, je peux aussi prendre une demande de rappel.`
-      : `Pour réserver une visite, ouvrez cette page : ${bookingUrl}. Ensuite, cliquez sur "PLANIFIER UNE VISITE" pour lancer la fenêtre de réservation.`;
+      ? "Avec plaisir. Cliquez sur le bouton ci-dessous pour accéder à notre page — vous y trouverez le formulaire pour planifier votre visite. Vous préférez qu'on vous contacte ? Je peux aussi prendre vos coordonnées ici."
+      : "Avec plaisir. Cliquez sur le bouton ci-dessous pour accéder à notre page — vous y trouverez le formulaire pour planifier votre visite.";
   }
 
   return allowCallbackFallback
-    ? `To book a tour, open this page: ${bookingUrl}. Then click "Book a tour" to launch the booking widget. If you prefer to stay here, I can also capture a callback request.`
-    : `To book a tour, open this page: ${bookingUrl}. Then click "Book a tour" to launch the booking widget.`;
+    ? "Happy to help with that. Click the button below to visit our booking page — you'll find the tour scheduling widget right there. Prefer to have us reach out instead? I can capture your contact info here."
+    : "Happy to help with that. Click the button below to visit our booking page — you'll find the tour scheduling widget right there.";
 }
 function buildBookingUnavailableMessage(
   locale: string | null,
