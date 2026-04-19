@@ -16,8 +16,10 @@ import {
   isBookingConfigConfigured,
   isCallbackPersistenceConfigured,
   isChatPersistenceConfigured,
+  listConversationsForAnalytics,
   listMessagesByConversationUuid,
   newUuid,
+  updateConversation,
 } from "./ingestion/nocodb.js";
 
 type TenantRouteParams = {
@@ -376,6 +378,52 @@ function buildVapiHandoffSummary(
   return parts.join(" ");
 }
 
+function deriveOutcome(
+  followUpMode: string,
+): "answered" | "escalated" | "callback" | "booking" | "phone" {
+  if (followUpMode === "vapi") return "phone";
+  if (followUpMode === "calendly") return "booking";
+  if (followUpMode === "callback") return "callback";
+  if (followUpMode === "clarify") return "escalated";
+  return "answered";
+}
+
+function deriveLanguage(locale: string | null): "fr" | "en" {
+  if (!locale) return "fr";
+  return locale.startsWith("fr") ? "fr" : "en";
+}
+
+function buildConversationSummary(
+  userMessage: string,
+  assistantMessage: string,
+): string {
+  const userSnippet = userMessage.slice(0, 80);
+  const assistantSnippet = assistantMessage.slice(0, 120);
+  return `Q: ${userSnippet} | A: ${assistantSnippet}`;
+}
+
+async function updateConversationOutcome(args: {
+  uuid: string;
+  tenantUuid: string;
+  followUpMode: string;
+  userMessage: string;
+  assistantMessage: string;
+  locale: string | null;
+  now: string;
+}): Promise<void> {
+  try {
+    await updateConversation(args.uuid, {
+      outcome: deriveOutcome(args.followUpMode),
+      summary: buildConversationSummary(args.userMessage, args.assistantMessage),
+      needs_followup: args.followUpMode !== "done",
+      language: deriveLanguage(args.locale),
+      updated_at: args.now,
+    });
+  } catch {
+    // Non-critical — don't fail the chat response
+  }
+}
+
 export function createServer() {
   const app = Fastify({ logger: true });
 
@@ -485,6 +533,10 @@ export function createServer() {
       typeof body.conversationId === "string" && body.conversationId.trim().length > 0
         ? body.conversationId.trim()
         : null;
+
+    // Track whether this is a brand-new conversation (no prior conversationId from client).
+    // resolveVapiFollowUp also assigns conversationId, so we must capture this before those calls.
+    const isNewConversation = !conversationId;
 
     let tenantUuid: string | null = null;
 
@@ -821,7 +873,7 @@ export function createServer() {
         await createCallbackRequest({
           uuid: callbackRequestId,
           tenant_uuid: resolvedTenantUuid,
-          conversation_uuid: conversationId,
+          conversation_uuid: conversationId!,
           locale,
           name: toNullableTrimmedString(body.callback?.name),
           phone: callbackPhone!,
@@ -885,8 +937,10 @@ export function createServer() {
         try {
           const resolvedTenantUuid = await getTenantUuid();
 
-          if (!conversationId) {
-            conversationId = newUuid();
+          if (isNewConversation) {
+            if (!conversationId) {
+              conversationId = newUuid();
+            }
 
             await createConversation({
               uuid: conversationId,
@@ -902,11 +956,10 @@ export function createServer() {
           await createMessage({
             uuid: newUuid(),
             tenant_uuid: resolvedTenantUuid,
-            conversation_uuid: conversationId,
+            conversation_uuid: conversationId!,
             role: "user",
             content: trimmedMessage,
             locale,
-            created_at: now,
           });
 
           await persistCallbackRequest();
@@ -914,14 +967,25 @@ export function createServer() {
           await createMessage({
             uuid: newUuid(),
             tenant_uuid: resolvedTenantUuid,
-            conversation_uuid: conversationId,
+            conversation_uuid: conversationId!,
             role: "assistant",
             content: responseAssistantMessage,
             locale,
-            follow_up_mode: responseFollowUpMode,
-            citations_json: JSON.stringify(responseCitations),
-            retrieval_json: JSON.stringify(result.retrieval),
-            created_at: now,
+            source_refs_json: JSON.stringify(responseCitations),
+            tool_calls_json: JSON.stringify({
+              follow_up_mode: responseFollowUpMode,
+              retrieval: result.retrieval,
+            }),
+          });
+
+          await updateConversationOutcome({
+            uuid: conversationId!,
+            tenantUuid: resolvedTenantUuid,
+            followUpMode: responseFollowUpMode,
+            userMessage: trimmedMessage,
+            assistantMessage: responseAssistantMessage,
+            locale,
+            now,
           });
 
           persistence.saved = true;
@@ -955,6 +1019,69 @@ export function createServer() {
       booking,
       vapi,
     };
+  });
+
+  app.get("/v1/tenants/:tenantId/analytics", async (request, reply) => {
+    const { tenantId } = request.params as TenantRouteParams;
+
+    if (tenantId !== "maa") {
+      return reply.code(404).send({ error: "tenant_not_supported" });
+    }
+
+    if (!isChatPersistenceConfigured()) {
+      return reply.code(503).send({ error: "persistence_not_configured" });
+    }
+
+    const daysParam = (request.query as Record<string, string>).days;
+    const days = Math.min(Math.max(parseInt(daysParam ?? "30", 10) || 30, 1), 90);
+
+    try {
+      const tenant = await findTenantByCode("maa");
+      const conversations = await listConversationsForAnalytics(tenant.uuid, days);
+      const total = conversations.length;
+
+      const byDay: Record<string, number> = {};
+      const byOutcome: Record<string, number> = { answered: 0, escalated: 0, callback: 0, booking: 0, phone: 0, unknown: 0 };
+      const byLanguage: Record<string, number> = { fr: 0, en: 0 };
+      let needsFollowupCount = 0;
+
+      for (const conv of conversations) {
+        const day = (conv.started_at ?? "").slice(0, 10);
+        if (day) byDay[day] = (byDay[day] ?? 0) + 1;
+
+        const outcome = conv.outcome ?? "unknown";
+        byOutcome[outcome] = (byOutcome[outcome] ?? 0) + 1;
+
+        const lang = conv.language ?? (conv.locale?.startsWith("fr") ? "fr" : "en");
+        byLanguage[lang] = (byLanguage[lang] ?? 0) + 1;
+
+        if (conv.needs_followup) needsFollowupCount += 1;
+      }
+
+      const dailySeries = Object.entries(byDay)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, count]) => ({ date, count }));
+
+      return {
+        tenantId,
+        period: { days, from: dailySeries[0]?.date ?? null, to: dailySeries[dailySeries.length - 1]?.date ?? null },
+        totals: {
+          conversations: total,
+          needsFollowup: needsFollowupCount,
+          needsFollowupRate: total > 0 ? Math.round((needsFollowupCount / total) * 100) : 0,
+        },
+        byOutcome,
+        byLanguage,
+        languageSplit: {
+          frPct: total > 0 ? Math.round(((byLanguage.fr ?? 0) / total) * 100) : 0,
+          enPct: total > 0 ? Math.round(((byLanguage.en ?? 0) / total) * 100) : 0,
+        },
+        dailySeries,
+      };
+    } catch (error) {
+      request.log.error({ err: error }, "Analytics query failed");
+      return reply.code(500).send({ error: "analytics_failed" });
+    }
   });
 
   app.post("/v1/tenants/:tenantId/call-now", async (request, reply) => {

@@ -115,9 +115,15 @@ export interface ConversationRow {
   tenant_uuid: string;
   channel: "web_chat";
   locale?: string | null;
-  status: "open";
+  status: "open" | "closed";
   started_at: string;
   updated_at: string;
+  ended_at?: string | null;
+  outcome?: "answered" | "escalated" | "callback" | "booking" | "phone" | null;
+  summary?: string | null;
+  needs_followup?: boolean | null;
+  message_count?: number | null;
+  language?: "fr" | "en" | null;
 }
 
 export interface MessageRow {
@@ -128,10 +134,11 @@ export interface MessageRow {
   role: "user" | "assistant";
   content: string;
   locale?: string | null;
-  follow_up_mode?: string | null;
-  citations_json?: string | null;
-  retrieval_json?: string | null;
-  created_at: string;
+  source_refs_json?: string | null;
+  tool_calls_json?: string | null;
+  token_in?: number | null;
+  token_out?: number | null;
+  created_at?: string | null;
 }
 
 export interface CallbackRequestRow {
@@ -655,6 +662,55 @@ export async function createConversation(
   };
 }
 
+export async function updateConversation(
+  uuid: string,
+  patch: Partial<ConversationRow>,
+): Promise<void> {
+  const cfg = assertChatPersistenceConfigPresent();
+  const where = encodeURIComponent(`(uuid,eq,${uuid})`);
+
+  const list = await nocoRequest<unknown>(
+    `/api/v2/tables/${cfg.conversationsTableId}/records?where=${where}&limit=1`,
+    { method: "GET" },
+  );
+
+  const rows = pickRecords(list) as ConversationRow[];
+
+  if (rows.length === 0 || rows[0]?.Id == null) {
+    return;
+  }
+
+  await nocoRequest<unknown>(
+    `/api/v2/tables/${cfg.conversationsTableId}/records`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ Id: rows[0].Id, ...patch }),
+    },
+  );
+}
+
+export async function listConversationsForAnalytics(
+  tenantUuid: string,
+  days = 30,
+): Promise<ConversationRow[]> {
+  const cfg = assertChatPersistenceConfigPresent();
+  const where = encodeURIComponent(`(tenant_uuid,eq,${tenantUuid})`);
+  const since = Date.now() - days * 24 * 60 * 60 * 1000;
+
+  const payload = await nocoRequest<unknown>(
+    `/api/v2/tables/${cfg.conversationsTableId}/records?where=${where}&limit=500&sort=-CreatedAt`,
+    { method: "GET" },
+  );
+
+  const rows = pickRecords(payload) as ConversationRow[];
+
+  // Filter by date in-memory to avoid NocoDB DateTime filter format issues
+  return rows.filter((row) => {
+    const ts = row.started_at ? Date.parse(row.started_at) : 0;
+    return ts >= since;
+  });
+}
+
 export async function createMessage(
   input: MessageRow,
 ): Promise<MessageRow> {
@@ -690,12 +746,8 @@ export async function listMessagesByConversationUuid(
   const rows = pickRecords(payload) as MessageRow[];
 
   rows.sort((a, b) => {
-    const aTime = Number.isNaN(Date.parse(a.created_at))
-      ? 0
-      : Date.parse(a.created_at);
-    const bTime = Number.isNaN(Date.parse(b.created_at))
-      ? 0
-      : Date.parse(b.created_at);
+    const aTime = a.created_at ? Date.parse(a.created_at) || 0 : 0;
+    const bTime = b.created_at ? Date.parse(b.created_at) || 0 : 0;
 
     if (aTime !== bTime) {
       return aTime - bTime;
