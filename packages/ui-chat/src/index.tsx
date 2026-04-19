@@ -120,7 +120,7 @@ function detectMessageLocale(
     // contact
     "phone", "call", "callback", "address",
     // club topics (English-only spellings)
-    "pool", "guys", "offer", "hours", "open", "schedule",
+    "pool", "guys", "offer", "hours", "open",
     "membership", "fee", "price", "cost", "cancel", "policy", "guest",
     // booking
     "book", "booking", "tour", "want", "would", "like", "need",

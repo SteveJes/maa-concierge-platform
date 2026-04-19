@@ -138,7 +138,7 @@ function looksLikeBookingIntent(userMessage: string, locale: string | null): boo
     );
 
   const englishMatch =
-    /(?:book|booking|schedule|tour|sales team|speak with sales|talk to sales|book a call|book an appointment|schedule an appointment)/i.test(
+    /(?:book|booking|tour|sales team|speak with sales|talk to sales|book a call|book an appointment|schedule a|schedule an|schedule my)/i.test(
       normalized,
     );
 
