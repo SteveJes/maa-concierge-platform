@@ -54,7 +54,7 @@ export default function HomePage() {
           </span>
         </div>
 
-        <nav style={{ display: "flex", gap: 28, alignItems: "center" }}>
+        <nav className="maa-nav" style={{ display: "flex", gap: 28, alignItems: "center" }}>
           {[
             { fr: "Abonnement", en: "Membership" },
             { fr: "Piscine", en: "Pool" },

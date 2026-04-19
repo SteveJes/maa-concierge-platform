@@ -10,31 +10,25 @@
 - This file (`STATUS.md`) is the live project state
 
 ## Latest committed milestone
-- `eea00fd` feat: polish booking flow, fix routing false positives, and refine concierge copy
+- `571300e` feat: polish booking flow, fix routing false positives, and refine concierge copy
 
-## Latest completed work (committed in eea00fd)
-- Book-a-tour message no longer exposes raw URLs — points to button below
-- Booking callback fallback toggle wired in UI ("Prefer a callback instead?")
-- Fuzzy false positives fixed: `there`→`where`, `your`→`hours` (both caused wrong routing)
-- `abonement` one-n typo recognized as pricing intent
-- Schedule answers: removed "retrieved" phrasing, added call-to-confirm hedge
-- Policy answers: removed all "retrieved evidence" language
-- System prompt strengthened: banned phrase list, correct club name rule
-- Pool/location routing re-verified
-- Both typechecks passed
+## Latest completed work (committed in 571300e)
+- MAA-branded demo page replacing dev scaffold (dark green, gold logomark, French hero)
+- Verified club facts anchored in system prompt (phone, address, extension 234)
+- Phone extension hallucination fixed ("poste 0" explicitly prohibited)
+- Cancellation misrouting fixed: membership cancel no longer triggers massage policy
+- Booking intent tightened: standalone "appointment"/"visit" no longer trigger calendly
+- Hours false-positive fixed: removed hasApproxTokenSet(['your','hours'])
+- Location false-positive fixed: removed hasApproxTokenSet(['where','club'])
+- French offerings false-positive fixed: removed vous/avez, vous/offrez pairs
+- Bilingual hours detection: French locale users writing English hours questions now routed correctly
+- Call-to-confirm hedge added to all schedule answers
+- Schedule and policy copy: removed all "retrieved" language
+- Callback fallback button wired in UI booking flow
+- 14/14 QA tests passing
 
-## Current uncommitted work (demo polish pass)
-- `apps/web/src/app/page.tsx` — replaced dev scaffold with branded MAA demo page
-  - Dark green premium theme (#0d1f17) matching MAA brand
-  - Sticky header with gold MAA logomark + nav links
-  - Hero section with French tagline and club address
-  - Widget centered in dark branded layout
-  - Footer with club address and phone
-- `apps/web/src/app/layout.tsx` — title "Club Sportif MAA — Concierge IA", lang="fr", Next.js Metadata type
-- `apps/web/src/app/globals.css` — dark color scheme, antialiased text
-- `packages/ui-chat/src/index.tsx`:
-  - Initial message: changed from system→assistant role, now warm French welcome
-  - Transfer button subtitle: concierge copy instead of dev instruction
+## Current uncommitted work
+- None
 
 ## Current product priorities
 1. Strong web chat experience ✓ (functional + demo-ready shell)
@@ -44,12 +38,11 @@
 5. Reusable multi-tenant architecture (next major milestone)
 
 ## Next likely priorities
-1. Commit demo polish batch
-2. QA the full live demo page in browser (visual + interaction)
-3. Vapi continuation message copy polish
-4. Mid-conversation language switch verification
-5. Consider: widget accent color prop per tenant (multi-tenant prep)
-6. Consider: floating/overlay embed mode vs full-page embed
+1. QA the full live demo page in browser (visual + interaction)
+2. Vapi continuation message copy polish
+3. Mid-conversation language switch verification
+4. Consider: widget accent color prop per tenant (multi-tenant prep)
+5. Consider: floating/overlay embed mode vs full-page embed
 
 ## Important constraints
 - Default French, switch to English if user clearly uses English

@@ -132,15 +132,21 @@ function isFrenchLocale(locale: string | null): boolean {
 function looksLikeBookingIntent(userMessage: string, locale: string | null): boolean {
   const normalized = userMessage.trim().toLowerCase();
 
-  if (isFrenchLocale(locale)) {
-    return /(?:réserver|reserver|réservation|reservation|rendez-vous|planifier|visite|visiter|équipe des ventes|equipe des ventes|ventes)/i.test(
+  const frenchMatch =
+    /(?:réserver|reserver|réservation|reservation|rendez-vous|planifier|visite|visiter|équipe des ventes|equipe des ventes|ventes)/i.test(
       normalized,
     );
+
+  const englishMatch =
+    /(?:book|booking|schedule|tour|sales team|speak with sales|talk to sales|book a call|book an appointment|schedule an appointment)/i.test(
+      normalized,
+    );
+
+  if (isFrenchLocale(locale)) {
+    return frenchMatch || englishMatch;
   }
 
-  return /(?:book|booking|schedule|tour|sales team|speak with sales|talk to sales|book a call|book an appointment|schedule an appointment)/i.test(
-    normalized,
-  );
+  return englishMatch;
 }
 
 function looksLikePhoneIntent(userMessage: string, locale: string | null): boolean {
@@ -266,13 +272,13 @@ function buildVapiContinuationMessage(
 ): string {
   if (isFrenchLocale(locale)) {
     return fallbackToCallback
-      ? 'Vous pouvez continuer cette conversation par téléphone maintenant. Cliquez sur "Continuer par téléphone". Si vous préférez, je peux aussi prendre une demande de rappel.'
-      : 'Vous pouvez continuer cette conversation par téléphone maintenant. Cliquez sur "Continuer par téléphone".';
+      ? "Bien sûr — utilisez le bouton ci-dessous pour continuer par téléphone. Je peux aussi vous rappeler si vous préférez."
+      : "Bien sûr — utilisez le bouton ci-dessous pour continuer cette conversation par téléphone.";
   }
 
   return fallbackToCallback
-    ? 'You can continue this conversation by phone now. Click "Continue by phone". If you prefer, I can also capture a callback request.'
-    : 'You can continue this conversation by phone now. Click "Continue by phone".';
+    ? "Of course — use the button below to continue by phone. I can also arrange a callback if you prefer."
+    : "Of course — use the button below to continue this conversation by phone.";
 }
 
 function buildVapiUnavailableMessage(
@@ -281,13 +287,13 @@ function buildVapiUnavailableMessage(
 ): string {
   if (isFrenchLocale(locale)) {
     return fallbackToCallback
-      ? "La reprise par téléphone n'est pas configurée pour le moment. Si vous préférez, je peux aussi prendre une demande de rappel."
-      : "La reprise par téléphone n'est pas configurée pour le moment.";
+      ? "La reprise par téléphone n'est pas disponible pour le moment. Je peux prendre vos coordonnées pour un rappel si vous voulez."
+      : "La reprise par téléphone n'est pas disponible pour le moment. N'hésitez pas à nous appeler directement.";
   }
 
   return fallbackToCallback
-    ? "Phone continuation is not configured right now. If you prefer, I can also capture a callback request."
-    : "Phone continuation is not configured right now.";
+    ? "Phone continuation isn't available right now. I can take your details for a callback if you'd like."
+    : "Phone continuation isn't available right now. Feel free to call us directly.";
 }
 
 function humanizeAssistantMessage(
