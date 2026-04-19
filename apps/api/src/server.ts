@@ -138,7 +138,7 @@ function looksLikeBookingIntent(userMessage: string, locale: string | null): boo
     );
   }
 
-  return /(?:book|booking|schedule|appointment|tour|visit|sales team|speak with sales|talk to sales|book a call)/i.test(
+  return /(?:book|booking|schedule|tour|sales team|speak with sales|talk to sales|book a call|book an appointment|schedule an appointment)/i.test(
     normalized,
   );
 }

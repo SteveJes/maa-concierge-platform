@@ -92,12 +92,28 @@ function wantsGuestPolicy(userMessage: string): boolean {
 function wantsCancellationPolicy(userMessage: string): boolean {
   const text = normalizeLower(userMessage);
 
-  return (
+  const hasCancelWord =
     text.includes("cancellation") ||
     text.includes("cancel") ||
     text.includes("annulation") ||
-    text.includes("annuler")
-  );
+    text.includes("annuler");
+
+  if (!hasCancelWord) {
+    return false;
+  }
+
+  // Only intercept cancellation questions that are clearly about massage/spa appointments,
+  // not membership cancellation or other unrelated topics.
+  const hasMassageContext =
+    text.includes("massage") ||
+    text.includes("appointment") ||
+    text.includes("rendez-vous") ||
+    text.includes("séance") ||
+    text.includes("seance") ||
+    text.includes("spa") ||
+    text.includes("session");
+
+  return hasMassageContext;
 }
 
 function looksLikeMassagePolicyContent(result: SearchResult): boolean {
@@ -264,11 +280,35 @@ function buildMassagePolicyAnswer(
     : `Here's what to know for your massage appointment: ${joined}.`;
 }
 
+function hasMassageOrSpaContext(userMessage: string): boolean {
+  const text = normalizeLower(userMessage);
+
+  return (
+    text.includes("massage") ||
+    text.includes("spa") ||
+    text.includes("appointment") ||
+    text.includes("rendez-vous") ||
+    text.includes("séance") ||
+    text.includes("seance") ||
+    text.includes("session") ||
+    text.includes("health form") ||
+    text.includes("formulaire de sante") ||
+    text.includes("insurance") ||
+    text.includes("assurance")
+  );
+}
+
 export function tryAnswerPolicyQuestion(
   userMessage: string,
   searchResults: SearchResult[],
 ): MaaPolicyAnswer | null {
   if (!isPolicyQuestion(userMessage)) {
+    return null;
+  }
+
+  // Only intercept if the question is clearly about massage, spa, or appointment policies.
+  // Generic cancellation questions (e.g. "cancel my membership") go to the AI.
+  if (!wantsGuestPolicy(userMessage) && !hasMassageOrSpaContext(userMessage)) {
     return null;
   }
 

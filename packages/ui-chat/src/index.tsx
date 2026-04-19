@@ -203,8 +203,8 @@ export function ChatShell() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: newId(),
-      role: "system",
-      text: "Bonjour. Je suis la concierge du Club Sportif MAA.",
+      role: "assistant",
+      text: "Bonjour — bienvenue au Club Sportif MAA. Je suis votre concierge IA. Comment puis-je vous aider aujourd'hui ?",
     },
   ]);
 
@@ -676,13 +676,14 @@ export function ChatShell() {
   return (
     <section
       style={{
-        border: "1px solid #d1d5db",
-        borderRadius: 16,
-        padding: 16,
+        border: "1px solid #e5e7eb",
+        borderRadius: 20,
+        padding: 20,
         background: "white",
         maxWidth: 860,
         width: "100%",
         boxSizing: "border-box",
+        boxShadow: "0 8px 40px rgba(0,0,0,0.35)",
       }}
     >
       <div
@@ -730,8 +731,8 @@ export function ChatShell() {
         }}
       >
         {locale === "fr-CA"
-          ? "Pour transférer cette conversation au téléphone, commencez le clavardage puis cliquez sur le bouton."
-          : "To transfer this conversation to a phone call, start the chat, then click the button."}
+          ? "Vous pouvez continuer cette conversation par téléphone à tout moment."
+          : "You can continue this conversation by phone at any time."}
       </div>
 
       <div

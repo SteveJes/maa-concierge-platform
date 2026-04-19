@@ -208,21 +208,18 @@ function looksLikeHoursQuestion(
 ): boolean {
   const normalized = normalizeIntentText(userMessage);
 
-  if (isFrenchLocale(locale)) {
-    return (
-      hasAnyPhrase(normalized, [
-        "heures d ouverture",
-        "horaire",
-        "horaires",
-        "quand etes vous ouverts",
-        "etes vous ouverts",
-      ]) ||
-      hasApproxToken(normalized, ["horaire", "horaires"]) ||
-      hasApproxTokenSet(normalized, ["heures", "ouverture"])
-    );
-  }
+  const frenchMatch =
+    hasAnyPhrase(normalized, [
+      "heures d ouverture",
+      "horaire",
+      "horaires",
+      "quand etes vous ouverts",
+      "etes vous ouverts",
+    ]) ||
+    hasApproxToken(normalized, ["horaire", "horaires"]) ||
+    hasApproxTokenSet(normalized, ["heures", "ouverture"]);
 
-  return (
+  const englishMatch =
     hasAnyPhrase(normalized, [
       "opening hours",
       "business hours",
@@ -230,8 +227,13 @@ function looksLikeHoursQuestion(
       "when are you open",
       "hours",
     ]) ||
-    hasApproxTokenSet(normalized, ["opening", "hours"])
-  );
+    hasApproxTokenSet(normalized, ["opening", "hours"]);
+
+  if (isFrenchLocale(locale)) {
+    return frenchMatch || englishMatch;
+  }
+
+  return englishMatch;
 }
 
 function looksLikeGreetingOnly(
@@ -285,9 +287,7 @@ function looksLikeOfferingsQuestion(
         "est ce plus une piscine ou un gym",
         "parlez moi de vos services",
       ]) ||
-      hasApproxTokenSet(normalized, ["quels", "services"]) ||
-      hasApproxTokenSet(normalized, ["vous", "offrez"]) ||
-      hasApproxTokenSet(normalized, ["vous", "avez"])
+      hasApproxTokenSet(normalized, ["quels", "services"])
     );
   }
 
