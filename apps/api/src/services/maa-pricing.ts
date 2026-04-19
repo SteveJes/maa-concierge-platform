@@ -62,6 +62,7 @@ export function isPricingQuestion(userMessage: string): boolean {
     text.includes("discount") ||
     text.includes("rabais") ||
     text.includes("étudiant") ||
+    text.includes("etudiant") ||
     text.includes("senior") ||
     text.includes("reduction") ||
     text.includes("réduction")

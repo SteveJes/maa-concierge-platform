@@ -138,7 +138,7 @@ function buildFallbackResponse(
 }
 
 function looksLikeMembershipPricingTopic(text: string): boolean {
-  return /(?:membership|member|pricing|price|prices|fee|fees|cost|costs|annual|yearly|monthly|initiation|senior|student|abonnement|abonnements|prix|tarif|tarifs|frais|mensuel|annuel)/i.test(
+  return /(?:membership|member|pricing|price|prices|fee|fees|cost|costs|annual|yearly|monthly|initiation|senior|student|etudiant|étudiant|abonnement|abonnements|prix|tarif|tarifs|frais|mensuel|annuel)/i.test(
     text,
   );
 }
