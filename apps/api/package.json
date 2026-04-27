@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "tunnel": "ngrok http 4000",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "lint": "eslint .",
@@ -25,7 +26,8 @@
     "test:maa:followup": "tsx src/scripts/test-maa-followup-regression.ts",
     "test:maa:chat:followup": "tsx src/scripts/test-maa-chat-followup-regression.ts",
     "test:maa:vapi": "tsx src/scripts/test-maa-vapi-regression.ts",
-    "test:maa:phone:routing": "tsx src/scripts/test-maa-phone-routing-regression.ts"
+    "test:maa:phone:routing": "tsx src/scripts/test-maa-phone-routing-regression.ts",
+    "test:maa:auto": "tsx src/scripts/test-maa-autonomous-regression.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.0.0",
@@ -33,8 +35,10 @@
     "@platform/config": "workspace:*",
     "@platform/retrieval": "workspace:*",
     "@platform/schemas": "workspace:*",
+    "@types/nodemailer": "^8.0.0",
     "dotenv": "^17.4.0",
     "fastify": "^5.2.0",
+    "nodemailer": "^8.0.5",
     "unpdf": "^1.4.0"
   },
   "devDependencies": {

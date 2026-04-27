@@ -57,7 +57,7 @@ async function main(): Promise<void> {
 
   assert.ok(frenchResult, "Expected French schedule answer to be returned");
   assert.equal(frenchResult!.followUpMode, "done");
-  assert.match(frenchResult!.assistantMessage, /horaires récupérés pour la piscine/i);
+  assert.match(frenchResult!.assistantMessage, /horaires de la piscine/i);
   assert.match(
     frenchResult!.assistantMessage,
     /lundi à vendredi de 7h à 20h samedi et dimanche de 7h à 17h/i,

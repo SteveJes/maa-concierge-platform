@@ -27,7 +27,42 @@
 - Callback fallback button wired in UI booking flow
 - 14/14 QA tests passing
 
-## Current uncommitted work (this session — not yet committed)
+## Latest session work (2026-04-20 — not yet committed)
+
+### Bug fixes
+- Phone button on mobile/PC: top-right and inline phone buttons no longer fire Vapi browser WebRTC — both open the "L'IA vous rappelle" outbound call form directly
+- Inline call form condition fixed: shows correctly from both the top-right header button and the `showPhoneButton` zone
+- "Pouvez-vous m'appeler?" / "Can you call me?" now detected in `resolveDirectCoreFactResponse` → returns `followUpMode: "callback"` with proper concierge message
+- "How much is membership?" now caught by `isPricingQuestion` ("how much" + short message heuristic)
+- NocoDB persistence moved to `setImmediate` background — API response no longer waits for 4 sequential DB writes
+- Knowledge base cache warmup on server start (first message is now fast)
+
+### Em-dash purge (all user-facing strings)
+- `tenant-core-facts.json` — all 4 em-dashes replaced
+- `maa-pricing.ts` — hedge sentence fixed
+- `maa-schedule.ts` — two em-dashes fixed
+- `maa-policy.ts` — em-dash fixed
+- `server.ts` — 6 user-facing em-dashes fixed (booking, vapi continuation, call confirmation)
+- System prompt rules 24 + 25 added: never use em-dashes; never start with "Of course"
+
+### Premium UI redesign (packages/ui-chat/src/index.tsx)
+- Full dark-green/gold visual overhaul: gradient header, MAA badge, pulsing online dot
+- User messages: gold gradient pill bubbles (right-aligned)
+- Assistant messages: dark cards with mini "M" avatar, entrance animation
+- System messages: small centered pills
+- Dumbbell loader: only shows after 700ms delay; proper plate/bar/collar shape with lift animation
+- Input bar: pill input + round gold send button
+- Floating launcher: gold gradient "M" circle, premium shadow
+
+### Intelligence layer
+- Name capture: after first AI response, shows animated card "Au fait, comment puis-je vous appeler?"
+- localStorage persistence: returning users greeted by name ("Bon retour, [name]!")
+- userName passed to API and injected into OpenAI prompt context
+- Sentiment routing: frustrated user signals (3+ turns + frustration phrase) → auto-offer callback
+- `MaaChatRequest.userName?: string` added end-to-end
+
+## Previous uncommitted work (pre-2026-04-20)
+### Previous uncommitted (pre-2026-04-20)
 - Playwright e2e suite: 13 tests in `e2e/concierge.spec.ts` + `playwright.config.ts`
 - Widget accent color prop (`accentColor`) threads tenant brand color through all buttons
 - Floating widget mode (`mode="floating"`) — fixed-position launcher bubble + panel

@@ -205,8 +205,8 @@ function extractMassagePolicyFacts(results: SearchResult[]): MassagePolicyFacts 
 
 function buildGuestPolicyClarify(userMessage: string): string {
   return isFrenchMessage(userMessage)
-    ? "Je n’ai pas de politique confirmée sur les invités ou visiteurs. Pour les politiques de massage ou spa, je peux vous aider — sinon, contactez le Club directement pour confirmer."
-    : "I don’t have confirmed guest or visitor policy details on hand. I can help with massage or spa policies — otherwise, the Club team can confirm directly.";
+    ? "Je n’ai pas de politique confirmée sur les invités ou visiteurs. Pour les politiques de massage ou spa, je peux vous aider. Sinon, contactez le Club directement pour confirmer."
+    : "I don’t have confirmed guest or visitor policy details on hand. I can help with massage or spa policies. Otherwise, the Club team can confirm directly.";
 }
 
 function buildGenericPolicyClarify(userMessage: string): string {

@@ -276,7 +276,13 @@ export function computeSourceHash(content: string): string {
   return crypto.createHash("sha256").update(content, "utf8").digest("hex");
 }
 
+// In-process cache for tenant lookups — tenants are static, safe to cache indefinitely
+const tenantCache = new Map<string, TenantRow>();
+
 export async function findTenantByCode(code: TenantCode): Promise<TenantRow> {
+  const cached = tenantCache.get(code);
+  if (cached) return cached;
+
   const cfg = assertNocoConfigPresent();
 
   const payload = await nocoRequest<unknown>(
@@ -291,6 +297,7 @@ export async function findTenantByCode(code: TenantCode): Promise<TenantRow> {
     throw new Error(`Tenant not found for code "${code}"`);
   }
 
+  tenantCache.set(code, tenant);
   return tenant;
 }
 
@@ -542,10 +549,15 @@ export function isBookingConfigConfigured(): boolean {
   return Boolean(cfg.bookingConfigsTableId);
 }
 
+let bookingConfigCache: BookingConfigRow[] | null = null;
+
 export async function listBookingConfigs(limit = 200): Promise<BookingConfigRow[]> {
+  if (bookingConfigCache !== null) return bookingConfigCache;
+
   const cfg = getNocoConfig();
 
   if (!cfg.bookingConfigsTableId) {
+    bookingConfigCache = [];
     return [];
   }
 
@@ -554,7 +566,8 @@ export async function listBookingConfigs(limit = 200): Promise<BookingConfigRow[
     { method: "GET" },
   );
 
-  return pickRecords(payload) as BookingConfigRow[];
+  bookingConfigCache = pickRecords(payload) as BookingConfigRow[];
+  return bookingConfigCache;
 }
 
 export async function findBookingConfigForTenantLocale(
@@ -757,6 +770,28 @@ export async function listMessagesByConversationUuid(
   });
 
   return rows.slice(-limit);
+}
+
+export async function listRecentUserMessagesForTenant(
+  tenantUuid: string,
+  days = 30,
+  limit = 500,
+): Promise<MessageRow[]> {
+  const cfg = assertChatPersistenceConfigPresent();
+  const where = encodeURIComponent(`(tenant_uuid,eq,${tenantUuid})~and(role,eq,user)`);
+
+  const payload = await nocoRequest<unknown>(
+    `/api/v2/tables/${cfg.messagesTableId}/records?where=${where}&limit=${limit}&sort=-created_at`,
+    { method: "GET" },
+  );
+
+  const rows = pickRecords(payload) as MessageRow[];
+  const since = Date.now() - days * 24 * 60 * 60 * 1000;
+
+  return rows.filter((row) => {
+    const ts = row.created_at ? Date.parse(row.created_at) : 0;
+    return ts >= since;
+  });
 }
 
 export async function createCallbackRequest(

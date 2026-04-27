@@ -2,12 +2,197 @@
 "use client";
 
 import Vapi from "@vapi-ai/web";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+
+// Rotating proactive nudge messages — fired every 35s during inactivity
+const PROACTIVE_NUDGES_FR = [
+  "Saviez-vous que nos membres bénéficient d'un accès complet à la piscine, au spa et à plus de 50 cours de groupe par semaine ? Je peux vous aider à trouver la formule idéale.",
+  "Le Club Sportif MAA est l'un des clubs les plus prestigieux de Montréal, fondé en 1881. Souhaitez-vous en savoir plus sur nos installations ou nos tarifs ?",
+  "Notre piscine intérieure de 25 mètres, notre spa et nos courts de squash sont parmi les meilleures installations du centre-ville. Puis-je répondre à vos questions ?",
+  "Vous pensez à l'abonnement ? Je peux vous donner un aperçu de nos formules et vous aider à choisir la meilleure option selon vos besoins.",
+  "Besoin d'un coup de pouce ? Je suis disponible pour vous aider avec les tarifs, les horaires, les cours ou pour planifier une visite des installations.",
+];
+const PROACTIVE_NUDGES_EN = [
+  "Did you know our members enjoy full access to the pool, spa, and over 50 group classes per week? I can help you find the perfect plan.",
+  "Club Sportif MAA has been a Montreal landmark since 1881. Would you like to learn more about our facilities or membership options?",
+  "Our 25m indoor pool, full spa, and squash courts are among the finest facilities in downtown Montreal. Can I answer any questions for you?",
+  "Thinking about membership? I can walk you through our plans and help you find the best fit for your lifestyle.",
+  "Need a hand? I'm here to help with pricing, hours, group classes, or to schedule a tour of the club.",
+];
+
+const GYM_SERVICES_FR = [
+  "Piscine intérieure 25m",
+  "Yoga & Pilates",
+  "Squash",
+  "Spa & Massothérapie",
+  "Nutrition",
+  "Cours de groupe",
+  "Physiothérapie",
+  "Club Triathlon",
+  "Cirque aérien",
+  "Restaurant Le 1881",
+];
+
+const GYM_SERVICES_EN = [
+  "Indoor Pool 25m",
+  "Yoga & Pilates",
+  "Squash Courts",
+  "Spa & Massage Therapy",
+  "Nutrition Services",
+  "Group Classes",
+  "Physiotherapy",
+  "Triathlon Club",
+  "Aerial Circus",
+  "Restaurant Le 1881",
+];
+
+function GymLoadingIndicator({ locale }: { locale: string }) {
+  const [tick, setTick] = useState(0);
+  const services = locale === "fr-CA" ? GYM_SERVICES_FR : GYM_SERVICES_EN;
+
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 1600);
+    return () => clearInterval(id);
+  }, []);
+
+  const serviceIndex = tick % services.length;
+  const service = services[serviceIndex]!;
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-start",
+        gap: 8,
+        marginBottom: 10,
+        padding: "12px 16px",
+        borderRadius: 14,
+        background: "#ffffff",
+        border: "1px solid #e8eaed",
+        boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+        maxWidth: "60%",
+      }}
+    >
+      {/* Dumbbell */}
+      <div style={{ display: "flex", alignItems: "center", gap: 0, animation: "maa-lift 1.6s ease-in-out infinite" }}>
+        <div style={{ width: 8, height: 20, borderRadius: "3px 1px 1px 3px", background: "linear-gradient(180deg,#2a7c50,#1a5c38)", boxShadow: "inset 0 1px 2px rgba(255,255,255,0.15)" }} />
+        <div style={{ width: 6, height: 26, borderRadius: "2px 1px 1px 2px", background: "linear-gradient(180deg,#2e8858,#1d6640)", marginLeft: 2 }} />
+        <div style={{ width: 5, height: 14, background: "#c9a84c", borderRadius: 2, marginLeft: 2 }} />
+        <div style={{ width: 28, height: 5, background: "linear-gradient(180deg,#e0c870,#b89030)", borderRadius: 2 }} />
+        <div style={{ width: 5, height: 14, background: "#c9a84c", borderRadius: 2 }} />
+        <div style={{ width: 6, height: 26, borderRadius: "1px 2px 2px 1px", background: "linear-gradient(180deg,#2e8858,#1d6640)", marginRight: 2 }} />
+        <div style={{ width: 8, height: 20, borderRadius: "1px 3px 3px 1px", background: "linear-gradient(180deg,#2a7c50,#1a5c38)", boxShadow: "inset 0 1px 2px rgba(255,255,255,0.15)" }} />
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div
+          key={serviceIndex}
+          style={{
+            fontSize: 10,
+            color: "#c9a84c",
+            letterSpacing: "0.1em",
+            fontWeight: 600,
+            textTransform: "uppercase",
+            animation: "maa-fade-in 0.35s ease",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            maxWidth: 180,
+            textOverflow: "ellipsis",
+            opacity: 0.85,
+          }}
+        >
+          {service}
+        </div>
+        <span style={{ fontSize: 9, color: "#a8b0c0", fontStyle: "italic", whiteSpace: "nowrap" }}>
+          {locale === "fr-CA" ? "· consultation en cours…" : "· consulting records…"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// Minimalist geometric bullet shapes — no emoji, purely typographic
+const BULLET_SHAPES = ["◆", "◆", "◆", "◆", "◆", "◆", "◆", "◆", "◆", "◆"];
+
+function getBulletIcon(index: number): string {
+  return BULLET_SHAPES[index % BULLET_SHAPES.length]!;
+}
+
+const PHONE_RE = /(\+?1?[\s.\-]?\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}(?:\s*(?:ext|poste|x)[\s.]?\d{1,4})?)/gi;
+
+// Render assistant message text with:
+// - bullet points (lines starting with •, -, *, or numbered) → gym icon + styled line
+// - phone numbers → clickable tel: links
+function RichMessageText({ text }: { text: string }) {
+  const lines = text.split("\n");
+
+  const elements: React.ReactNode[] = [];
+  let bulletIndex = 0;
+  let pendingParagraph: string[] = [];
+
+  function flushParagraph() {
+    if (pendingParagraph.length === 0) return;
+    const raw = pendingParagraph.join(" ").trim();
+    if (raw) elements.push(<span key={elements.length}>{renderInline(raw)}<br /></span>);
+    pendingParagraph = [];
+  }
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const bulletMatch = /^([•\-\*]|\d+[.)]) (.+)/.exec(trimmed);
+
+    if (bulletMatch) {
+      flushParagraph();
+      const content = bulletMatch[2]!;
+      const icon = getBulletIcon(bulletIndex++);
+      elements.push(
+        <div key={elements.length} style={{ display: "flex", alignItems: "baseline", gap: 8, margin: "4px 0" }}>
+          <span style={{ fontSize: 7, color: "#c9a84c", flexShrink: 0, position: "relative", top: -1, letterSpacing: 0 }}>{icon}</span>
+          <span style={{ lineHeight: 1.55, color: "#1a1a1a" }}>{renderInline(content)}</span>
+        </div>
+      );
+    } else if (trimmed === "") {
+      flushParagraph();
+      if (elements.length > 0) elements.push(<br key={elements.length} />);
+    } else {
+      pendingParagraph.push(trimmed);
+    }
+  }
+  flushParagraph();
+
+  return <>{elements}</>;
+}
+
+function renderInline(text: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  let last = 0;
+  let match: RegExpExecArray | null;
+  const re = new RegExp(PHONE_RE.source, "gi");
+  while ((match = re.exec(text)) !== null) {
+    if (match.index > last) parts.push(text.slice(last, match.index));
+    const raw = match[0]!;
+    const tel = raw.replace(/[^\d+]/g, "");
+    parts.push(
+      <a
+        key={match.index}
+        href={`tel:${tel}`}
+        style={{ color: "#1a6e3c", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(26,110,60,0.3)" }}
+      >
+        {raw}
+      </a>
+    );
+    last = match.index + raw.length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
 
 type ChatMessage = {
   id: string;
   role: "user" | "assistant" | "system";
   text: string;
+  kind?: "nudge";
 };
 
 type BookingPayload = {
@@ -89,44 +274,30 @@ function detectMessageLocale(
   const tokens = normalized.split(" ").filter(Boolean);
 
   const frenchSignals = [
-    // greetings
     "bonjour", "salut", "bonsoir", "allo", "coucou",
-    // polite / common
     "merci", "svp", "sil", "plaît",
-    // pronouns / articles / prepositions (unambiguous French)
     "je", "mon", "ma", "mes", "ce", "cette", "ces",
     "pour", "le", "la", "les", "un", "une", "des", "du", "au",
     "et", "est", "pas", "ne", "qui", "que", "quand", "avec", "sans",
     "en", "sur", "dans", "par",
-    // question words
     "ou", "quoi", "quels", "quelles", "quel", "quelle", "comment",
     "combien", "pourquoi",
-    // you forms
     "vous", "votre", "vos", "pouvez",
-    // club-specific French nouns
     "piscine", "cours", "rappel", "appel", "stationnement",
     "pres", "proche", "plus", "adresse", "horaire", "horaires",
     "abonnement", "tarif", "prix", "annulation",
   ];
 
   const englishSignals = [
-    // greetings
     "hello", "hi", "hey", "thanks", "please",
-    // question words (English-only)
     "what", "where", "how", "are", "is", "do", "can",
-    // location/proximity
     "near", "nearby", "closest", "exactly", "there", "from",
     "station", "parking",
-    // contact
     "phone", "call", "callback", "address",
-    // club topics (English-only spellings)
     "pool", "guys", "offer", "hours", "open",
     "membership", "fee", "price", "cost", "cancel", "policy", "guest",
-    // booking
     "book", "booking", "tour", "want", "would", "like", "need",
     "my", "your", "appointment", "class",
-    // NOTE: "yoga", "spa", "gym", "massage", "metro" intentionally excluded —
-    // identical or near-identical in French; not a reliable signal
   ];
 
   const countMatches = (signals: string[]): number =>
@@ -135,14 +306,8 @@ function detectMessageLocale(
   const frenchScore = countMatches(frenchSignals);
   const englishScore = countMatches(englishSignals);
 
-  if (englishScore > frenchScore) {
-    return "en-CA";
-  }
-
-  if (frenchScore > englishScore) {
-    return "fr-CA";
-  }
-
+  if (englishScore > frenchScore) return "en-CA";
+  if (frenchScore > englishScore) return "fr-CA";
   return previousLocale;
 }
 
@@ -150,11 +315,23 @@ function getApiBaseUrl(): string {
   if (typeof window === "undefined") {
     return "http://127.0.0.1:4000";
   }
-
   const host = window.location.hostname;
   return `http://${host}:4000`;
 }
 
+// Pill-style input shared style helper
+const pillInput = (extra?: React.CSSProperties): React.CSSProperties => ({
+  padding: "8px 14px",
+  borderRadius: 20,
+  border: "1px solid #d0d5dd",
+  background: "#ffffff",
+  color: "#1a1a1a",
+  fontSize: 13,
+  outline: "none",
+  width: "100%",
+  boxSizing: "border-box",
+  ...extra,
+});
 
 export function ChatShell({
   accentColor = "#1d4ed8",
@@ -163,6 +340,9 @@ export function ChatShell({
   accentColor?: string;
   mode?: "inline" | "floating";
 } = {}) {
+  // suppress unused accentColor warning — kept for API compatibility
+  void accentColor;
+
   const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
   const [locale, setLocale] = useState<"fr-CA" | "en-CA">("fr-CA");
 
@@ -185,33 +365,143 @@ export function ChatShell({
   const [callbackConsent, setCallbackConsent] = useState(false);
   const [isSubmittingCallback, setIsSubmittingCallback] = useState(false);
   const [showBookingCallbackFallback, setShowBookingCallbackFallback] = useState(false);
+  const [showLeadForm, setShowLeadForm] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [isCallingNow, setIsCallingNow] = useState(false);
 
+  // Dynamic suggested questions — fetched from API, fallback to static
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
+  useEffect(() => {
+    const apiBase = typeof window !== "undefined"
+      ? (window as unknown as Record<string, unknown>).__MAA_API_BASE__ as string | undefined ?? "http://localhost:4000"
+      : "http://localhost:4000";
+    fetch(`${apiBase}/v1/tenants/maa/popular-questions?days=30`)
+      .then((r) => r.json())
+      .then((data: { fr?: string[]; en?: string[] }) => {
+        const questions = locale === "fr-CA" ? (data.fr ?? []) : (data.en ?? []);
+        if (questions.length > 0) setSuggestedQuestions(questions.slice(0, 4));
+      })
+      .catch(() => {
+        // Fallback to hardcoded on fetch failure
+        setSuggestedQuestions(
+          locale === "fr-CA"
+            ? ["Quels sont vos tarifs ?", "C'est quoi les horaires de la piscine ?", "Offrez-vous des cours de groupe ?", "Comment vous joindre ?"]
+            : ["What are your membership fees?", "What are your pool hours?", "Do you offer group classes?", "How do I book a tour?"],
+        );
+      });
+  }, [locale]);
+
+  // Name capture state — persisted in localStorage per tenant
+  const STORAGE_KEY = "maa_concierge_user";
+
+  const [userName, setUserNameState] = useState<string | null>(null);
+  const [showNameCapture, setShowNameCapture] = useState(false);
+  const [nameInput, setNameInput] = useState("");
+
+  const defaultGreeting = locale === "fr-CA"
+    ? "Bonjour, bienvenue au Club Sportif MAA. Je suis votre concierge IA. Comment puis-je vous aider aujourd'hui ?"
+    : "Hello, welcome to Club Sportif MAA. I'm your AI concierge. How can I help you today?";
+
   const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: newId(),
-      role: "assistant",
-      text: "Bonjour — bienvenue au Club Sportif MAA. Je suis votre concierge IA. Comment puis-je vous aider aujourd'hui ?",
-    },
+    { id: newId(), role: "assistant", text: defaultGreeting },
   ]);
+
+  // Read localStorage only after mount to avoid SSR/client hydration mismatch
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const stored = JSON.parse(raw) as { name?: string; locale?: string };
+      if (stored.name) {
+        setUserNameState(stored.name);
+        const returningGreeting = locale === "fr-CA"
+          ? `Bon retour, ${stored.name} ! Comment puis-je vous aider aujourd'hui ?`
+          : `Welcome back, ${stored.name}! How can I help you today?`;
+        setMessages([{ id: newId(), role: "assistant", text: returningGreeting }]);
+      }
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function setUserName(name: string | null) {
+    setUserNameState(name);
+    if (name && !callbackName.trim()) setCallbackName(name);
+    try {
+      if (name) {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ name, locale }));
+      } else {
+        window.localStorage.removeItem(STORAGE_KEY);
+      }
+    } catch { /* ignore */ }
+  }
 
   const [lastResponse, setLastResponse] = useState<ChatApiResponse | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
 
+  // Pre-fill callback form fields as we learn more about the user
+  useEffect(() => {
+    if (userName && !callbackName.trim()) setCallbackName(userName);
+  }, [userName]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const userTexts = messages.filter((m) => m.role === "user").map((m) => m.text).join(" ");
+    if (!callbackPhone.trim()) {
+      const phoneMatch = userTexts.match(/(\+?1?\s*\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4})/);
+      if (phoneMatch) setCallbackPhone(phoneMatch[1]!.replace(/\s+/g, " ").trim());
+    }
+    if (!callbackEmail.trim()) {
+      const emailMatch = userTexts.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
+      if (emailMatch) setCallbackEmail(emailMatch[0]!);
+    }
+  }, [messages]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const canTransferCurrentChatByPhone = Boolean(lastResponse?.vapi?.handoffUrl);
+  const [showLoadingAnimation, setShowLoadingAnimation] = useState(false);
+  const [showInlineCallForm, setShowInlineCallForm] = useState(false);
+  const [nudgeIndex, setNudgeIndex] = useState(0);
+
+  useEffect(() => {
+    if (!isSending) {
+      setShowLoadingAnimation(false);
+      return;
+    }
+    const timer = setTimeout(() => setShowLoadingAnimation(true), 700);
+    return () => clearTimeout(timer);
+  }, [isSending]);
+
+  // Rotating proactive nudges during inactivity — first at 25s, then every 35s, max 5 total
+  useEffect(() => {
+    if (messages.length > 1 || nudgeIndex >= 5) return;
+    const delay = nudgeIndex === 0 ? 25000 : 35000;
+    const timer = setTimeout(() => {
+      const nudges = locale === "fr-CA" ? PROACTIVE_NUDGES_FR : PROACTIVE_NUDGES_EN;
+      const text = nudges[nudgeIndex % nudges.length]!;
+      setMessages((current) => [...current, { id: newId(), role: "assistant", text, kind: "nudge" }]);
+      setNudgeIndex((i) => i + 1);
+    }, delay);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nudgeIndex, locale]);
+
+  // Trigger name capture after first AI reply to user
+  useEffect(() => {
+    if (messages.length === 3 && !userName) {
+      setShowNameCapture(true);
+    }
+  }, [messages.length]);
 
   const vapiRef = useRef<Vapi | null>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isSending]);
 
   async function sendMessage(): Promise<void> {
     const trimmed = input.trim();
-
-    if (!trimmed || isSending) {
-      return;
-    }
+    if (!trimmed || isSending) return;
 
     const requestLocale = detectMessageLocale(trimmed, locale);
-
     setLocale(requestLocale);
     setErrorText(null);
     setIsSending(true);
@@ -220,26 +510,20 @@ export function ChatShell({
 
     setMessages((current) => [
       ...current,
-      {
-        id: newId(),
-        role: "user",
-        text: trimmed,
-      },
+      { id: newId(), role: "user", text: trimmed },
     ]);
-
     setInput("");
 
     try {
       const response = await fetch(`${apiBaseUrl}/v1/tenants/maa/chat`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: trimmed,
           locale: requestLocale,
           conversationId,
           dryRunPersistence: false,
+          userName: userName ?? undefined,
         }),
       });
 
@@ -262,27 +546,44 @@ export function ChatShell({
 
       setMessages((current) => [
         ...current,
-        {
-          id: newId(),
-          role: "assistant",
-          text: assistantText,
-        },
+        { id: newId(), role: "assistant", text: assistantText },
       ]);
+
+      // Sentiment routing: if user seems frustrated after 3+ turns, proactively offer callback
+      if (
+        body.followUpMode !== "callback" &&
+        body.followUpMode !== "vapi" &&
+        messages.filter((m) => m.role === "user").length >= 3
+      ) {
+        const frustrationSignals = [
+          "je ne comprends pas", "i don't understand", "c'est pas clair",
+          "not helpful", "pas utile", "can you just", "dites-moi juste",
+          "ça ne répond pas", "that doesn't answer",
+        ];
+        const lowerMsg = trimmed.toLowerCase();
+        if (frustrationSignals.some((s) => lowerMsg.includes(s))) {
+          setMessages((current) => [
+            ...current,
+            {
+              id: newId(),
+              role: "system",
+              text: requestLocale === "fr-CA"
+                ? "Souhaitez-vous qu'un membre de l'équipe vous rappelle pour répondre à vos questions ?"
+                : "Would you like a team member to call you back to answer your questions?",
+            },
+          ]);
+          setShowInlineCallForm(true);
+        }
+      }
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unknown chat error";
-
+      const message = error instanceof Error ? error.message : "Unknown chat error";
       setErrorText(message);
-
       setMessages((current) => [
         ...current,
         {
           id: newId(),
           role: "system",
-          text:
-            requestLocale === "fr-CA"
-              ? `Erreur: ${message}`
-              : `Error: ${message}`,
+          text: requestLocale === "fr-CA" ? `Erreur: ${message}` : `Error: ${message}`,
         },
       ]);
     } finally {
@@ -291,9 +592,7 @@ export function ChatShell({
   }
 
   async function handleContinueByPhone(): Promise<void> {
-    if (!lastResponse?.vapi?.handoffUrl || isLaunchingPhone) {
-      return;
-    }
+    if (!lastResponse?.vapi?.handoffUrl || isLaunchingPhone) return;
 
     setIsLaunchingPhone(true);
     setErrorText(null);
@@ -301,14 +600,10 @@ export function ChatShell({
     setPendingHandoffContext(null);
 
     try {
-      const handoffResponse = await fetch(
-        `${apiBaseUrl}${lastResponse.vapi.handoffUrl}`,
-      );
+      const handoffResponse = await fetch(`${apiBaseUrl}${lastResponse.vapi.handoffUrl}`);
 
       if (!handoffResponse.ok) {
-        throw new Error(
-          `Vapi handoff fetch failed with HTTP ${handoffResponse.status}`,
-        );
+        throw new Error(`Vapi handoff fetch failed with HTTP ${handoffResponse.status}`);
       }
 
       const handoff = (await handoffResponse.json()) as {
@@ -330,7 +625,6 @@ export function ChatShell({
           locale: typeof handoff.locale === "string" ? handoff.locale : locale,
         });
         setShowPhoneFallback(true);
-
         return;
       }
 
@@ -351,19 +645,16 @@ export function ChatShell({
               ? "L'appel web n'est pas disponible pour le moment."
               : "Web calling is not available right now.",
           );
-
           setMessages((current) => [
             ...current,
             {
               id: newId(),
               role: "system",
-              text:
-                locale === "fr-CA"
-                  ? "Je n'ai pas pu démarrer l'appel web. Je vous propose un appel IA."
-                  : "I couldn't start the web call. I'll connect you via an AI call instead.",
+              text: locale === "fr-CA"
+                ? "Je n'ai pas pu démarrer l'appel web. Je vous propose un appel IA."
+                : "I couldn't start the web call. I'll connect you via an AI call instead.",
             },
           ]);
-
           setPendingHandoffContext({
             summary: typeof handoff.summary === "string" ? handoff.summary : "",
             lastUserMessage: typeof handoff.lastUserMessage === "string" ? handoff.lastUserMessage : "",
@@ -376,22 +667,14 @@ export function ChatShell({
       try {
         const assistantOverrides = {
           variableValues: {
-            handoff_summary:
-              typeof handoff.summary === "string" ? handoff.summary : "",
-            handoff_locale:
-              typeof handoff.locale === "string" ? handoff.locale : locale,
-            handoff_last_user_message:
-              typeof handoff.lastUserMessage === "string"
-                ? handoff.lastUserMessage
-                : "",
+            handoff_summary: typeof handoff.summary === "string" ? handoff.summary : "",
+            handoff_locale: typeof handoff.locale === "string" ? handoff.locale : locale,
+            handoff_last_user_message: typeof handoff.lastUserMessage === "string" ? handoff.lastUserMessage : "",
             handoff_recent_turns: Array.isArray(handoff.recentTurns)
-              ? handoff.recentTurns
-                  .map((turn) => `${turn.role}: ${turn.content}`)
-                  .join(" | ")
+              ? handoff.recentTurns.map((turn) => `${turn.role}: ${turn.content}`).join(" | ")
               : "",
           },
         };
-
         await vapiRef.current.start(assistantId, assistantOverrides);
       } catch {
         setMessages((current) => [
@@ -399,10 +682,9 @@ export function ChatShell({
           {
             id: newId(),
             role: "system",
-            text:
-              locale === "fr-CA"
-                ? "Je n'ai pas pu démarrer l'appel web. Je vous propose un appel IA."
-                : "I couldn't start the web call. I'll connect you via an AI call instead.",
+            text: locale === "fr-CA"
+              ? "Je n'ai pas pu démarrer l'appel web. Je vous propose un appel IA."
+              : "I couldn't start the web call. I'll connect you via an AI call instead.",
           },
         ]);
         setPendingHandoffContext({
@@ -418,13 +700,11 @@ export function ChatShell({
         {
           id: newId(),
           role: "system",
-          text:
-            locale === "fr-CA"
-              ? "Je n'ai pas pu démarrer l'appel pour le moment."
-              : "I couldn't start the phone connection right now.",
+          text: locale === "fr-CA"
+            ? "Je n'ai pas pu démarrer l'appel pour le moment."
+            : "I couldn't start the phone connection right now.",
         },
       ]);
-
       setShowPhoneFallback(true);
     } finally {
       setIsLaunchingPhone(false);
@@ -432,30 +712,21 @@ export function ChatShell({
   }
 
   async function submitCallbackRequest(): Promise<void> {
-    if (!callbackPhone.trim() || !callbackConsent || isSubmittingCallback) {
-      return;
-    }
+    if (!callbackPhone.trim() || !callbackConsent || isSubmittingCallback) return;
 
     setIsSubmittingCallback(true);
     setErrorText(null);
     setShowPhoneFallback(false);
 
     const lastUserQuestion =
-      [...messages]
-        .reverse()
-        .find((message) => message.role === "user")?.text ?? "";
+      [...messages].reverse().find((message) => message.role === "user")?.text ?? "";
 
     try {
       const response = await fetch(`${apiBaseUrl}/v1/tenants/maa/chat`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message:
-            locale === "fr-CA"
-              ? "Je souhaite un rappel."
-              : "I would like a callback.",
+          message: locale === "fr-CA" ? "Je souhaite un rappel." : "I would like a callback.",
           locale,
           conversationId,
           dryRunPersistence: true,
@@ -475,40 +746,28 @@ export function ChatShell({
       }
 
       const body = (await response.json()) as ChatApiResponse;
-
       setConversationId(body.conversationId);
       setLastResponse(body);
       setShowBookingCallbackFallback(false);
-
       setMessages((current) => [
         ...current,
-        {
-          id: newId(),
-          role: "assistant",
-          text: body.assistantMessage,
-        },
+        { id: newId(), role: "assistant", text: body.assistantMessage },
       ]);
-
       setCallbackName("");
       setCallbackPhone("");
       setCallbackEmail("");
       setCallbackPreferredTime("");
       setCallbackConsent(false);
+      setShowLeadForm(false);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unknown callback error";
-
+      const message = error instanceof Error ? error.message : "Unknown callback error";
       setErrorText(message);
-
       setMessages((current) => [
         ...current,
         {
           id: newId(),
           role: "system",
-          text:
-            locale === "fr-CA"
-              ? `Erreur: ${message}`
-              : `Error: ${message}`,
+          text: locale === "fr-CA" ? `Erreur: ${message}` : `Error: ${message}`,
         },
       ]);
     } finally {
@@ -548,7 +807,6 @@ export function ChatShell({
     }
 
     const result = (await response.json()) as CallNowApiResponse;
-
     setMessages((current) => [
       ...current,
       { id: newId(), role: "assistant", text: result.message },
@@ -556,22 +814,20 @@ export function ChatShell({
   }
 
   async function submitCallNowRequest(): Promise<void> {
-    if (!callbackPhone.trim() || !callbackConsent || isCallingNow) {
-      return;
-    }
+    if (!callbackPhone.trim() || !callbackConsent || isCallingNow) return;
 
     setIsCallingNow(true);
     setErrorText(null);
     setShowPhoneFallback(false);
 
     const recentMessages = messages
-      .filter((message) => message.role === "user" || message.role === "assistant")
+      .filter((m) => m.role === "user" || m.role === "assistant")
       .slice(-6)
-      .map((message) => `${message.role === "user" ? "User" : "Assistant"}: ${message.text}`)
+      .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.text}`)
       .join(" | ");
 
     const lastUserQuestion =
-      [...messages].reverse().find((message) => message.role === "user")?.text ?? "";
+      [...messages].reverse().find((m) => m.role === "user")?.text ?? "";
 
     try {
       await requestOutboundCall({
@@ -585,20 +841,16 @@ export function ChatShell({
         handoffSource: "web_call_now",
       });
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unknown call now error";
-
+      const message = error instanceof Error ? error.message : "Unknown call now error";
       setErrorText(message);
-
       setMessages((current) => [
         ...current,
         {
           id: newId(),
           role: "system",
-          text:
-            locale === "fr-CA"
-              ? "Je n'ai pas pu démarrer l'appel immédiat pour le moment."
-              : "I couldn't start the immediate call right now.",
+          text: locale === "fr-CA"
+            ? "Je n'ai pas pu démarrer l'appel immédiat pour le moment."
+            : "I couldn't start the immediate call right now.",
         },
       ]);
     } finally {
@@ -607,9 +859,7 @@ export function ChatShell({
   }
 
   async function submitTransferCallNow(): Promise<void> {
-    if (!callbackPhone.trim() || !callbackConsent || isTransferCalling || !pendingHandoffContext) {
-      return;
-    }
+    if (!callbackPhone.trim() || !callbackConsent || isTransferCalling || !pendingHandoffContext) return;
 
     setIsTransferCalling(true);
     setErrorText(null);
@@ -622,24 +872,19 @@ export function ChatShell({
         chatSummary: pendingHandoffContext.summary || undefined,
         handoffSource: "web_transfer_phone",
       });
-
       setPendingHandoffContext(null);
       setShowPhoneFallback(false);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unknown transfer call error";
-
+      const message = error instanceof Error ? error.message : "Unknown transfer call error";
       setErrorText(message);
-
       setMessages((current) => [
         ...current,
         {
           id: newId(),
           role: "system",
-          text:
-            pendingHandoffContext.locale === "fr-CA"
-              ? "Je n'ai pas pu démarrer l'appel pour le moment."
-              : "I couldn't start the call right now.",
+          text: pendingHandoffContext.locale === "fr-CA"
+            ? "Je n'ai pas pu démarrer l'appel pour le moment."
+            : "I couldn't start the call right now.",
         },
       ]);
     } finally {
@@ -661,123 +906,483 @@ export function ChatShell({
         showBookingCallbackFallback)) &&
     !lastResponse?.callbackPersistence?.saved;
 
+  // ── Keyframe CSS injected once ──────────────────────────────────────────────
+  const globalCss = `
+    @keyframes maa-msg-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes maa-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    @keyframes maa-lift {
+      0%   { transform: translateY(0px) rotate(0deg); }
+      30%  { transform: translateY(-5px) rotate(-4deg); }
+      50%  { transform: translateY(-7px) rotate(0deg); }
+      70%  { transform: translateY(-5px) rotate(4deg); }
+      100% { transform: translateY(0px) rotate(0deg); }
+    }
+    @keyframes maa-fade-in {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 0.85; transform: translateY(0); }
+    }
+  `;
+
   const widget = (
     <section
       style={{
-        border: "1px solid #e5e7eb",
+        background: "#f7f8f9",
         borderRadius: 20,
-        padding: 20,
-        background: "white",
-        maxWidth: 860,
-        width: "100%",
-        boxSizing: "border-box",
-        boxShadow: "0 8px 40px rgba(0,0,0,0.35)",
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
+        border: "1px solid #d0d5dd",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
       }}
     >
+      <style>{globalCss}</style>
+
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div
         style={{
+          background: "linear-gradient(135deg, #0a1f14 0%, #0d2a1a 100%)",
+          borderBottom: "1px solid #1a3020",
+          padding: "14px 16px",
           display: "flex",
-          justifyContent: "space-between",
           alignItems: "center",
-          gap: 12,
-          marginBottom: 8,
+          justifyContent: "space-between",
         }}
       >
-        <strong>{locale === "fr-CA" ? "Concierge IA MAA" : "MAA AI Concierge"}</strong>
+        {/* Left: badge + text */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: 12,
+              background: "#ffffff",
+              boxShadow: "0 2px 12px rgba(201,168,76,0.25)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+              overflow: "hidden",
+              padding: 4,
+            }}
+          >
+            <img
+              src="https://www.clubsportifmaa.com/wp-content/uploads/2021/01/club-sportif-maa-logo.svg"
+              alt="MAA"
+              style={{ width: 34, height: 34, objectFit: "contain" }}
+            />
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <span style={{ color: "#f0f5f2", fontWeight: 700, fontSize: 14, letterSpacing: "0.02em" }}>
+              {locale === "fr-CA" ? "Concierge · MAA" : "MAA Concierge"}
+            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: "50%",
+                  background: "#4caf7a",
+                  animation: "maa-pulse 2s infinite",
+                  flexShrink: 0,
+                }}
+              />
+              <span style={{ color: "#4caf7a", fontSize: 11 }}>
+                {locale === "fr-CA" ? "En ligne" : "Online"}
+              </span>
+            </div>
+          </div>
+        </div>
 
-        <button
-          type="button"
-          onClick={() => void handleContinueByPhone()}
-          disabled={!canTransferCurrentChatByPhone || isLaunchingPhone}
-          style={{
-            padding: "10px 14px",
-            borderRadius: 10,
-            border: "none",
-            background: accentColor,
-            color: "white",
-            cursor:
-              !canTransferCurrentChatByPhone || isLaunchingPhone ? "default" : "pointer",
-            opacity: !canTransferCurrentChatByPhone || isLaunchingPhone ? 0.6 : 1,
-            whiteSpace: "nowrap",
-          }}
-        >
-          {isLaunchingPhone
-            ? locale === "fr-CA"
-              ? "Lancement..."
-              : "Launching..."
-            : locale === "fr-CA"
-              ? "Transférer au téléphone"
-              : "Transfer to phone"}
-        </button>
+        {/* Right: phone transfer button */}
+        {canTransferCurrentChatByPhone ? (
+          <button
+            type="button"
+            onClick={() => { setShowInlineCallForm(true); setShowPhoneFallback(false); }}
+            style={{
+              borderRadius: 20,
+              padding: "7px 14px",
+              background: "linear-gradient(135deg, #1a5c38, #2a7c50)",
+              border: "1px solid #2a7c50",
+              color: "white",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {locale === "fr-CA" ? "📞 Appel IA" : "📞 AI Call"}
+          </button>
+        ) : null}
       </div>
 
+      {/* ── Subtitle bar ───────────────────────────────────────────────────── */}
       <div
         style={{
-          fontSize: 13,
-          color: "#6b7280",
-          marginBottom: 12,
+          padding: "6px 16px 8px",
+          background: "#f0f5f2",
+          color: "#5a7a6a",
+          fontSize: 11,
+          letterSpacing: "0.08em",
         }}
       >
         {locale === "fr-CA"
-          ? "Vous pouvez continuer cette conversation par téléphone à tout moment."
-          : "You can continue this conversation by phone at any time."}
+          ? "Votre concierge IA est disponible 24h/24, 7j/7."
+          : "Your AI concierge is available 24/7."}
       </div>
 
+      {/* ── Messages area ──────────────────────────────────────────────────── */}
       <div
+        data-msg-count={messages.length}
         style={{
-          border: "1px solid #e5e7eb",
-          borderRadius: 12,
-          padding: 12,
-          minHeight: 320,
-          background: "#fafafa",
-          marginBottom: 12,
+          background: "#f7f8f9",
+          padding: 16,
+          minHeight: 300,
+          maxHeight: mode === "floating" ? (showLeadForm ? 120 : 380) : 400,
+          overflowY: "auto",
+          display: "flex",
+          flexDirection: "column",
+          gap: 4,
         }}
       >
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            style={{
-              marginBottom: 10,
-              display: "flex",
-              justifyContent:
-                message.role === "user" ? "flex-end" : "flex-start",
-            }}
-          >
+        {messages.map((message) => {
+          if (message.role === "user") {
+            return (
+              <div
+                key={message.id}
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  marginBottom: 8,
+                  animation: "maa-msg-in 0.25s ease",
+                }}
+              >
+                <div
+                  style={{
+                    maxWidth: "75%",
+                    padding: "10px 16px",
+                    borderRadius: "20px 20px 4px 20px",
+                    background: "linear-gradient(135deg, #c9a84c 0%, #a07830 100%)",
+                    color: "#1a1a1a",
+                    fontSize: 14,
+                    fontWeight: 500,
+                    lineHeight: 1.4,
+                    whiteSpace: "pre-wrap",
+                  }}
+                >
+                  {message.text}
+                </div>
+              </div>
+            );
+          }
+
+          if (message.role === "assistant") {
+            const isNudge = message.kind === "nudge";
+            const hasPricingSignal =
+              message.text.includes("$") ||
+              message.text.toLowerCase().includes("abonnement") ||
+              message.text.toLowerCase().includes("membership");
+            return (
+              <div key={message.id}>
+                {isNudge && (
+                  <div style={{ display: "flex", alignItems: "center", marginBottom: 4, marginLeft: 34 }}>
+                    <span style={{
+                      display: "inline-flex", alignItems: "center", gap: 4,
+                      background: "linear-gradient(90deg, #c9a84c, #e8c96e)",
+                      color: "#1a1200", fontSize: 9, fontWeight: 800,
+                      letterSpacing: "0.12em", padding: "2px 8px",
+                      borderRadius: 20, textTransform: "uppercase",
+                    }}>
+                      ✦ {locale === "fr-CA" ? "Conseil Privilège" : "Member Insight"}
+                    </span>
+                  </div>
+                )}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 8,
+                    marginBottom: hasPricingSignal ? 2 : 8,
+                    animation: "maa-msg-in 0.25s ease",
+                  }}
+                >
+                  {/* Mini avatar */}
+                  <div
+                    style={{
+                      width: 26,
+                      height: 26,
+                      borderRadius: 8,
+                      background: "#ffffff",
+                      border: "1px solid #e8dfc8",
+                      boxShadow: "0 1px 4px rgba(201,168,76,0.15)",
+                      flexShrink: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      overflow: "hidden",
+                      padding: 3,
+                    }}
+                  >
+                    <img
+                      src="https://www.clubsportifmaa.com/wp-content/uploads/2021/01/club-sportif-maa-logo.svg"
+                      alt="MAA"
+                      style={{ width: 20, height: 20, objectFit: "contain" }}
+                    />
+                  </div>
+                  <div
+                    style={{
+                      maxWidth: "80%",
+                      padding: "10px 14px",
+                      borderRadius: "4px 20px 20px 20px",
+                      background: "#ffffff",
+                      border: "1px solid #e8eaed",
+                      boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+                      color: "#1a1a1a",
+                      fontSize: 14,
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    <RichMessageText text={message.text} />
+                  </div>
+                </div>
+                {/* Smart post-pricing CTA */}
+                {hasPricingSignal ? (
+                  <div style={{ marginLeft: 34, marginBottom: 8 }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const bookingText = locale === "fr-CA"
+                          ? "Je souhaite planifier une visite des installations."
+                          : "I'd like to schedule a tour of the facilities.";
+                        setInput(bookingText);
+                        setTimeout(() => {
+                          const sendBtn = document.querySelector<HTMLButtonElement>("[data-send-btn]");
+                          sendBtn?.click();
+                        }, 30);
+                      }}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        padding: "2px 0",
+                        cursor: "pointer",
+                        fontSize: 12,
+                        color: "#a07830",
+                        textDecoration: "none",
+                      }}
+                    >
+                      {locale === "fr-CA"
+                        ? "Vous souhaitez voir nos installations ? → Planifier une visite"
+                        : "Want to see our facilities? → Schedule a tour"}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            );
+          }
+
+          // system
+          return (
             <div
+              key={message.id}
               style={{
-                maxWidth: "80%",
-                padding: "10px 12px",
-                borderRadius: 12,
-                background:
-                  message.role === "user"
-                    ? "#111827"
-                    : message.role === "assistant"
-                      ? "#e5f3ff"
-                      : "#f3f4f6",
-                color: message.role === "user" ? "white" : "#111827",
-                whiteSpace: "pre-wrap",
+                display: "flex",
+                justifyContent: "center",
+                marginBottom: 8,
               }}
             >
-              {message.text}
+              <span
+                style={{
+                  padding: "4px 12px",
+                  borderRadius: 20,
+                  background: "#f0f2f5",
+                  border: "1px solid #e0e3e8",
+                  color: "#7a8a96",
+                  fontSize: 11,
+                  fontStyle: "italic",
+                }}
+              >
+                {message.text}
+              </span>
             </div>
-          </div>
-        ))}
+          );
+        })}
+
+        {showLoadingAnimation && <GymLoadingIndicator locale={locale} />}
+        <div ref={bottomRef} />
       </div>
 
+      {/* ── Suggested questions (shown only on first message) ─────────────── */}
+      {messages.length === 1 && suggestedQuestions.length > 0 && (
+        <div
+          style={{
+            margin: "0 16px 10px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+            animation: "maa-msg-in 0.4s ease",
+          }}
+        >
+          <div style={{ fontSize: 10, color: "#8a90a0", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 600, paddingLeft: 2, marginBottom: 2 }}>
+            {locale === "fr-CA" ? "Questions fréquentes" : "Popular questions"}
+          </div>
+          {suggestedQuestions.map((q) => (
+            <button
+              key={q}
+              type="button"
+              onClick={() => {
+                setInput(q);
+                // Let React update input state, then submit
+                setTimeout(() => {
+                  const sendBtn = document.querySelector<HTMLButtonElement>("[data-send-btn]");
+                  sendBtn?.click();
+                }, 30);
+              }}
+              style={{
+                background: "#f0f2f5",
+                border: "1px solid #e0e3e8",
+                borderRadius: 10,
+                color: "#1a1a1a",
+                fontSize: 12,
+                padding: "7px 12px",
+                textAlign: "left",
+                cursor: "pointer",
+                transition: "border-color 0.2s, background 0.2s",
+                lineHeight: 1.4,
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(201,168,76,0.5)";
+                (e.currentTarget as HTMLButtonElement).style.background = "#e8ebe0";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.borderColor = "#e0e3e8";
+                (e.currentTarget as HTMLButtonElement).style.background = "#f0f2f5";
+              }}
+            >
+              {q}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ── Name capture card ──────────────────────────────────────────────── */}
+      {showNameCapture && !userName ? (
+        <div
+          style={{
+            margin: "0 16px 12px",
+            padding: "14px 16px",
+            borderRadius: 16,
+            background: "#ffffff",
+            border: "1px solid rgba(201,168,76,0.4)",
+            boxShadow: "0 1px 6px rgba(201,168,76,0.1)",
+            animation: "maa-msg-in 0.3s ease",
+          }}
+        >
+          <div style={{ color: "#c9a84c", fontSize: 13, fontWeight: 600, marginBottom: 10 }}>
+            {locale === "fr-CA"
+              ? "Au fait, quel est votre prénom ?"
+              : "By the way, what's your name?"}
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <input
+              style={{ ...pillInput(), flex: 1 }}
+              placeholder={locale === "fr-CA" ? "Votre prénom..." : "Your first name..."}
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && nameInput.trim()) {
+                  const name = nameInput.trim();
+                  setUserName(name);
+                  setShowNameCapture(false);
+                  setNameInput("");
+                  setMessages((m) => [
+                    ...m,
+                    {
+                      id: newId(),
+                      role: "assistant",
+                      text:
+                        locale === "fr-CA"
+                          ? `Merci, ${name} ! N'hésitez pas à me poser vos questions.`
+                          : `Nice to meet you, ${name}! Feel free to ask me anything.`,
+                    },
+                  ]);
+                }
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const name = nameInput.trim();
+                if (!name) return;
+                setUserName(name);
+                setShowNameCapture(false);
+                setNameInput("");
+                setMessages((m) => [
+                  ...m,
+                  {
+                    id: newId(),
+                    role: "assistant",
+                    text:
+                      locale === "fr-CA"
+                        ? `Merci, ${name} ! N'hésitez pas à me poser vos questions.`
+                        : `Nice to meet you, ${name}! Feel free to ask me anything.`,
+                  },
+                ]);
+              }}
+              style={{
+                padding: "8px 16px",
+                borderRadius: 20,
+                background: "linear-gradient(135deg, #c9a84c, #a07830)",
+                border: "none",
+                color: "#0a1a0f",
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {locale === "fr-CA" ? "Continuer" : "Continue"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowNameCapture(false)}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#3d5e4a",
+                fontSize: 12,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {locale === "fr-CA" ? "Passer" : "Skip"}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {/* ── Action area ────────────────────────────────────────────────────── */}
+
+      {/* Booking button */}
       {showBookingButton ? (
-        <div style={{ marginBottom: 12 }}>
+        <div style={{ margin: "0 16px 12px", display: "flex", flexWrap: "wrap", gap: 8 }}>
           <a
             href={lastResponse!.booking.bookingUrl!}
             target="_blank"
             rel="noreferrer"
             style={{
               display: "inline-block",
-              padding: "10px 14px",
-              borderRadius: 10,
-              background: "#0f766e",
+              padding: "10px 18px",
+              borderRadius: 20,
+              background: "linear-gradient(135deg, #0f766e, #0d5c55)",
               color: "white",
               textDecoration: "none",
-              marginRight: 8,
+              fontWeight: 600,
+              fontSize: 14,
             }}
           >
             {locale === "fr-CA" ? "Planifier une visite" : "Book a tour"}
@@ -789,7 +1394,7 @@ export function ChatShell({
               style={{
                 background: "none",
                 border: "none",
-                color: "#6b7280",
+                color: "#6b8c7a",
                 fontSize: 13,
                 cursor: "pointer",
                 padding: "10px 4px",
@@ -802,66 +1407,140 @@ export function ChatShell({
         </div>
       ) : null}
 
-      {showPhoneButton ? (
-        <div style={{ marginBottom: 12 }}>
+      {/* Phone button (before inline form) */}
+      {showPhoneButton && !showInlineCallForm ? (
+        <div style={{ margin: "0 16px 12px" }}>
           <button
             type="button"
-            onClick={handleContinueByPhone}
-            disabled={isLaunchingPhone}
+            onClick={() => { setShowInlineCallForm(true); setShowPhoneFallback(false); }}
             style={{
-              padding: "10px 14px",
-              borderRadius: 10,
-              background: accentColor,
-              color: "white",
+              padding: 12,
+              borderRadius: 12,
+              background: "linear-gradient(135deg, #1a5c38, #2a7c50)",
               border: "none",
-              cursor: isLaunchingPhone ? "default" : "pointer",
+              color: "white",
+              fontWeight: 600,
+              fontSize: 14,
+              cursor: "pointer",
+              width: "100%",
             }}
           >
-            {isLaunchingPhone
-              ? locale === "fr-CA"
-                ? "Lancement..."
-                : "Launching..."
-              : lastResponse?.vapi?.buttonLabel ??
-                (locale === "fr-CA"
-                  ? "Continuer par téléphone"
-                  : "Continue by phone")}
+            {lastResponse?.vapi?.buttonLabel ??
+              (locale === "fr-CA" ? "📞 Continuer par téléphone" : "📞 Continue by phone")}
           </button>
         </div>
       ) : null}
 
+      {/* Inline call form */}
+      {(showPhoneButton || canTransferCurrentChatByPhone) && showInlineCallForm ? (
+        <div
+          style={{
+            margin: "0 16px 12px",
+            padding: 16,
+            borderRadius: 16,
+            background: "#ffffff",
+            border: "1px solid #e0e3e8",
+            boxShadow: "0 1px 6px rgba(0,0,0,0.06)",
+          }}
+        >
+          <div style={{ color: "#1a1a1a", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
+            {"📞 " + (locale === "fr-CA" ? "L'IA vous rappelle" : "The AI calls you back")}
+          </div>
+          <div style={{ fontSize: 12, color: "#5a7a6a", marginBottom: 12 }}>
+            {locale === "fr-CA"
+              ? "Entrez votre numéro et votre concierge IA vous appellera dans quelques secondes."
+              : "Enter your number and your AI concierge will call you in seconds."}
+          </div>
+          <div style={{ display: "grid", gap: 8 }}>
+            <input
+              value={callbackName}
+              onChange={(e) => setCallbackName(e.target.value)}
+              placeholder={locale === "fr-CA" ? "Votre nom (optionnel)" : "Your name (optional)"}
+              style={pillInput()}
+            />
+            <input
+              value={callbackPhone}
+              onChange={(e) => setCallbackPhone(e.target.value)}
+              placeholder={locale === "fr-CA" ? "Votre numéro de téléphone *" : "Your phone number *"}
+              type="tel"
+              style={pillInput()}
+            />
+            <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: "#8aab96", cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={callbackConsent}
+                onChange={(e) => setCallbackConsent(e.target.checked)}
+              />
+              <span>
+                {locale === "fr-CA"
+                  ? "J'accepte d'être contacté par Club Sportif MAA."
+                  : "I agree to be contacted by Club Sportif MAA."}
+              </span>
+            </label>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <button
+                type="button"
+                onClick={() => void submitCallNowRequest()}
+                disabled={isCallingNow || !callbackPhone.trim() || !callbackConsent}
+                style={{
+                  padding: "10px 18px",
+                  borderRadius: 20,
+                  border: "none",
+                  background: "linear-gradient(135deg, #c9a84c, #a07830)",
+                  color: "#0a1a0f",
+                  fontWeight: 700,
+                  fontSize: 13,
+                  cursor: isCallingNow || !callbackPhone.trim() || !callbackConsent ? "default" : "pointer",
+                  opacity: isCallingNow || !callbackPhone.trim() || !callbackConsent ? 0.6 : 1,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {isCallingNow
+                  ? (locale === "fr-CA" ? "Appel en cours..." : "Calling...")
+                  : (locale === "fr-CA" ? "Appelez-moi maintenant" : "Call me now")}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowInlineCallForm(false); setCallbackPhone(""); setCallbackName(""); setCallbackConsent(false); }}
+                style={{ background: "none", border: "none", color: "#3d5e4a", fontSize: 12, cursor: "pointer" }}
+              >
+                {locale === "fr-CA" ? "Annuler" : "Cancel"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Phone fallback */}
       {showPhoneFallback ? (
         <div
           style={{
-            marginBottom: 12,
-            padding: 12,
-            border: "1px solid #e5e7eb",
-            borderRadius: 12,
-            background: "#fafafa",
+            margin: "0 16px 12px",
+            padding: 16,
+            borderRadius: 16,
+            background: "#ffffff",
+            border: "1px solid #e0e3e8",
+            boxShadow: "0 1px 6px rgba(0,0,0,0.06)",
           }}
         >
           {pendingHandoffContext ? (
             <>
-              <div style={{ fontWeight: 600, marginBottom: 10 }}>
-                {locale === "fr-CA" ? "Laissez l'IA vous appeler" : "Let the AI call you"}
+              <div style={{ color: "#1a1a1a", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
+                {"📞 " + (locale === "fr-CA" ? "Laissez l'IA vous appeler" : "Let the AI call you")}
               </div>
-
               <div style={{ display: "grid", gap: 8 }}>
                 <input
                   value={callbackPhone}
-                  onChange={(event) => setCallbackPhone(event.target.value)}
+                  onChange={(e) => setCallbackPhone(e.target.value)}
                   placeholder={locale === "fr-CA" ? "Votre numéro de téléphone *" : "Your phone number *"}
-                  style={{
-                    padding: "10px 12px",
-                    borderRadius: 10,
-                    border: "1px solid #d1d5db",
-                  }}
+                  type="tel"
+                  style={pillInput()}
                 />
-
-                <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: "#8aab96", cursor: "pointer" }}>
                   <input
                     type="checkbox"
                     checked={callbackConsent}
-                    onChange={(event) => setCallbackConsent(event.target.checked)}
+                    onChange={(e) => setCallbackConsent(e.target.checked)}
                   />
                   <span>
                     {locale === "fr-CA"
@@ -869,51 +1548,48 @@ export function ChatShell({
                       : "I agree to be contacted by the Club Sportif MAA team."}
                   </span>
                 </label>
-
-                <button
-                  type="button"
-                  onClick={() => void submitTransferCallNow()}
-                  disabled={isTransferCalling || !callbackPhone.trim() || !callbackConsent}
-                  style={{
-                    padding: "10px 14px",
-                    borderRadius: 10,
-                    border: "none",
-                    background: accentColor,
-                    color: "white",
-                    cursor:
-                      isTransferCalling || !callbackPhone.trim() || !callbackConsent
-                        ? "default"
-                        : "pointer",
-                  }}
-                >
-                  {isTransferCalling
-                    ? locale === "fr-CA"
-                      ? "Appel en cours..."
-                      : "Calling now..."
-                    : locale === "fr-CA"
-                      ? "Appelez-moi maintenant"
-                      : "Call me now"}
-                </button>
-
-                {lastResponse?.vapi?.phoneNumber ? (
-                  <a
-                    href={`tel:${lastResponse.vapi.phoneNumber}`}
-                    style={{ fontSize: 13, color: "#6b7280", textAlign: "center" }}
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <button
+                    type="button"
+                    onClick={() => void submitTransferCallNow()}
+                    disabled={isTransferCalling || !callbackPhone.trim() || !callbackConsent}
+                    style={{
+                      padding: "10px 18px",
+                      borderRadius: 20,
+                      border: "none",
+                      background: "linear-gradient(135deg, #c9a84c, #a07830)",
+                      color: "#0a1a0f",
+                      fontWeight: 700,
+                      fontSize: 13,
+                      cursor: isTransferCalling || !callbackPhone.trim() || !callbackConsent ? "default" : "pointer",
+                      opacity: isTransferCalling || !callbackPhone.trim() || !callbackConsent ? 0.6 : 1,
+                      whiteSpace: "nowrap",
+                    }}
                   >
-                    {locale === "fr-CA" ? "Ou composer directement" : "Or dial directly"}
-                  </a>
-                ) : null}
+                    {isTransferCalling
+                      ? (locale === "fr-CA" ? "Appel en cours..." : "Calling now...")
+                      : (locale === "fr-CA" ? "Appelez-moi maintenant" : "Call me now")}
+                  </button>
+                  {lastResponse?.vapi?.phoneNumber ? (
+                    <a
+                      href={`tel:${lastResponse.vapi.phoneNumber}`}
+                      style={{ fontSize: 12, color: "#3d5e4a" }}
+                    >
+                      {locale === "fr-CA" ? "Ou composer directement" : "Or dial directly"}
+                    </a>
+                  ) : null}
+                </div>
               </div>
             </>
           ) : (
-            <div style={{ color: "#b91c1c" }}>
+            <div style={{ color: "#e87a6b", fontSize: 13 }}>
               {locale === "fr-CA"
                 ? "Le contexte du transfert est manquant."
                 : "Transfer context is unavailable."}
               {lastResponse?.vapi?.phoneNumber ? (
                 <>
                   {" "}
-                  <a href={`tel:${lastResponse.vapi.phoneNumber}`}>
+                  <a href={`tel:${lastResponse.vapi.phoneNumber}`} style={{ color: "#e87a6b" }}>
                     {locale === "fr-CA" ? "Composer directement" : "Dial directly"}
                   </a>
                 </>
@@ -923,78 +1599,56 @@ export function ChatShell({
         </div>
       ) : null}
 
+      {/* Callback form */}
       {showCallbackForm ? (
         <div
           style={{
-            marginBottom: 12,
-            padding: 12,
-            border: "1px solid #e5e7eb",
-            borderRadius: 12,
-            background: "#fafafa",
+            margin: "0 16px 12px",
+            padding: 16,
+            borderRadius: 16,
+            background: "#ffffff",
+            border: "1px solid #e0e3e8",
+            boxShadow: "0 1px 6px rgba(0,0,0,0.06)",
           }}
         >
-          <div style={{ fontWeight: 600, marginBottom: 10 }}>
+          <div style={{ color: "#1a1a1a", fontWeight: 700, fontSize: 15, marginBottom: 12 }}>
             {locale === "fr-CA" ? "Demander un rappel" : "Request a callback"}
           </div>
-
           <div style={{ display: "grid", gap: 8 }}>
             <input
               value={callbackName}
-              onChange={(event) => setCallbackName(event.target.value)}
+              onChange={(e) => setCallbackName(e.target.value)}
               placeholder={locale === "fr-CA" ? "Nom (optionnel)" : "Name (optional)"}
-              style={{
-                padding: "10px 12px",
-                borderRadius: 10,
-                border: "1px solid #d1d5db",
-              }}
+              style={pillInput()}
             />
-
             <input
               value={callbackPhone}
-              onChange={(event) => setCallbackPhone(event.target.value)}
+              onChange={(e) => setCallbackPhone(e.target.value)}
               placeholder={locale === "fr-CA" ? "Téléphone *" : "Phone *"}
-              style={{
-                padding: "10px 12px",
-                borderRadius: 10,
-                border: "1px solid #d1d5db",
-              }}
+              type="tel"
+              style={pillInput()}
             />
-
             <input
               value={callbackEmail}
-              onChange={(event) => setCallbackEmail(event.target.value)}
-              placeholder={
-                locale === "fr-CA"
-                  ? "Courriel (optionnel)"
-                  : "Email (optional)"
-              }
-              style={{
-                padding: "10px 12px",
-                borderRadius: 10,
-                border: "1px solid #d1d5db",
-              }}
+              onChange={(e) => setCallbackEmail(e.target.value)}
+              placeholder={locale === "fr-CA" ? "Courriel (optionnel)" : "Email (optional)"}
+              style={pillInput()}
             />
-
             <input
               value={callbackPreferredTime}
-              onChange={(event) => setCallbackPreferredTime(event.target.value)}
+              onChange={(e) => setCallbackPreferredTime(e.target.value)}
               placeholder={
                 locale === "fr-CA"
                   ? "Moment préféré pour le rappel (optionnel)"
                   : "Preferred callback time (optional)"
               }
-              style={{
-                padding: "10px 12px",
-                borderRadius: 10,
-                border: "1px solid #d1d5db",
-              }}
+              style={pillInput()}
             />
-
-            <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+            <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: "#8aab96", cursor: "pointer" }}>
               <input
                 type="checkbox"
                 checked={callbackConsent}
-                onChange={(event) => setCallbackConsent(event.target.checked)}
+                onChange={(e) => setCallbackConsent(e.target.checked)}
               />
               <span>
                 {locale === "fr-CA"
@@ -1002,111 +1656,183 @@ export function ChatShell({
                   : "I agree to be contacted by the Club Sportif MAA team."}
               </span>
             </label>
-
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button
                 type="button"
                 onClick={() => void submitCallbackRequest()}
-                disabled={
-                  isSubmittingCallback || !callbackPhone.trim() || !callbackConsent
-                }
+                disabled={isSubmittingCallback || !callbackPhone.trim() || !callbackConsent}
                 style={{
-                  padding: "10px 14px",
-                  borderRadius: 10,
+                  padding: "10px 18px",
+                  borderRadius: 20,
                   border: "none",
-                  background: "#0f766e",
+                  background: "linear-gradient(135deg, #1a5c38, #2a7c50)",
                   color: "white",
-                  cursor:
-                    isSubmittingCallback || !callbackPhone.trim() || !callbackConsent
-                      ? "default"
-                      : "pointer",
+                  fontWeight: 700,
+                  fontSize: 13,
+                  cursor: isSubmittingCallback || !callbackPhone.trim() || !callbackConsent ? "default" : "pointer",
+                  opacity: isSubmittingCallback || !callbackPhone.trim() || !callbackConsent ? 0.6 : 1,
+                  whiteSpace: "nowrap",
                 }}
               >
                 {isSubmittingCallback
-                  ? locale === "fr-CA"
-                    ? "Envoi..."
-                    : "Submitting..."
-                  : locale === "fr-CA"
-                    ? "Envoyer la demande"
-                    : "Send request"}
+                  ? (locale === "fr-CA" ? "Envoi..." : "Submitting...")
+                  : (locale === "fr-CA" ? "Envoyer la demande" : "Send request")}
               </button>
-
               <button
                 type="button"
                 onClick={() => void submitCallNowRequest()}
                 disabled={isCallingNow || !callbackPhone.trim() || !callbackConsent}
                 style={{
-                  padding: "10px 14px",
-                  borderRadius: 10,
+                  padding: "10px 18px",
+                  borderRadius: 20,
                   border: "none",
-                  background: accentColor,
-                  color: "white",
-                  cursor:
-                    isCallingNow || !callbackPhone.trim() || !callbackConsent
-                      ? "default"
-                      : "pointer",
+                  background: "linear-gradient(135deg, #c9a84c, #a07830)",
+                  color: "#0a1a0f",
+                  fontWeight: 700,
+                  fontSize: 13,
+                  cursor: isCallingNow || !callbackPhone.trim() || !callbackConsent ? "default" : "pointer",
+                  opacity: isCallingNow || !callbackPhone.trim() || !callbackConsent ? 0.6 : 1,
+                  whiteSpace: "nowrap",
                 }}
               >
                 {isCallingNow
-                  ? locale === "fr-CA"
-                    ? "Appel en cours..."
-                    : "Calling now..."
-                  : locale === "fr-CA"
-                    ? "Appelez-moi maintenant"
-                    : "Call me now"}
+                  ? (locale === "fr-CA" ? "Appel en cours..." : "Calling now...")
+                  : (locale === "fr-CA" ? "Appelez-moi maintenant" : "Call me now")}
               </button>
             </div>
           </div>
         </div>
       ) : null}
 
-      {errorText ? (
-        <div style={{ color: "#b91c1c", marginBottom: 12 }}>{errorText}</div>
+      {/* Persistent lead capture form */}
+      {showLeadForm && !lastResponse?.callbackPersistence?.saved ? (
+        <div style={{ margin: "0 16px 12px", padding: 16, borderRadius: 16, background: "#ffffff", border: "1px solid rgba(201,168,76,0.35)", boxShadow: "0 1px 8px rgba(201,168,76,0.08)", animation: "maa-msg-in 0.25s ease" }}>
+          <div style={{ color: "#c9a84c", fontWeight: 700, fontSize: 14, marginBottom: 4 }}>
+            {locale === "fr-CA" ? "Laissez-nous vos coordonnées" : "Leave us your contact info"}
+          </div>
+          <div style={{ color: "#5a7a6a", fontSize: 11, marginBottom: 12 }}>
+            {locale === "fr-CA" ? "Un membre de l'équipe MAA vous contactera sous peu." : "A Club Sportif MAA team member will reach out shortly."}
+          </div>
+          <div style={{ display: "grid", gap: 8 }}>
+            <input value={callbackName} onChange={(e) => setCallbackName(e.target.value)} placeholder={locale === "fr-CA" ? "Votre nom (optionnel)" : "Your name (optional)"} style={pillInput()} />
+            <input value={callbackPhone} onChange={(e) => setCallbackPhone(e.target.value)} placeholder={locale === "fr-CA" ? "Téléphone *" : "Phone *"} type="tel" style={pillInput()} />
+            <input value={callbackEmail} onChange={(e) => setCallbackEmail(e.target.value)} placeholder={locale === "fr-CA" ? "Courriel (optionnel)" : "Email (optional)"} style={pillInput()} />
+            <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: "#8aab96", cursor: "pointer" }}>
+              <input type="checkbox" checked={callbackConsent} onChange={(e) => setCallbackConsent(e.target.checked)} />
+              <span>{locale === "fr-CA" ? "J'accepte d'être contacté par Club Sportif MAA." : "I agree to be contacted by Club Sportif MAA."}</span>
+            </label>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => void submitCallbackRequest()}
+                disabled={isSubmittingCallback || !callbackPhone.trim() || !callbackConsent}
+                style={{ padding: "10px 18px", borderRadius: 20, border: "none", background: "linear-gradient(135deg, #c9a84c, #a07830)", color: "#0a1a0f", fontWeight: 700, fontSize: 13, cursor: isSubmittingCallback || !callbackPhone.trim() || !callbackConsent ? "default" : "pointer", opacity: isSubmittingCallback || !callbackPhone.trim() || !callbackConsent ? 0.6 : 1 }}
+              >
+                {isSubmittingCallback ? (locale === "fr-CA" ? "Envoi..." : "Sending...") : (locale === "fr-CA" ? "Envoyer" : "Send")}
+              </button>
+              <button type="button" onClick={() => setShowLeadForm(false)} style={{ background: "none", border: "none", color: "#3d5e4a", fontSize: 12, cursor: "pointer" }}>
+                {locale === "fr-CA" ? "Fermer" : "Close"}
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
 
-      <div style={{ display: "flex", gap: 8 }}>
+      {/* Error display */}
+      {errorText ? (
+        <div
+          style={{
+            margin: "0 16px 8px",
+            padding: "8px 12px",
+            borderRadius: 10,
+            background: "#1f0f0f",
+            border: "1px solid rgba(232,122,107,0.2)",
+            color: "#e87a6b",
+            fontSize: 13,
+          }}
+        >
+          {errorText}
+        </div>
+      ) : null}
+
+      {/* ── Input area ─────────────────────────────────────────────────────── */}
+      <div
+        style={{
+          padding: "12px 16px",
+          background: "#ffffff",
+          borderTop: "1px solid #e0e3e8",
+          display: "flex",
+          gap: 8,
+          alignItems: "center",
+        }}
+      >
         <input
           value={input}
-          onChange={(event) => setInput(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
               void sendMessage();
             }
           }}
-          placeholder={
-            locale === "fr-CA"
-              ? "Posez votre question..."
-              : "Ask your question..."
-          }
+          placeholder={locale === "fr-CA" ? "Votre message..." : "Your message..."}
           style={{
             flex: 1,
-            padding: "10px 12px",
-            borderRadius: 10,
-            border: "1px solid #d1d5db",
+            padding: "12px 18px",
+            borderRadius: 24,
+            border: "1px solid #e0e3e8",
+            background: "#ffffff",
+            color: "#1a1a1a",
+            fontSize: 14,
+            outline: "none",
           }}
         />
         <button
           type="button"
+          data-send-btn
           onClick={() => void sendMessage()}
           disabled={isSending}
           style={{
-            padding: "10px 14px",
-            borderRadius: 10,
+            width: 46,
+            height: 46,
+            borderRadius: "50%",
             border: "none",
-            background: "#111827",
-            color: "white",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
             cursor: isSending ? "default" : "pointer",
+            background: isSending
+              ? "#e0e3e8"
+              : "linear-gradient(135deg, #c9a84c, #a07830)",
+            color: isSending ? "#aab0bc" : "#1a1a1a",
+            fontSize: 18,
+            transition: "background 0.2s",
           }}
         >
-          {isSending
-            ? locale === "fr-CA"
-              ? "Envoi..."
-              : "Sending..."
-            : locale === "fr-CA"
-              ? "Envoyer"
-              : "Send"}
+          →
         </button>
+      </div>
+
+      {/* ── Footer: lead capture link + DUBUB ─────────────────────────────── */}
+      <div style={{ padding: "6px 16px 8px", background: "#f7f8f9", borderTop: "1px solid #e8eaed", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <button
+          type="button"
+          onClick={() => { setShowLeadForm((v) => !v); setShowInlineCallForm(false); setShowPhoneFallback(false); }}
+          style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#c9a84c", fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textDecoration: "underline", textUnderlineOffset: 2 }}
+        >
+          {locale === "fr-CA" ? "Laisser mes coordonnées" : "Leave my contact info"}
+        </button>
+        <a
+          href="https://dubub.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: "#aab0bc", fontSize: 10, letterSpacing: "0.06em", textDecoration: "none" }}
+        >
+          IA concierge par{" "}
+          <strong style={{ color: "#7a82a0", fontWeight: 700 }}>DUBUB</strong>
+          <span style={{ color: "#c9a84c", fontWeight: 700 }}>.com</span>
+        </a>
       </div>
     </section>
   );
@@ -1123,35 +1849,40 @@ export function ChatShell({
             position: "fixed",
             bottom: 24,
             right: 24,
-            width: 56,
-            height: 56,
+            width: 60,
+            height: 60,
             borderRadius: "50%",
-            background: accentColor,
-            border: "none",
-            color: "white",
-            fontSize: 24,
-            cursor: "pointer",
+            background: "linear-gradient(135deg, #c9a84c, #a07830)",
+            border: "2px solid rgba(201,168,76,0.3)",
+            boxShadow: "0 4px 24px rgba(201,168,76,0.35)",
             zIndex: 9999,
-            boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+            cursor: "pointer",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             lineHeight: 1,
           }}
         >
-          {isOpen ? "✕" : "💬"}
+          {isOpen ? (
+            <span style={{ color: "#0a1a0f", fontSize: 20, fontWeight: 700, lineHeight: 1 }}>✕</span>
+          ) : (
+            <span style={{ color: "#0a1f14", fontWeight: 900, fontSize: 22, lineHeight: 1 }}>M</span>
+          )}
         </button>
 
-        {/* Chat panel */}
+        {/* Floating panel */}
         {isOpen ? (
           <div
             style={{
               position: "fixed",
-              bottom: 92,
+              bottom: 96,
               right: 24,
               width: "min(420px, calc(100vw - 48px))",
-              maxHeight: "calc(100vh - 120px)",
+              maxHeight: "calc(100vh - 128px)",
               zIndex: 9998,
+              borderRadius: 20,
+              overflow: "auto",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,168,76,0.15)",
               display: "flex",
               flexDirection: "column",
             }}

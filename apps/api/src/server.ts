@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import { resolveDirectCoreFactResponse } from "./core-facts.js";
+import { sendLeadNotificationEmail } from "./services/email-notifications.js";
 import { loadApprovedSourceRegistry } from "@platform/config";
 import {
   answerMaaChat,
@@ -18,6 +19,7 @@ import {
   isChatPersistenceConfigured,
   listConversationsForAnalytics,
   listMessagesByConversationUuid,
+  listRecentUserMessagesForTenant,
   newUuid,
   updateConversation,
 } from "./ingestion/nocodb.js";
@@ -42,6 +44,7 @@ type ChatRouteBody = {
   conversationId?: string;
   callback?: CallbackCaptureBody;
   dryRunPersistence?: boolean;
+  userName?: string;
 };
 
 type ChatHistoryEntry = NonNullable<MaaChatRequest["conversationHistory"]>[number];
@@ -246,13 +249,13 @@ function buildPopupBookingSuccessMessage(
 ): string {
   if (isFrenchLocale(locale)) {
     return allowCallbackFallback
-      ? "Avec plaisir. Cliquez sur le bouton ci-dessous pour accéder à notre page — vous y trouverez le formulaire pour planifier votre visite. Vous préférez qu'on vous contacte ? Je peux aussi prendre vos coordonnées ici."
-      : "Avec plaisir. Cliquez sur le bouton ci-dessous pour accéder à notre page — vous y trouverez le formulaire pour planifier votre visite.";
+      ? "Avec plaisir. Cliquez sur le bouton ci-dessous pour planifier votre visite. Vous préférez qu'on vous contacte ? Je peux aussi prendre vos coordonnées ici."
+      : "Avec plaisir. Cliquez sur le bouton ci-dessous pour planifier votre visite.";
   }
 
   return allowCallbackFallback
-    ? "Happy to help with that. Click the button below to visit our booking page — you'll find the tour scheduling widget right there. Prefer to have us reach out instead? I can capture your contact info here."
-    : "Happy to help with that. Click the button below to visit our booking page — you'll find the tour scheduling widget right there.";
+    ? "Happy to help. Click the button below to visit our booking page and schedule your visit. Prefer to have us reach out instead? I can capture your contact info here."
+    : "Happy to help. Click the button below to visit our booking page and schedule your visit.";
 }
 function buildBookingUnavailableMessage(
   locale: string | null,
@@ -274,13 +277,13 @@ function buildVapiContinuationMessage(
 ): string {
   if (isFrenchLocale(locale)) {
     return fallbackToCallback
-      ? "Bien sûr — utilisez le bouton ci-dessous pour continuer par téléphone. Je peux aussi vous rappeler si vous préférez."
-      : "Bien sûr — utilisez le bouton ci-dessous pour continuer cette conversation par téléphone.";
+      ? "Bien sûr. Utilisez le bouton ci-dessous pour continuer par téléphone. Je peux aussi vous rappeler si vous préférez."
+      : "Bien sûr. Utilisez le bouton ci-dessous pour continuer cette conversation par téléphone.";
   }
 
   return fallbackToCallback
-    ? "Of course — use the button below to continue by phone. I can also arrange a callback if you prefer."
-    : "Of course — use the button below to continue this conversation by phone.";
+    ? "Sure. Use the button below to continue by phone. I can also arrange a callback if you prefer."
+    : "Sure. Use the button below to continue this conversation by phone.";
 }
 
 function buildVapiUnavailableMessage(
@@ -599,11 +602,14 @@ export function createServer() {
       locale,
     });
 
+    const userName = typeof body.userName === "string" && body.userName.trim() ? body.userName.trim() : null;
+
     const chatRequest: MaaChatRequest = {
       userMessage: trimmedMessage,
       locale: locale ?? undefined,
       maxResults: body.maxResults,
       conversationHistory,
+      userName: userName ?? undefined,
     };
 
     const result =
@@ -854,6 +860,25 @@ export function createServer() {
         );
         responseFollowUpMode = "callback";
         responseCitations = [];
+
+        // Fire lead email even in dry-run (e.g. when NocoDB not configured)
+        const notifyEmailDry = process.env.LEAD_NOTIFY_EMAIL ?? "";
+        if (notifyEmailDry) {
+          setImmediate(() => {
+            sendLeadNotificationEmail({
+              name: toNullableTrimmedString(body.callback?.name),
+              phone: callbackPhone!,
+              email: toNullableTrimmedString(body.callback?.email),
+              preferredTime: preferredTimeText,
+              locale: locale ?? "fr-CA",
+              questionSummary: toNullableTrimmedString(body.callback?.questionSummary) ?? trimmedMessage,
+              conversationId: conversationId ?? null,
+              tenantName: "Club Sportif MAA",
+              notifyEmail: notifyEmailDry,
+            }).catch((err) => request.log.error({ err }, "Lead email (dry-run) failed"));
+          });
+        }
+
         return;
       }
 
@@ -897,6 +922,24 @@ export function createServer() {
         );
         responseFollowUpMode = "callback";
         responseCitations = [];
+
+        // Fire lead notification email in background — do not block response
+        const notifyEmail = process.env.LEAD_NOTIFY_EMAIL ?? "";
+        if (notifyEmail) {
+          setImmediate(() => {
+            sendLeadNotificationEmail({
+              name: toNullableTrimmedString(body.callback?.name),
+              phone: callbackPhone!,
+              email: toNullableTrimmedString(body.callback?.email),
+              preferredTime: preferredTimeText,
+              locale: locale ?? "fr-CA",
+              questionSummary: toNullableTrimmedString(body.callback?.questionSummary) ?? trimmedMessage,
+              conversationId: conversationId ?? null,
+              tenantName: "Club Sportif MAA",
+              notifyEmail,
+            }).catch((err) => request.log.error({ err }, "Lead email failed"));
+          });
+        }
       } catch (error) {
         callbackPersistence.error =
           error instanceof Error ? error.message : "Unknown callback persistence error";
@@ -934,74 +977,71 @@ export function createServer() {
         );
         persistence.saved = true;
       } else {
-        try {
-          const resolvedTenantUuid = await getTenantUuid();
+        // Fire persistence in background — do not block the response
+        const capturedConversationId = conversationId ?? newUuid();
+        conversationId = capturedConversationId;
+        persistence.saved = true; // optimistic — errors logged only
+        if (hasCallbackPayload) callbackPersistence.saved = true; // optimistic
 
-          if (isNewConversation) {
-            if (!conversationId) {
-              conversationId = newUuid();
+        setImmediate(() => {
+          void (async () => {
+            try {
+              const resolvedTenantUuid = await getTenantUuid();
+
+              if (isNewConversation) {
+                await createConversation({
+                  uuid: capturedConversationId,
+                  tenant_uuid: resolvedTenantUuid,
+                  channel: "web_chat",
+                  locale,
+                  status: "open",
+                  started_at: now,
+                  updated_at: now,
+                });
+              }
+
+              await createMessage({
+                uuid: newUuid(),
+                tenant_uuid: resolvedTenantUuid,
+                conversation_uuid: capturedConversationId,
+                role: "user",
+                content: trimmedMessage,
+                locale,
+              });
+
+              await persistCallbackRequest();
+
+              await createMessage({
+                uuid: newUuid(),
+                tenant_uuid: resolvedTenantUuid,
+                conversation_uuid: capturedConversationId,
+                role: "assistant",
+                content: responseAssistantMessage,
+                locale,
+                source_refs_json: JSON.stringify(responseCitations),
+                tool_calls_json: JSON.stringify({
+                  follow_up_mode: responseFollowUpMode,
+                  retrieval: result.retrieval,
+                }),
+              });
+
+              await updateConversationOutcome({
+                uuid: capturedConversationId,
+                tenantUuid: resolvedTenantUuid,
+                followUpMode: responseFollowUpMode,
+                userMessage: trimmedMessage,
+                assistantMessage: responseAssistantMessage,
+                locale,
+                now,
+              });
+            } catch (error) {
+              request.log.error(
+                { err: error, tenantId, conversationId: capturedConversationId },
+                "Failed to persist chat turn (background)",
+              );
             }
-
-            await createConversation({
-              uuid: conversationId,
-              tenant_uuid: resolvedTenantUuid,
-              channel: "web_chat",
-              locale,
-              status: "open",
-              started_at: now,
-              updated_at: now,
-            });
-          }
-
-          await createMessage({
-            uuid: newUuid(),
-            tenant_uuid: resolvedTenantUuid,
-            conversation_uuid: conversationId!,
-            role: "user",
-            content: trimmedMessage,
-            locale,
-          });
-
-          await persistCallbackRequest();
-
-          await createMessage({
-            uuid: newUuid(),
-            tenant_uuid: resolvedTenantUuid,
-            conversation_uuid: conversationId!,
-            role: "assistant",
-            content: responseAssistantMessage,
-            locale,
-            source_refs_json: JSON.stringify(responseCitations),
-            tool_calls_json: JSON.stringify({
-              follow_up_mode: responseFollowUpMode,
-              retrieval: result.retrieval,
-            }),
-          });
-
-          await updateConversationOutcome({
-            uuid: conversationId!,
-            tenantUuid: resolvedTenantUuid,
-            followUpMode: responseFollowUpMode,
-            userMessage: trimmedMessage,
-            assistantMessage: responseAssistantMessage,
-            locale,
-            now,
-          });
-
-          persistence.saved = true;
-        } catch (error) {
-          persistence.error =
-            error instanceof Error ? error.message : "Unknown persistence error";
-
-          request.log.error(
-            {
-              err: error,
-              tenantId,
-              conversationId,
-            },
-            "Failed to persist chat turn",
-          );
-        }
+          })();
+        });
       }
     } else if (hasCallbackPayload) {
       await persistCallbackRequest();
@@ -1081,6 +1121,85 @@ export function createServer() {
     } catch (error) {
       request.log.error({ err: error }, "Analytics query failed");
       return reply.code(500).send({ error: "analytics_failed" });
+    }
+  });
+
+  app.get("/v1/tenants/:tenantId/popular-questions", async (request, reply) => {
+    const { tenantId } = request.params as TenantRouteParams;
+
+    if (tenantId !== "maa") {
+      return reply.code(404).send({ error: "tenant_not_supported" });
+    }
+
+    const daysParam = (request.query as Record<string, string>).days;
+    const days = Math.min(Math.max(parseInt(daysParam ?? "30", 10) || 30, 1), 90);
+
+    // Static fallbacks used when no message history yet or persistence not configured
+    const staticFallbacksFr = [
+      "Quels sont vos tarifs d'abonnement ?",
+      "C'est quoi les horaires de la piscine ?",
+      "Offrez-vous des cours de pilates ?",
+      "Comment réserver une visite ?",
+      "Où êtes-vous situés ?",
+    ];
+    const staticFallbacksEn = [
+      "What are your membership fees?",
+      "What are your pool hours?",
+      "Do you offer pilates classes?",
+      "How do I book a tour?",
+      "Where are you located?",
+    ];
+
+    if (!isChatPersistenceConfigured()) {
+      return { tenantId, days, fr: staticFallbacksFr, en: staticFallbacksEn };
+    }
+
+    try {
+      const tenant = await findTenantByCode("maa");
+      const messages = await listRecentUserMessagesForTenant(tenant.uuid, days, 500);
+
+      // Very short or single-word messages are noise (greetings, "ok", etc.)
+      const meaningful = messages.filter((m) => (m.content ?? "").trim().split(/\s+/).length >= 4);
+
+      // Bucket by rough topic using simple keyword matching
+      const frMessages = meaningful.filter((m) => m.locale?.startsWith("fr") ?? false);
+      const enMessages = meaningful.filter((m) => !(m.locale?.startsWith("fr") ?? false));
+
+      function topN(msgs: typeof meaningful, n: number): string[] {
+        // Deduplicate near-identical messages by normalizing
+        const seen = new Map<string, { original: string; count: number }>();
+        for (const m of msgs) {
+          const key = (m.content ?? "")
+            .toLowerCase()
+            .replace(/[^a-zàâçéèêëîïôûùüÿœ0-9\s]/gi, "")
+            .replace(/\s+/g, " ")
+            .trim()
+            .slice(0, 80);
+          if (!key) continue;
+          const existing = seen.get(key);
+          if (existing) {
+            existing.count += 1;
+          } else {
+            seen.set(key, { original: (m.content ?? "").trim(), count: 1 });
+          }
+        }
+        return [...seen.values()]
+          .sort((a, b) => b.count - a.count)
+          .slice(0, n)
+          .map((v) => v.original);
+      }
+
+      const topFr = topN(frMessages, 5);
+      const topEn = topN(enMessages, 5);
+
+      return {
+        tenantId,
+        days,
+        fr: topFr.length >= 3 ? topFr : staticFallbacksFr,
+        en: topEn.length >= 3 ? topEn : staticFallbacksEn,
+      };
+    } catch {
+      return { tenantId, days, fr: staticFallbacksFr, en: staticFallbacksEn };
     }
   });
 
@@ -1167,6 +1286,20 @@ export function createServer() {
       chatSummary ??
       resolvedQuestionSummary;
 
+    // Short, topic-neutral first message — context is injected as a system message instead.
+    // Keeping this brief prevents Deepgram from re-transcribing it into garbled "bot" turns.
+    const buildFirstMessage = (): string => {
+      const fr = isFrenchLocale(locale);
+      const greet = name
+        ? (fr ? `Bonjour ${name}` : `Hello ${name}`)
+        : (fr ? "Bonjour" : "Hello");
+      return fr
+        ? `${greet} ! Ici votre concierge du Club Sportif MAA. Comment puis-je vous aider ?`
+        : `${greet}! This is your concierge at Club Sportif MAA. How can I help you?`;
+    };
+
+    // Inject the web chat context as a silent system message so the AI knows what was discussed
+    // without speaking it aloud (which Deepgram would transcribe back with errors).
     if (!assistantId || !phoneNumberId || !apiKey) {
       if (isDryRun) {
         return {
@@ -1175,8 +1308,8 @@ export function createServer() {
           provider: "vapi",
           requestId: newUuid(),
           message: isFrenchLocale(locale)
-            ? `Parfait — nous vous appellerons bientôt au ${normalizedPhone}.`
-            : `Perfect — we will call you shortly at ${normalizedPhone}.`,
+            ? `Parfait, nous vous appellerons bientôt au ${normalizedPhone}.`
+            : `Perfect, we will call you shortly at ${normalizedPhone}.`,
           dryRun: true,
         };
       }
@@ -1200,6 +1333,10 @@ export function createServer() {
           assistantId,
           phoneNumberId,
           assistantOverrides: {
+            firstMessage: buildFirstMessage(),
+            startSpeakingPlan: {
+              waitSeconds: 0.1,
+            },
             variableValues: {
               customer_name: name ?? "",
               customer_phone: normalizedPhone,
@@ -1248,8 +1385,8 @@ export function createServer() {
         provider: "vapi",
         requestId: payload.id ?? newUuid(),
         message: isFrenchLocale(locale)
-          ? `Parfait — nous vous appelons maintenant au ${normalizedPhone}.`
-          : `Perfect — we are calling you now at ${normalizedPhone}.`,
+          ? `Parfait, nous vous appelons maintenant au ${normalizedPhone}.`
+          : `Perfect, we are calling you now at ${normalizedPhone}.`,
         dryRun: false,
       };
     } catch (error) {
@@ -1269,6 +1406,312 @@ export function createServer() {
           : "We could not start the call immediately.",
       });
     }
+  });
+
+  // ─── AI Feedback / Quality review ────────────────────────────────────────────
+  // In-memory store — persists for the lifetime of the process.
+  // For production: replace with NocoDB writes when NOCODB_TABLE_AI_FEEDBACK is set.
+  interface FeedbackRecord {
+    id: string;
+    tenantId: string;
+    conversationId: string | null;
+    userMessage: string;
+    aiResponse: string;
+    verdict: "correct" | "incorrect" | "custom";
+    correctedResponse: string | null;
+    aiAlternatives: string[];
+    reviewedAt: string;
+  }
+  const feedbackStore: FeedbackRecord[] = [];
+
+  app.get("/v1/tenants/:tenantId/recent-conversations", async (request, reply) => {
+    const { tenantId } = request.params as TenantRouteParams;
+    if (tenantId !== "maa") return reply.code(404).send({ error: "tenant_not_supported" });
+
+    if (!isChatPersistenceConfigured()) {
+      return reply.code(503).send({ error: "persistence_not_configured" });
+    }
+
+    try {
+      const tenant = await findTenantByCode("maa");
+      const conversations = await listConversationsForAnalytics(tenant.uuid, 7);
+      const recent = conversations.slice(0, 20);
+
+      const withMessages = await Promise.all(
+        recent.map(async (conv) => {
+          try {
+            const msgs = await listMessagesByConversationUuid(conv.uuid ?? "", 6);
+            return { ...conv, messages: msgs };
+          } catch {
+            return { ...conv, messages: [] };
+          }
+        }),
+      );
+
+      return { tenantId, conversations: withMessages };
+    } catch (error) {
+      request.log.error({ err: error }, "Recent conversations query failed");
+      return reply.code(500).send({ error: "query_failed" });
+    }
+  });
+
+  app.post("/v1/tenants/:tenantId/feedback", async (request, reply) => {
+    const { tenantId } = request.params as TenantRouteParams;
+    if (tenantId !== "maa") return reply.code(404).send({ error: "tenant_not_supported" });
+
+    const body = (request.body ?? {}) as {
+      conversationId?: string;
+      userMessage?: string;
+      aiResponse?: string;
+      verdict?: "correct" | "incorrect" | "custom";
+      correctedResponse?: string;
+    };
+
+    if (!body.verdict || !body.userMessage || !body.aiResponse) {
+      return reply.code(400).send({ error: "verdict, userMessage and aiResponse are required" });
+    }
+
+    let aiAlternatives: string[] = [];
+
+    // When verdict is incorrect and no custom correction, generate 2 AI alternatives
+    if (body.verdict === "incorrect" && !body.correctedResponse) {
+      try {
+        const { generateAlternatives } = await import("./services/maa-chat.js");
+        aiAlternatives = await generateAlternatives(body.userMessage, body.aiResponse);
+      } catch {
+        aiAlternatives = [];
+      }
+    }
+
+    const record: FeedbackRecord = {
+      id: newUuid(),
+      tenantId,
+      conversationId: body.conversationId ?? null,
+      userMessage: body.userMessage,
+      aiResponse: body.aiResponse,
+      verdict: body.verdict,
+      correctedResponse: body.correctedResponse ?? null,
+      aiAlternatives,
+      reviewedAt: new Date().toISOString(),
+    };
+
+    feedbackStore.push(record);
+    if (feedbackStore.length > 500) feedbackStore.splice(0, feedbackStore.length - 500);
+
+    return { ok: true, id: record.id, aiAlternatives };
+  });
+
+  app.get("/v1/tenants/:tenantId/feedback", async (request, reply) => {
+    const { tenantId } = request.params as TenantRouteParams;
+    if (tenantId !== "maa") return reply.code(404).send({ error: "tenant_not_supported" });
+    return { tenantId, feedback: feedbackStore.slice().reverse().slice(0, 100) };
+  });
+
+  // ─── VAPI tool-call webhook ──────────────────────────────────────────────────
+  // VAPI calls this endpoint when the phone AI invokes the "lookup_maa_info" tool.
+  // The tool gives the phone AI access to the full MAA knowledge base, so it can
+  // answer any question the chat system can answer.
+  // Fast deterministic answers for the most common phone questions — no AI call needed
+  function vapiQuickAnswer(question: string, locale: string): string | null {
+    const q = question.toLowerCase();
+    const fr = isFrenchLocale(locale);
+
+    if (/adresse|address|located|where are you|où êtes-vous|où vous trouve/.test(q))
+      return fr
+        ? "Nous sommes au 2070, rue Peel, au centre-ville de Montréal, à 5 minutes à pied de la station de métro Peel."
+        : "We are at 2070 Peel Street in downtown Montreal, a 5-minute walk from Peel metro station.";
+
+    if (/téléphone|phone number|numéro|comment vous joindre|how to reach|call you/.test(q))
+      return fr
+        ? "Vous pouvez nous joindre au 514 845-2233, poste 234."
+        : "You can reach us at (514) 845-2233, extension 234.";
+
+    if (/fondé|fondée|founded|depuis quand|how old|1881|history|histoire|heritage/.test(q))
+      return fr
+        ? "Le Club Sportif MAA a été fondé en 1881. C'est l'un des clubs sportifs les plus anciens et les plus prestigieux de Montréal."
+        : "Club Sportif MAA was founded in 1881, making it one of Montreal's oldest and most prestigious athletic clubs.";
+
+    if (/(club|gym|fitness|entraînement|what do you offer|qu'est-ce que vous offrez|services?)$/.test(q) || /what is (the )?club|c'est quoi le club/.test(q))
+      return fr
+        ? "Le Club Sportif MAA offre l'entraînement, une piscine intérieure de 25 mètres, des cours de groupe, le squash, le spa, la massothérapie, la physiothérapie et le restaurant Le 1881."
+        : "Club Sportif MAA offers fitness training, a 25m indoor pool, group classes, squash, a spa, massage therapy, physiotherapy, and restaurant Le 1881.";
+
+    if (/heure(s)? (d[''])?ouverture|opening hours|what time do you open|when do you open|ouvrez/.test(q) && !/piscine|pool|spa|squash/.test(q))
+      return fr
+        ? "Le club est ouvert du lundi au vendredi de 6h à 22h, et les fins de semaine de 7h à 19h. La piscine et le spa ont des horaires différents."
+        : "The club is open Monday to Friday from 6am to 10pm, and weekends from 7am to 7pm. The pool and spa have separate hours.";
+
+    if (/piscine|pool/.test(q) && !/heure|horaire|ouvert|open|hours|schedule/.test(q))
+      return fr
+        ? "Oui, le Club Sportif MAA dispose d'une piscine intérieure de 25 mètres, incluse dans tous les abonnements. Elle est ouverte du lundi au vendredi de 7h à 20h, et les fins de semaine de 7h à 17h."
+        : "Yes, Club Sportif MAA has a 25-metre indoor pool included with all memberships. It's open Monday to Friday from 7am to 8pm, and weekends from 7am to 5pm.";
+
+    if (/piscine|pool/.test(q) && /heure|horaire|ouvert|open|hours|schedule/.test(q))
+      return fr
+        ? "La piscine est ouverte du lundi au vendredi de 7h à 20h, et les fins de semaine de 7h à 17h. Nous vous recommandons d'appeler pour confirmer."
+        : "The pool is open Monday to Friday from 7am to 8pm, and weekends from 7am to 5pm. We recommend calling to confirm.";
+
+    if (/spa/.test(q) && /heure|horaire|ouvert|open|hours|schedule/.test(q))
+      return fr
+        ? "Le spa est ouvert du lundi au vendredi de 9h à 19h, et les fins de semaine de 11h à 15h."
+        : "The spa is open Monday to Friday from 9am to 7pm, and weekends from 11am to 3pm.";
+
+    if (/pilates/.test(q))
+      return fr
+        ? "Nous offrons des cours de Pilates sur appareils dans un studio dédié — reformers, chaises et tables trapézoïdales. Les cours sont en petits groupes de 4 personnes maximum, tous niveaux, avec 8 à 10 séances par semaine."
+        : "We offer equipment-based Pilates in a dedicated studio with reformers, chairs and trapeze tables. Classes run in groups of up to 4, all levels welcome, with 8 to 10 sessions per week.";
+
+    if (/yoga/.test(q))
+      return fr
+        ? "Nous offrons des cours de yoga dans notre studio de cours de groupe. Consultez notre horaire en ligne ou appelez le 514 845-2233 pour les créneaux disponibles."
+        : "We offer yoga classes in our group class studio. Check our schedule online or call (514) 845-2233 for available times.";
+
+    if (/cours|classes|groupe|group|zumba|spinning|aqua/.test(q) && !/horaire|schedule|heure|hour/.test(q))
+      return fr
+        ? "Nous offrons plus de 50 cours de groupe par semaine : Pilates, yoga, Zumba, aquaforme, spinning, et plus encore. Tous niveaux bienvenus. Appelez le 514 845-2233 pour l'horaire complet."
+        : "We offer over 50 group classes per week: Pilates, yoga, Zumba, aqua fitness, spinning, and more. All levels welcome. Call (514) 845-2233 for the full schedule.";
+
+    if (/prix|tarif|abonnement|combien|membership|pricing|fee|cost|coute|coûte/.test(q))
+      return fr
+        ? "Nos abonnements annuels sont à 225 dollars par mois. Le tarif senior, pour 70 ans et plus, est de 185 dollars par mois. L'abonnement étudiant, pour 25 ans et moins, est de 195 dollars par mois. L'abonnement mensuel sans engagement est de 295 dollars par mois. Les frais d'initiation sont présentement offerts gratuitement. Les tarifs peuvent changer — nous vous recommandons d'appeler le 514 845-2233, poste 234 pour confirmer."
+        : "Our annual membership is $225 per month. The senior rate, for ages 70 and up, is $185 per month. The student rate, for ages 25 and under, is $195 per month. Month-to-month is $295 per month. There is currently no initiation fee. Rates may change — we recommend calling (514) 845-2233, extension 234 to confirm.";
+
+    return null; // No quick answer — fall through to full AI
+  }
+
+  app.post("/v1/vapi/tool", async (request, reply) => {
+    type ToolCall = { id: string; function: { name: string; arguments: string | Record<string, unknown> } };
+    const body = request.body as {
+      message?: { toolCallList?: ToolCall[] };
+      toolCallList?: ToolCall[];
+      // VAPI also sends flat params directly when tool is called
+      question?: string;
+      locale?: string;
+    };
+
+    // Log full body so we can diagnose format mismatches
+    request.log.info({ vapiToolBody: JSON.stringify(body).slice(0, 1000) }, "VAPI tool call received");
+
+    // Flat direct call (VAPI UI-built function tools send params at root level)
+    if (!body?.message?.toolCallList && !body?.toolCallList && body?.question) {
+      const question = body.question ?? "";
+      const locale = (body.locale as "fr-CA" | "en-CA" | undefined) ?? "fr-CA";
+      const quick = vapiQuickAnswer(question, locale);
+      if (quick) return reply.send({ result: quick });
+      try {
+        const chatResponse = await answerMaaChat({ userMessage: question, locale, maxResults: 5, conversationHistory: [] });
+        const answer = chatResponse.assistantMessage.replace(/\n\n+/g, " ").replace(/\n/g, " ").replace(/[•◆\-\*] /g, "").trim().slice(0, 350);
+        return reply.send({ result: answer });
+      } catch {
+        return reply.send({ result: locale === "fr-CA" ? "Je n'ai pas pu trouver l'information. Je vous suggère d'appeler le 514 845-2233, poste 234." : "I couldn't retrieve that. Please call (514) 845-2233, ext. 234." });
+      }
+    }
+
+    const toolCalls = body?.message?.toolCallList ?? body?.toolCallList ?? [];
+    if (!toolCalls.length) return reply.code(400).send({ error: "no_tool_calls" });
+
+    const results: { toolCallId: string; result: string }[] = [];
+
+    for (const call of toolCalls) {
+      if (call.function.name !== "lookup_maa_info") {
+        results.push({ toolCallId: call.id, result: "Unknown tool." });
+        continue;
+      }
+
+      let args: { question?: string; locale?: string } = {};
+      try {
+        args = typeof call.function.arguments === "string"
+          ? JSON.parse(call.function.arguments)
+          : (call.function.arguments as { question?: string; locale?: string });
+      } catch { /* ok */ }
+
+      const question = args.question ?? "";
+      const locale = (args.locale as "fr-CA" | "en-CA" | undefined) ?? "fr-CA";
+
+      if (!question.trim()) {
+        results.push({ toolCallId: call.id, result: "No question provided." });
+        continue;
+      }
+
+      const quickAnswer = vapiQuickAnswer(question, locale);
+      if (quickAnswer) {
+        results.push({ toolCallId: call.id, result: quickAnswer });
+        continue;
+      }
+
+      try {
+        const chatResponse = await answerMaaChat({
+          userMessage: question,
+          locale,
+          maxResults: 5,
+          conversationHistory: [],
+        });
+
+        // Trim to phone-friendly length (no markdown, no citations)
+        const answer = chatResponse.assistantMessage
+          .replace(/\n\n+/g, " ")
+          .replace(/\n/g, " ")
+          .replace(/[•\-\*] /g, "")
+          .trim()
+          .slice(0, 400);
+
+        results.push({ toolCallId: call.id, result: answer });
+      } catch (err) {
+        request.log.error({ err }, "VAPI tool lookup failed");
+        results.push({
+          toolCallId: call.id,
+          result: locale === "fr-CA"
+            ? "Je n'ai pas pu trouver l'information. Je vous suggère d'appeler le 514 845-2233, poste 234."
+            : "I couldn't retrieve that information. I suggest calling (514) 845-2233, ext. 234.",
+        });
+      }
+    }
+
+    return reply.send({ results });
+  });
+
+  // Embed snippet endpoint — returns ready-to-install HTML/JS for the client's website
+  app.get("/v1/tenants/:tenantId/embed-snippet", async (request, reply) => {
+    const { tenantId } = request.params as TenantRouteParams;
+    if (tenantId !== "maa") return reply.code(404).send({ error: "tenant_not_found" });
+
+    const widgetOrigin = process.env.WIDGET_ORIGIN ?? "https://concierge.dubub.ai";
+
+    const snippet = `<!-- DUBUB Concierge Widget — Club Sportif MAA -->
+<script>
+  (function() {
+    var s = document.createElement('script');
+    s.src = '${widgetOrigin}/embed.js';
+    s.setAttribute('data-tenant', 'maa');
+    s.setAttribute('data-accent', '#c9a84c');
+    s.defer = true;
+    document.head.appendChild(s);
+  })();
+</script>
+<!-- End DUBUB Concierge Widget -->`;
+
+    const iframe = `<!-- DUBUB Concierge — iframe embed (alternative) -->
+<iframe
+  src="${widgetOrigin}/embed/maa"
+  style="position:fixed;bottom:0;right:0;width:420px;height:680px;border:none;z-index:9999;"
+  allow="microphone"
+  title="Concierge MAA"
+></iframe>`;
+
+    return reply.type("application/json").send({
+      tenant: tenantId,
+      widgetOrigin,
+      snippet,
+      iframeEmbed: iframe,
+      instructions: [
+        "Paste the snippet just before </body> on every page of your website.",
+        "The widget loads asynchronously and will not affect page performance.",
+        "For WordPress: paste into Appearance > Theme Editor > footer.php, or use a Header & Footer plugin.",
+        "For Squarespace/Wix: use the custom code injection in site settings.",
+        "The widget is fully bilingual (FR/EN) and adapts to the visitor's language automatically.",
+        "Contact DUBUB to configure a custom domain, accent color, or white-label branding.",
+      ],
+    });
   });
 
   return app;

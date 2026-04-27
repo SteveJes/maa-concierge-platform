@@ -407,6 +407,55 @@ function looksLikeClubDescriptionQuestion(
   );
 }
 
+function looksLikeCallMeRequest(userMessage: string, locale: string | null): boolean {
+  const normalized = normalizeIntentText(userMessage);
+  if (isFrenchLocale(locale)) {
+    return (
+      hasAnyPhrase(normalized, [
+        "pouvez vous m appeler",
+        "pouvez-vous m appeler",
+        "appelez moi",
+        "appelez-moi",
+        "je voudrais un rappel",
+        "je veux un rappel",
+        "vous pouvez m appeler",
+        "pouvez vous rappeler",
+        "voudrais etre rappele",
+        "voudrais etre rappelle",
+        "rappel",
+        "rappelez moi",
+        "rappelez-moi",
+        "je prefere un appel",
+        "prefere parler au telephone",
+        "parler a quelqu un",
+        "parler a une personne",
+      ]) ||
+      hasApproxTokenSet(normalized, ["appelez", "moi"]) ||
+      hasApproxTokenSet(normalized, ["rappel", "moi"]) ||
+      hasApproxTokenSet(normalized, ["appeler", "moi"])
+    );
+  }
+  return (
+    hasAnyPhrase(normalized, [
+      "call me",
+      "can you call me",
+      "please call me",
+      "i want a callback",
+      "i d like a callback",
+      "request a callback",
+      "give me a call",
+      "call me back",
+      "speak to someone",
+      "talk to someone",
+      "talk to a person",
+      "prefer to talk",
+      "prefer a call",
+    ]) ||
+    hasApproxTokenSet(normalized, ["call", "me"]) ||
+    hasApproxTokenSet(normalized, ["callback", "please"])
+  );
+}
+
 export function resolveDirectCoreFactResponse(args: {
   tenantId: string;
   userMessage: string;
@@ -418,11 +467,26 @@ export function resolveDirectCoreFactResponse(args: {
     return null;
   }
 
+  if (looksLikeCallMeRequest(args.userMessage, args.locale)) {
+    return {
+      assistantMessage: isFrenchLocale(args.locale)
+        ? "Absolument. Entrez votre numéro ci-dessous et notre concierge IA vous rappellera dans quelques secondes, avec le contexte de cette conversation."
+        : "Absolutely. Enter your number below and our AI concierge will call you back in seconds, with full context from this conversation.",
+      followUpMode: "callback",
+      citations: [],
+      retrieval: {
+        query: "direct:call_me",
+        chunkCount: 0,
+        resultCount: 0,
+      },
+    };
+  }
+
   if (looksLikeGreetingOnly(args.userMessage, args.locale)) {
     return {
       assistantMessage: isFrenchLocale(args.locale)
-        ? "Bonjour — comment puis-je vous aider aujourd'hui avec le Club Sportif MAA?"
-        : "Hello — how can I help you today with Club Sportif MAA?",
+        ? "Bonjour, comment puis-je vous aider aujourd'hui avec le Club Sportif MAA ?"
+        : "Hello, how can I help you today with Club Sportif MAA?",
       followUpMode: "done",
       citations: [],
       retrieval: {
@@ -446,7 +510,15 @@ export function resolveDirectCoreFactResponse(args: {
     };
   }
 
-  if (looksLikeLocationQuestion(args.userMessage, args.locale)) {
+  // Arrival-time questions ("si j'arrive à 5h...") must not be caught by the location detector.
+  // "du" fuzzy-matches "ou" with Levenshtein distance 1, triggering a false positive.
+  const isArrivalTimeQuestion =
+    /arriv[eéèêerons]*/i.test(args.userMessage) ||
+    /viens\b/i.test(args.userMessage) ||
+    (/\d{1,2}\s*(h|am|pm|heure)/i.test(args.userMessage) &&
+      /\b(ouvert|ouverts|open|etes.vous|êtes.vous)\b/i.test(args.userMessage));
+
+  if (!isArrivalTimeQuestion && looksLikeLocationQuestion(args.userMessage, args.locale)) {
     return {
       assistantMessage: buildCoreFactMessage(facts, "location", args.locale),
       followUpMode: "done",
@@ -459,34 +531,14 @@ export function resolveDirectCoreFactResponse(args: {
     };
   }
 
-  if (looksLikeHoursQuestion(args.userMessage, args.locale)) {
+  // English general hours questions → deterministic response to avoid French-formatted AI answers.
+  // French hours questions go to AI+retrieval (schedule service handles them better).
+  if (!isFrenchLocale(args.locale) && looksLikeHoursQuestion(args.userMessage, args.locale)) {
     return {
       assistantMessage: buildCoreFactMessage(facts, "hours", args.locale),
       followUpMode: "done",
       citations: [],
-      retrieval: {
-        query: "direct:hours",
-        chunkCount: 0,
-        resultCount: 0,
-      },
-    };
-  }
-
-  if (
-    !looksLikePricingIntent(args.userMessage) &&
-    !looksLikeClassScheduleQuestion(args.userMessage) &&
-    (looksLikeOfferingsQuestion(args.userMessage, args.locale) ||
-      looksLikeClubDescriptionQuestion(args.userMessage, args.locale))
-  ) {
-    return {
-      assistantMessage: buildCoreFactMessage(facts, "description", args.locale),
-      followUpMode: "done",
-      citations: [],
-      retrieval: {
-        query: "direct:club_description",
-        chunkCount: 0,
-        resultCount: 0,
-      },
+      retrieval: { query: "direct:hours", chunkCount: 0, resultCount: 0 },
     };
   }
 

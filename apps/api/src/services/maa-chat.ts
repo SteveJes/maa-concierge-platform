@@ -39,6 +39,7 @@ export interface MaaChatRequest {
   locale?: string;
   maxResults?: number;
   conversationHistory?: MaaConversationHistoryTurn[];
+  userName?: string;
 }
 
 export interface MaaChatCitation {
@@ -70,7 +71,7 @@ interface SearchableChunkCacheEntry {
   chunks: SearchableChunk[];
 }
 
-const SEARCHABLE_CHUNK_CACHE_TTL_MS = 5 * 60 * 1000;
+const SEARCHABLE_CHUNK_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour — chunks rarely change
 const MAX_HISTORY_TURNS = 8;
 
 const searchableChunkCache = new Map<string, SearchableChunkCacheEntry>();
@@ -197,6 +198,53 @@ function resolveMembershipFollowUpIntent(
   return userMessage;
 }
 
+const SHORT_AFFIRMATIVES = /^(oui|yes|ok|okay|sure|pourquoi pas|why not|allez|allons-y|bien sûr|d'accord|daccord|go ahead|go|yep|yup|absolument|parfait|super|génial|great|sounds good|cool|let's go|lets go|dis-moi|dis moi|tell me more|en savoir plus|j'écoute|je veux savoir|interessant|intéressant|vraiment|really|ah bon|ah oui|c'est quoi|c'est quand|c'est combien)[\s!?.]*$/i;
+
+function resolveShortAffirmativeFollowUp(
+  userMessage: string,
+  conversationHistory: MaaConversationHistoryTurn[],
+  locale: string | undefined,
+): string {
+  if (!SHORT_AFFIRMATIVES.test(userMessage.trim())) return userMessage;
+  if (conversationHistory.length === 0) {
+    // No context to anchor to — expand to a warm general intro query
+    return isFrenchLocale(locale)
+      ? "Parlez-moi du Club Sportif MAA et de ce que vous offrez."
+      : "Tell me about Club Sportif MAA and what you offer."
+  }
+
+  // Look at the last assistant message to infer topic context
+  const lastAssistant = [...conversationHistory]
+    .reverse()
+    .find((t) => t.role === "assistant");
+  if (!lastAssistant) return userMessage;
+
+  const ctx = lastAssistant.content.toLowerCase();
+  const fr = isFrenchLocale(locale);
+
+  if (/piscine|pool|swim|natation/.test(ctx))
+    return fr ? "Parlez-moi de la piscine et des services inclus dans l'abonnement." : "Tell me about the pool and what's included in the membership.";
+  if (/spa|massage|massothérapie|soin/.test(ctx))
+    return fr ? "Quels services de spa sont inclus dans l'abonnement ?" : "What spa services are included with membership?";
+  if (/cours|class|pilates|yoga|cardio|50/.test(ctx))
+    return fr ? "Quels cours de groupe sont disponibles et sont-ils inclus dans l'abonnement ?" : "What group classes are available and are they included in membership?";
+  if (/prix|tarif|abonnement|membership|fee|pricing|cost|\$/.test(ctx))
+    return fr ? "Quels sont vos tarifs d'abonnement ?" : "What are your membership rates?";
+  if (/horaire|heure|ouvert|schedule|hours|open/.test(ctx))
+    return fr ? "Quels sont vos horaires d'ouverture ?" : "What are your opening hours?";
+  if (/squash/.test(ctx))
+    return fr ? "Parlez-moi des courts de squash." : "Tell me about the squash courts.";
+  if (/visite|tour|visit|book/.test(ctx))
+    return fr ? "Je voudrais planifier une visite." : "I'd like to book a visit.";
+  if (/appel|call|rappel|callback|téléphone|phone/.test(ctx))
+    return fr ? "Je voudrais être rappelé." : "I'd like a callback.";
+
+  // Generic: ask to continue about whatever the assistant was discussing
+  return fr
+    ? "Pouvez-vous m'en dire plus ?"
+    : "Can you tell me more?";
+}
+
 function expandSearchQueryForMembershipPricing(
   userMessage: string,
   locale: string | undefined,
@@ -304,6 +352,14 @@ async function getSearchableChunksForTenant(
   return buildPromise;
 }
 
+export async function warmupSearchableChunks(tenantUuid: string): Promise<void> {
+  try {
+    await getSearchableChunksForTenant(tenantUuid);
+  } catch {
+    // warmup failure is non-fatal
+  }
+}
+
 function buildEvidenceBlock(results: SearchResult[]): string {
   return results
     .map(
@@ -336,6 +392,8 @@ function buildConversationHistoryBlock(
 function stripCitationMarkersFromAssistantMessage(message: string): string {
   return message
     .replace(/\s*\[\d+\]/g, "")
+    // Replace em-dashes with a comma or colon depending on context
+    .replace(/\s*—\s*/g, ", ")
     .replace(/\s{2,}/g, " ")
     .trim();
 }
@@ -346,6 +404,7 @@ async function callOpenAiForAnswer(
   locale: string | undefined,
   searchResults: SearchResult[],
   conversationHistory: MaaConversationHistoryTurn[],
+  userName?: string,
 ): Promise<OpenAiJsonResponse> {
   const { apiKey, model } = getOpenAiConfig();
 
@@ -353,6 +412,14 @@ async function callOpenAiForAnswer(
     resolvedUserMessage !== originalUserMessage
       ? `Resolved follow-up intent: ${resolvedUserMessage}`
       : "Resolved follow-up intent: same as user question";
+
+  const isFollowUp = conversationHistory.length > 0;
+
+  const userNameLine = userName
+    ? `The user's name is ${userName}. Address them by name naturally once in this response if appropriate${isFollowUp ? " — but do NOT greet them again (no Bonjour/Hello/Hi)" : ""}.`
+    : isFollowUp
+      ? "This is a follow-up message — do NOT use any greeting (no Bonjour, Hello, Hi, Salut). Answer directly."
+      : "";
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -399,6 +466,7 @@ async function callOpenAiForAnswer(
           content: [
             `User question: ${originalUserMessage}`,
             resolvedIntentLine,
+            userNameLine,
             "",
             "Recent conversation context:",
             buildConversationHistoryBlock(conversationHistory),
@@ -450,8 +518,14 @@ export async function answerMaaChat(
     request.conversationHistory,
   );
 
-  const resolvedUserMessage = resolveMembershipFollowUpIntent(
+  const affirmativeResolved = resolveShortAffirmativeFollowUp(
     request.userMessage,
+    conversationHistory,
+    request.locale,
+  );
+
+  const resolvedUserMessage = resolveMembershipFollowUpIntent(
+    affirmativeResolved,
     request.locale,
     conversationHistory,
   );
@@ -460,9 +534,14 @@ export async function answerMaaChat(
     isPricingQuestion(resolvedUserMessage) ||
     looksLikeMembershipPricingTopic(resolvedUserMessage);
 
+  // Normalize casual hours queries so the vector search finds relevant chunks
+  const looksLikeHoursQuery = /heure|horaire|ouv(re|ert|erts|rir)|ferm(e|é)|open|close|closing|hours|schedule/i.test(resolvedUserMessage);
+
   const searchQuery = shouldExpandMembershipPricingSearch
     ? expandSearchQueryForMembershipPricing(resolvedUserMessage, request.locale)
-    : resolvedUserMessage;
+    : looksLikeHoursQuery
+      ? `${resolvedUserMessage}\nhoraires heures ouverture fermeture schedule hours`
+      : resolvedUserMessage;
 
   const requiresDeterministicFloor =
     isPricingQuestion(resolvedUserMessage) ||
@@ -471,7 +550,9 @@ export async function answerMaaChat(
 
   const effectiveMaxResults = requiresDeterministicFloor
     ? Math.max(request.maxResults ?? 5, 12)
-    : request.maxResults ?? 5;
+    : looksLikeHoursQuery
+      ? Math.max(request.maxResults ?? 5, 8)
+      : request.maxResults ?? 5;
 
   const searchResults = await searchKnowledgeBase(
     {
@@ -581,6 +662,7 @@ export async function answerMaaChat(
     request.locale,
     searchResults,
     conversationHistory,
+    request.userName,
   );
 
   const cleanedAssistantMessage = stripCitationMarkersFromAssistantMessage(
@@ -615,4 +697,41 @@ export async function answerMaaChat(
       resultCount: searchResults.length,
     },
   };
+}
+
+/** Generate 2 alternative phrasings for a flagged AI response. Used by the feedback system. */
+export async function generateAlternatives(
+  userMessage: string,
+  badResponse: string,
+): Promise<string[]> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return [];
+
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        temperature: 0.5,
+        max_tokens: 300,
+        messages: [
+          {
+            role: "system",
+            content: "You are a quality-control assistant for Club Sportif MAA's AI concierge. Given a user question and a flagged AI response, provide exactly 2 improved alternative responses. Return JSON: { \"alternatives\": [\"...\", \"...\"] }",
+          },
+          {
+            role: "user",
+            content: `User question: ${userMessage}\n\nFlagged AI response: ${badResponse}\n\nProvide 2 better alternatives.`,
+          },
+        ],
+        response_format: { type: "json_object" },
+      }),
+    });
+    const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
+    const parsed = JSON.parse(json.choices?.[0]?.message?.content ?? "{}") as { alternatives?: string[] };
+    return Array.isArray(parsed.alternatives) ? parsed.alternatives.slice(0, 2) : [];
+  } catch {
+    return [];
+  }
 }

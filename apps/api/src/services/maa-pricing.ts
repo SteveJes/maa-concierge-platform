@@ -38,6 +38,15 @@ function uniqueNumbers(values: number[]): number[] {
 export function isPricingQuestion(userMessage: string): boolean {
   const text = userMessage.toLowerCase();
 
+  // "how much" with any membership/join/club context, or as a short standalone question
+  if (
+    text.includes("how much") &&
+    (text.includes("member") || text.includes("gym") || text.includes("club") ||
+      text.includes("join") || text.includes("is it") || text.length < 45)
+  ) {
+    return true;
+  }
+
   return (
     text.includes("fee") ||
     text.includes("fees") ||
@@ -260,19 +269,19 @@ function buildMembershipAnswer(
   const parts: string[] = [];
 
   if (rows.length > 0) {
-    const rowText = rows
+    const bullets = rows
       .map((row) => {
         const label = fr ? row.labelFr : row.label;
         const billing = fr ? row.billingTextFr : row.billingText;
         const sep = fr ? " : " : ": ";
-        return billing ? `${label}${sep}${row.amount} ${billing}` : `${label}${sep}${row.amount}`;
+        return billing ? `• ${label}${sep}${row.amount} ${billing}` : `• ${label}${sep}${row.amount}`;
       })
-      .join("; ");
+      .join("\n");
 
     parts.push(
       fr
-        ? `Voici nos tarifs d'abonnement actuels : ${rowText}.`
-        : `Here's what membership looks like right now: ${rowText}.`,
+        ? `Voici nos tarifs d'abonnement actuels :\n${bullets}`
+        : `Here's what membership looks like right now:\n${bullets}`,
     );
   }
 
@@ -294,11 +303,11 @@ function buildMembershipAnswer(
 
   parts.push(
     fr
-      ? "Les tarifs et promotions peuvent changer — nous vous recommandons d'appeler pour confirmer les prix actuels."
-      : "Rates and promotions may change — we recommend calling us to confirm current pricing.",
+      ? "Les tarifs et promotions peuvent changer. Nous vous recommandons d'appeler pour confirmer les prix actuels."
+      : "Rates and promotions may change. We recommend calling us to confirm current pricing.",
   );
 
-  return parts.join(" ");
+  return parts.join("\n\n");
 }
 
 export function tryAnswerPricingQuestion(

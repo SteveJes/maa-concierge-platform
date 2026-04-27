@@ -78,7 +78,10 @@ export function isScheduleQuestion(userMessage: string): boolean {
     text.includes("ouvert") ||
     text.includes("ouverte") ||
     text.includes("fermé") ||
-    text.includes("ferme")
+    text.includes("ferme") ||
+    // "if I arrive at 5am is it open?" style questions
+    /\b(arrive|arriver|viens|là)\b.*\b\d{1,2}h?\b/i.test(userMessage) ||
+    /\b\d{1,2}(h|am|pm)\b.*\b(open|ouvert|fermé|closed|encore)/i.test(userMessage)
   );
 }
 
@@ -117,7 +120,8 @@ function wantsClub(userMessage: string): boolean {
     text.includes("fitness") ||
     text.includes("facility") ||
     text.includes("training center") ||
-    text.includes("plateaux d'entraînement") ||
+    text.includes("squash") ||
+    text.includes("plateaux d’entraînement") ||
     text.includes("plateaux d’entraînement")
   );
 }
@@ -175,6 +179,12 @@ function cleanExtractedHoursText(value: string): string {
     /^horaire(?:s)?\s+(?:du\s+club|de\s+la\s+piscine|du\s+spa)\s*[:\-]?\s*/i,
     "",
   );
+  // Strip nav/footer bleed-in from scraped pages
+  text = text.replace(/\s*joindre l['']équipe[\s\S]*/i, "");
+  text = text.replace(/\s*cliquez sur le nom[\s\S]*/i, "");
+  text = text.replace(/\s*envoyez un courriel[\s\S]*/i, "");
+  text = text.replace(/\s*appelez[\s\S]*/i, "");
+  text = text.replace(/\s*contact us[\s\S]*/i, "");
   text = text.replace(/[;,\-–—:\s]+$/, "");
 
   return normalizeText(text);
@@ -318,9 +328,9 @@ function getLabel(kind: ScheduleKind, isFrench: boolean): string {
 
 function getFacilityPhrase(kind: ScheduleKind, isFrench: boolean): string {
   if (isFrench) {
-    if (kind === "club") return "le club";
-    if (kind === "pool") return "la piscine";
-    return "le spa";
+    if (kind === "club") return "du club";
+    if (kind === "pool") return "de la piscine";
+    return "du spa";
   }
 
   if (kind === "club") return "club";
@@ -347,6 +357,55 @@ function selectRelevantBlocks(
   return blocks;
 }
 
+// Parse a time string like "6h", "6h00", "6:00 AM", "22h" into minutes since midnight
+function parseTimeToMinutes(t: string): number | null {
+  const m24 = /(\d{1,2})\s*h(\d{2})?/.exec(t);
+  if (m24) return parseInt(m24[1]!, 10) * 60 + parseInt(m24[2] ?? "0", 10);
+  const m12 = /(\d{1,2}):(\d{2})\s*(AM|PM)/i.exec(t);
+  if (m12) {
+    let h = parseInt(m12[1]!, 10);
+    const min = parseInt(m12[2]!, 10);
+    if (/PM/i.test(m12[3]!) && h !== 12) h += 12;
+    if (/AM/i.test(m12[3]!) && h === 12) h = 0;
+    return h * 60 + min;
+  }
+  return null;
+}
+
+// Extract the earliest opening time across blocks (e.g., club opens at 6h)
+function earliestOpeningMinutes(blocks: ScheduleBlock[]): number | null {
+  const times: number[] = [];
+  for (const block of blocks) {
+    const m = /(?:lundi|monday|lun).*?(\d{1,2}\s*h\d{0,2}|\d{1,2}:\d{2}\s*(?:AM|PM))/i.exec(block.text);
+    if (m) {
+      const t = parseTimeToMinutes(m[1]!);
+      if (t !== null) times.push(t);
+    }
+  }
+  return times.length > 0 ? Math.min(...times) : null;
+}
+
+// Detect "if I arrive at X am/pm" pattern and return minutes, or null
+function extractArrivalTime(userMessage: string): number | null {
+  const patterns = [
+    /(?:arrive?|come|show up|get there|viens?|arrive|arriver?|suis là|là).*?(?:at|à|vers|around)?\s*(\d{1,2})[h:]?(\d{2})?\s*(am|pm|h)?/i,
+    /(?:at|à|vers)\s*(\d{1,2})[h:]?(\d{2})?\s*(am|pm|h)?/i,
+    /(\d{1,2})[h:](\d{2})?\s*(am|pm)?.*(?:open|ouvert|fermé|closed)/i,
+  ];
+  for (const pat of patterns) {
+    const m = pat.exec(userMessage);
+    if (m) {
+      let h = parseInt(m[1]!, 10);
+      const min = parseInt(m[2] ?? "0", 10);
+      const suffix = (m[3] ?? "").toLowerCase();
+      if (suffix === "pm" && h !== 12) h += 12;
+      if (suffix === "am" && h === 12) h = 0;
+      if (h >= 0 && h <= 23) return h * 60 + min;
+    }
+  }
+  return null;
+}
+
 function buildScheduleAnswer(
   userMessage: string,
   blocks: ScheduleBlock[],
@@ -354,34 +413,64 @@ function buildScheduleAnswer(
   const isFrench = isFrenchMessage(userMessage);
 
   const hedge = isFrench
-    ? " Les horaires peuvent varier — nous vous recommandons d’appeler pour confirmer."
-    : " Hours may vary — we recommend calling to confirm current times.";
+    ? "\n\nLes horaires peuvent varier selon la période. Nous vous recommandons d’appeler au 514 845-2233, poste 234 pour confirmer."
+    : "\n\nHours may vary. We recommend calling at (514) 845-2233, ext. 234 to confirm current times.";
+
+  // Detect "will I be in time / is it open at X?" and answer directly
+  const arrivalMinutes = extractArrivalTime(userMessage);
+  if (arrivalMinutes !== null) {
+    const openingMinutes = earliestOpeningMinutes(blocks);
+    if (openingMinutes !== null) {
+      const arrivalH = Math.floor(arrivalMinutes / 60);
+      const arrivalM = arrivalMinutes % 60;
+      const openH = Math.floor(openingMinutes / 60);
+      const arrivalStr = `${arrivalH}h${arrivalM > 0 ? String(arrivalM).padStart(2, "0") : ""}`;
+      const openStr = `${openH}h`;
+      const isClosed = arrivalMinutes < openingMinutes;
+      const directAnswer = isClosed
+        ? isFrench
+          ? `Non, à ${arrivalStr} le club n’est pas encore ouvert — le premier espace disponible ouvre à ${openStr}. Voici les horaires complets :`
+          : `No, at ${arrivalStr} the club is not yet open — the earliest opening is at ${openStr}. Here are the full hours:`
+        : isFrench
+          ? `Oui, à ${arrivalStr} vous pouvez entrer — voici les horaires complets :`
+          : `Yes, at ${arrivalStr} the club is open — here are the full hours:`;
+
+      const lines = blocks.map((b) => `• ${getLabel(b.kind, isFrench)} : ${b.text}`).join("\n");
+      return `${directAnswer}\n\n${lines}${hedge}`;
+    }
+  }
 
   if (blocks.length === 1) {
     const block = blocks[0]!;
-
     const answer = isFrench
-      ? `Voici les horaires de ${getFacilityPhrase(block.kind, true)} : ${block.text}.`
-      : `Here are the ${getFacilityPhrase(block.kind, false)} hours on file: ${block.text}.`;
-
+      ? `Voici les horaires ${getFacilityPhrase(block.kind, true)} :\n\n${block.text}`
+      : `Here are the ${getFacilityPhrase(block.kind, false)} hours:\n\n${block.text}`;
     return answer + hedge;
   }
 
-  const joined = blocks
-    .map((block) => `${getLabel(block.kind, isFrench)}: ${block.text}`)
-    .join("; ");
+  const lines = blocks.map((b) => `• ${getLabel(b.kind, isFrench)} : ${b.text}`).join("\n");
+  const intro = isFrench
+    ? "Voici nos horaires par espace :"
+    : "Here are our hours by area:";
 
-  const answer = isFrench
-    ? `Voici les horaires : ${joined}.`
-    : `Here are the hours on file: ${joined}.`;
-
-  return answer + hedge;
+  return `${intro}\n\n${lines}${hedge}`;
 }
 
 function buildScheduleClarifyAnswer(userMessage: string): string {
   return isFrenchMessage(userMessage)
-    ? "Les horaires varient selon l’espace. Précisez si vous cherchez les horaires du club, de la piscine ou du spa — ou appelez-nous pour les heures à jour."
-    : "Hours vary by area. Let me know if you want club, pool, or spa hours — or give us a call for the most current schedule.";
+    ? "Les horaires varient selon l’espace. Précisez si vous cherchez les horaires du club, de la piscine ou du spa, ou appelez-nous pour les heures à jour."
+    : "Hours vary by area. Let me know if you want club, pool, or spa hours, or give us a call for the most current schedule.";
+}
+
+// If the user is asking about a specific activity/class type, the deterministic
+// schedule handler cannot help — it only knows club/pool/spa hours. Let AI+retrieval
+// handle these so the pilates schedule PDF chunks can be surfaced correctly.
+function isActivitySpecificScheduleQuestion(userMessage: string): boolean {
+  const text = normalizeLower(userMessage);
+
+  return /\b(pilates|yoga|spinning|spin|zumba|barre|hiit|aerobic|aqua|natation|cardio|stretching|crossfit|boxing|kickboxing|circus|aérien|trapèze|reformer|cardio-vélo|powerwatts|triathlon|aquaforme|aquafit)\b/i.test(
+    text,
+  );
 }
 
 export function tryAnswerScheduleQuestion(
@@ -392,10 +481,25 @@ export function tryAnswerScheduleQuestion(
     return null;
   }
 
+  // Activity-specific schedule questions must go to AI+retrieval — we don't have
+  // deterministic data for individual class types (pilates, yoga, etc.)
+  if (isActivitySpecificScheduleQuestion(userMessage)) {
+    return null;
+  }
+
   const extractedBlocks = extractScheduleBlocks(searchResults);
   const relevantBlocks = selectRelevantBlocks(userMessage, extractedBlocks);
 
   if (relevantBlocks.length === 0) {
+    // If the user specified a facility (pool/spa/club/squash) but we couldn't find
+    // that block in the search results, let AI+retrieval handle it — don't confuse
+    // the user with a generic "which area?" clarify.
+    const askedSpecific =
+      wantsPool(userMessage) || wantsSpa(userMessage) || wantsClub(userMessage);
+    if (askedSpecific) {
+      return null;
+    }
+
     return {
       assistantMessage: buildScheduleClarifyAnswer(userMessage),
       followUpMode: "clarify",
