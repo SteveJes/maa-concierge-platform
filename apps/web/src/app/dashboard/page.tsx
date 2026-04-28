@@ -2,6 +2,11 @@
 
 import { useState, useEffect, useCallback } from "react";
 
+const ADMIN_PASSWORD = "dubub2025";
+const API_BASE = typeof window !== "undefined" && window.location.hostname === "clients.dubub.com"
+  ? "https://api.dubub.com"
+  : "http://localhost:4000";
+
 interface AnalyticsData {
   tenantId: string;
   period: { days: number; from: string | null; to: string | null };
@@ -450,7 +455,7 @@ function fmt$(n: number) {
   return n.toLocaleString("fr-CA", { style: "currency", currency: "CAD", maximumFractionDigits: 0 });
 }
 
-const DASHBOARD_PASSWORD = process.env.NEXT_PUBLIC_DASHBOARD_PASSWORD ?? "dubub2024";
+const DASHBOARD_PASSWORD = process.env.NEXT_PUBLIC_DASHBOARD_PASSWORD ?? "dubub2025";
 
 function LoginGate({ onAuth }: { onAuth: () => void }) {
   const [pw, setPw] = useState("");
@@ -557,14 +562,14 @@ function QualityReviewPanel() {
   const loadConvos = async () => {
     setLoadingConvos(true);
     try {
-      const r = await fetch("http://localhost:4000/v1/tenants/maa/recent-conversations");
+      const r = await fetch(`${API_BASE}/v1/tenants/maa/recent-conversations");
       if (r.ok) { const d = (await r.json()) as { conversations: ConvRow[] }; setConvos(d.conversations); }
     } catch { /* ok */ } finally { setLoadingConvos(false); }
   };
 
   const loadFeedback = async () => {
     try {
-      const r = await fetch("http://localhost:4000/v1/tenants/maa/feedback");
+      const r = await fetch(`${API_BASE}/v1/tenants/maa/feedback");
       if (r.ok) { const d = (await r.json()) as { feedback: FeedbackRecord[] }; setFeedback(d.feedback); }
     } catch { /* ok */ }
   };
@@ -575,16 +580,36 @@ function QualityReviewPanel() {
     if (!pendingFeedback) return;
     setSubmitting(true);
     try {
-      const r = await fetch("http://localhost:4000/v1/tenants/maa/feedback", {
+      const r = await fetch(`${API_BASE}/v1/tenants/maa/feedback`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...pendingFeedback, verdict, correctedResponse: correction ?? (customCorrection || null) }),
       });
       if (r.ok) {
         const d = (await r.json()) as { aiAlternatives: string[] };
-        if (verdict === "incorrect" && d.aiAlternatives.length > 0) { setAlternatives(d.aiAlternatives); }
-        else { setPendingFeedback(null); setAlternatives([]); setCustomCorrection(""); void loadFeedback(); }
+        if (verdict === "incorrect" && d.aiAlternatives && d.aiAlternatives.length > 0) {
+          setAlternatives(d.aiAlternatives);
+        } else {
+          setPendingFeedback(null); setAlternatives([]); setCustomCorrection(""); void loadFeedback();
+        }
       }
     } catch { /* ok */ } finally { setSubmitting(false); }
+  };
+
+  const handleIncorrect = (turn: { user: string; ai: string }, convoId: string | null) => {
+    const fb = { userMessage: turn.user, aiResponse: turn.ai, conversationId: convoId };
+    setPendingFeedback(fb);
+    setAlternatives([]);
+    setSubmitting(true);
+    fetch(`${API_BASE}/v1/tenants/maa/feedback`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...fb, verdict: "incorrect", correctedResponse: null }),
+    })
+      .then((r) => r.json() as Promise<{ aiAlternatives?: string[] }>)
+      .then((d) => {
+        setAlternatives(d.aiAlternatives && d.aiAlternatives.length > 0 ? d.aiAlternatives : ["(Aucune alternative générée)"]);
+      })
+      .catch(() => setAlternatives(["(Erreur lors de la génération)"]))
+      .finally(() => setSubmitting(false));
   };
 
   const findTurns = (convo: ConvRow) => {
@@ -649,36 +674,50 @@ function QualityReviewPanel() {
                           <div style={{ fontSize: 12, color: PALETTE.dimmed, marginBottom: 10 }}>🤖 {turn.ai}</div>
 
                           {!isPending ? (
-                            <div style={{ display: "flex", gap: 6 }}>
-                              <button onClick={() => { setPendingFeedback({ userMessage: turn.user, aiResponse: turn.ai, conversationId: selectedConvo.uuid ?? null }); void submitFeedback("correct"); }}
-                                style={{ padding: "4px 12px", borderRadius: 12, border: "none", background: "rgba(34,214,138,0.15)", color: PALETTE.green, fontSize: 11, cursor: "pointer", fontWeight: 600 }}>✓ Correct</button>
-                              <button onClick={() => { setPendingFeedback({ userMessage: turn.user, aiResponse: turn.ai, conversationId: selectedConvo.uuid ?? null }); }}
-                                style={{ padding: "4px 12px", borderRadius: 12, border: "none", background: "rgba(255,82,82,0.15)", color: PALETTE.red, fontSize: 11, cursor: "pointer", fontWeight: 600 }}>✗ Incorrect</button>
+                            <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                              <button
+                                onClick={() => { setPendingFeedback({ userMessage: turn.user, aiResponse: turn.ai, conversationId: selectedConvo.uuid ?? null }); void submitFeedback("correct"); }}
+                                style={{ padding: "5px 16px", borderRadius: 20, border: "1px solid rgba(34,214,138,0.4)", background: "rgba(34,214,138,0.1)", color: PALETTE.green, fontSize: 11, cursor: "pointer", fontWeight: 700, letterSpacing: "0.03em" }}>
+                                ✓ Correct
+                              </button>
+                              <button
+                                onClick={() => handleIncorrect(turn, selectedConvo.uuid ?? null)}
+                                style={{ padding: "5px 16px", borderRadius: 20, border: "1px solid rgba(255,82,82,0.4)", background: "rgba(255,82,82,0.1)", color: PALETTE.red, fontSize: 11, cursor: "pointer", fontWeight: 700, letterSpacing: "0.03em" }}>
+                                ✗ Incorrect
+                              </button>
+                            </div>
+                          ) : submitting && alternatives.length === 0 ? (
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, padding: "8px 12px", borderRadius: 10, background: "rgba(240,192,64,0.06)", border: `1px solid rgba(240,192,64,0.15)` }}>
+                              <div style={{ width: 12, height: 12, borderRadius: "50%", border: `2px solid ${PALETTE.gold}`, borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }} />
+                              <span style={{ fontSize: 11, color: PALETTE.gold }}>Génération de 3 alternatives IA...</span>
+                              <button onClick={() => { setPendingFeedback(null); setAlternatives([]); setSubmitting(false); }} style={{ marginLeft: "auto", background: "none", border: "none", color: PALETTE.muted, cursor: "pointer", fontSize: 10 }}>Annuler</button>
                             </div>
                           ) : alternatives.length > 0 ? (
-                            <div>
-                              <div style={{ fontSize: 11, color: PALETTE.gold, marginBottom: 6 }}>Alternatives suggérées par l'IA :</div>
+                            <div style={{ marginTop: 8 }}>
+                              <div style={{ fontSize: 10, color: PALETTE.gold, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>3 alternatives générées — choisissez ou rédigez la vôtre</div>
                               {alternatives.map((alt, j) => (
-                                <div key={j} style={{ padding: 8, borderRadius: 8, background: "rgba(255,255,255,0.04)", border: `1px solid ${PALETTE.cardBorder}`, marginBottom: 6 }}>
-                                  <div style={{ fontSize: 11, color: PALETTE.dimmed, marginBottom: 4 }}>{alt}</div>
+                                <div key={j} style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: `1px solid ${PALETTE.cardBorder}`, marginBottom: 8, display: "flex", alignItems: "flex-start", gap: 10 }}>
+                                  <span style={{ fontSize: 10, color: PALETTE.gold, fontWeight: 800, minWidth: 16, paddingTop: 1 }}>{j + 1}.</span>
+                                  <span style={{ fontSize: 11, color: PALETTE.dimmed, flex: 1, lineHeight: 1.5 }}>{alt}</span>
                                   <button onClick={() => void submitFeedback("custom", alt)} disabled={submitting}
-                                    style={{ padding: "3px 10px", borderRadius: 10, border: "none", background: "rgba(240,192,64,0.15)", color: PALETTE.gold, fontSize: 10, cursor: "pointer" }}>
-                                    ✓ Approuver cette version
+                                    style={{ flexShrink: 0, padding: "4px 12px", borderRadius: 16, border: "1px solid rgba(34,214,138,0.4)", background: "rgba(34,214,138,0.1)", color: PALETTE.green, fontSize: 10, cursor: "pointer", fontWeight: 700, whiteSpace: "nowrap" }}>
+                                    ✓ Utiliser
                                   </button>
                                 </div>
                               ))}
-                              <div style={{ marginTop: 8 }}>
-                                <textarea value={customCorrection} onChange={(e) => setCustomCorrection(e.target.value)} placeholder="Ou écrivez votre propre correction..."
-                                  style={{ width: "100%", padding: 8, borderRadius: 8, border: `1px solid ${PALETTE.cardBorder}`, background: "#0a1218", color: PALETTE.white, fontSize: 11, resize: "vertical", minHeight: 60 }} />
-                                <button onClick={() => void submitFeedback("custom")} disabled={submitting || !customCorrection.trim()}
-                                  style={{ marginTop: 6, padding: "4px 14px", borderRadius: 12, border: "none", background: PALETTE.gold, color: PALETTE.bg, fontWeight: 700, fontSize: 11, cursor: "pointer", opacity: customCorrection.trim() ? 1 : 0.5 }}>
-                                  Enregistrer correction
-                                </button>
+                              <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${PALETTE.cardBorder}` }}>
+                                <textarea value={customCorrection} onChange={(e) => setCustomCorrection(e.target.value)} placeholder="Ou rédigez votre propre correction..."
+                                  style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: `1px solid ${PALETTE.cardBorder}`, background: "#0a1218", color: PALETTE.white, fontSize: 11, resize: "vertical", minHeight: 56, boxSizing: "border-box" }} />
+                                <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                                  <button onClick={() => void submitFeedback("custom")} disabled={submitting || !customCorrection.trim()}
+                                    style={{ padding: "5px 16px", borderRadius: 20, border: "none", background: customCorrection.trim() ? PALETTE.gold : "rgba(255,255,255,0.1)", color: customCorrection.trim() ? PALETTE.bg : PALETTE.muted, fontWeight: 700, fontSize: 11, cursor: customCorrection.trim() ? "pointer" : "default" }}>
+                                    Enregistrer ma correction
+                                  </button>
+                                  <button onClick={() => { setPendingFeedback(null); setAlternatives([]); setCustomCorrection(""); }} style={{ padding: "5px 12px", borderRadius: 20, border: `1px solid ${PALETTE.cardBorder}`, background: "none", color: PALETTE.muted, fontSize: 11, cursor: "pointer" }}>Annuler</button>
+                                </div>
                               </div>
                             </div>
-                          ) : (
-                            <div style={{ fontSize: 11, color: PALETTE.orange }}>Génération des alternatives... <button onClick={() => { setPendingFeedback(null); setAlternatives([]); }} style={{ background: "none", border: "none", color: PALETTE.muted, cursor: "pointer", fontSize: 10 }}>Annuler</button></div>
-                          )}
+                          ) : null}
                         </div>
                       );
                     })}
@@ -730,7 +769,7 @@ export default function DashboardPage() {
     setError(false);
     try {
       const res = await fetch(
-        `http://localhost:4000/v1/tenants/maa/analytics?days=${days}`,
+        `${API_BASE}/v1/tenants/maa/analytics?days=${days}`,
         { cache: "no-store" },
       );
       if (!res.ok) throw new Error("API error");

@@ -76,13 +76,13 @@ function GymLoadingIndicator({ locale }: { locale: string }) {
     >
       {/* Dumbbell */}
       <div style={{ display: "flex", alignItems: "center", gap: 0, animation: "maa-lift 1.6s ease-in-out infinite" }}>
-        <div style={{ width: 8, height: 20, borderRadius: "3px 1px 1px 3px", background: "linear-gradient(180deg,#2a7c50,#1a5c38)", boxShadow: "inset 0 1px 2px rgba(255,255,255,0.15)" }} />
-        <div style={{ width: 6, height: 26, borderRadius: "2px 1px 1px 2px", background: "linear-gradient(180deg,#2e8858,#1d6640)", marginLeft: 2 }} />
+        <div style={{ width: 8, height: 20, borderRadius: "3px 1px 1px 3px", background: "linear-gradient(180deg,#3a3a4a,#2a2a38)", boxShadow: "inset 0 1px 2px rgba(255,255,255,0.15)" }} />
+        <div style={{ width: 6, height: 26, borderRadius: "2px 1px 1px 2px", background: "linear-gradient(180deg,#3a3a4a,#2a2a38)", marginLeft: 2 }} />
         <div style={{ width: 5, height: 14, background: "#c9a84c", borderRadius: 2, marginLeft: 2 }} />
         <div style={{ width: 28, height: 5, background: "linear-gradient(180deg,#e0c870,#b89030)", borderRadius: 2 }} />
         <div style={{ width: 5, height: 14, background: "#c9a84c", borderRadius: 2 }} />
-        <div style={{ width: 6, height: 26, borderRadius: "1px 2px 2px 1px", background: "linear-gradient(180deg,#2e8858,#1d6640)", marginRight: 2 }} />
-        <div style={{ width: 8, height: 20, borderRadius: "1px 3px 3px 1px", background: "linear-gradient(180deg,#2a7c50,#1a5c38)", boxShadow: "inset 0 1px 2px rgba(255,255,255,0.15)" }} />
+        <div style={{ width: 6, height: 26, borderRadius: "1px 2px 2px 1px", background: "linear-gradient(180deg,#3a3a4a,#2a2a38)", marginRight: 2 }} />
+        <div style={{ width: 8, height: 20, borderRadius: "1px 3px 3px 1px", background: "linear-gradient(180deg,#3a3a4a,#2a2a38)", boxShadow: "inset 0 1px 2px rgba(255,255,255,0.15)" }} />
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -949,8 +949,8 @@ export function ChatShell({
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div
         style={{
-          background: "linear-gradient(135deg, #0a1f14 0%, #0d2a1a 100%)",
-          borderBottom: "1px solid #1a3020",
+          background: "linear-gradient(135deg, #111116 0%, #1a1a22 100%)",
+          borderBottom: "1px solid #1e1e2a",
           padding: "14px 16px",
           display: "flex",
           alignItems: "center",
@@ -1010,8 +1010,8 @@ export function ChatShell({
             style={{
               borderRadius: 20,
               padding: "7px 14px",
-              background: "linear-gradient(135deg, #1a5c38, #2a7c50)",
-              border: "1px solid #2a7c50",
+              background: "linear-gradient(135deg, #2a2a38, #3a3a4a)",
+              border: "1px solid #3a3a4a",
               color: "white",
               fontSize: 12,
               fontWeight: 600,
@@ -1096,9 +1096,10 @@ export function ChatShell({
                   <div style={{ display: "flex", alignItems: "center", marginBottom: 4, marginLeft: 34 }}>
                     <span style={{
                       display: "inline-flex", alignItems: "center", gap: 4,
-                      background: "linear-gradient(90deg, #c9a84c, #e8c96e)",
-                      color: "#1a1200", fontSize: 9, fontWeight: 800,
-                      letterSpacing: "0.12em", padding: "2px 8px",
+                      background: "#fdf6e3",
+                      border: "1px solid #e8d08a",
+                      color: "#7a5c10", fontSize: 9, fontWeight: 700,
+                      letterSpacing: "0.1em", padding: "2px 8px",
                       borderRadius: 20, textTransform: "uppercase",
                     }}>
                       ✦ {locale === "fr-CA" ? "Conseil Privilège" : "Member Insight"}
@@ -1215,7 +1216,19 @@ export function ChatShell({
           );
         })}
 
-        {showLoadingAnimation && <GymLoadingIndicator locale={locale} />}
+        {showLoadingAnimation && (
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
+            <div style={{
+              width: 26, height: 26, borderRadius: 8, background: "#ffffff",
+              border: "1px solid #e8dfc8", boxShadow: "0 1px 4px rgba(201,168,76,0.15)",
+              flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
+              overflow: "hidden", padding: 3,
+            }}>
+              <img src="https://www.clubsportifmaa.com/wp-content/uploads/2021/01/club-sportif-maa-logo.svg" alt="MAA" style={{ width: 20, height: 20, objectFit: "contain" }} />
+            </div>
+            <GymLoadingIndicator locale={locale} />
+          </div>
+        )}
         <div ref={bottomRef} />
       </div>
 
@@ -1397,7 +1410,7 @@ export function ChatShell({
               style={{
                 background: "none",
                 border: "none",
-                color: "#6b8c7a",
+                color: "#7a7a90",
                 fontSize: 13,
                 cursor: "pointer",
                 padding: "10px 4px",
@@ -1419,7 +1432,7 @@ export function ChatShell({
             style={{
               padding: 12,
               borderRadius: 12,
-              background: "linear-gradient(135deg, #1a5c38, #2a7c50)",
+              background: "linear-gradient(135deg, #2a2a38, #3a3a4a)",
               border: "none",
               color: "white",
               fontWeight: 600,
@@ -1668,7 +1681,7 @@ export function ChatShell({
                   padding: "10px 18px",
                   borderRadius: 20,
                   border: "none",
-                  background: "linear-gradient(135deg, #1a5c38, #2a7c50)",
+                  background: "linear-gradient(135deg, #2a2a38, #3a3a4a)",
                   color: "white",
                   fontWeight: 700,
                   fontSize: 13,
@@ -1869,7 +1882,7 @@ export function ChatShell({
           {isOpen ? (
             <span style={{ color: "#0a1a0f", fontSize: 20, fontWeight: 700, lineHeight: 1 }}>✕</span>
           ) : (
-            <span style={{ color: "#0a1f14", fontWeight: 900, fontSize: 22, lineHeight: 1 }}>M</span>
+            <span style={{ color: "#111116", fontWeight: 900, fontSize: 22, lineHeight: 1 }}>M</span>
           )}
         </button>
 
