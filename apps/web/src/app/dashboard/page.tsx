@@ -569,7 +569,7 @@ function QualityReviewPanel() {
 
   const loadFeedback = async () => {
     try {
-      const r = await fetch(`${API_BASE}/v1/tenants/maa/feedback");
+      const r = await fetch(`${API_BASE}/v1/tenants/maa/feedback`);
       if (r.ok) { const d = (await r.json()) as { feedback: FeedbackRecord[] }; setFeedback(d.feedback); }
     } catch { /* ok */ }
   };
