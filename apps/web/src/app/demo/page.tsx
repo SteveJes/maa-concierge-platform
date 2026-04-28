@@ -130,11 +130,11 @@ export default function DemoPage() {
         /* ── Demo badge ── */
         .demo-badge {
           position: fixed;
-          top: 16px;
+          top: 10px;
           left: 50%;
           transform: translateX(-50%);
           z-index: 1002;
-          background: rgba(6,10,6,0.78);
+          background: rgba(6,10,6,0.82);
           backdrop-filter: blur(12px);
           -webkit-backdrop-filter: blur(12px);
           border: 1px solid rgba(201,168,76,0.28);
@@ -149,6 +149,13 @@ export default function DemoPage() {
           align-items: center;
           gap: 8px;
           animation: fadeUp 0.5s ease 0.1s both;
+        }
+
+        /* ── Badge responsive text ── */
+        .badge-short { display: none; }
+        @media (max-width: 480px) {
+          .badge-full { display: none; }
+          .badge-short { display: inline; }
         }
 
         /* ── DUBUB footer link ── */
@@ -186,34 +193,35 @@ export default function DemoPage() {
         /* ── Responsive ── */
         @media (max-width: 480px) {
           .demo-badge {
-            top: 6px;
-            padding: 5px 14px;
+            top: 8px;
+            left: 12px !important;
+            right: 12px !important;
+            transform: none !important;
+            justify-content: center;
+            padding: 6px 16px;
             font-size: 11px;
-            max-width: calc(100vw - 24px);
+            white-space: nowrap;
             overflow: hidden;
+            text-overflow: ellipsis;
           }
           .chat-panel {
             width: 100vw;
             right: 0;
             bottom: 0;
-            top: 44px;
-            height: auto;
+            top: 40px;
+            height: calc(100dvh - 40px);
             border-radius: 14px 14px 0 0;
           }
           .arrow-hint { display: none; }
           .bubble-label { display: none; }
-          /* Bubble sits in bottom-right, above system nav */
-          .bubble-wrapper {
-            bottom: 20px;
-            right: 16px;
-          }
         }
       `}</style>
 
       {/* Demo badge */}
       <div className="demo-badge">
         <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#22d68a", flexShrink: 0, display: "inline-block" }} />
-        Démonstration client · Club Sportif MAA — propulsé par DUBUB
+        <span className="badge-full">Démonstration client · Club Sportif MAA — propulsé par DUBUB</span>
+        <span className="badge-short">Démo · Club Sportif MAA</span>
       </div>
 
       {/* MAA website — pointer-events:none so our overlay elements remain fully clickable */}
