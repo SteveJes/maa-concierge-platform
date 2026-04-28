@@ -316,6 +316,9 @@ function getApiBaseUrl(): string {
     return "http://127.0.0.1:4000";
   }
   const host = window.location.hostname;
+  if (host === "clients.dubub.com" || host === "dubub.com") {
+    return "https://api.dubub.com";
+  }
   return `http://${host}:4000`;
 }
 
