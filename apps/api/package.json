@@ -35,10 +35,8 @@
     "@platform/config": "workspace:*",
     "@platform/retrieval": "workspace:*",
     "@platform/schemas": "workspace:*",
-    "@types/nodemailer": "^8.0.0",
     "dotenv": "^17.4.0",
     "fastify": "^5.2.0",
-    "nodemailer": "^8.0.5",
     "unpdf": "^1.4.0"
   },
   "devDependencies": {
