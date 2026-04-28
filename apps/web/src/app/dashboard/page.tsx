@@ -562,7 +562,7 @@ function QualityReviewPanel() {
   const loadConvos = async () => {
     setLoadingConvos(true);
     try {
-      const r = await fetch(`${API_BASE}/v1/tenants/maa/recent-conversations");
+      const r = await fetch(`${API_BASE}/v1/tenants/maa/recent-conversations`);
       if (r.ok) { const d = (await r.json()) as { conversations: ConvRow[] }; setConvos(d.conversations); }
     } catch { /* ok */ } finally { setLoadingConvos(false); }
   };
