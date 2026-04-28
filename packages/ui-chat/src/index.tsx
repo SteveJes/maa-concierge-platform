@@ -981,7 +981,7 @@ export function ChatShell({
             />
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            <span style={{ color: "#f0f5f2", fontWeight: 700, fontSize: 14, letterSpacing: "0.02em" }}>
+            <span style={{ color: "#f0f0f6", fontWeight: 700, fontSize: 14, letterSpacing: "0.02em" }}>
               {locale === "fr-CA" ? "Concierge · MAA" : "MAA Concierge"}
             </span>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -1028,8 +1028,8 @@ export function ChatShell({
       <div
         style={{
           padding: "6px 16px 8px",
-          background: "#f0f5f2",
-          color: "#5a7a6a",
+          background: "#f0f0f6",
+          color: "#6a6a80",
           fontSize: 11,
           letterSpacing: "0.08em",
         }}
@@ -1046,7 +1046,7 @@ export function ChatShell({
           background: "#f7f8f9",
           padding: 16,
           minHeight: 300,
-          maxHeight: mode === "floating" ? (showLeadForm ? 120 : 380) : 400,
+          maxHeight: mode === "floating" ? 300 : 400,
           overflowY: "auto",
           display: "flex",
           flexDirection: "column",
@@ -1090,22 +1090,74 @@ export function ChatShell({
               message.text.includes("$") ||
               message.text.toLowerCase().includes("abonnement") ||
               message.text.toLowerCase().includes("membership");
+
+            // Nudge = distinct info card, visually separate from AI conversation
+            if (isNudge) {
+              return (
+                <div key={message.id} style={{ marginBottom: 10, animation: "maa-msg-in 0.3s ease" }}>
+                  <div style={{
+                    borderRadius: 14,
+                    background: "linear-gradient(135deg, #fdf8ec 0%, #fef5e0 100%)",
+                    border: "1px solid #e8d08a",
+                    boxShadow: "0 2px 8px rgba(201,168,76,0.12)",
+                    overflow: "hidden",
+                  }}>
+                    {/* Card header */}
+                    <div style={{
+                      display: "flex", alignItems: "center", gap: 6,
+                      padding: "8px 14px 6px",
+                      borderBottom: "1px solid #f0d98a",
+                      background: "rgba(201,168,76,0.08)",
+                    }}>
+                      <span style={{ fontSize: 10 }}>✦</span>
+                      <span style={{
+                        fontSize: 9, fontWeight: 800, letterSpacing: "0.14em",
+                        textTransform: "uppercase", color: "#7a5c10",
+                      }}>
+                        {locale === "fr-CA" ? "Conseil Privilège" : "Member Insight"}
+                      </span>
+                      <span style={{ marginLeft: "auto", fontSize: 9, color: "#b8960e", fontStyle: "italic", fontWeight: 500 }}>
+                        {locale === "fr-CA" ? "Information du club" : "Club information"}
+                      </span>
+                    </div>
+                    {/* Card body */}
+                    <div style={{ padding: "10px 14px", color: "#5a4010", fontSize: 13, lineHeight: 1.55, fontStyle: "italic" }}>
+                      <RichMessageText text={message.text} />
+                    </div>
+                    {hasPricingSignal && (
+                      <div style={{ padding: "0 14px 10px" }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const bookingText = locale === "fr-CA"
+                              ? "Je souhaite planifier une visite des installations."
+                              : "I'd like to schedule a tour of the facilities.";
+                            setInput(bookingText);
+                            setTimeout(() => {
+                              const sendBtn = document.querySelector<HTMLButtonElement>("[data-send-btn]");
+                              sendBtn?.click();
+                            }, 30);
+                          }}
+                          style={{
+                            background: "none", border: "none", padding: 0,
+                            cursor: "pointer", fontSize: 12, color: "#a07830",
+                            fontWeight: 600, textDecoration: "underline", textUnderlineOffset: 2,
+                          }}
+                        >
+                          {locale === "fr-CA"
+                            ? "→ Planifier une visite"
+                            : "→ Schedule a tour"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            }
+
+            // Regular AI message
             return (
               <div key={message.id}>
-                {isNudge && (
-                  <div style={{ display: "flex", alignItems: "center", marginBottom: 4, marginLeft: 34 }}>
-                    <span style={{
-                      display: "inline-flex", alignItems: "center", gap: 4,
-                      background: "#fdf6e3",
-                      border: "1px solid #e8d08a",
-                      color: "#7a5c10", fontSize: 9, fontWeight: 700,
-                      letterSpacing: "0.1em", padding: "2px 8px",
-                      borderRadius: 20, textTransform: "uppercase",
-                    }}>
-                      ✦ {locale === "fr-CA" ? "Conseil Privilège" : "Member Insight"}
-                    </span>
-                  </div>
-                )}
                 <div
                   style={{
                     display: "flex",
@@ -1354,7 +1406,7 @@ export function ChatShell({
                 borderRadius: 20,
                 background: "linear-gradient(135deg, #c9a84c, #a07830)",
                 border: "none",
-                color: "#0a1a0f",
+                color: "#111116",
                 fontWeight: 700,
                 fontSize: 13,
                 cursor: "pointer",
@@ -1369,7 +1421,7 @@ export function ChatShell({
               style={{
                 background: "none",
                 border: "none",
-                color: "#3d5e4a",
+                color: "#5a5a70",
                 fontSize: 12,
                 cursor: "pointer",
                 whiteSpace: "nowrap",
@@ -1462,7 +1514,7 @@ export function ChatShell({
           <div style={{ color: "#1a1a1a", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
             {"📞 " + (locale === "fr-CA" ? "L'IA vous rappelle" : "The AI calls you back")}
           </div>
-          <div style={{ fontSize: 12, color: "#5a7a6a", marginBottom: 12 }}>
+          <div style={{ fontSize: 12, color: "#6a6a80", marginBottom: 12 }}>
             {locale === "fr-CA"
               ? "Entrez votre numéro et votre concierge IA vous appellera dans quelques secondes."
               : "Enter your number and your AI concierge will call you in seconds."}
@@ -1481,7 +1533,7 @@ export function ChatShell({
               type="tel"
               style={pillInput()}
             />
-            <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: "#8aab96", cursor: "pointer" }}>
+            <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: "#8a8aa0", cursor: "pointer" }}>
               <input
                 type="checkbox"
                 checked={callbackConsent}
@@ -1503,7 +1555,7 @@ export function ChatShell({
                   borderRadius: 20,
                   border: "none",
                   background: "linear-gradient(135deg, #c9a84c, #a07830)",
-                  color: "#0a1a0f",
+                  color: "#111116",
                   fontWeight: 700,
                   fontSize: 13,
                   cursor: isCallingNow || !callbackPhone.trim() || !callbackConsent ? "default" : "pointer",
@@ -1518,7 +1570,7 @@ export function ChatShell({
               <button
                 type="button"
                 onClick={() => { setShowInlineCallForm(false); setCallbackPhone(""); setCallbackName(""); setCallbackConsent(false); }}
-                style={{ background: "none", border: "none", color: "#3d5e4a", fontSize: 12, cursor: "pointer" }}
+                style={{ background: "none", border: "none", color: "#5a5a70", fontSize: 12, cursor: "pointer" }}
               >
                 {locale === "fr-CA" ? "Annuler" : "Cancel"}
               </button>
@@ -1552,7 +1604,7 @@ export function ChatShell({
                   type="tel"
                   style={pillInput()}
                 />
-                <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: "#8aab96", cursor: "pointer" }}>
+                <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: "#8a8aa0", cursor: "pointer" }}>
                   <input
                     type="checkbox"
                     checked={callbackConsent}
@@ -1574,7 +1626,7 @@ export function ChatShell({
                       borderRadius: 20,
                       border: "none",
                       background: "linear-gradient(135deg, #c9a84c, #a07830)",
-                      color: "#0a1a0f",
+                      color: "#111116",
                       fontWeight: 700,
                       fontSize: 13,
                       cursor: isTransferCalling || !callbackPhone.trim() || !callbackConsent ? "default" : "pointer",
@@ -1589,7 +1641,7 @@ export function ChatShell({
                   {lastResponse?.vapi?.phoneNumber ? (
                     <a
                       href={`tel:${lastResponse.vapi.phoneNumber}`}
-                      style={{ fontSize: 12, color: "#3d5e4a" }}
+                      style={{ fontSize: 12, color: "#5a5a70" }}
                     >
                       {locale === "fr-CA" ? "Ou composer directement" : "Or dial directly"}
                     </a>
@@ -1660,7 +1712,7 @@ export function ChatShell({
               }
               style={pillInput()}
             />
-            <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: "#8aab96", cursor: "pointer" }}>
+            <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: "#8a8aa0", cursor: "pointer" }}>
               <input
                 type="checkbox"
                 checked={callbackConsent}
@@ -1703,7 +1755,7 @@ export function ChatShell({
                   borderRadius: 20,
                   border: "none",
                   background: "linear-gradient(135deg, #c9a84c, #a07830)",
-                  color: "#0a1a0f",
+                  color: "#111116",
                   fontWeight: 700,
                   fontSize: 13,
                   cursor: isCallingNow || !callbackPhone.trim() || !callbackConsent ? "default" : "pointer",
@@ -1726,14 +1778,14 @@ export function ChatShell({
           <div style={{ color: "#c9a84c", fontWeight: 700, fontSize: 14, marginBottom: 4 }}>
             {locale === "fr-CA" ? "Laissez-nous vos coordonnées" : "Leave us your contact info"}
           </div>
-          <div style={{ color: "#5a7a6a", fontSize: 11, marginBottom: 12 }}>
+          <div style={{ color: "#6a6a80", fontSize: 11, marginBottom: 12 }}>
             {locale === "fr-CA" ? "Un membre de l'équipe MAA vous contactera sous peu." : "A Club Sportif MAA team member will reach out shortly."}
           </div>
           <div style={{ display: "grid", gap: 8 }}>
             <input value={callbackName} onChange={(e) => setCallbackName(e.target.value)} placeholder={locale === "fr-CA" ? "Votre nom (optionnel)" : "Your name (optional)"} style={pillInput()} />
             <input value={callbackPhone} onChange={(e) => setCallbackPhone(e.target.value)} placeholder={locale === "fr-CA" ? "Téléphone *" : "Phone *"} type="tel" style={pillInput()} />
             <input value={callbackEmail} onChange={(e) => setCallbackEmail(e.target.value)} placeholder={locale === "fr-CA" ? "Courriel (optionnel)" : "Email (optional)"} style={pillInput()} />
-            <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: "#8aab96", cursor: "pointer" }}>
+            <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: "#8a8aa0", cursor: "pointer" }}>
               <input type="checkbox" checked={callbackConsent} onChange={(e) => setCallbackConsent(e.target.checked)} />
               <span>{locale === "fr-CA" ? "J'accepte d'être contacté par Club Sportif MAA." : "I agree to be contacted by Club Sportif MAA."}</span>
             </label>
@@ -1742,11 +1794,11 @@ export function ChatShell({
                 type="button"
                 onClick={() => void submitCallbackRequest()}
                 disabled={isSubmittingCallback || !callbackPhone.trim() || !callbackConsent}
-                style={{ padding: "10px 18px", borderRadius: 20, border: "none", background: "linear-gradient(135deg, #c9a84c, #a07830)", color: "#0a1a0f", fontWeight: 700, fontSize: 13, cursor: isSubmittingCallback || !callbackPhone.trim() || !callbackConsent ? "default" : "pointer", opacity: isSubmittingCallback || !callbackPhone.trim() || !callbackConsent ? 0.6 : 1 }}
+                style={{ padding: "10px 18px", borderRadius: 20, border: "none", background: "linear-gradient(135deg, #c9a84c, #a07830)", color: "#111116", fontWeight: 700, fontSize: 13, cursor: isSubmittingCallback || !callbackPhone.trim() || !callbackConsent ? "default" : "pointer", opacity: isSubmittingCallback || !callbackPhone.trim() || !callbackConsent ? 0.6 : 1 }}
               >
                 {isSubmittingCallback ? (locale === "fr-CA" ? "Envoi..." : "Sending...") : (locale === "fr-CA" ? "Envoyer" : "Send")}
               </button>
-              <button type="button" onClick={() => setShowLeadForm(false)} style={{ background: "none", border: "none", color: "#3d5e4a", fontSize: 12, cursor: "pointer" }}>
+              <button type="button" onClick={() => setShowLeadForm(false)} style={{ background: "none", border: "none", color: "#5a5a70", fontSize: 12, cursor: "pointer" }}>
                 {locale === "fr-CA" ? "Fermer" : "Close"}
               </button>
             </div>
@@ -1880,7 +1932,7 @@ export function ChatShell({
           }}
         >
           {isOpen ? (
-            <span style={{ color: "#0a1a0f", fontSize: 20, fontWeight: 700, lineHeight: 1 }}>✕</span>
+            <span style={{ color: "#111116", fontSize: 20, fontWeight: 700, lineHeight: 1 }}>✕</span>
           ) : (
             <span style={{ color: "#111116", fontWeight: 900, fontSize: 22, lineHeight: 1 }}>M</span>
           )}
