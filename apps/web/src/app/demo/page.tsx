@@ -131,8 +131,10 @@ export default function DemoPage() {
         .demo-badge {
           position: fixed;
           top: 10px;
-          left: 50%;
-          transform: translateX(-50%);
+          left: 0;
+          right: 0;
+          width: fit-content;
+          margin: 0 auto;
           z-index: 1002;
           background: rgba(6,10,6,0.82);
           backdrop-filter: blur(12px);
@@ -193,16 +195,14 @@ export default function DemoPage() {
         /* ── Responsive ── */
         @media (max-width: 480px) {
           .demo-badge {
-            top: 8px;
-            left: 12px !important;
-            right: 12px !important;
-            transform: none !important;
+            top: 6px;
+            left: 12px;
+            right: 12px;
+            width: auto;
+            margin: 0;
             justify-content: center;
-            padding: 6px 16px;
+            padding: 6px 14px;
             font-size: 11px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
           }
           .chat-panel {
             width: 100vw;
