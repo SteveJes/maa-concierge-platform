@@ -47,67 +47,38 @@ const GYM_SERVICES_EN = [
 ];
 
 function GymLoadingIndicator({ locale }: { locale: string }) {
-  const [tick, setTick] = useState(0);
-  const services = locale === "fr-CA" ? GYM_SERVICES_FR : GYM_SERVICES_EN;
-
-  useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 1600);
-    return () => clearInterval(id);
-  }, []);
-
-  const serviceIndex = tick % services.length;
-  const service = services[serviceIndex]!;
-
   return (
     <div
       style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "flex-start",
-        gap: 8,
-        marginBottom: 10,
         padding: "12px 16px",
         borderRadius: 14,
         background: "#ffffff",
         border: "1px solid #e8eaed",
-        boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
-        maxWidth: "60%",
+        boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        maxWidth: "75%",
       }}
     >
-      {/* Dumbbell */}
-      <div style={{ display: "flex", alignItems: "center", gap: 0, animation: "maa-lift 1.6s ease-in-out infinite" }}>
-        <div style={{ width: 8, height: 20, borderRadius: "3px 1px 1px 3px", background: "linear-gradient(180deg,#3a3a4a,#2a2a38)", boxShadow: "inset 0 1px 2px rgba(255,255,255,0.15)" }} />
-        <div style={{ width: 6, height: 26, borderRadius: "2px 1px 1px 2px", background: "linear-gradient(180deg,#3a3a4a,#2a2a38)", marginLeft: 2 }} />
-        <div style={{ width: 5, height: 14, background: "#c9a84c", borderRadius: 2, marginLeft: 2 }} />
-        <div style={{ width: 28, height: 5, background: "linear-gradient(180deg,#e0c870,#b89030)", borderRadius: 2 }} />
-        <div style={{ width: 5, height: 14, background: "#c9a84c", borderRadius: 2 }} />
-        <div style={{ width: 6, height: 26, borderRadius: "1px 2px 2px 1px", background: "linear-gradient(180deg,#3a3a4a,#2a2a38)", marginRight: 2 }} />
-        <div style={{ width: 8, height: 20, borderRadius: "1px 3px 3px 1px", background: "linear-gradient(180deg,#3a3a4a,#2a2a38)", boxShadow: "inset 0 1px 2px rgba(255,255,255,0.15)" }} />
+      {/* Three animated gold dots */}
+      <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+        {[0, 1, 2].map((i) => (
+          <div
+            key={i}
+            style={{
+              width: 7,
+              height: 7,
+              borderRadius: "50%",
+              background: "linear-gradient(135deg, #c9a84c, #a07830)",
+              animation: `maa-dot-bounce 1.2s ease-in-out ${i * 0.18}s infinite`,
+            }}
+          />
+        ))}
       </div>
-
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <div
-          key={serviceIndex}
-          style={{
-            fontSize: 10,
-            color: "#c9a84c",
-            letterSpacing: "0.1em",
-            fontWeight: 600,
-            textTransform: "uppercase",
-            animation: "maa-fade-in 0.35s ease",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            maxWidth: 180,
-            textOverflow: "ellipsis",
-            opacity: 0.85,
-          }}
-        >
-          {service}
-        </div>
-        <span style={{ fontSize: 9, color: "#a8b0c0", fontStyle: "italic", whiteSpace: "nowrap" }}>
-          {locale === "fr-CA" ? "· consultation en cours…" : "· consulting records…"}
-        </span>
-      </div>
+      <span style={{ fontSize: 12, color: "#9a9ab0", fontStyle: "italic", letterSpacing: "0.01em" }}>
+        {locale === "fr-CA" ? "Un instant…" : "One moment…"}
+      </span>
     </div>
   );
 }
@@ -929,6 +900,10 @@ export function ChatShell({
     @keyframes maa-fade-in {
       from { opacity: 0; transform: translateY(4px); }
       to   { opacity: 0.85; transform: translateY(0); }
+    }
+    @keyframes maa-dot-bounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.5; }
+      40%           { transform: translateY(-5px); opacity: 1; }
     }
   `;
 

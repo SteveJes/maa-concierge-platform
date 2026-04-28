@@ -185,15 +185,28 @@ export default function DemoPage() {
 
         /* ── Responsive ── */
         @media (max-width: 480px) {
+          .demo-badge {
+            top: 6px;
+            padding: 5px 14px;
+            font-size: 11px;
+            max-width: calc(100vw - 24px);
+            overflow: hidden;
+          }
           .chat-panel {
-            width: calc(100vw - 12px);
-            height: calc(100vh - 16px);
-            bottom: 8px;
-            right: 6px;
-            border-radius: 16px;
+            width: 100vw;
+            right: 0;
+            bottom: 0;
+            top: 44px;
+            height: auto;
+            border-radius: 14px 14px 0 0;
           }
           .arrow-hint { display: none; }
           .bubble-label { display: none; }
+          /* Bubble sits in bottom-right, above system nav */
+          .bubble-wrapper {
+            bottom: 20px;
+            right: 16px;
+          }
         }
       `}</style>
 
