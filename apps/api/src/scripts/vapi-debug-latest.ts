@@ -68,7 +68,7 @@ async function fetchLatestCall(): Promise<VapiCall> {
   const apiKey = process.env.VAPI_PRIVATE_KEY ?? process.env.VAPI_API_KEY;
   if (!apiKey) throw new Error("VAPI_PRIVATE_KEY not set in environment");
 
-  const url = `https://api.vapi.ai/call?assistantId=${ASSISTANT_ID}&limit=10&sortOrder=desc`;
+  const url = `https://api.vapi.ai/call?assistantId=${ASSISTANT_ID}&limit=25`;
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${apiKey}` },
   });
@@ -83,9 +83,16 @@ async function fetchLatestCall(): Promise<VapiCall> {
 
   if (calls.length === 0) throw new Error("No calls found for this assistant.");
 
-  // Pick latest completed call first, else latest of any status
-  const completed = calls.find((c) => c.endedAt);
-  return completed ?? calls[0]!;
+  // Sort locally by startedAt desc (sortOrder param not supported by Vapi)
+  const sorted = [...calls].sort((a, b) => {
+    const ta = a.startedAt ? new Date(a.startedAt).getTime() : 0;
+    const tb = b.startedAt ? new Date(b.startedAt).getTime() : 0;
+    return tb - ta;
+  });
+
+  // Prefer latest completed call, else latest of any status
+  const completed = sorted.find((c) => c.endedAt);
+  return completed ?? sorted[0]!;
 }
 
 // ── Diagnosis ─────────────────────────────────────────────────────────────────
