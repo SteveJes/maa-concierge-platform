@@ -1671,7 +1671,8 @@ export function createServer() {
   });
 
   // Custom LLM proxy for VAPI — VAPI appends /chat/completions to the URL, so register both paths
-  async function vapiLlmHandler(request: FastifyRequest, reply: FastifyReply) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async function vapiLlmHandler(request: any, reply: any) {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return reply.code(500).send({ error: "OPENAI_API_KEY not set" });
