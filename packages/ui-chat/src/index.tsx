@@ -913,10 +913,14 @@ export function ChatShell({
         background: "#f7f8f9",
         borderRadius: 20,
         overflow: "hidden",
+        overflowX: "hidden",
         display: "flex",
         flexDirection: "column",
         border: "1px solid #d0d5dd",
         boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+        width: "100%",
+        maxWidth: "100%",
+        boxSizing: "border-box",
       }}
     >
       <style>{globalCss}</style>
@@ -1828,6 +1832,7 @@ export function ChatShell({
             color: "#1a1a1a",
             fontSize: 14,
             outline: "none",
+            minWidth: 0,
           }}
         />
         <button

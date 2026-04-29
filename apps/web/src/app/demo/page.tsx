@@ -11,7 +11,7 @@ export default function DemoPage() {
     <>
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        html, body { overflow: hidden; height: 100%; }
+        html, body { overflow: hidden; overflow-x: hidden; height: 100%; max-width: 100%; }
 
         /* ── Bubble pulse ── */
         @keyframes bubblePulse {
@@ -205,13 +205,15 @@ export default function DemoPage() {
             font-size: 11px;
           }
           .chat-panel {
-            width: 100vw;
+            width: 100%;
+            max-width: 100%;
             left: 0;
             right: 0;
             bottom: 0;
             top: 40px;
             height: calc(100dvh - 40px);
             border-radius: 14px 14px 0 0;
+            overflow-x: hidden;
           }
           .arrow-hint { display: none; }
           .bubble-label { display: none; }
