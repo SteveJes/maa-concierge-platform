@@ -1670,8 +1670,8 @@ export function createServer() {
     return reply.send({ results });
   });
 
-  // Custom LLM proxy for VAPI — streams a filler word instantly, then pipes OpenAI
-  app.post("/v1/vapi/llm", async (request, reply) => {
+  // Custom LLM proxy for VAPI — VAPI appends /chat/completions to the URL, so register both paths
+  async function vapiLlmHandler(request: FastifyRequest, reply: FastifyReply) {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return reply.code(500).send({ error: "OPENAI_API_KEY not set" });
@@ -1757,7 +1757,10 @@ export function createServer() {
 
     reply.raw.write("data: [DONE]\n\n");
     reply.raw.end();
-  });
+  }
+
+  app.post("/v1/vapi/llm", vapiLlmHandler);
+  app.post("/v1/vapi/llm/chat/completions", vapiLlmHandler);
 
   // Embed snippet endpoint — returns ready-to-install HTML/JS for the client's website
   app.get("/v1/tenants/:tenantId/embed-snippet", async (request, reply) => {
