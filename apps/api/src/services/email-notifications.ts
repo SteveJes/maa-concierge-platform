@@ -81,7 +81,7 @@ export async function sendLeadNotificationEmail(p: LeadEmailPayload): Promise<bo
     ? `🔔 Nouveau lead${nameStr} (${p.phone}) — ${p.tenantName}`
     : `🔔 New lead${nameStr} (${p.phone}) — ${p.tenantName}`;
 
-  const senderEmail = process.env.BREVO_SMTP_USER ?? "noreply@dubub.com";
+  const senderEmail = process.env.BREVO_SENDER_EMAIL ?? "noreply@dubub.com";
   const senderName = `${p.tenantName} Concierge IA`;
 
   try {
