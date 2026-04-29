@@ -1670,6 +1670,95 @@ export function createServer() {
     return reply.send({ results });
   });
 
+  // Custom LLM proxy for VAPI — streams a filler word instantly, then pipes OpenAI
+  app.post("/v1/vapi/llm", async (request, reply) => {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      return reply.code(500).send({ error: "OPENAI_API_KEY not set" });
+    }
+
+    const body = request.body as {
+      messages?: { role: string; content: string }[];
+      model?: string;
+      temperature?: number;
+      max_tokens?: number;
+      stream?: boolean;
+    };
+
+    const messages = body.messages ?? [];
+    const temperature = body.temperature ?? 0.3;
+    const max_tokens = body.max_tokens ?? 500;
+
+    // Detect locale from system prompt to pick the right filler
+    const systemContent = messages.find(m => m.role === "system")?.content ?? "";
+    const isEnglish = systemContent.includes("locale detected: en") ||
+      (messages[messages.length - 1]?.content ?? "").match(/^(hi|hello|yes|ok|sure|what|how|when|where|do you|is there|can you)/i) !== null;
+    const fillers = isEnglish
+      ? ["Sure, ", "Absolutely, ", "Of course, "]
+      : ["Oui, ", "Bien sûr, ", "Absolument, ", "Tout à fait, "];
+    const filler = fillers[Math.floor(Math.random() * fillers.length)];
+
+    const callId = `chatcmpl-${Date.now()}`;
+
+    reply.raw.setHeader("Content-Type", "text/event-stream");
+    reply.raw.setHeader("Cache-Control", "no-cache");
+    reply.raw.setHeader("Connection", "keep-alive");
+    reply.raw.setHeader("Access-Control-Allow-Origin", "*");
+
+    // Emit filler immediately — ElevenLabs starts TTS within ~500ms
+    const fillerChunk = {
+      id: callId,
+      object: "chat.completion.chunk",
+      choices: [{ index: 0, delta: { role: "assistant", content: filler }, finish_reason: null }],
+    };
+    reply.raw.write(`data: ${JSON.stringify(fillerChunk)}\n\n`);
+
+    try {
+      const upstream = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages,
+          temperature,
+          max_tokens,
+          stream: true,
+        }),
+      });
+
+      if (!upstream.ok || !upstream.body) {
+        reply.raw.write(`data: [DONE]\n\n`);
+        reply.raw.end();
+        return;
+      }
+
+      const reader = upstream.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            reply.raw.write(line + "\n\n");
+          }
+        }
+      }
+    } catch (err) {
+      request.log.error({ err }, "VAPI custom LLM upstream error");
+    }
+
+    reply.raw.write("data: [DONE]\n\n");
+    reply.raw.end();
+  });
+
   // Embed snippet endpoint — returns ready-to-install HTML/JS for the client's website
   app.get("/v1/tenants/:tenantId/embed-snippet", async (request, reply) => {
     const { tenantId } = request.params as TenantRouteParams;
