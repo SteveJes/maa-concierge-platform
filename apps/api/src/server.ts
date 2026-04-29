@@ -1282,21 +1282,98 @@ export function createServer() {
         ? "Demande de rappel depuis le site web."
         : "Callback request from the website.");
 
-    const resolvedChatSummary =
-      chatSummary ??
-      resolvedQuestionSummary;
+    // ── Handoff helpers ───────────────────────────────────────────────────
 
-    // Short, topic-neutral first message — context is injected as a system message instead.
-    // Keeping this brief prevents Deepgram from re-transcribing it into garbled "bot" turns.
-    const buildFirstMessage = (): string => {
-      const fr = isFrenchLocale(locale);
-      const greet = name
-        ? (fr ? `Bonjour ${name}` : `Hello ${name}`)
-        : (fr ? "Bonjour" : "Hello");
-      return fr
-        ? `${greet} ! Ici votre concierge du Club Sportif MAA. Comment puis-je vous aider ?`
-        : `${greet}! This is your concierge at Club Sportif MAA. How can I help you?`;
+    const cleanCustomerName = (raw?: string | null): string => {
+      if (!raw) return "";
+      return raw.trim().replace(/\s+/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
     };
+
+    const detectHandoffTopic = (message?: string | null): { fr: string; en: string } => {
+      const m = (message ?? "").toLowerCase();
+      if (m.includes("tarif") || m.includes("prix") || m.includes("abonnement") || m.includes("cost") || m.includes("price") || m.includes("membership"))
+        return { fr: "nos tarifs", en: "our pricing" };
+      if (m.includes("piscine") || m.includes("pool") || m.includes("nage") || m.includes("swim"))
+        return { fr: "la piscine", en: "the pool" };
+      if (m.includes("cours") || m.includes("classe") || m.includes("yoga") || m.includes("pilates") || m.includes("spinning") || m.includes("class") || m.includes("groupe"))
+        return { fr: "nos cours", en: "our classes" };
+      if (m.includes("horaire") || m.includes("heure") || m.includes("ouvert") || m.includes("schedule") || m.includes("hours") || m.includes("open"))
+        return { fr: "nos horaires", en: "our hours" };
+      if (m.includes("spa") || m.includes("sauna") || m.includes("hammam") || m.includes("steam"))
+        return { fr: "le spa", en: "the spa" };
+      if (m.includes("visite") || m.includes("tour") || m.includes("rendez-vous") || m.includes("appointment"))
+        return { fr: "une visite", en: "a visit" };
+      if (m.includes("squash"))
+        return { fr: "les courts de squash", en: "squash courts" };
+      if (m.includes("personne") || m.includes("humain") || m.includes("quelqu'un") || m.includes("someone") || m.includes("human"))
+        return { fr: "parler à quelqu'un", en: "speaking with someone" };
+      return { fr: "votre question", en: "your question" };
+    };
+
+    const buildOpeningLine = (): string => {
+      const cleanedName = cleanCustomerName(name);
+      const topic = detectHandoffTopic(questionSummary);
+      const isEn = !isFrenchLocale(locale);
+      if (isEn) {
+        return cleanedName
+          ? `Hello ${cleanedName}, this is Sophie from Club Sportif MAA. You had a question about ${topic.en}?`
+          : `Hello, this is Sophie from Club Sportif MAA. You had a question about ${topic.en}?`;
+      }
+      return cleanedName
+        ? `Bonjour ${cleanedName}, ici Sophie du Club Sportif MAA. Vous aviez une question sur ${topic.fr}?`
+        : `Bonjour, ici Sophie du Club Sportif MAA. Vous aviez une question sur ${topic.fr}?`;
+    };
+
+    const BANNED_SUMMARY_PHRASES = [
+      "nous vous appelons maintenant",
+      "on vous appelle maintenant",
+      "we are calling you now",
+      "parfait, nous vous appelons",
+      "calling you now",
+      "appel en cours",
+    ];
+
+    const summarizeFromMessage = (message: string | null): string => {
+      const m = (message ?? "").toLowerCase();
+      if (m.includes("tarif") || m.includes("prix") || m.includes("abonnement"))
+        return "La personne veut connaître les tarifs d'abonnement du Club Sportif MAA.";
+      if (m.includes("piscine") || m.includes("pool"))
+        return "La personne veut savoir si le Club Sportif MAA possède une piscine.";
+      if (m.includes("cours") || m.includes("classe") || m.includes("yoga") || m.includes("pilates"))
+        return "La personne veut obtenir de l'information sur les cours du Club Sportif MAA.";
+      if (m.includes("horaire") || m.includes("heure") || m.includes("ouvert"))
+        return "La personne veut connaître les horaires du Club Sportif MAA.";
+      if (m.includes("spa") || m.includes("sauna"))
+        return "La personne veut de l'information sur le spa du Club Sportif MAA.";
+      if (m.includes("personne") || m.includes("humain") || m.includes("quelqu'un"))
+        return "La personne souhaite parler avec quelqu'un de l'équipe.";
+      if (message) return `La personne a demandé: ${message}`;
+      return "La personne a demandé un appel depuis le site web.";
+    };
+
+    const cleanHandoffSummary = (raw?: string | null): string => {
+      const lines = (raw ?? "")
+        .split(/[|\n]/)
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .filter((l) => !BANNED_SUMMARY_PHRASES.some((b) => l.toLowerCase().includes(b)));
+      if (lines.length === 0) return summarizeFromMessage(questionSummary);
+      return lines.slice(-2).join(" ");
+    };
+
+    const cleanedSummary = cleanHandoffSummary(chatSummary ?? questionSummary);
+    const openingLine = buildOpeningLine();
+
+    request.log.info(
+      {
+        handoff_last_user_message: questionSummary,
+        handoff_summary_cleaned: cleanedSummary,
+        handoff_opening_line: openingLine,
+        handoff_locale: locale,
+        customer_name: cleanCustomerName(name),
+      },
+      "VAPI outbound call payload",
+    );
 
     // Inject the web chat context as a silent system message so the AI knows what was discussed
     // without speaking it aloud (which Deepgram would transcribe back with errors).
@@ -1333,20 +1410,21 @@ export function createServer() {
           assistantId,
           phoneNumberId,
           assistantOverrides: {
-            firstMessage: buildFirstMessage(),
+            firstMessage: openingLine,
             startSpeakingPlan: {
               waitSeconds: 0.1,
             },
             variableValues: {
-              customer_name: name ?? "",
+              customer_name: cleanCustomerName(name),
               customer_phone: normalizedPhone,
               customer_email: email ?? "",
               callback_preferred_time: preferredTimeText ?? "",
               callback_reason: resolvedQuestionSummary,
-              handoff_summary: resolvedChatSummary,
-              handoff_last_user_message: resolvedQuestionSummary,
+              handoff_summary: cleanedSummary,
+              handoff_last_user_message: questionSummary ?? "",
               handoff_locale: locale ?? "",
               handoff_source: handoffSource,
+              handoff_opening_line: openingLine,
             },
           },
           customer: {
