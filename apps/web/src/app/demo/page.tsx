@@ -193,7 +193,7 @@ export default function DemoPage() {
         }
 
         /* ── Responsive ── */
-        @media (max-width: 480px) {
+        @media (max-width: 520px) {
           .demo-badge {
             top: 6px;
             left: 12px;
@@ -206,6 +206,7 @@ export default function DemoPage() {
           }
           .chat-panel {
             width: 100vw;
+            left: 0;
             right: 0;
             bottom: 0;
             top: 40px;
