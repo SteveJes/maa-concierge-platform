@@ -1316,12 +1316,12 @@ export function createServer() {
       const isEn = !isFrenchLocale(locale);
       if (isEn) {
         return cleanedName
-          ? `Hello ${cleanedName}, this is Sophie from Club Sportif MAA. You had a question about ${topic.en}?`
-          : `Hello, this is Sophie from Club Sportif MAA. You had a question about ${topic.en}?`;
+          ? `Hello ${cleanedName}, this is Sophie from Club M.A.A. You had a question about ${topic.en}?`
+          : `Hello, this is Sophie from Club M.A.A. You had a question about ${topic.en}?`;
       }
       return cleanedName
-        ? `Bonjour ${cleanedName}, ici Sophie du Club Sportif MAA. Vous aviez une question sur ${topic.fr}?`
-        : `Bonjour, ici Sophie du Club Sportif MAA. Vous aviez une question sur ${topic.fr}?`;
+        ? `Bonjour ${cleanedName}, ici Sophie du Club M.A.A. Vous aviez une question sur ${topic.fr}?`
+        : `Bonjour, ici Sophie du Club M.A.A. Vous aviez une question sur ${topic.fr}?`;
     };
 
     const BANNED_SUMMARY_PHRASES = [

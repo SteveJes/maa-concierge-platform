@@ -197,7 +197,7 @@ function printReport(call: VapiCall): void {
     console.log("\n💬 MESSAGE TIMELINE");
     for (const m of messages) {
       const t = m.secondsFromStart !== undefined ? `+${m.secondsFromStart.toFixed(2)}s` : "     ";
-      const dur = m.duration !== undefined ? ` (${m.duration.toFixed(2)}s)` : "";
+      const dur = m.duration !== undefined ? ` (${m.duration}ms / ${(m.duration / 1000).toFixed(2)}s)` : "";
       const role = (m.role ?? "unknown").padEnd(11);
       const text = (m.message ?? "").slice(0, 120);
       console.log(`  ${t.padStart(8)} ${role} ${dur.padEnd(10)} ${text}`);
