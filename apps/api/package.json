@@ -27,7 +27,9 @@
     "test:maa:chat:followup": "tsx src/scripts/test-maa-chat-followup-regression.ts",
     "test:maa:vapi": "tsx src/scripts/test-maa-vapi-regression.ts",
     "test:maa:phone:routing": "tsx src/scripts/test-maa-phone-routing-regression.ts",
-    "test:maa:auto": "tsx src/scripts/test-maa-autonomous-regression.ts"
+    "test:maa:auto": "tsx src/scripts/test-maa-autonomous-regression.ts",
+    "vapi:debug:latest": "tsx src/scripts/vapi-debug-latest.ts",
+    "vapi:debug:latest:json": "tsx src/scripts/vapi-debug-latest.ts --json"
   },
   "dependencies": {
     "@fastify/cors": "^11.0.0",
