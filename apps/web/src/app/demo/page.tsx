@@ -175,8 +175,12 @@ export default function DemoPage() {
           letter-spacing: 0.04em;
           transition: color 0.2s;
           animation: fadeUp 0.5s ease 0.6s both;
+          white-space: nowrap;
         }
         .dubub-link:hover { color: rgba(201,168,76,0.8); }
+        @media (max-width: 520px) {
+          .dubub-link { display: none; }
+        }
 
         /* ── Luxury arrow ── */
         .arrow-hint {
