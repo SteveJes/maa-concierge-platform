@@ -1352,11 +1352,18 @@ export function createServer() {
     };
 
     const cleanHandoffSummary = (raw?: string | null): string => {
+      // For call-now handoffs, never trust the raw chat summary — it contains assistant
+      // upsell messages, bot status lines, and partial conversation noise. Generate a
+      // clean deterministic summary purely from the last user question.
+      if (handoffSource === "web_call_now") {
+        return summarizeFromMessage(questionSummary);
+      }
       const lines = (raw ?? "")
         .split(/[|\n]/)
         .map((l) => l.trim())
         .filter(Boolean)
-        .filter((l) => !BANNED_SUMMARY_PHRASES.some((b) => l.toLowerCase().includes(b)));
+        .filter((l) => !BANNED_SUMMARY_PHRASES.some((b) => l.toLowerCase().includes(b)))
+        .filter((l) => !l.toLowerCase().startsWith("assistant:"));
       if (lines.length === 0) return summarizeFromMessage(questionSummary);
       return lines.slice(-2).join(" ");
     };
