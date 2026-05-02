@@ -152,7 +152,7 @@ export function GhostBtn({ children, onClick }: { children: React.ReactNode; onC
 }
 
 export const fieldStyle: React.CSSProperties = {
-  background: "rgba(255,255,255,0.04)",
+  background: "#1e1e2a",
   border: "1px solid rgba(255,255,255,0.1)",
   borderRadius: 10,
   color: "#fff",
@@ -162,6 +162,7 @@ export const fieldStyle: React.CSSProperties = {
   width: "100%",
   boxSizing: "border-box",
   fontFamily: "Inter, system-ui, sans-serif",
+  colorScheme: "dark",
 };
 
 export const labelStyle: React.CSSProperties = {

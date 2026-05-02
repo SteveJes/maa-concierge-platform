@@ -105,7 +105,7 @@ export default function OnboardingPage() {
   const [data, setData] = useState<OnboardingData>(EMPTY);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [submitResult, setSubmitResult] = useState<{ invoiceNumber?: string; stripeUrl?: string; total?: number } | null>(null);
+  const [submitResult, setSubmitResult] = useState<{ invoiceNumber?: string; stripeUrl?: string; total?: number; tenantSlug?: string } | null>(null);
   const [error, setError] = useState("");
   const [uploadProgress, setUploadProgress] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -162,7 +162,7 @@ export default function OnboardingPage() {
         const e = await res.json().catch(() => ({})) as { error?: string };
         throw new Error(e.error ?? `HTTP ${res.status}`);
       }
-      const result = await res.json() as { invoiceNumber?: string; stripeUrl?: string; total?: number };
+      const result = await res.json() as { invoiceNumber?: string; stripeUrl?: string; total?: number; tenantSlug?: string };
       setSubmitResult(result);
       setSubmitted(true);
     } catch (e: unknown) {
@@ -202,6 +202,34 @@ export default function OnboardingPage() {
                 Ouvrir le lien de paiement Stripe →
               </a>
             )}
+          </div>
+        )}
+        {submitResult?.tenantSlug && (
+          <div style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 12, padding: '20px 24px', marginBottom: 24, textAlign: 'left' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: P.muted, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>Démo concierge</div>
+            <div style={{ fontSize: 13, color: P.dim, marginBottom: 10 }}>
+              Voici l'URL de démonstration à partager avec le client :
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(0,0,0,0.3)', borderRadius: 8, padding: '10px 14px', marginBottom: 14 }}>
+              <code style={{ flex: 1, color: '#3db8f5', fontSize: 13, fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                {'https://clients.dubub.com/demo/' + submitResult.tenantSlug}
+              </code>
+              <button
+                type="button"
+                onClick={() => { void navigator.clipboard.writeText('https://clients.dubub.com/demo/' + submitResult!.tenantSlug!); }}
+                style={{ background: 'none', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, color: P.muted, fontSize: 11, cursor: 'pointer', padding: '4px 10px', whiteSpace: 'nowrap' }}
+              >
+                Copier
+              </button>
+            </div>
+            <a
+              href={'https://clients.dubub.com/demo/' + submitResult.tenantSlug}
+              target="_blank"
+              rel="noreferrer"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#3db8f5', fontSize: 13, textDecoration: 'underline' }}
+            >
+              Ouvrir la démo →
+            </a>
           </div>
         )}
         <GoldBtn onClick={() => { setData(EMPTY); setStep(1); setSubmitted(false); setSubmitResult(null); setUploadProgress([]); }}>

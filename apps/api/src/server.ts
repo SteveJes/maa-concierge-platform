@@ -719,13 +719,27 @@ export function createServer() {
     return reply.code(201).send({
       ok: true,
       tenantId: id,
+      tenantSlug: id,
       invoiceNumber: sendInvoice && lines.length > 0 ? invoiceNumber : null,
       stripeUrl,
       total: invoiceResult?.total ?? null,
     });
   });
 
-  // POST /v1/admin/onboarding/upload-pdf — save uploaded PDF to disk
+  // GET /v1/demo-config/:slug — returns tenant config for demo pages
+  app.get("/v1/demo-config/:slug", async (request, reply) => {
+    const { slug } = request.params as { slug: string };
+    const tenant = getTenant(slug);
+    if (!tenant) return reply.code(404).send({ error: "not_found" });
+    return reply.send({
+      tenantId: tenant.id,
+      name: tenant.name,
+      websiteUrl: tenant.website ?? null,
+      conciergeName: "Sophie",
+    });
+  });
+
+    // POST /v1/admin/onboarding/upload-pdf — save uploaded PDF to disk
   app.post("/v1/admin/onboarding/upload-pdf", { config: { rawBody: true } }, async (request, reply) => {
     if (!adminAuth(request, reply)) return;
     // Accept multipart via raw boundary parsing using built-in Node stream
@@ -830,6 +844,7 @@ export function createServer() {
       lastUserMessage?: string;
       handoffSummary?: string;
       handoffSource?: string;
+      conversationId?: string;
     };
 
     const normalizedPhone = normalizePhoneE164(toNullableTrimmedString(body.phone));
@@ -860,6 +875,25 @@ export function createServer() {
     const inboundNumber = toNullableTrimmedString(process.env.VAPI_INBOUND_PHONE_NUMBER)
       ?? toNullableTrimmedString(process.env.VAPI_PHONE_NUMBER);
     request.log.info({ tenantId, matched: false, handoffSource: "web_inbound", hasContext: !!lastUserMessage }, "inbound-handoff registered");
+
+    // Update conversation outcome to phone continuation in background
+    const convId = typeof body.conversationId === "string" ? body.conversationId.trim() : null;
+    if (convId) {
+      void (async () => {
+        try {
+          const tenant = await findTenantByCode("maa");
+          await updateConversationOutcome({
+            uuid: convId,
+            tenantUuid: tenant.uuid,
+            followUpMode: "vapi",
+            userMessage: lastUserMessage,
+            assistantMessage: "Transfert vers Sophie (appel entrant)",
+            locale,
+            now: new Date().toISOString(),
+          });
+        } catch { /* non-critical */ }
+      })();
+    }
 
     return { ok: true, inboundNumber };
   });

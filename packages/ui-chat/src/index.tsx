@@ -821,6 +821,7 @@ export function ChatShell({
           lastUserMessage: lastUserQuestion || undefined,
           handoffSummary: recentMessages || undefined,
           handoffSource: "web_inbound",
+          conversationId: conversationId ?? undefined,
         }),
       });
       const data = (await res.json()) as { ok?: boolean; inboundNumber?: string };
@@ -1093,6 +1094,8 @@ export function ChatShell({
           gap: 4,
         }}
       >
+        {/* Spacer: pushes messages toward the bottom when chat is sparse */}
+        <div style={{ flex: 1 }} />
         {messages.map((message) => {
           if (message.role === "user") {
             return (
@@ -2002,7 +2005,7 @@ export function ChatShell({
             <span style={{ position: "absolute", width: 3, height: 3, borderRadius: "50%", background: "rgba(201,168,76,0.6)", animation: "maa-ai-orbit 3s linear infinite" }} />
             <span style={{ position: "absolute", width: 2, height: 2, borderRadius: "50%", background: "rgba(201,168,76,0.4)", animation: "maa-ai-orbit 3s linear infinite", animationDelay: "-1.5s" }} />
           </span>
-          IA concierge par{" "}
+          Concierge IA par{" "}
           <strong style={{ color: "#7a82a0", fontWeight: 700 }}>DUBUB</strong>
           <span style={{ color: "#c9a84c", fontWeight: 700 }}>.ca</span>
         </a>
