@@ -83,12 +83,24 @@ function HealthBadge({ status }: { status: HealthLevel }) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
+interface TenantUsage {
+  tenantId: string; calls: number; inputTokens: number; outputTokens: number;
+  costUsd: number; lastCallAt: string;
+  byModel: Record<string, { calls: number; inputTokens: number; outputTokens: number; costUsd: number }>;
+}
+
+interface UsageReport {
+  tenants: TenantUsage[];
+  note: string;
+}
+
 export default function AdminDashboard() {
   const router = useRouter();
   const [token, setToken] = useState<string | null>(null);
   const [tenants, setTenants] = useState<TenantSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [overview, setOverview] = useState<TenantOverview | null>(null);
+  const [usageReport, setUsageReport] = useState<UsageReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [tenantsLoading, setTenantsLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
@@ -118,7 +130,13 @@ export default function AdminDashboard() {
     setLastRefresh(new Date());
   }, [router]);
 
+  const fetchUsage = useCallback(async (t: string) => {
+    const res = await fetch(`${API}/v1/admin/usage`, { headers: { "x-admin-token": t } });
+    if (res.ok) setUsageReport(await res.json() as UsageReport);
+  }, []);
+
   useEffect(() => { if (token) void fetchTenants(token); }, [token, fetchTenants]);
+  useEffect(() => { if (token) void fetchUsage(token); }, [token, fetchUsage]);
   useEffect(() => { if (selectedId && token) void fetchOverview(selectedId, token); }, [selectedId, token, fetchOverview]);
 
   if (!token) return null;
@@ -253,6 +271,52 @@ export default function AdminDashboard() {
               <Card><p style={{ margin: 0, fontSize: 13, color: P.dim, lineHeight: 1.6 }}>{tenant.notes}</p></Card>
             </section>
           )}
+
+          {/* OpenAI usage for this tenant */}
+          {(() => {
+            const tu = usageReport?.tenants.find((u) => u.tenantId === tenant.id);
+            return (
+              <section>
+                <SectionTitle>Coûts OpenAI</SectionTitle>
+                {!tu ? (
+                  <Card><p style={{ margin: 0, fontSize: 13, color: P.muted }}>Aucune activité enregistrée depuis le dernier démarrage du serveur.</p></Card>
+                ) : (
+                  <>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 12, marginBottom: 16 }}>
+                      <StatCard label="Coût total" value={`$${tu.costUsd.toFixed(4)}`} sub="USD depuis démarrage" accent={P.gold} />
+                      <StatCard label="Requêtes" value={tu.calls} sub="appels OpenAI" />
+                      <StatCard label="Tokens entrée" value={tu.inputTokens.toLocaleString()} />
+                      <StatCard label="Tokens sortie" value={tu.outputTokens.toLocaleString()} />
+                    </div>
+                    <Card>
+                      <div style={{ fontSize: 11, color: P.muted, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>Détail par modèle</div>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                        <thead>
+                          <tr style={{ borderBottom: `1px solid ${P.border}`, color: P.muted }}>
+                            {["Modèle", "Requêtes", "Tokens entrée", "Tokens sortie", "Coût USD"].map((h) => (
+                              <th key={h} style={{ padding: "6px 10px", textAlign: "left", fontWeight: 600, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Object.entries(tu.byModel).map(([model, m]) => (
+                            <tr key={model} style={{ borderBottom: `1px solid ${P.border}` }}>
+                              <td style={{ padding: "8px 10px" }}><code style={{ fontSize: 11, color: P.blue }}>{model}</code></td>
+                              <td style={{ padding: "8px 10px", color: P.dim }}>{m.calls}</td>
+                              <td style={{ padding: "8px 10px", color: P.dim }}>{m.inputTokens.toLocaleString()}</td>
+                              <td style={{ padding: "8px 10px", color: P.dim }}>{m.outputTokens.toLocaleString()}</td>
+                              <td style={{ padding: "8px 10px", color: P.gold, fontWeight: 700 }}>${m.costUsd.toFixed(4)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {usageReport?.note && <p style={{ margin: "12px 0 0", fontSize: 11, color: P.muted }}>{usageReport.note}</p>}
+                    </Card>
+                  </>
+                )}
+              </section>
+            );
+          })()}
         </>
       )}
     </AdminShellWithSidebar>

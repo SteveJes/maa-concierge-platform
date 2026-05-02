@@ -8,66 +8,97 @@
 - API: https://api.dubub.com
 - Server: DigitalOcean droplet `concierge-first` (165.227.40.198, 2vCPU/4GB, TOR1)
 - Deploy: `bash /var/www/concierge/deploy.sh`
-
-## Latest committed state
-- Branch tip: `e1c1e49` (2026-04-28)
-- Both pm2 processes stable: `api` (id:5) and `web` (id:1), 0 unexpected restarts
+- PM2 processes: `api` (id:5), `web` (id:1)
 
 ## What's live and working
+
+### Chat widget (packages/ui-chat)
 - Full bilingual chat (FR default, EN on detection)
 - Deterministic pricing, hours, address, phone, description responses
 - AI fallback via OpenAI + NocoDB retrieval for complex questions
-- Lead form (name, phone, email, consent) → triggers email via Brevo HTTP API
-- Outbound AI call via VAPI (passes last user message + conversation summary as variables)
-- Dashboard at `/dashboard` with password gate ("dubub2025"), quality review UI, feedback flow
-- KPI analytics endpoint + dashboard charts (conversation outcomes, language split)
-- pm2 auto-restart + `deploy.sh` for one-command deploys
+- Lead form (name, phone, email, consent) → Brevo email to club
+- Dark premium UI: charcoal palette, gold gradient bubbles, MAA avatar
+- Mobile: `calc(100dvh - 40px)` layout, centered demo badge
+- Footer: DUBUB.ca link with AI orbital animation
 
-## UI state (packages/ui-chat)
-- Dark charcoal header (no green — all greens replaced with #1a1a22 / #2a2a38 palette)
-- Gold gradient user bubbles, white assistant bubbles with MAA avatar
-- Loading: three animated gold dots + "Un instant…" (clean, premium)
-- Conseil Privilège nudge: distinct gold info card (not a chat bubble)
-- Name capture card: appears after first AI response, persists to localStorage
-- Lead form: pinned below messages, messages area fixed at 300px (no shrink)
-- Demo badge: `left:0 right:0 margin:auto` (reliably centered, desktop + mobile)
-- Mobile: chat fills `calc(100dvh - 40px)` from top:40px, badge always visible
+### Phone (inbound Sophie call)
+- User types phone number in chat → context stored server-side (30 min TTL)
+- User calls Sophie's inbound number: **(438) 802-9845** — displayed formatted
+- VAPI fires `assistant-request` webhook to `https://api.dubub.com/v1/vapi/server`
+- Server matches caller by phone → builds topic-aware opening line
+  e.g. "Je vois que vous aviez une question sur nos tarifs d'abonnements"
+- Cold caller (no match): "Bonjour. Ici Sophie, du Club MAA. Comment puis-je vous aider ?"
+- Sophie collects lead via `capture_lead` tool → premium HTML email to `LEAD_NOTIFY_EMAIL`
+- All numbers spoken as phonetic French words ("deux cent vingt-cinq")
 
-## VAPI state
-- Tool endpoint: `https://api.dubub.com/v1/vapi/tool`
-- `vapiQuickAnswer` covers: address, phone, founding, description, general hours, pool hours, spa hours, Pilates, yoga, group classes, pricing — returns in <50ms
-- `handoff_last_user_message`, `handoff_summary`, `handoff_locale` passed on every outbound call
-- **Delay issue**: VAPI LLM still takes ~4-6s total (LLM decision + TTS). Fix requires pasting the fat system prompt into VAPI dashboard. File: `apps/api/src/prompts/vapi-system.ts`
-- **Action needed**: paste Sophie system prompt into VAPI assistant → System Prompt field
+### Admin dashboard (/admin/dashboard)
+- Multi-tenant sidebar (all tenants from registry)
+- Per-tenant: health checks, VAPI call table, VAPI stats
+- **OpenAI cost section**: total cost, request count, token counts (per-tenant, per-model breakdown)
+- Usage tracked in memory since last server start (resets on restart — persistent DB planned)
 
-## Email state
-- Switched from nodemailer/SMTP to Brevo HTTP API (avoids DigitalOcean SMTP port block)
-- Uses `BREVO_API_KEY` (xkeysib-...) — NOT the SMTP key
-- **Action needed**: confirm `BREVO_API_KEY=xkeysib-...` is in `/var/www/concierge/apps/api/dist/apps/api/.env.local` (symlinked from apps/api/.env.local)
+### Admin onboarding wizard (/admin/onboarding)
+- 6-step wizard: Company Info → Brand & Voice → Knowledge Sources → Voice & Phone → Plan & Billing → Review
+- Plans: Essentiel $599/mo, Croissance $1,290/mo, Prestige $2,590/mo, Autre custom
+- 12-month term automatically waives implementation fee
+- Stripe Checkout integration (payment link returned on success)
+- HTML invoice generation + Brevo email send (bilingual, QC taxes: TPS 5% + TVQ 9.975%)
+- Invoice numbering: `INV-YYMM-XXXX`
+
+## VAPI configuration (action required in VAPI dashboard)
+
+### Sophie's assistant
+- Server URL: `https://api.dubub.com/v1/vapi/server`
+- Inbound phone: `+14388029845` (already in .env.local as `VAPI_PHONE_NUMBER`)
+- System prompt: copy/paste from `apps/api/src/prompts/vapi-system.ts` → buildVapiSystemPrompt() output
+  **This is required for fast responses — without it VAPI makes a slow tool call on every turn**
+
+### capture_lead tool (add in VAPI dashboard)
+- Tool name: `capture_lead`
+- Server URL: `https://api.dubub.com/v1/vapi/tool`
+- Parameters:
+  - `name` (string) — caller's full name
+  - `phone` (string, optional) — phone number if given
+  - `email` (string, optional) — email if given
+  - `note` (string) — one-sentence summary of interest
+  - `locale` (string) — "fr-CA" or "en-CA"
+
+## Environment variables needed on droplet
+File: `/var/www/concierge/apps/api/.env.local`
+
+Already present:
+- `VAPI_API_KEY`, `VAPI_PHONE_NUMBER=+14388029845`
+- `BREVO_API_KEY` (must be `xkeysib-...` REST key, NOT SMTP key)
+- `OPENAI_API_KEY`, `NOCO_DB_TOKEN`, `ADMIN_TOKEN`
+
+Still needed (add if not present):
+- `STRIPE_SECRET_KEY=sk_live_...`
+- `TAX_GST_NUMBER=...` (TPS registration number)
+- `TAX_QST_NUMBER=...` (TVQ registration number)
+- `DUBUB_COMPANY_NAME=DUBUB inc.`
+- `DUBUB_ADDRESS=...`
+- `LEAD_NOTIFY_EMAIL=...` (where lead capture emails go)
+- `INVOICE_FROM_EMAIL=...` (Brevo verified sender)
 
 ## Known weak points
-1. VAPI response speed: ~5-6s — fix is VAPI dashboard system prompt (Sophie prompt ready)
-2. Email: needs correct Brevo REST API key (`xkeysib-...` not `xsmtpsib-...`)
-3. CI Node.js 20 deprecation warnings (non-blocking, jobs still pass)
-4. Dashboard Quality Review: INCORRECT flow rebuilt but not fully QA'd end-to-end
+1. OpenAI usage resets on server restart — no persistent DB yet
+2. Stripe `automatic_tax` needs a Canadian address on the customer to work correctly — verify or switch to manual QC tax line items
+3. VAPI system prompt must be pasted manually into VAPI dashboard (see above)
+4. Knowledge gap logging (unanswered questions → NocoDB) not yet built
+5. Dashboard "Lacunes" tab not yet built
+6. CI Node.js 20 deprecation warnings (non-blocking)
 
-## Next session priorities
-1. Confirm email works with correct Brevo API key
-2. Paste Sophie VAPI system prompt → test phone call speed drops to ~2s
-3. Knowledge gap logging: when VAPI/chat can't answer → log to NocoDB `knowledge_gaps` table
-4. Dashboard "Lacunes" tab showing unanswered questions
-5. Multi-tenant prep (DUBUB website, Transport Bourassa)
+## Next priorities
+1. Deploy current batch, verify all flows on prod
+2. Add `capture_lead` tool in VAPI dashboard
+3. Paste Sophie system prompt into VAPI assistant
+4. Add missing env vars to droplet
+5. Knowledge gap logging → NocoDB `knowledge_gaps` table
+6. Dashboard "Lacunes" tab
+7. Persistent OpenAI usage tracking (replace in-memory Map with DB)
+8. Multi-tenant prep: second client onboarding
 
 ## Session start rule
-At the start of every session:
-1. Read `CLAUDE.md`
-2. Read `STATUS.md`
-3. Inspect `git status --short` and recent commits
-4. Continue from the highest-value remaining issue
-
-## Session end rule
-1. Summarize what changed
-2. Summarize what passed
-3. Summarize what still looks weak
-4. Update `STATUS.md`
-5. Recommend commit only if the batch is stable
+1. Read `CLAUDE.md` + `STATUS.md`
+2. Inspect `git status` and recent commits
+3. Continue from highest-value remaining issue

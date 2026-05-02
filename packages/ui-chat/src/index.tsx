@@ -293,6 +293,16 @@ function getApiBaseUrl(): string {
   return `http://${host}:4000`;
 }
 
+// Format an E.164 phone for display: +14388029845 → (438) 802-9845
+function formatPhoneDisplay(raw: string | null): string {
+  if (!raw) return "";
+  const digits = raw.replace(/\D/g, "");
+  // North American: 11 digits starting with 1, or 10 digits
+  const local = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits.length === 10 ? digits : null;
+  if (local && local.length === 10) return `(${local.slice(0, 3)}) ${local.slice(3, 6)}-${local.slice(6)}`;
+  return raw; // fallback to raw if format unknown
+}
+
 // Pill-style input shared style helper
 const pillInput = (extra?: React.CSSProperties): React.CSSProperties => ({
   padding: "8px 14px",
@@ -1071,7 +1081,11 @@ export function ChatShell({
         style={{
           background: "#f7f8f9",
           padding: 16,
-          maxHeight: mode === "floating" ? 300 : 400,
+          flex: 1,
+          minHeight: 0,
+          // In floating mode the panel has a fixed height, so the messages area
+          // should fill all remaining space. In inline mode cap at 400px.
+          maxHeight: mode === "floating" ? undefined : 400,
           overflowY: "auto",
           display: "flex",
           flexDirection: "column",
@@ -1637,15 +1651,15 @@ export function ChatShell({
               background: "linear-gradient(135deg, #c9a84c, #a07830)",
               color: "#111116",
               fontWeight: 800,
-              fontSize: 18,
+              fontSize: 22,
               padding: "14px 24px",
               borderRadius: 14,
               textDecoration: "none",
-              letterSpacing: "0.02em",
+              letterSpacing: "0.05em",
               marginBottom: 10,
             }}
           >
-            {inboundReadyNumber}
+            {formatPhoneDisplay(inboundReadyNumber)}
           </a>
           <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>
             {locale === "fr-CA"

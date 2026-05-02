@@ -58,6 +58,11 @@ export interface MaaChatResponse {
     chunkCount: number;
     resultCount: number;
   };
+  usage?: {
+    model: string;
+    inputTokens: number;
+    outputTokens: number;
+  };
 }
 
 interface OpenAiJsonResponse {
@@ -493,11 +498,9 @@ async function callOpenAiForAnswer(
   }
 
   const payload = (await response.json()) as {
-    choices?: Array<{
-      message?: {
-        content?: string;
-      };
-    }>;
+    choices?: Array<{ message?: { content?: string } }>;
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
+    model?: string;
   };
 
   const content = payload.choices?.[0]?.message?.content;
@@ -506,7 +509,15 @@ async function callOpenAiForAnswer(
     throw new Error("OpenAI chat response did not include message content.");
   }
 
-  return JSON.parse(content) as OpenAiJsonResponse;
+  const parsed = JSON.parse(content) as OpenAiJsonResponse;
+  return {
+    ...parsed,
+    _usage: {
+      model: payload.model ?? model,
+      inputTokens: payload.usage?.prompt_tokens ?? 0,
+      outputTokens: payload.usage?.completion_tokens ?? 0,
+    },
+  } as OpenAiJsonResponse & { _usage: { model: string; inputTokens: number; outputTokens: number } };
 }
 
 export async function answerMaaChat(
@@ -687,6 +698,8 @@ export async function answerMaaChat(
     };
   });
 
+  const usageData = (modelResponse as { _usage?: { model: string; inputTokens: number; outputTokens: number } })._usage;
+
   return {
     assistantMessage: cleanedAssistantMessage,
     followUpMode: modelResponse.followUpMode,
@@ -696,6 +709,11 @@ export async function answerMaaChat(
       chunkCount: searchableChunks.length,
       resultCount: searchResults.length,
     },
+    usage: usageData ? {
+      model: usageData.model,
+      inputTokens: usageData.inputTokens,
+      outputTokens: usageData.outputTokens,
+    } : undefined,
   };
 }
 

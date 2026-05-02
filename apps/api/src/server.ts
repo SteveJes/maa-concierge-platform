@@ -99,6 +99,69 @@ function normalizePhoneE164(value: string | null): string | null {
   return null;
 }
 
+// ── OpenAI usage tracking ─────────────────────────────────────────────────────
+// In-memory accumulators, reset on restart. Enough for real-time admin view.
+// Pricing as of May 2026 — update if model pricing changes.
+const OPENAI_PRICING: Record<string, { inputPer1M: number; outputPer1M: number }> = {
+  "gpt-4o":          { inputPer1M: 2.50,  outputPer1M: 10.00 },
+  "gpt-4o-mini":     { inputPer1M: 0.15,  outputPer1M: 0.60  },
+  "gpt-4.1":         { inputPer1M: 2.00,  outputPer1M: 8.00  },
+  "gpt-4.1-mini":    { inputPer1M: 0.40,  outputPer1M: 1.60  },
+  "gpt-4.1-nano":    { inputPer1M: 0.10,  outputPer1M: 0.40  },
+  "gpt-4-turbo":     { inputPer1M: 10.00, outputPer1M: 30.00 },
+};
+
+interface TenantUsage {
+  tenantId: string;
+  calls: number;
+  inputTokens: number;
+  outputTokens: number;
+  costUsd: number;
+  lastCallAt: string;
+  byModel: Record<string, { calls: number; inputTokens: number; outputTokens: number; costUsd: number }>;
+}
+
+const openAiUsageStore = new Map<string, TenantUsage>();
+
+function recordOpenAiUsage(tenantId: string, model: string, inputTokens: number, outputTokens: number): void {
+  const pricing = OPENAI_PRICING[model] ?? OPENAI_PRICING["gpt-4.1-mini"]!;
+  const costUsd = (inputTokens / 1_000_000) * pricing.inputPer1M + (outputTokens / 1_000_000) * pricing.outputPer1M;
+  const now = new Date().toISOString();
+
+  const existing = openAiUsageStore.get(tenantId) ?? {
+    tenantId, calls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0, lastCallAt: now, byModel: {},
+  };
+
+  existing.calls += 1;
+  existing.inputTokens += inputTokens;
+  existing.outputTokens += outputTokens;
+  existing.costUsd = Math.round((existing.costUsd + costUsd) * 1_000_000) / 1_000_000;
+  existing.lastCallAt = now;
+
+  const m = existing.byModel[model] ?? { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0 };
+  m.calls += 1; m.inputTokens += inputTokens; m.outputTokens += outputTokens;
+  m.costUsd = Math.round((m.costUsd + costUsd) * 1_000_000) / 1_000_000;
+  existing.byModel[model] = m;
+
+  openAiUsageStore.set(tenantId, existing);
+}
+
+// Token packages — data model ready, purchasing to be wired later
+export interface TokenPackage {
+  id: string;
+  name: string;
+  tokens: number;       // OpenAI tokens included
+  priceUsd: number;
+  pricesCad: number;
+}
+
+export const TOKEN_PACKAGES: TokenPackage[] = [
+  { id: "starter",  name: "Starter",  tokens: 1_000_000,  priceUsd: 1.00,  pricesCad: 1.40  },
+  { id: "growth",   name: "Growth",   tokens: 5_000_000,  priceUsd: 4.00,  pricesCad: 5.50  },
+  { id: "scale",    name: "Scale",    tokens: 25_000_000, priceUsd: 15.00, pricesCad: 20.50 },
+  { id: "unlimited",name: "Unlimited",tokens: 0,          priceUsd: 0,     pricesCad: 0     }, // covered by monthly plan
+];
+
 function getPendingInboundHandoff(phoneE164: string): PendingInboundHandoff | null {
   const record = pendingInboundHandoffStore.get(phoneE164);
   if (!record) return null;
@@ -572,6 +635,17 @@ export function createServer() {
     return { tenant, health };
   });
 
+  // GET /v1/admin/usage — OpenAI cost per tenant + token packages
+  app.get("/v1/admin/usage", async (request, reply) => {
+    if (!adminAuth(request, reply)) return;
+    return {
+      tenants: Array.from(openAiUsageStore.values()),
+      tokenPackages: TOKEN_PACKAGES,
+      pricing: OPENAI_PRICING,
+      note: "Usage resets on API restart. Persistent tracking coming soon.",
+    };
+  });
+
   // POST /v1/admin/onboarding — create a new tenant + send invoice
   app.post("/v1/admin/onboarding", async (request, reply) => {
     if (!adminAuth(request, reply)) return;
@@ -864,22 +938,22 @@ export function createServer() {
       let firstMessage: string;
       if (isFr) {
         if (name && hasTopic)
-          firstMessage = `Bonjour ${name}. Ici Sophie, du Club M.A.A. Je vois que vous aviez une question sur ${topic.fr}. Je suis là pour vous aider.`;
+          firstMessage = `Bonjour ${name}. Ici Sophie, du Club MAA Je vois que vous aviez une question sur ${topic.fr}. Je suis là pour vous aider.`;
         else if (name)
-          firstMessage = `Bonjour ${name}. Ici Sophie, du Club M.A.A. J'ai votre demande devant moi. Je vous écoute.`;
+          firstMessage = `Bonjour ${name}. Ici Sophie, du Club MAA J'ai votre demande devant moi. Je vous écoute.`;
         else if (hasTopic)
-          firstMessage = `Bonjour. Ici Sophie, du Club M.A.A. Je vois que vous vous intéressiez à ${topic.fr}. Je vous écoute.`;
+          firstMessage = `Bonjour. Ici Sophie, du Club MAA Je vois que vous vous intéressiez à ${topic.fr}. Je vous écoute.`;
         else
-          firstMessage = `Bonjour. Ici Sophie, du Club M.A.A. J'ai votre demande devant moi. Je vous écoute.`;
+          firstMessage = `Bonjour. Ici Sophie, du Club MAA J'ai votre demande devant moi. Je vous écoute.`;
       } else {
         if (name && hasTopic)
-          firstMessage = `Hello ${name}. This is Sophie at Club M.A.A. I see you had a question about ${topic.en}. I'm here to help.`;
+          firstMessage = `Hello ${name}. This is Sophie at Club MAA I see you had a question about ${topic.en}. I'm here to help.`;
         else if (name)
-          firstMessage = `Hello ${name}. This is Sophie at Club M.A.A. I have your request right here. Go ahead.`;
+          firstMessage = `Hello ${name}. This is Sophie at Club MAA I have your request right here. Go ahead.`;
         else if (hasTopic)
-          firstMessage = `Hello. This is Sophie at Club M.A.A. I see you were asking about ${topic.en}. How can I help?`;
+          firstMessage = `Hello. This is Sophie at Club MAA I see you were asking about ${topic.en}. How can I help?`;
         else
-          firstMessage = `Hello. This is Sophie at Club M.A.A. I have your request right here. Go ahead.`;
+          firstMessage = `Hello. This is Sophie at Club MAA I have your request right here. Go ahead.`;
       }
 
       request.log.info({
@@ -907,8 +981,8 @@ export function createServer() {
     // No match — Sophie answers cold, standard greeting
     const isFr = true; // default to French, Sophie detects language from caller
     const coldFirstMessage = isFr
-      ? "Bonjour. Ici Sophie, du Club M.A.A. Comment puis-je vous aider ?"
-      : "Hello. This is Sophie at Club M.A.A. How can I help you today?";
+      ? "Bonjour. Ici Sophie, du Club MAA Comment puis-je vous aider ?"
+      : "Hello. This is Sophie at Club MAA How can I help you today?";
 
     request.log.info({ callId, matched: false, callerKnown: !!callerE164 }, "VAPI assistant-request: no match, cold greeting");
 
@@ -1059,6 +1133,11 @@ export function createServer() {
 
     const result =
       directCoreFactResponse ?? (await answerMaaChat(chatRequest));
+
+    // Track OpenAI usage per tenant for admin cost reporting
+    if (result.usage && !directCoreFactResponse) {
+      recordOpenAiUsage(tenantId, result.usage.model, result.usage.inputTokens, result.usage.outputTokens);
+    }
 
     let responseAssistantMessage =
       directCoreFactResponse != null
@@ -1761,12 +1840,12 @@ export function createServer() {
       const isEn = !isFrenchLocale(locale);
       if (isEn) {
         return cleanedName
-          ? `Hello ${cleanedName}, this is Sophie from Club M.A.A. You had a question about ${topic.en}?`
-          : `Hello, this is Sophie from Club M.A.A. You had a question about ${topic.en}?`;
+          ? `Hello ${cleanedName}, this is Sophie from Club MAA You had a question about ${topic.en}?`
+          : `Hello, this is Sophie from Club MAA You had a question about ${topic.en}?`;
       }
       return cleanedName
-        ? `Bonjour ${cleanedName}, ici Sophie du Club M.A.A. Vous aviez une question sur ${topic.fr}?`
-        : `Bonjour, ici Sophie du Club M.A.A. Vous aviez une question sur ${topic.fr}?`;
+        ? `Bonjour ${cleanedName}, ici Sophie du Club MAA Vous aviez une question sur ${topic.fr}?`
+        : `Bonjour, ici Sophie du Club MAA Vous aviez une question sur ${topic.fr}?`;
     };
 
     const BANNED_SUMMARY_PHRASES = [
@@ -2158,34 +2237,68 @@ export function createServer() {
 
         if (apiKey && (args.name || args.phone || args.email)) {
           const time = new Date().toLocaleString("fr-CA", { timeZone: "America/Montreal", dateStyle: "full", timeStyle: "short" });
-          const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="font-family:Inter,Arial,sans-serif;background:#f4f6f9;margin:0;padding:0">
-<div style="max-width:560px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
-  <div style="background:linear-gradient(135deg,#111116,#1e1e2a);padding:28px 32px">
-    <div style="display:inline-block;background:#c9a84c;color:#111116;font-weight:800;font-size:18px;padding:6px 14px;border-radius:6px">DUBUB</div>
-    <h1 style="color:#fff;margin:12px 0 0;font-size:20px;font-weight:700">Nouveau lead — Appel Sophie (Club M.A.A.)</h1>
-  </div>
-  <div style="padding:28px 32px">
-    <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#888;margin-bottom:4px">Nom</div>
-    <div style="font-size:16px;font-weight:600;color:#111;margin-bottom:16px">${args.name ?? "—"}</div>
-    <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#888;margin-bottom:4px">Téléphone</div>
-    <div style="font-size:22px;font-weight:700;color:#2a2a38;margin-bottom:16px">${args.phone ?? "—"}</div>
-    <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#888;margin-bottom:4px">Courriel</div>
-    <div style="font-size:16px;font-weight:600;color:#111;margin-bottom:16px">${args.email ?? "—"}</div>
-    ${args.note ? `<div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#888;margin-bottom:4px">Note</div><div style="font-size:14px;color:#444;background:#f8f9fa;padding:12px 14px;border-radius:8px;border-left:3px solid #c9a84c;line-height:1.5">${args.note}</div>` : ""}
-    <div style="background:#f8f9fa;border-radius:8px;padding:14px 16px;margin-top:20px;font-size:12px;color:#666">
-      <div>Source : Appel entrant Sophie (VAPI)</div>
-      <div>Date : ${time}</div>
+          const initial = (args.name ?? "?").charAt(0).toUpperCase();
+          const html = `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nouveau lead — Sophie</title></head>
+<body style="margin:0;padding:0;background:#0d0d14;font-family:Inter,Arial,sans-serif">
+<div style="max-width:600px;margin:0 auto;padding:32px 16px">
+
+  <!-- Header -->
+  <div style="background:linear-gradient(135deg,#0e1015,#1a1a2a);border-radius:16px 16px 0 0;padding:32px 36px;border:1px solid rgba(201,168,76,0.2);border-bottom:none;position:relative;overflow:hidden">
+    <div style="position:absolute;top:-30px;right:-30px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(201,168,76,0.12),transparent 70%)"></div>
+    <div style="display:inline-block;background:linear-gradient(135deg,#c9a84c,#8b6010);border-radius:8px;padding:5px 12px;font-weight:800;font-size:13px;color:#111;letter-spacing:0.08em;margin-bottom:16px">DUBUB</div>
+    <div style="display:flex;align-items:center;gap:14px">
+      <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#c9a84c,#8b6010);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#111;flex-shrink:0">${initial}</div>
+      <div>
+        <div style="color:#fff;font-size:22px;font-weight:800;line-height:1.2">${args.name ?? "Nouveau contact"}</div>
+        <div style="color:rgba(201,168,76,0.8);font-size:12px;margin-top:4px;letter-spacing:0.06em;text-transform:uppercase">Lead capturé par Sophie · Club MAA</div>
+      </div>
     </div>
   </div>
-</div></body></html>`;
+
+  <!-- Contact info -->
+  <div style="background:#fff;padding:32px 36px;border-left:1px solid #e8eaed;border-right:1px solid #e8eaed">
+    <div style="display:grid;gap:0">
+      ${args.phone ? `
+      <div style="padding:16px 0;border-bottom:1px solid #f0f2f5">
+        <div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#999;margin-bottom:6px">📞 Téléphone</div>
+        <a href="tel:${args.phone}" style="font-size:26px;font-weight:800;color:#111116;text-decoration:none;letter-spacing:0.03em">${args.phone}</a>
+      </div>` : ""}
+      ${args.email ? `
+      <div style="padding:16px 0;border-bottom:1px solid #f0f2f5">
+        <div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#999;margin-bottom:6px">✉️ Courriel</div>
+        <a href="mailto:${args.email}" style="font-size:16px;font-weight:600;color:#111;text-decoration:none">${args.email}</a>
+      </div>` : ""}
+      ${args.note ? `
+      <div style="padding:16px 0;border-bottom:1px solid #f0f2f5">
+        <div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#999;margin-bottom:6px">💬 Intérêt exprimé</div>
+        <div style="font-size:14px;color:#444;line-height:1.6;background:#fafbfc;border-left:3px solid #c9a84c;padding:12px 14px;border-radius:0 8px 8px 0">${args.note}</div>
+      </div>` : ""}
+      <div style="padding:16px 0">
+        <div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#999;margin-bottom:6px">⏱️ Capturé le</div>
+        <div style="font-size:13px;color:#555">${time}</div>
+        <div style="font-size:11px;color:#aaa;margin-top:3px">Via appel entrant · Concierge Sophie (VAPI)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div style="background:linear-gradient(135deg,#c9a84c,#8b6010);padding:20px 36px;border-radius:0 0 16px 16px;text-align:center">
+    ${args.phone ? `<a href="tel:${args.phone}" style="display:inline-block;background:#111116;color:#c9a84c;font-weight:800;font-size:14px;padding:12px 28px;border-radius:100px;text-decoration:none;letter-spacing:0.04em">Rappeler maintenant →</a>` : ""}
+    <div style="color:rgba(0,0,0,0.5);font-size:11px;margin-top:10px">Géré par DUBUB · dubub.ca</div>
+  </div>
+
+</div>
+</body></html>`;
 
           await fetch("https://api.brevo.com/v3/smtp/email", {
             method: "POST",
             headers: { "api-key": apiKey, "Content-Type": "application/json" },
             body: JSON.stringify({
-              sender: { name: "Sophie — Club M.A.A.", email: process.env.BREVO_SENDER_EMAIL ?? "noreply@dubub.com" },
+              sender: { name: "Sophie — Club MAA", email: process.env.BREVO_SENDER_EMAIL ?? "noreply@dubub.com" },
               to: [{ email: notifyEmail }],
-              subject: `Nouveau lead (appel Sophie) — ${args.name ?? args.phone ?? "inconnu"}`,
+              subject: `🎯 Nouveau lead — ${args.name ?? args.phone ?? "Contact"} · Club MAA`,
               htmlContent: html,
             }),
           }).catch((e: unknown) => request.log.error({ err: e }, "capture_lead email failed"));
