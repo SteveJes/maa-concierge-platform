@@ -432,6 +432,8 @@ export function ChatShell({
   const canTransferCurrentChatByPhone = Boolean(lastResponse?.vapi?.handoffUrl);
   const [showLoadingAnimation, setShowLoadingAnimation] = useState(false);
   const [showInlineCallForm, setShowInlineCallForm] = useState(false);
+  const [inboundReadyNumber, setInboundReadyNumber] = useState<string | null>(null); // Sophie's inbound number shown after context registration
+  const [isRegisteringInbound, setIsRegisteringInbound] = useState(false);
   const [nudgeIndex, setNudgeIndex] = useState(0);
 
   useEffect(() => {
@@ -785,6 +787,43 @@ export function ChatShell({
       ...current,
       { id: newId(), role: "assistant", text: result.message },
     ]);
+  }
+
+  async function registerInboundHandoff(): Promise<void> {
+    if (!callbackPhone.trim() || !callbackConsent || isRegisteringInbound) return;
+    setIsRegisteringInbound(true);
+    try {
+      const lastUserQuestion = [...messages].reverse().find((m) => m.role === "user")?.text ?? "";
+      const recentMessages = messages
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .slice(-6)
+        .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.text}`)
+        .join(" | ");
+
+      const res = await fetch(`${apiBaseUrl}/v1/tenants/maa/inbound-handoff`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: callbackPhone.trim(),
+          name: callbackName.trim() || undefined,
+          email: callbackEmail.trim() || undefined,
+          locale,
+          lastUserMessage: lastUserQuestion || undefined,
+          handoffSummary: recentMessages || undefined,
+          handoffSource: "web_inbound",
+        }),
+      });
+      const data = (await res.json()) as { ok?: boolean; inboundNumber?: string };
+      const displayNumber = data.inboundNumber ?? lastResponse?.vapi?.phoneNumber ?? null;
+      setInboundReadyNumber(displayNumber);
+      setShowInlineCallForm(false);
+    } catch {
+      // Fallback: still reveal Sophie's number from VAPI config
+      setInboundReadyNumber(lastResponse?.vapi?.phoneNumber ?? null);
+      setShowInlineCallForm(false);
+    } finally {
+      setIsRegisteringInbound(false);
+    }
   }
 
   async function submitCallNowRequest(): Promise<void> {
@@ -1479,44 +1518,48 @@ export function ChatShell({
       ) : null}
 
       {/* Inline call form */}
-      {(showPhoneButton || canTransferCurrentChatByPhone) && showInlineCallForm ? (
+      {(showPhoneButton || canTransferCurrentChatByPhone) && showInlineCallForm && !inboundReadyNumber ? (
         <div
           style={{
             margin: "0 16px 12px",
-            padding: 16,
-            borderRadius: 16,
-            background: "#ffffff",
-            border: "1px solid #e0e3e8",
-            boxShadow: "0 1px 6px rgba(0,0,0,0.06)",
+            padding: "18px 16px",
+            borderRadius: 18,
+            background: "linear-gradient(160deg, #111116 0%, #1a1a2a 100%)",
+            border: "1px solid rgba(201,168,76,0.25)",
+            boxShadow: "0 4px 24px rgba(0,0,0,0.18)",
           }}
         >
-          <div style={{ color: "#1a1a1a", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
-            {"📞 " + (locale === "fr-CA" ? "L'IA vous rappelle" : "The AI calls you back")}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <span style={{ fontSize: 18 }}>📞</span>
+            <span style={{ color: "#fff", fontWeight: 800, fontSize: 15 }}>
+              {locale === "fr-CA" ? "Parler à Sophie" : "Speak with Sophie"}
+            </span>
           </div>
-          <div style={{ fontSize: 12, color: "#6a6a80", marginBottom: 12 }}>
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginBottom: 14, lineHeight: 1.5 }}>
             {locale === "fr-CA"
-              ? "Entrez votre numéro et votre concierge IA vous appellera dans quelques secondes."
-              : "Enter your number and your AI concierge will call you in seconds."}
+              ? "Entrez votre numéro — Sophie sera briefée sur votre demande avant que vous appeliez."
+              : "Enter your number — Sophie will be briefed on your request before you call."}
           </div>
           <div style={{ display: "grid", gap: 8 }}>
             <input
               value={callbackName}
               onChange={(e) => setCallbackName(e.target.value)}
               placeholder={locale === "fr-CA" ? "Votre nom (optionnel)" : "Your name (optional)"}
-              style={pillInput()}
+              style={pillInput({ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff" })}
             />
             <input
               value={callbackPhone}
               onChange={(e) => setCallbackPhone(e.target.value)}
               placeholder={locale === "fr-CA" ? "Votre numéro de téléphone *" : "Your phone number *"}
               type="tel"
-              style={pillInput()}
+              style={pillInput({ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff" })}
             />
-            <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: "#8a8aa0", cursor: "pointer" }}>
+            <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: "rgba(255,255,255,0.4)", cursor: "pointer" }}>
               <input
                 type="checkbox"
                 checked={callbackConsent}
                 onChange={(e) => setCallbackConsent(e.target.checked)}
+                style={{ accentColor: "#c9a84c" }}
               />
               <span>
                 {locale === "fr-CA"
@@ -1527,34 +1570,88 @@ export function ChatShell({
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <button
                 type="button"
-                onClick={() => void submitCallNowRequest()}
-                disabled={isCallingNow || !callbackPhone.trim() || !callbackConsent}
+                onClick={() => void registerInboundHandoff()}
+                disabled={isRegisteringInbound || !callbackPhone.trim() || !callbackConsent}
                 style={{
-                  padding: "10px 18px",
+                  flex: 1,
+                  padding: "11px 18px",
                   borderRadius: 20,
                   border: "none",
-                  background: "linear-gradient(135deg, #c9a84c, #a07830)",
+                  background: isRegisteringInbound || !callbackPhone.trim() || !callbackConsent
+                    ? "rgba(201,168,76,0.3)"
+                    : "linear-gradient(135deg, #c9a84c, #a07830)",
                   color: "#111116",
                   fontWeight: 700,
                   fontSize: 13,
-                  cursor: isCallingNow || !callbackPhone.trim() || !callbackConsent ? "default" : "pointer",
-                  opacity: isCallingNow || !callbackPhone.trim() || !callbackConsent ? 0.6 : 1,
+                  cursor: isRegisteringInbound || !callbackPhone.trim() || !callbackConsent ? "default" : "pointer",
                   whiteSpace: "nowrap",
+                  transition: "all 0.2s",
                 }}
               >
-                {isCallingNow
-                  ? (locale === "fr-CA" ? "Appel en cours..." : "Calling...")
-                  : (locale === "fr-CA" ? "Appelez-moi maintenant" : "Call me now")}
+                {isRegisteringInbound
+                  ? (locale === "fr-CA" ? "Préparation..." : "Preparing...")
+                  : (locale === "fr-CA" ? "Préparer mon appel →" : "Prepare my call →")}
               </button>
               <button
                 type="button"
                 onClick={() => { setShowInlineCallForm(false); setCallbackPhone(""); setCallbackName(""); setCallbackConsent(false); }}
-                style={{ background: "none", border: "none", color: "#5a5a70", fontSize: 12, cursor: "pointer" }}
+                style={{ background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: 12, cursor: "pointer" }}
               >
                 {locale === "fr-CA" ? "Annuler" : "Cancel"}
               </button>
             </div>
           </div>
+        </div>
+      ) : null}
+
+      {/* Inbound ready — show Sophie's number after context registration */}
+      {inboundReadyNumber ? (
+        <div
+          style={{
+            margin: "0 16px 12px",
+            padding: "20px 18px",
+            borderRadius: 18,
+            background: "linear-gradient(160deg, #111116 0%, #1a1a2a 100%)",
+            border: "1px solid rgba(201,168,76,0.35)",
+            boxShadow: "0 4px 24px rgba(0,0,0,0.18)",
+            textAlign: "center",
+          }}
+        >
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 4 }}>
+            {locale === "fr-CA" ? "Sophie est prête à vous recevoir" : "Sophie is ready for your call"}
+          </div>
+          <div style={{ fontSize: 11, color: "rgba(201,168,76,0.7)", marginBottom: 14, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+            {locale === "fr-CA" ? "Elle connaît déjà votre demande" : "She already knows your request"}
+          </div>
+          <a
+            href={`tel:${inboundReadyNumber}`}
+            style={{
+              display: "block",
+              background: "linear-gradient(135deg, #c9a84c, #a07830)",
+              color: "#111116",
+              fontWeight: 800,
+              fontSize: 18,
+              padding: "14px 24px",
+              borderRadius: 14,
+              textDecoration: "none",
+              letterSpacing: "0.02em",
+              marginBottom: 10,
+            }}
+          >
+            {inboundReadyNumber}
+          </a>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>
+            {locale === "fr-CA"
+              ? "Contexte valide 30 minutes · Appui sur le numéro pour composer"
+              : "Context valid 30 minutes · Tap to dial"}
+          </div>
+          <button
+            type="button"
+            onClick={() => { setInboundReadyNumber(null); setCallbackPhone(""); setCallbackName(""); setCallbackConsent(false); }}
+            style={{ background: "none", border: "none", color: "rgba(255,255,255,0.25)", fontSize: 11, cursor: "pointer", marginTop: 10 }}
+          >
+            {locale === "fr-CA" ? "Fermer" : "Close"}
+          </button>
         </div>
       ) : null}
 

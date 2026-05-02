@@ -44,3 +44,16 @@ export const TENANT_REGISTRY: TenantConfig[] = [
 export function getTenant(id: string): TenantConfig | undefined {
   return TENANT_REGISTRY.find((t) => t.id === id);
 }
+
+export function addTenant(config: TenantConfig): void {
+  TENANT_REGISTRY.push(config);
+}
+
+export function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}

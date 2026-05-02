@@ -3,7 +3,8 @@ import cors from "@fastify/cors";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { resolveDirectCoreFactResponse } from "./core-facts.js";
 import { sendLeadNotificationEmail } from "./services/email-notifications.js";
-import { TENANT_REGISTRY, getTenant } from "./admin/tenants.js";
+import { TENANT_REGISTRY, getTenant, addTenant, slugify } from "./admin/tenants.js";
+import { sendInvoiceEmail, createStripeCheckout, nextInvoiceNumber, buildInvoice } from "./admin/invoice.js";
 import { buildTenantHealthReport } from "./admin/health.js";
 import { loadApprovedSourceRegistry } from "@platform/config";
 import {
@@ -68,8 +69,46 @@ interface VapiHandoffRecord {
   recentTurns: NonNullable<MaaChatRequest["conversationHistory"]>;
 }
 
+// Pending inbound call handoffs — keyed by normalized E.164 phone number.
+// When a user registers their number from the web chat, we store their context here.
+// When they call Sophie's inbound number, VAPI sends assistant-request and we match by caller ID.
+interface PendingInboundHandoff {
+  tenantId: string;
+  customerName: string | null;
+  customerEmail: string | null;
+  lastUserMessage: string;
+  handoffSummary: string;
+  locale: string;
+  handoffSource: string;
+  createdAtMs: number;
+  expiresAtMs: number;
+  status: "pending" | "matched" | "expired";
+  matchedCallId: string | null;
+}
+
 const dryRunConversationHistory = new Map<string, ChatHistoryEntry[]>();
 const vapiHandoffStore = new Map<string, VapiHandoffRecord>();
+const pendingInboundHandoffStore = new Map<string, PendingInboundHandoff>();
+
+function normalizePhoneE164(value: string | null): string | null {
+  if (!value) return null;
+  const digits = value.replace(/\D/g, "");
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  if (digits.length === 10) return `+1${digits}`;
+  if (value.startsWith("+") && digits.length >= 10) return `+${digits}`;
+  return null;
+}
+
+function getPendingInboundHandoff(phoneE164: string): PendingInboundHandoff | null {
+  const record = pendingInboundHandoffStore.get(phoneE164);
+  if (!record) return null;
+  if (record.status !== "pending") return null;
+  if (Date.now() > record.expiresAtMs) {
+    record.status = "expired";
+    return null;
+  }
+  return record;
+}
 
 function getDryRunConversationHistory(
   conversationId: string | null,
@@ -430,6 +469,19 @@ async function updateConversationOutcome(args: {
   }
 }
 
+function splitBuffer(buf: Buffer, sep: Buffer): Buffer[] {
+  const parts: Buffer[] = [];
+  let start = 0;
+  while (start < buf.length) {
+    const idx = buf.indexOf(sep, start);
+    if (idx < 0) { parts.push(buf.slice(start)); break; }
+    if (idx > start) parts.push(buf.slice(start, idx));
+    start = idx + sep.length;
+    if (buf[start] === 13 && buf[start + 1] === 10) start += 2;
+  }
+  return parts;
+}
+
 export function createServer() {
   const app = Fastify({ logger: true });
 
@@ -520,6 +572,132 @@ export function createServer() {
     return { tenant, health };
   });
 
+  // POST /v1/admin/onboarding — create a new tenant + send invoice
+  app.post("/v1/admin/onboarding", async (request, reply) => {
+    if (!adminAuth(request, reply)) return;
+    const body = request.body as Record<string, unknown>;
+    const name = typeof body.companyName === "string" ? body.companyName.trim() : "";
+    if (!name) return reply.code(400).send({ error: "companyName required" });
+
+    const id = slugify(name) || `tenant-${Date.now()}`;
+    if (getTenant(id)) return reply.code(409).send({ error: "tenant_already_exists", id });
+
+    const planRaw = typeof body.plan === "string" ? body.plan : "essentiel";
+    const plan: "starter" | "professional" | "enterprise" = planRaw === "prestige" ? "enterprise"
+      : planRaw === "croissance" ? "professional"
+      : "starter";
+
+    const monthlyPrice = parseFloat(typeof body.monthlyPriceCad === "string" ? body.monthlyPriceCad : "0") || 0;
+    const implFee = parseFloat(typeof body.implementationFee === "string" ? body.implementationFee : "0") || 0;
+    const billingTerm = typeof body.billingTerm === "string" ? body.billingTerm : "monthly";
+    const clientEmail = typeof body.contactEmail === "string" ? body.contactEmail : "";
+    const clientName = typeof body.contactName === "string" ? body.contactName : name;
+    const sendInvoice = body.sendInvoice === true;
+
+    addTenant({
+      id,
+      name,
+      plan,
+      status: "active",
+      since: new Date().toISOString().slice(0, 10),
+      notifyEmail: typeof body.notifyEmail === "string" ? body.notifyEmail : "",
+      vapiAssistantId: typeof body.vapiAssistantId === "string" && body.vapiAssistantId ? body.vapiAssistantId : null,
+      vapiPhoneNumberId: typeof body.vapiPhoneNumberId === "string" && body.vapiPhoneNumberId ? body.vapiPhoneNumberId : null,
+      openAiModel: typeof body.openAiModel === "string" ? body.openAiModel : "gpt-4o",
+      monthlyPriceCad: monthlyPrice,
+      addons: Array.isArray(body.addons) ? (body.addons as string[]) : [],
+      contactName: clientName || null,
+      contactEmail: clientEmail || null,
+      website: typeof body.website === "string" ? body.website : null,
+      notes: typeof body.notes === "string" ? body.notes : null,
+    });
+
+    // Build invoice lines
+    const invoiceNumber = nextInvoiceNumber();
+    const today = new Date().toISOString().slice(0, 10);
+    const due = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+    const planLabel = planRaw === "prestige" ? "Prestige" : planRaw === "croissance" ? "Croissance" : planRaw === "autre" ? (typeof body.planLabel === "string" ? body.planLabel : "Sur mesure") : "Essentiel";
+    const termLabel = billingTerm === "annual" ? "12 mois" : "mensuel";
+    const lines = [];
+    if (implFee > 0) {
+      lines.push({ description: `Frais d'implantation — Concierge IA ${planLabel}`, qty: 1, unitPrice: implFee });
+    }
+    if (monthlyPrice > 0) {
+      lines.push({ description: `Abonnement Concierge IA ${planLabel} (${termLabel})`, qty: billingTerm === "annual" ? 12 : 1, unitPrice: monthlyPrice });
+    }
+
+    let stripeUrl: string | null = null;
+    let invoiceResult = null;
+
+    if (sendInvoice && clientEmail && lines.length > 0) {
+      invoiceResult = buildInvoice({ invoiceNumber, issueDate: today, dueDate: due, clientName, clientEmail, clientAddress: typeof body.address === "string" ? body.address : undefined, lines, billingTerm: billingTerm as "monthly" | "annual" });
+
+      const origin = process.env.APP_ORIGIN ?? "https://clients.dubub.com";
+      stripeUrl = await createStripeCheckout({
+        clientEmail, clientName, invoiceNumber, lines,
+        successUrl: `${origin}/admin/dashboard?invoice=paid&id=${invoiceNumber}`,
+        cancelUrl: `${origin}/admin/dashboard?invoice=cancelled`,
+      }).catch(() => null);
+
+      await sendInvoiceEmail({ invoiceNumber, issueDate: today, dueDate: due, clientName, clientEmail, clientAddress: typeof body.address === "string" ? body.address : undefined, lines, billingTerm: billingTerm as "monthly" | "annual", stripeUrl: stripeUrl ?? undefined }).catch((e: unknown) => console.error("Invoice email failed:", e));
+    }
+
+    return reply.code(201).send({
+      ok: true,
+      tenantId: id,
+      invoiceNumber: sendInvoice && lines.length > 0 ? invoiceNumber : null,
+      stripeUrl,
+      total: invoiceResult?.total ?? null,
+    });
+  });
+
+  // POST /v1/admin/onboarding/upload-pdf — save uploaded PDF to disk
+  app.post("/v1/admin/onboarding/upload-pdf", { config: { rawBody: true } }, async (request, reply) => {
+    if (!adminAuth(request, reply)) return;
+    // Accept multipart via raw boundary parsing using built-in Node stream
+    const contentType = (request.headers["content-type"] ?? "") as string;
+    if (!contentType.includes("multipart/form-data")) {
+      return reply.code(400).send({ error: "multipart required" });
+    }
+    const boundary = contentType.split("boundary=")[1]?.trim();
+    if (!boundary) return reply.code(400).send({ error: "missing boundary" });
+
+    const { createWriteStream, mkdirSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const uploadDir = join(process.cwd(), "uploads", "pdfs");
+    mkdirSync(uploadDir, { recursive: true });
+
+    const chunks: Buffer[] = [];
+    for await (const chunk of request.raw) chunks.push(chunk as Buffer);
+    const raw = Buffer.concat(chunks);
+
+    const sep = Buffer.from(`--${boundary}`);
+    const parts = splitBuffer(raw, sep);
+    let savedUrl = "";
+
+    for (const part of parts) {
+      if (!part.length || part.toString().trim() === "--") continue;
+      const headerEnd = part.indexOf(Buffer.from("\r\n\r\n"));
+      if (headerEnd < 0) continue;
+      const headers = part.slice(0, headerEnd).toString();
+      const body = part.slice(headerEnd + 4);
+      const trimmed = body.slice(0, body.length - 2); // strip trailing \r\n
+
+      const nameMatch = headers.match(/name="([^"]+)"/);
+      const fileMatch = headers.match(/filename="([^"]+)"/);
+      if (nameMatch?.[1] === "file" && fileMatch?.[1]) {
+        const safeName = fileMatch[1].replace(/[^a-zA-Z0-9._-]/g, "_");
+        const dest = join(uploadDir, `${Date.now()}_${safeName}`);
+        const ws = createWriteStream(dest);
+        await new Promise<void>((res, rej) => { ws.write(trimmed); ws.end(); ws.on("finish", res); ws.on("error", rej); });
+        savedUrl = `/uploads/pdfs/${dest.split(/[\\/]/).pop() ?? safeName}`;
+      }
+    }
+
+    if (!savedUrl) return reply.code(400).send({ error: "no_pdf_found" });
+    return { ok: true, url: savedUrl };
+  });
+
   app.get("/v1/tenants/:tenantId/sources", async (request, reply) => {
     const { tenantId } = request.params as TenantRouteParams;
 
@@ -563,6 +741,147 @@ export function createServer() {
     }
 
     return handoff;
+  });
+
+  // POST /v1/tenants/:tenantId/inbound-handoff
+  // Called by the web chat widget when a user registers their phone to prepare an inbound call.
+  // Stores context so Sophie recognizes them when they call in.
+  app.post("/v1/tenants/:tenantId/inbound-handoff", async (request, reply) => {
+    const { tenantId } = request.params as TenantRouteParams;
+    const body = (request.body ?? {}) as {
+      phone?: string;
+      name?: string;
+      email?: string;
+      locale?: string;
+      lastUserMessage?: string;
+      handoffSummary?: string;
+      handoffSource?: string;
+    };
+
+    const normalizedPhone = normalizePhoneE164(toNullableTrimmedString(body.phone));
+    if (!normalizedPhone) {
+      return reply.code(400).send({ error: "invalid_phone_number" });
+    }
+
+    const locale = toNullableTrimmedString(body.locale) ?? "fr";
+    const lastUserMessage = toNullableTrimmedString(body.lastUserMessage) ?? "";
+    const handoffSummary = toNullableTrimmedString(body.handoffSummary) ?? lastUserMessage;
+    const now = Date.now();
+
+    pendingInboundHandoffStore.set(normalizedPhone, {
+      tenantId,
+      customerName: toNullableTrimmedString(body.name),
+      customerEmail: toNullableTrimmedString(body.email),
+      lastUserMessage,
+      handoffSummary,
+      locale,
+      handoffSource: toNullableTrimmedString(body.handoffSource) ?? "web_inbound",
+      createdAtMs: now,
+      expiresAtMs: now + 30 * 60 * 1000, // 30-minute TTL
+      status: "pending",
+      matchedCallId: null,
+    });
+
+    const inboundNumber = toNullableTrimmedString(process.env.VAPI_INBOUND_PHONE_NUMBER);
+    request.log.info({ tenantId, matched: false, handoffSource: "web_inbound", hasContext: !!lastUserMessage }, "inbound-handoff registered");
+
+    return { ok: true, inboundNumber };
+  });
+
+  // POST /v1/vapi/server
+  // VAPI Server URL webhook. Handles assistant-request for inbound calls.
+  // Must respond within 7.5 seconds — no LLM calls in this path.
+  app.post("/v1/vapi/server", async (request, reply) => {
+    const body = (request.body ?? {}) as {
+      message?: {
+        type?: string;
+        call?: {
+          id?: string;
+          customer?: { number?: string };
+        };
+      };
+    };
+
+    const msgType = body.message?.type;
+
+    if (msgType !== "assistant-request") {
+      // VAPI may send other event types (end-of-call, etc.) — acknowledge silently
+      return reply.code(200).send({});
+    }
+
+    const rawCallerNumber = body.message?.call?.customer?.number ?? null;
+    const callId = body.message?.call?.id ?? null;
+    const callerE164 = normalizePhoneE164(rawCallerNumber);
+
+    const assistantId = toNullableTrimmedString(process.env.VAPI_INBOUND_ASSISTANT_ID)
+      ?? toNullableTrimmedString(process.env.VAPI_ASSISTANT_ID);
+
+    if (!assistantId) {
+      request.log.warn({ callId }, "VAPI assistant-request: no assistantId configured");
+      return reply.code(200).send({});
+    }
+
+    // Try to match a pending inbound handoff
+    const handoff = callerE164 ? getPendingInboundHandoff(callerE164) : null;
+
+    if (handoff) {
+      // Mark matched immediately to prevent reuse on re-dial
+      handoff.status = "matched";
+      handoff.matchedCallId = callId;
+
+      const name = handoff.customerName;
+      const isFr = !handoff.locale.startsWith("en");
+
+      const firstMessage = isFr
+        ? (name
+          ? `Bonjour ${name}. Ici Sophie, du Club M.A.A. J'ai votre demande devant moi. Je vous écoute.`
+          : `Bonjour. Ici Sophie, du Club M.A.A. J'ai votre demande devant moi. Je vous écoute.`)
+        : (name
+          ? `Hello ${name}. This is Sophie at Club M.A.A. I have your request right here. Go ahead.`
+          : `Hello. This is Sophie at Club M.A.A. I have your request right here. Go ahead.`);
+
+      request.log.info({
+        callId,
+        matched: true,
+        handoffSource: handoff.handoffSource,
+        handoffSummary: handoff.handoffSummary.slice(0, 80),
+        locale: handoff.locale,
+      }, "VAPI assistant-request: matched inbound handoff");
+
+      return reply.code(200).send({
+        assistantId,
+        assistantOverrides: {
+          firstMessage,
+          variableValues: {
+            handoff_last_user_message: handoff.lastUserMessage,
+            handoff_summary: handoff.handoffSummary,
+            handoff_locale: handoff.locale,
+            handoff_opening_line: firstMessage,
+          },
+        },
+      });
+    }
+
+    // No match — Sophie answers cold, standard greeting
+    const isFr = true; // default to French, Sophie detects language from caller
+    const coldFirstMessage = isFr
+      ? "Bonjour. Ici Sophie, du Club M.A.A. Comment puis-je vous aider ?"
+      : "Hello. This is Sophie at Club M.A.A. How can I help you today?";
+
+    request.log.info({ callId, matched: false, callerKnown: !!callerE164 }, "VAPI assistant-request: no match, cold greeting");
+
+    return reply.code(200).send({
+      assistantId,
+      assistantOverrides: {
+        firstMessage: coldFirstMessage,
+        variableValues: {
+          handoff_last_user_message: "",
+          handoff_summary: "",
+          handoff_locale: "fr",
+          handoff_opening_line: coldFirstMessage,
+        },
+      },
+    });
   });
 
   app.post("/v1/tenants/:tenantId/chat", async (request, reply) => {
