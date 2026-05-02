@@ -3,9 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 
 const ADMIN_PASSWORD = "dubub2025";
-const API_BASE = typeof window !== "undefined" && window.location.hostname === "clients.dubub.com"
-  ? "https://api.dubub.com"
-  : "http://localhost:4000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "https://api.dubub.com";
 
 interface AnalyticsData {
   tenantId: string;
@@ -393,6 +391,97 @@ function BarChart({ series }: { series: { date: string; count: number }[] }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+
+function DonutChart({ slices }: { slices: { label: string; value: number; color: string }[] }) {
+  const total = slices.reduce((s, sl) => s + sl.value, 0);
+  if (total === 0) return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 180, color: PALETTE.muted, fontSize: 12 }}>Pas encore de données</div>
+  );
+  const r = 70; const cx = 90; const cy = 90;
+  const circumference = 2 * Math.PI * r;
+  let cumPct = 0;
+  const gap = 0.012;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
+      <svg width={180} height={180} viewBox="0 0 180 180" style={{ flexShrink: 0 }}>
+        <style>{`@keyframes donut-in { from { stroke-dashoffset: ${circumference}px; } to { stroke-dashoffset: 0; } }`}</style>
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={22} />
+        {slices.map((sl, i) => {
+          const pct = sl.value / total;
+          const dashLen = Math.max(0, (pct - gap) * circumference);
+          const offset = -(cumPct + gap / 2) * circumference;
+          cumPct += pct;
+          return (
+            <circle key={sl.label} cx={cx} cy={cy} r={r} fill="none" stroke={sl.color} strokeWidth={22}
+              strokeDasharray={`${dashLen} ${circumference}`}
+              strokeDashoffset={offset}
+              strokeLinecap="butt"
+              transform={`rotate(-90 ${cx} ${cy})`}
+              style={{ animation: `donut-in 0.8s cubic-bezier(0.4,0,0.2,1) ${i * 0.1}s both`, filter: `drop-shadow(0 0 5px ${sl.color}66)` }}
+            />
+          );
+        })}
+        <text x={cx} y={cy - 8} textAnchor="middle" fill="#fff" fontSize={28} fontWeight={800} fontFamily="Inter,system-ui,sans-serif">{total}</text>
+        <text x={cx} y={cy + 14} textAnchor="middle" fill="rgba(255,255,255,0.3)" fontSize={9} fontFamily="Inter,system-ui,sans-serif" letterSpacing={1}>TOTAL</text>
+      </svg>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, minWidth: 120 }}>
+        {slices.map((sl) => (
+          <div key={sl.label} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 9, height: 9, borderRadius: "50%", background: sl.color, flexShrink: 0, boxShadow: `0 0 6px ${sl.color}` }} />
+            <div style={{ flex: 1, fontSize: 11, color: PALETTE.dimmed }}>{sl.label}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>{sl.value}</div>
+            <div style={{ fontSize: 10, color: PALETTE.muted, minWidth: 32, textAlign: "right" }}>{Math.round(sl.value / total * 100)}%</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function LanguageDonut({ frPct, enPct }: { frPct: number; enPct: number }) {
+  const r = 70; const cx = 90; const cy = 90;
+  const circumference = 2 * Math.PI * r;
+  const gap = 0.015;
+  const slices = [
+    { label: "Français", value: frPct, pct: frPct / 100 },
+    { label: "Anglais", value: enPct, pct: enPct / 100 },
+  ];
+  const colors = [PALETTE.blue, PALETTE.gold];
+  let cumPct = 0;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
+      <svg width={180} height={180} viewBox="0 0 180 180" style={{ flexShrink: 0 }}>
+        <style>{`@keyframes donut-lang { from { stroke-dashoffset: ${circumference}px; } to { stroke-dashoffset: 0; } }`}</style>
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={22} />
+        {slices.map((sl, i) => {
+          const dashLen = Math.max(0, (sl.pct - gap) * circumference);
+          const offset = -(cumPct + gap / 2) * circumference;
+          cumPct += sl.pct;
+          return (
+            <circle key={sl.label} cx={cx} cy={cy} r={r} fill="none" stroke={colors[i]} strokeWidth={22}
+              strokeDasharray={`${dashLen} ${circumference}`}
+              strokeDashoffset={offset}
+              transform={`rotate(-90 ${cx} ${cy})`}
+              style={{ animation: `donut-lang 0.8s cubic-bezier(0.4,0,0.2,1) ${i * 0.12}s both`, filter: `drop-shadow(0 0 5px ${colors[i]!}66)` }}
+            />
+          );
+        })}
+        <text x={cx} y={cy - 8} textAnchor="middle" fill="#fff" fontSize={26} fontWeight={800} fontFamily="Inter,system-ui,sans-serif">{frPct}%</text>
+        <text x={cx} y={cy + 14} textAnchor="middle" fill="rgba(255,255,255,0.3)" fontSize={9} fontFamily="Inter,system-ui,sans-serif" letterSpacing={1}>FRANÇAIS</text>
+      </svg>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, flex: 1, minWidth: 100 }}>
+        {slices.map((sl, i) => (
+          <div key={sl.label} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 9, height: 9, borderRadius: "50%", background: colors[i], flexShrink: 0, boxShadow: `0 0 6px ${colors[i]!}` }} />
+            <div style={{ flex: 1, fontSize: 12, color: PALETTE.dimmed }}>{sl.label}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>{sl.value}%</div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1113,17 +1202,11 @@ export default function DashboardPage() {
                   }}
                 >
                   <SectionTitle>Répartition des résultats</SectionTitle>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                    {Object.entries(OUTCOME_LABELS).map(([key, label]) => (
-                      <OutcomeBar
-                        key={key}
-                        label={label}
-                        count={data.byOutcome[key] ?? 0}
-                        total={data.totals.conversations}
-                        color={OUTCOME_COLORS[key] ?? PALETTE.muted}
-                      />
-                    ))}
-                  </div>
+                  <DonutChart slices={Object.entries(OUTCOME_LABELS).map(([key, label]) => ({
+                    label,
+                    value: data.byOutcome[key] ?? 0,
+                    color: OUTCOME_COLORS[key] ?? PALETTE.muted,
+                  }))} />
                 </div>
 
                 {/* Daily volume */}
@@ -1170,6 +1253,12 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* ── SECTION: LANGUAGE CHART ── */}
+              <div style={{ background: PALETTE.cardBg, border: `1px solid ${PALETTE.cardBorder}`, borderRadius: 14, padding: "1.5rem", marginBottom: "1rem" }}>
+                <SectionTitle>Répartition par langue</SectionTitle>
+                <LanguageDonut frPct={data.languageSplit.frPct} enPct={data.languageSplit.enPct} />
               </div>
 
               {/* ── SECTION: QUALITY REVIEW ── */}
