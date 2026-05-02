@@ -729,7 +729,7 @@ export function createServer() {
   // GET /v1/demo-config/:slug — returns tenant config for demo pages
   app.get("/v1/demo-config/:slug", async (request, reply) => {
     const { slug } = request.params as { slug: string };
-    const tenant = getTenant(slug);
+    const tenant = getTenant(slug) ?? TENANT_REGISTRY.find(t => slugify(t.name) === slug);
     if (!tenant) return reply.code(404).send({ error: "not_found" });
     return reply.send({
       tenantId: tenant.id,
