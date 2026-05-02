@@ -1,7 +1,10 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { resolveDirectCoreFactResponse } from "./core-facts.js";
 import { sendLeadNotificationEmail } from "./services/email-notifications.js";
+import { TENANT_REGISTRY, getTenant } from "./admin/tenants.js";
+import { buildTenantHealthReport } from "./admin/health.js";
 import { loadApprovedSourceRegistry } from "@platform/config";
 import {
   answerMaaChat,
@@ -435,6 +438,87 @@ export function createServer() {
   });
 
   app.get("/health", async () => ({ status: "ok" }));
+
+  // ── Admin API ────────────────────────────────────────────────────────────────
+
+  const ADMIN_SECRET = process.env.ADMIN_SECRET ?? "dubub-admin-secret-change-me";
+
+  function signAdminToken(username: string): string {
+    const payload = `${username}:${Math.floor(Date.now() / (1000 * 60 * 60 * 24))}`; // daily rotation
+    return createHmac("sha256", ADMIN_SECRET).update(payload).digest("hex") + ":" + username;
+  }
+
+  function verifyAdminToken(token: string): boolean {
+    const [, username] = token.split(":");
+    if (!username) return false;
+    const expected = signAdminToken(username);
+    try {
+      return timingSafeEqual(Buffer.from(token), Buffer.from(expected));
+    } catch {
+      return false;
+    }
+  }
+
+  function adminAuth(request: any, reply: any): boolean {
+    const auth = (request.headers["x-admin-token"] as string | undefined) ?? "";
+    if (!verifyAdminToken(auth)) {
+      reply.code(401).send({ error: "unauthorized" });
+      return false;
+    }
+    return true;
+  }
+
+  // POST /v1/admin/login
+  app.post("/v1/admin/login", async (request, reply) => {
+    const body = (request.body ?? {}) as { username?: string; password?: string };
+    const adminUsername = process.env.ADMIN_USERNAME ?? "admin";
+    const adminPassword = process.env.ADMIN_PASSWORD ?? "dubub2025";
+
+    if (body.username !== adminUsername || body.password !== adminPassword) {
+      return reply.code(401).send({ error: "invalid_credentials" });
+    }
+    const token = signAdminToken(adminUsername);
+    return { token, username: adminUsername };
+  });
+
+  // GET /v1/admin/tenants
+  app.get("/v1/admin/tenants", async (request, reply) => {
+    if (!adminAuth(request, reply)) return;
+    return TENANT_REGISTRY.map((t) => ({
+      id: t.id,
+      name: t.name,
+      plan: t.plan,
+      status: t.status,
+      since: t.since,
+      monthlyPriceCad: t.monthlyPriceCad,
+      addons: t.addons,
+      contactName: t.contactName,
+      contactEmail: t.contactEmail,
+      website: t.website,
+      vapiEnabled: !!t.vapiAssistantId,
+      notes: t.notes,
+    }));
+  });
+
+  // GET /v1/admin/tenants/:tenantId/health
+  app.get("/v1/admin/tenants/:tenantId/health", async (request, reply) => {
+    if (!adminAuth(request, reply)) return;
+    const { tenantId } = request.params as TenantRouteParams;
+    const tenant = getTenant(tenantId);
+    if (!tenant) return reply.code(404).send({ error: "tenant_not_found" });
+    const report = await buildTenantHealthReport(tenant);
+    return report;
+  });
+
+  // GET /v1/admin/tenants/:tenantId/overview
+  app.get("/v1/admin/tenants/:tenantId/overview", async (request, reply) => {
+    if (!adminAuth(request, reply)) return;
+    const { tenantId } = request.params as TenantRouteParams;
+    const tenant = getTenant(tenantId);
+    if (!tenant) return reply.code(404).send({ error: "tenant_not_found" });
+    const health = await buildTenantHealthReport(tenant);
+    return { tenant, health };
+  });
 
   app.get("/v1/tenants/:tenantId/sources", async (request, reply) => {
     const { tenantId } = request.params as TenantRouteParams;
