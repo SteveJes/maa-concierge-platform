@@ -1085,9 +1085,6 @@ export function ChatShell({
           padding: 16,
           flex: 1,
           minHeight: 0,
-          // In floating mode the panel has a fixed height, so the messages area
-          // should fill all remaining space. In inline mode cap at 400px.
-          maxHeight: mode === "floating" ? undefined : 400,
           overflowY: "auto",
           display: "flex",
           flexDirection: "column",
