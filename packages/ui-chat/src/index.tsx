@@ -1063,11 +1063,12 @@ export function ChatShell({
       {/* ── Subtitle bar ───────────────────────────────────────────────────── */}
       <div
         style={{
-          padding: "6px 16px 8px",
-          background: "#f0f0f6",
-          color: "#6a6a80",
-          fontSize: 11,
+          padding: "5px 16px 5px",
+          background: "#f7f8f9",
+          color: "#8a90a0",
+          fontSize: 10,
           letterSpacing: "0.08em",
+          borderTop: "1px solid #eaecf0",
         }}
       >
         {locale === "fr-CA"

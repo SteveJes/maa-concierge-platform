@@ -938,22 +938,22 @@ export function createServer() {
       let firstMessage: string;
       if (isFr) {
         if (name && hasTopic)
-          firstMessage = `Bonjour ${name}. Ici Sophie, du Club MAA Je vois que vous aviez une question sur ${topic.fr}. Je suis là pour vous aider.`;
+          firstMessage = `Bonjour ${name}. Ici Sophie, du Club M.A.A. Je vois que vous aviez une question sur ${topic.fr}. Je suis là pour vous aider.`;
         else if (name)
-          firstMessage = `Bonjour ${name}. Ici Sophie, du Club MAA J'ai votre demande devant moi. Je vous écoute.`;
+          firstMessage = `Bonjour ${name}. Ici Sophie, du Club M.A.A. J'ai votre demande devant moi. Je vous écoute.`;
         else if (hasTopic)
-          firstMessage = `Bonjour. Ici Sophie, du Club MAA Je vois que vous vous intéressiez à ${topic.fr}. Je vous écoute.`;
+          firstMessage = `Bonjour. Ici Sophie, du Club M.A.A. Je vois que vous vous intéressiez à ${topic.fr}. Je vous écoute.`;
         else
-          firstMessage = `Bonjour. Ici Sophie, du Club MAA J'ai votre demande devant moi. Je vous écoute.`;
+          firstMessage = `Bonjour. Ici Sophie, du Club M.A.A. J'ai votre demande devant moi. Je vous écoute.`;
       } else {
         if (name && hasTopic)
-          firstMessage = `Hello ${name}. This is Sophie at Club MAA I see you had a question about ${topic.en}. I'm here to help.`;
+          firstMessage = `Hello ${name}. This is Sophie at Club M.A.A. I see you had a question about ${topic.en}. I'm here to help.`;
         else if (name)
-          firstMessage = `Hello ${name}. This is Sophie at Club MAA I have your request right here. Go ahead.`;
+          firstMessage = `Hello ${name}. This is Sophie at Club M.A.A. I have your request right here. Go ahead.`;
         else if (hasTopic)
-          firstMessage = `Hello. This is Sophie at Club MAA I see you were asking about ${topic.en}. How can I help?`;
+          firstMessage = `Hello. This is Sophie at Club M.A.A. I see you were asking about ${topic.en}. How can I help?`;
         else
-          firstMessage = `Hello. This is Sophie at Club MAA I have your request right here. Go ahead.`;
+          firstMessage = `Hello. This is Sophie at Club M.A.A. I have your request right here. Go ahead.`;
       }
 
       request.log.info({
@@ -973,6 +973,8 @@ export function createServer() {
             handoff_summary: handoff.handoffSummary,
             handoff_locale: handoff.locale,
             handoff_opening_line: firstMessage,
+            caller_name: handoff.customerName ?? '',
+            caller_phone: callerE164 ?? '',
           },
         },
       });
@@ -981,8 +983,8 @@ export function createServer() {
     // No match — Sophie answers cold, standard greeting
     const isFr = true; // default to French, Sophie detects language from caller
     const coldFirstMessage = isFr
-      ? "Bonjour. Ici Sophie, du Club MAA Comment puis-je vous aider ?"
-      : "Hello. This is Sophie at Club MAA How can I help you today?";
+      ? "Bonjour. Ici Sophie, du Club M.A.A. Comment puis-je vous aider ?"
+      : "Hello. This is Sophie at Club M.A.A. How can I help you today?";
 
     request.log.info({ callId, matched: false, callerKnown: !!callerE164 }, "VAPI assistant-request: no match, cold greeting");
 
@@ -995,6 +997,8 @@ export function createServer() {
           handoff_summary: "",
           handoff_locale: "fr",
           handoff_opening_line: coldFirstMessage,
+          caller_name: "",
+          caller_phone: callerE164 ?? "",
         },
       },
     });
@@ -1840,12 +1844,12 @@ export function createServer() {
       const isEn = !isFrenchLocale(locale);
       if (isEn) {
         return cleanedName
-          ? `Hello ${cleanedName}, this is Sophie from Club MAA You had a question about ${topic.en}?`
-          : `Hello, this is Sophie from Club MAA You had a question about ${topic.en}?`;
+          ? `Hello ${cleanedName}, this is Sophie from Club M.A.A. You had a question about ${topic.en}?`
+          : `Hello, this is Sophie from Club M.A.A. You had a question about ${topic.en}?`;
       }
       return cleanedName
-        ? `Bonjour ${cleanedName}, ici Sophie du Club MAA Vous aviez une question sur ${topic.fr}?`
-        : `Bonjour, ici Sophie du Club MAA Vous aviez une question sur ${topic.fr}?`;
+        ? `Bonjour ${cleanedName}, ici Sophie du Club M.A.A. Vous aviez une question sur ${topic.fr}?`
+        : `Bonjour, ici Sophie du Club M.A.A. Vous aviez une question sur ${topic.fr}?`;
     };
 
     const BANNED_SUMMARY_PHRASES = [
@@ -2245,14 +2249,13 @@ export function createServer() {
 <div style="max-width:600px;margin:0 auto;padding:32px 16px">
 
   <!-- Header -->
-  <div style="background:linear-gradient(135deg,#0e1015,#1a1a2a);border-radius:16px 16px 0 0;padding:32px 36px;border:1px solid rgba(201,168,76,0.2);border-bottom:none;position:relative;overflow:hidden">
-    <div style="position:absolute;top:-30px;right:-30px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(201,168,76,0.12),transparent 70%)"></div>
+  <div style="background:linear-gradient(135deg,#0e1015,#1a1a2a);border-radius:16px 16px 0 0;padding:32px 36px;border:1px solid rgba(201,168,76,0.2);border-bottom:none">
     <div style="display:inline-block;background:linear-gradient(135deg,#c9a84c,#8b6010);border-radius:8px;padding:5px 12px;font-weight:800;font-size:13px;color:#111;letter-spacing:0.08em;margin-bottom:16px">DUBUB</div>
     <div style="display:flex;align-items:center;gap:14px">
       <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#c9a84c,#8b6010);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#111;flex-shrink:0">${initial}</div>
       <div>
         <div style="color:#fff;font-size:22px;font-weight:800;line-height:1.2">${args.name ?? "Nouveau contact"}</div>
-        <div style="color:rgba(201,168,76,0.8);font-size:12px;margin-top:4px;letter-spacing:0.06em;text-transform:uppercase">Lead capturé par Sophie · Club MAA</div>
+        <div style="color:rgba(201,168,76,0.8);font-size:12px;margin-top:4px;letter-spacing:0.06em;text-transform:uppercase">Lead capturé par Sophie · Club M.A.A.</div>
       </div>
     </div>
   </div>
@@ -2296,9 +2299,9 @@ export function createServer() {
             method: "POST",
             headers: { "api-key": apiKey, "Content-Type": "application/json" },
             body: JSON.stringify({
-              sender: { name: "Sophie — Club MAA", email: process.env.BREVO_SENDER_EMAIL ?? "noreply@dubub.com" },
+              sender: { name: "Sophie — Club M.A.A.", email: process.env.BREVO_SENDER_EMAIL ?? "noreply@dubub.com" },
               to: [{ email: notifyEmail }],
-              subject: `🎯 Nouveau lead — ${args.name ?? args.phone ?? "Contact"} · Club MAA`,
+              subject: `🎯 Nouveau lead — ${args.name ?? args.phone ?? "Contact"} · Club M.A.A.`,
               htmlContent: html,
             }),
           }).catch((e: unknown) => request.log.error({ err: e }, "capture_lead email failed"));
