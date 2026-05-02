@@ -11,6 +11,12 @@ interface DemoConfig {
   conciergeName: string;
 }
 
+// Hardcoded known tenants — no API call needed for these
+const KNOWN_CONFIGS: Record<string, DemoConfig> = {
+  "maa": { tenantId: "maa", name: "Club Sportif MAA", websiteUrl: "https://www.clubsportifmaa.com/fr/", conciergeName: "Sophie" },
+  "club-sportif-maa": { tenantId: "maa", name: "Club Sportif MAA", websiteUrl: "https://www.clubsportifmaa.com/fr/", conciergeName: "Sophie" },
+};
+
 const API = process.env.NEXT_PUBLIC_API_URL ?? "https://api.dubub.com";
 
 export default function DemoSlugPage() {
@@ -22,12 +28,17 @@ export default function DemoSlugPage() {
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
+    // 1. Known slug — instant, no network
+    if (KNOWN_CONFIGS[slug]) { setConfig(KNOWN_CONFIGS[slug]!); return; }
+    // 2. Query params: ?name=Club+Name&site=https://...
+    const qp = new URLSearchParams(window.location.search);
+    const siteName = qp.get("name");
+    const siteUrl = qp.get("site");
+    if (siteName) { setConfig({ tenantId: slug, name: siteName, websiteUrl: siteUrl, conciergeName: "Sophie" }); return; }
+    // 3. API fallback for dynamically created tenants
     fetch(`${API}/v1/demo-config/${slug}`)
-      .then((r) => {
-        if (!r.ok) { setNotFound(true); return null; }
-        return r.json() as Promise<DemoConfig>;
-      })
-      .then((d) => { if (d) setConfig(d); })
+      .then((r) => { if (!r.ok) throw new Error("not_found"); return r.json() as Promise<DemoConfig>; })
+      .then((d) => setConfig(d))
       .catch(() => setNotFound(true));
   }, [slug]);
 
