@@ -782,7 +782,9 @@ export function createServer() {
       matchedCallId: null,
     });
 
-    const inboundNumber = toNullableTrimmedString(process.env.VAPI_INBOUND_PHONE_NUMBER);
+    // Fall back to VAPI_PHONE_NUMBER if dedicated inbound number not set
+    const inboundNumber = toNullableTrimmedString(process.env.VAPI_INBOUND_PHONE_NUMBER)
+      ?? toNullableTrimmedString(process.env.VAPI_PHONE_NUMBER);
     request.log.info({ tenantId, matched: false, handoffSource: "web_inbound", hasContext: !!lastUserMessage }, "inbound-handoff registered");
 
     return { ok: true, inboundNumber };
@@ -832,13 +834,53 @@ export function createServer() {
       const name = handoff.customerName;
       const isFr = !handoff.locale.startsWith("en");
 
-      const firstMessage = isFr
-        ? (name
-          ? `Bonjour ${name}. Ici Sophie, du Club M.A.A. J'ai votre demande devant moi. Je vous écoute.`
-          : `Bonjour. Ici Sophie, du Club M.A.A. J'ai votre demande devant moi. Je vous écoute.`)
-        : (name
-          ? `Hello ${name}. This is Sophie at Club M.A.A. I have your request right here. Go ahead.`
-          : `Hello. This is Sophie at Club M.A.A. I have your request right here. Go ahead.`);
+      // Build a topic-aware opening so Sophie sounds genuinely briefed, not generic
+      const detectInboundTopic = (msg: string): { fr: string; en: string } => {
+        const m = msg.toLowerCase();
+        if (m.includes("tarif") || m.includes("prix") || m.includes("abonnement") || m.includes("cost") || m.includes("price") || m.includes("membership"))
+          return { fr: "nos tarifs et abonnements", en: "our membership pricing" };
+        if (m.includes("piscine") || m.includes("pool") || m.includes("nage"))
+          return { fr: "notre piscine", en: "our pool" };
+        if (m.includes("cours") || m.includes("classe") || m.includes("yoga") || m.includes("pilates") || m.includes("spinning") || m.includes("class"))
+          return { fr: "nos cours de groupe", en: "our group classes" };
+        if (m.includes("horaire") || m.includes("heure") || m.includes("ouvert") || m.includes("schedule") || m.includes("hours"))
+          return { fr: "nos horaires", en: "our hours" };
+        if (m.includes("spa") || m.includes("sauna") || m.includes("hammam"))
+          return { fr: "notre espace spa", en: "our spa" };
+        if (m.includes("visite") || m.includes("tour") || m.includes("rendez-vous") || m.includes("visit"))
+          return { fr: "une visite du club", en: "a club visit" };
+        if (m.includes("squash"))
+          return { fr: "nos courts de squash", en: "our squash courts" };
+        if (m.includes("etudiant") || m.includes("étudiant") || m.includes("student"))
+          return { fr: "nos tarifs étudiants", en: "our student rates" };
+        if (m.includes("senior") || m.includes("aîné"))
+          return { fr: "nos tarifs seniors", en: "our senior rates" };
+        return { fr: "", en: "" };
+      };
+
+      const topic = detectInboundTopic(handoff.lastUserMessage + " " + handoff.handoffSummary);
+      const hasTopic = topic.fr.length > 0;
+
+      let firstMessage: string;
+      if (isFr) {
+        if (name && hasTopic)
+          firstMessage = `Bonjour ${name}. Ici Sophie, du Club M.A.A. Je vois que vous aviez une question sur ${topic.fr}. Je suis là pour vous aider.`;
+        else if (name)
+          firstMessage = `Bonjour ${name}. Ici Sophie, du Club M.A.A. J'ai votre demande devant moi. Je vous écoute.`;
+        else if (hasTopic)
+          firstMessage = `Bonjour. Ici Sophie, du Club M.A.A. Je vois que vous vous intéressiez à ${topic.fr}. Je vous écoute.`;
+        else
+          firstMessage = `Bonjour. Ici Sophie, du Club M.A.A. J'ai votre demande devant moi. Je vous écoute.`;
+      } else {
+        if (name && hasTopic)
+          firstMessage = `Hello ${name}. This is Sophie at Club M.A.A. I see you had a question about ${topic.en}. I'm here to help.`;
+        else if (name)
+          firstMessage = `Hello ${name}. This is Sophie at Club M.A.A. I have your request right here. Go ahead.`;
+        else if (hasTopic)
+          firstMessage = `Hello. This is Sophie at Club M.A.A. I see you were asking about ${topic.en}. How can I help?`;
+        else
+          firstMessage = `Hello. This is Sophie at Club M.A.A. I have your request right here. Go ahead.`;
+      }
 
       request.log.info({
         callId,
@@ -2101,6 +2143,61 @@ export function createServer() {
     const results: { toolCallId: string; result: string }[] = [];
 
     for (const call of toolCalls) {
+      // capture_lead — called when Sophie collects contact info on the phone
+      if (call.function.name === "capture_lead") {
+        let args: { name?: string; phone?: string; email?: string; note?: string; locale?: string } = {};
+        try {
+          args = typeof call.function.arguments === "string"
+            ? JSON.parse(call.function.arguments)
+            : (call.function.arguments as typeof args);
+        } catch { /* ok */ }
+
+        const notifyEmail = process.env.LEAD_NOTIFY_EMAIL ?? "steve@dubub.com";
+        const apiKey = process.env.BREVO_API_KEY ?? process.env.BREVO_SMTP_KEY;
+        const isFr = !args.locale?.startsWith("en");
+
+        if (apiKey && (args.name || args.phone || args.email)) {
+          const time = new Date().toLocaleString("fr-CA", { timeZone: "America/Montreal", dateStyle: "full", timeStyle: "short" });
+          const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="font-family:Inter,Arial,sans-serif;background:#f4f6f9;margin:0;padding:0">
+<div style="max-width:560px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+  <div style="background:linear-gradient(135deg,#111116,#1e1e2a);padding:28px 32px">
+    <div style="display:inline-block;background:#c9a84c;color:#111116;font-weight:800;font-size:18px;padding:6px 14px;border-radius:6px">DUBUB</div>
+    <h1 style="color:#fff;margin:12px 0 0;font-size:20px;font-weight:700">Nouveau lead — Appel Sophie (Club M.A.A.)</h1>
+  </div>
+  <div style="padding:28px 32px">
+    <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#888;margin-bottom:4px">Nom</div>
+    <div style="font-size:16px;font-weight:600;color:#111;margin-bottom:16px">${args.name ?? "—"}</div>
+    <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#888;margin-bottom:4px">Téléphone</div>
+    <div style="font-size:22px;font-weight:700;color:#2a2a38;margin-bottom:16px">${args.phone ?? "—"}</div>
+    <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#888;margin-bottom:4px">Courriel</div>
+    <div style="font-size:16px;font-weight:600;color:#111;margin-bottom:16px">${args.email ?? "—"}</div>
+    ${args.note ? `<div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#888;margin-bottom:4px">Note</div><div style="font-size:14px;color:#444;background:#f8f9fa;padding:12px 14px;border-radius:8px;border-left:3px solid #c9a84c;line-height:1.5">${args.note}</div>` : ""}
+    <div style="background:#f8f9fa;border-radius:8px;padding:14px 16px;margin-top:20px;font-size:12px;color:#666">
+      <div>Source : Appel entrant Sophie (VAPI)</div>
+      <div>Date : ${time}</div>
+    </div>
+  </div>
+</div></body></html>`;
+
+          await fetch("https://api.brevo.com/v3/smtp/email", {
+            method: "POST",
+            headers: { "api-key": apiKey, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sender: { name: "Sophie — Club M.A.A.", email: process.env.BREVO_SENDER_EMAIL ?? "noreply@dubub.com" },
+              to: [{ email: notifyEmail }],
+              subject: `Nouveau lead (appel Sophie) — ${args.name ?? args.phone ?? "inconnu"}`,
+              htmlContent: html,
+            }),
+          }).catch((e: unknown) => request.log.error({ err: e }, "capture_lead email failed"));
+        }
+
+        const confirmation = isFr
+          ? "Parfait. J'ai bien noté vos coordonnées et je les transmets à l'équipe du club. Quelqu'un vous contactera très prochainement."
+          : "Perfect. I've noted your contact information and I'm passing it to the club team. Someone will reach out to you very soon.";
+        results.push({ toolCallId: call.id, result: confirmation });
+        continue;
+      }
+
       if (call.function.name !== "lookup_maa_info") {
         results.push({ toolCallId: call.id, result: "Unknown tool." });
         continue;

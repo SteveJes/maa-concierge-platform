@@ -944,6 +944,14 @@ export function ChatShell({
       0%, 80%, 100% { transform: translateY(0); opacity: 0.5; }
       40%           { transform: translateY(-5px); opacity: 1; }
     }
+    @keyframes maa-ai-orbit {
+      0%   { transform: rotate(0deg) translateX(4px) rotate(0deg); opacity: 0.7; }
+      100% { transform: rotate(360deg) translateX(4px) rotate(-360deg); opacity: 0.7; }
+    }
+    @keyframes maa-ai-pulse {
+      0%, 100% { opacity: 0.35; transform: scale(1); }
+      50%      { opacity: 0.85; transform: scale(1.3); }
+    }
   `;
 
   const widget = (
@@ -1063,7 +1071,6 @@ export function ChatShell({
         style={{
           background: "#f7f8f9",
           padding: 16,
-          minHeight: 300,
           maxHeight: mode === "floating" ? 300 : 400,
           overflowY: "auto",
           display: "flex",
@@ -1648,7 +1655,7 @@ export function ChatShell({
           <button
             type="button"
             onClick={() => { setInboundReadyNumber(null); setCallbackPhone(""); setCallbackName(""); setCallbackConsent(false); }}
-            style={{ background: "none", border: "none", color: "rgba(255,255,255,0.25)", fontSize: 11, cursor: "pointer", marginTop: 10 }}
+            style={{ background: "none", border: "none", color: "rgba(255,255,255,0.6)", fontSize: 11, cursor: "pointer", marginTop: 10, textDecoration: "underline", textUnderlineOffset: 2, letterSpacing: "0.04em" }}
           >
             {locale === "fr-CA" ? "Fermer" : "Close"}
           </button>
@@ -1969,14 +1976,20 @@ export function ChatShell({
           {locale === "fr-CA" ? "Laisser mes coordonnées" : "Leave my contact info"}
         </button>
         <a
-          href="https://dubub.com"
+          href="https://dubub.ca"
           target="_blank"
           rel="noopener noreferrer"
-          style={{ color: "#aab0bc", fontSize: 10, letterSpacing: "0.06em", textDecoration: "none" }}
+          style={{ color: "#aab0bc", fontSize: 10, letterSpacing: "0.06em", textDecoration: "none", display: "flex", alignItems: "center", gap: 5 }}
         >
+          {/* Subtle AI orbit animation */}
+          <span style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", width: 12, height: 12 }}>
+            <span style={{ width: 3, height: 3, borderRadius: "50%", background: "#c9a84c", display: "block", animation: "maa-ai-pulse 2.2s ease-in-out infinite" }} />
+            <span style={{ position: "absolute", width: 3, height: 3, borderRadius: "50%", background: "rgba(201,168,76,0.6)", animation: "maa-ai-orbit 3s linear infinite" }} />
+            <span style={{ position: "absolute", width: 2, height: 2, borderRadius: "50%", background: "rgba(201,168,76,0.4)", animation: "maa-ai-orbit 3s linear infinite", animationDelay: "-1.5s" }} />
+          </span>
           IA concierge par{" "}
           <strong style={{ color: "#7a82a0", fontWeight: 700 }}>DUBUB</strong>
-          <span style={{ color: "#c9a84c", fontWeight: 700 }}>.com</span>
+          <span style={{ color: "#c9a84c", fontWeight: 700 }}>.ca</span>
         </a>
       </div>
     </section>
