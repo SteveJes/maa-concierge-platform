@@ -29,7 +29,8 @@
     "test:maa:phone:routing": "tsx src/scripts/test-maa-phone-routing-regression.ts",
     "test:maa:auto": "tsx src/scripts/test-maa-autonomous-regression.ts",
     "vapi:debug:latest": "tsx src/scripts/vapi-debug-latest.ts",
-    "vapi:debug:latest:json": "tsx src/scripts/vapi-debug-latest.ts --json"
+    "vapi:debug:latest:json": "tsx src/scripts/vapi-debug-latest.ts --json",
+    "vapi:debug:audio-latency": "tsx src/scripts/vapi-debug-audio-latency.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.0.0",
