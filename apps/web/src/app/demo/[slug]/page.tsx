@@ -28,12 +28,13 @@ export default function DemoSlugPage() {
   const [notFound, setNotFound] = useState(false);
   const vpHeightRef = useRef<number | null>(null);
 
-  // Android keyboard fix: keep --vp-h in sync with visual viewport.
-  // Samsung Internet fires window.resize; Chrome/others fire visualViewport resize.
-  // We listen to both so every Android browser is covered.
+  // Android-only keyboard fix: on iOS, 100dvh already shrinks with the keyboard natively.
+  // On Android (Chrome + Samsung Internet), 100dvh does NOT update — we use visualViewport.
   useEffect(() => {
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isIOS) return; // iOS handles dvh natively — no JS needed, no override
+
     function update() {
-      // visualViewport.height is the most accurate; fallback to innerHeight
       const h = window.visualViewport?.height ?? window.innerHeight;
       if (h !== vpHeightRef.current) {
         vpHeightRef.current = h;
@@ -43,7 +44,7 @@ export default function DemoSlugPage() {
     update();
     window.visualViewport?.addEventListener("resize", update);
     window.visualViewport?.addEventListener("scroll", update);
-    window.addEventListener("resize", update); // Samsung Internet + older Android fallback
+    window.addEventListener("resize", update); // Samsung Internet fallback
     return () => {
       window.visualViewport?.removeEventListener("resize", update);
       window.visualViewport?.removeEventListener("scroll", update);
