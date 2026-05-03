@@ -2301,6 +2301,12 @@ export function createServer() {
         const apiKey = process.env.BREVO_API_KEY ?? process.env.BREVO_SMTP_KEY;
         const isFr = !args.locale?.startsWith("en");
 
+        request.log.info({ name: args.name, phone: args.phone, email: args.email, note: args.note, notifyEmail }, "capture_lead fired");
+
+        if (!apiKey) {
+          request.log.error("capture_lead: BREVO_API_KEY is missing — lead email NOT sent. Set LEAD_NOTIFY_EMAIL and BREVO_API_KEY in .env.local");
+        }
+
         if (apiKey && (args.name || args.phone || args.email)) {
           const time = new Date().toLocaleString("fr-CA", { timeZone: "America/Montreal", dateStyle: "full", timeStyle: "short" });
           const initial = (args.name ?? "?").charAt(0).toUpperCase();
@@ -2366,7 +2372,14 @@ export function createServer() {
               subject: `🎯 Nouveau lead — ${args.name ?? args.phone ?? "Contact"} · Club M.A.A.`,
               htmlContent: html,
             }),
-          }).catch((e: unknown) => request.log.error({ err: e }, "capture_lead email failed"));
+          }).then(async (r) => {
+            if (!r.ok) {
+              const body = await r.text().catch(() => "");
+              request.log.error({ status: r.status, body }, "capture_lead email send failed — Brevo rejected");
+            } else {
+              request.log.info({ notifyEmail }, "capture_lead email sent OK");
+            }
+          }).catch((e: unknown) => request.log.error({ err: e }, "capture_lead email network error"));
         }
 
         // Persist to NocoDB callback_requests (non-fatal)

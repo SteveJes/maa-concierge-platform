@@ -1941,7 +1941,15 @@ export function ChatShell({
               void sendMessage();
             }
           }}
+          onFocus={(e) => {
+            // Android: scroll input into view after keyboard opens (~300ms delay)
+            setTimeout(() => e.target.scrollIntoView({ behavior: "smooth", block: "nearest" }), 320);
+          }}
           placeholder={locale === "fr-CA" ? "Votre message..." : "Your message..."}
+          inputMode="text"
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="sentences"
           style={{
             flex: 1,
             padding: "12px 18px",
@@ -1949,9 +1957,10 @@ export function ChatShell({
             border: "1px solid #e0e3e8",
             background: "#ffffff",
             color: "#1a1a1a",
-            fontSize: 14,
+            fontSize: 16, // 16px prevents iOS auto-zoom, better Android too
             outline: "none",
             minWidth: 0,
+            WebkitAppearance: "none",
           }}
         />
         <button

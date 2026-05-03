@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { ChatShell } from "@platform/ui-chat";
 
@@ -26,6 +26,25 @@ export default function DemoSlugPage() {
   const [labelDismissed, setLabelDismissed] = useState(false);
   const [config, setConfig] = useState<DemoConfig | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const vpHeightRef = useRef<number | null>(null);
+
+  // Android keyboard fix: keep --vp-h in sync with visual viewport
+  useEffect(() => {
+    function update() {
+      const h = window.visualViewport?.height ?? window.innerHeight;
+      if (h !== vpHeightRef.current) {
+        vpHeightRef.current = h;
+        document.documentElement.style.setProperty("--vp-h", `${h}px`);
+      }
+    }
+    update();
+    window.visualViewport?.addEventListener("resize", update);
+    window.visualViewport?.addEventListener("scroll", update);
+    return () => {
+      window.visualViewport?.removeEventListener("resize", update);
+      window.visualViewport?.removeEventListener("scroll", update);
+    };
+  }, []);
 
   useEffect(() => {
     // 1. Known slug — instant, no network
@@ -156,8 +175,8 @@ export default function DemoSlugPage() {
           .badge-short { display: inline; }
           .chat-panel {
             bottom: 0; right: 0; left: 0; width: 100%;
-            height: calc(100dvh - 40px); top: 40px; border-radius: 0;
-            overflow-x: hidden;
+            height: calc(var(--vp-h, 100dvh) - 40px); top: 40px; border-radius: 0;
+            overflow-x: hidden; overflow-y: hidden;
           }
           .arrow-hint { display: none; }
           .bubble-label { display: none; }
