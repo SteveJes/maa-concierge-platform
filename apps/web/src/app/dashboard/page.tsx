@@ -21,7 +21,7 @@ const BENCH = {
   membershipMonthlyValue: 225, // Club Sportif MAA annual plan, per month
   membershipLifetimeValue: 2700, // $225 × 12 months
   webChatConversionRate: 0.06, // 6% industry benchmark for premium fitness clubs (Mindbody 2024)
-  aiCostPerMonth: 955,         // MAA Platform concierge subscription — full premium tier
+  aiCostPerMonth: 1290,        // MAA Platform concierge subscription — Croissance tier
   aiCostPerInteraction: 0.12,  // estimated at scale
   receptionistHoursPerDay: 8,  // 9am–5pm
   totalHoursPerDay: 24,
@@ -225,58 +225,39 @@ function KpiCard({
   );
 }
 
-function ComparisonRow({
-  label,
-  aiValue,
-  humanValue,
-  better,
-}: {
-  label: string;
-  aiValue: string;
-  humanValue: string;
-  better: "ai" | "human";
-}) {
+function ComparisonTable() {
+  const rows = [
+    { label: "Disponibilité", ai: "24 h / 24 — 7 j / 7", human: "~8 h/jour, jours ouvrables" },
+    { label: "Délai de réponse", ai: "< 3 secondes", human: "2–5 min si disponible" },
+    { label: "Langues", ai: "FR + EN simultané", human: "Selon l'employé" },
+    { label: "Coût par interaction", ai: `${fmt$(BENCH.aiCostPerInteraction)}`, human: `~${fmt$(BENCH.costPerHumanInquiry)}` },
+    { label: "Coût mensuel", ai: `${fmt$(BENCH.aiCostPerMonth)}/mois`, human: "~3 500–4 500 $/mois" },
+    { label: "Formation requise", ai: "Aucune", human: "2–4 semaines" },
+    { label: "Congés / maladie", ai: "Jamais", human: "Oui — remplacement requis" },
+  ];
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr 1fr",
-        gap: 12,
-        alignItems: "center",
-        padding: "10px 0",
-        borderBottom: `1px solid ${PALETTE.cardBorder}`,
-      }}
-    >
-      <span style={{ color: PALETTE.dimmed, fontSize: 12 }}>{label}</span>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-        }}
-      >
-        <div
-          style={{
-            width: 6,
-            height: 6,
-            borderRadius: "50%",
-            background: better === "ai" ? PALETTE.green : PALETTE.muted,
-            flexShrink: 0,
-          }}
-        />
-        <span
-          style={{
-            color: better === "ai" ? PALETTE.green : PALETTE.dimmed,
-            fontWeight: better === "ai" ? 700 : 400,
-            fontSize: 13,
-          }}
-        >
-          {aiValue}
-        </span>
+    <div style={{ background: PALETTE.cardBg, border: `1px solid ${PALETTE.cardBorder}`, borderRadius: 14, overflow: "hidden" }}>
+      {/* Header */}
+      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr", background: "rgba(255,255,255,0.03)", borderBottom: `1px solid ${PALETTE.cardBorder}` }}>
+        <div style={{ padding: "12px 20px", fontSize: 10, color: PALETTE.muted, textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700 }}>Critère</div>
+        <div style={{ padding: "12px 16px", fontSize: 10, color: PALETTE.green, textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700, display: "flex", alignItems: "center", gap: 6, background: "rgba(34,214,138,0.06)", borderLeft: `2px solid ${PALETTE.green}33` }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: PALETTE.green, display: "inline-block", boxShadow: `0 0 6px ${PALETTE.green}` }} />
+          Concierge IA
+        </div>
+        <div style={{ padding: "12px 16px", fontSize: 10, color: "rgba(255,255,255,0.25)", textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700 }}>Réceptionniste</div>
       </div>
-      <span style={{ color: PALETTE.muted, fontSize: 12, textDecoration: "line-through" }}>
-        {humanValue}
-      </span>
+      {/* Rows */}
+      {rows.map((row, i) => (
+        <div key={row.label} style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr", borderBottom: i < rows.length - 1 ? `1px solid ${PALETTE.cardBorder}` : "none" }}>
+          <div style={{ padding: "13px 20px", fontSize: 12, color: PALETTE.dimmed, display: "flex", alignItems: "center" }}>{row.label}</div>
+          <div style={{ padding: "13px 16px", fontSize: 13, color: PALETTE.white, fontWeight: 600, display: "flex", alignItems: "center", background: "rgba(34,214,138,0.04)", borderLeft: `2px solid ${PALETTE.green}22` }}>
+            {row.ai}
+          </div>
+          <div style={{ padding: "13px 16px", fontSize: 12, color: "rgba(255,255,255,0.22)", display: "flex", alignItems: "center", textDecoration: "line-through" }}>
+            {row.human}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -1014,10 +995,13 @@ export default function DashboardPage() {
             <Skeleton />
           ) : error && !data ? (
             <div style={{ color: PALETTE.muted, textAlign: "center", paddingTop: "5rem" }}>
-              <p style={{ fontSize: 18 }}>Données indisponibles — API inaccessible.</p>
+              <p style={{ fontSize: 18 }}>Données indisponibles.</p>
               <p style={{ fontSize: 13, marginTop: 8 }}>
-                Assurez-vous que l'API tourne sur le port 4000.
+                L'API ne répond pas. Vérifiez que le serveur est bien déployé et en ligne.
               </p>
+              <button onClick={() => void fetchData(selectedDays)} style={{ marginTop: 20, padding: "10px 24px", borderRadius: 8, border: "none", background: PALETTE.gold, color: PALETTE.bg, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                Réessayer
+              </button>
             </div>
           ) : data ? (
             <div style={{ animation: "fadeIn 0.4s ease-out" }}>
@@ -1072,55 +1056,30 @@ export default function DashboardPage() {
                       </div>
 
                       {/* Cost comparison table */}
-                      <div
-                        style={{
-                          background: PALETTE.cardBg,
-                          border: `1px solid ${PALETTE.cardBorder}`,
-                          borderRadius: 14,
-                          padding: "1.5rem",
-                        }}
-                      >
+                      <div style={{ marginTop: "0.5rem" }}>
                         <SectionTitle>Concierge IA vs réceptionniste humain</SectionTitle>
+                        <ComparisonTable />
                         <div
                           style={{
-                            display: "grid",
-                            gridTemplateColumns: "1fr 1fr 1fr",
-                            gap: 12,
-                            marginBottom: 8,
-                          }}
-                        >
-                          <span style={{ color: PALETTE.muted, fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase" }}>Critère</span>
-                          <span style={{ color: PALETTE.green, fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 700 }}>Concierge IA</span>
-                          <span style={{ color: PALETTE.muted, fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase" }}>Réceptionniste</span>
-                        </div>
-                        <ComparisonRow label="Coût par interaction" aiValue={`${fmt$(BENCH.aiCostPerInteraction)}`} humanValue={`${fmt$(BENCH.costPerHumanInquiry)}`} better="ai" />
-                        <ComparisonRow label="Disponibilité" aiValue="24h/24 — 7j/7" humanValue="~8h/jour (jours ouvrables)" better="ai" />
-                        <ComparisonRow label="Délai de réponse" aiValue="< 3 secondes" humanValue="2-5 minutes (si disponible)" better="ai" />
-                        <ComparisonRow label="Langues" aiValue="FR + EN simultané" humanValue="Selon l'employé" better="ai" />
-                        <ComparisonRow label="Coût mensuel" aiValue={`${fmt$(BENCH.aiCostPerMonth)}/mois`} humanValue="~3 500-4 500 $/mois" better="ai" />
-                        <ComparisonRow label="Formation requise" aiValue="Aucune" humanValue="2-4 semaines" better="ai" />
-
-                        <div
-                          style={{
-                            marginTop: 16,
-                            padding: "12px 16px",
-                            background: `${PALETTE.green}11`,
-                            borderRadius: 8,
-                            border: `1px solid ${PALETTE.green}33`,
+                            marginTop: 12,
+                            padding: "12px 20px",
+                            background: `${PALETTE.green}0d`,
+                            borderRadius: 10,
+                            border: `1px solid ${PALETTE.green}22`,
                             display: "flex",
                             alignItems: "center",
-                            gap: 10,
+                            gap: 12,
                           }}
                         >
-                          <span style={{ fontSize: 20 }}>✅</span>
+                          <span style={{ fontSize: 18 }}>💡</span>
                           <span style={{ color: PALETTE.dimmed, fontSize: 12 }}>
-                            Économie estimée sur ce mois:{" "}
+                            Économie estimée ce mois :{" "}
                             <strong style={{ color: PALETTE.green }}>
-                              {fmt$(Math.round(data.totals.conversations * (30 / selectedDays) * BENCH.costPerHumanInquiry - BENCH.aiCostPerMonth))}
+                              {fmt$(Math.max(0, Math.round(data.totals.conversations * (30 / selectedDays) * BENCH.costPerHumanInquiry - BENCH.aiCostPerMonth)))}
                             </strong>
-                            {" "}en remplaçant la gestion manuelle des demandes entrantes.{" "}
+                            {" "}en automatisant les demandes entrantes.{" "}
                             <span style={{ color: PALETTE.muted }}>
-                              Basé sur {Math.round(data.totals.conversations * (30 / selectedDays))} interactions/mois estimées.
+                              {Math.round(data.totals.conversations * (30 / selectedDays))} interactions/mois estimées.
                             </span>
                           </span>
                         </div>
@@ -1277,7 +1236,7 @@ export default function DashboardPage() {
               >
                 * Estimations basées sur les benchmarks du secteur fitness au Québec (Mindbody 2024, Association des clubs de fitness du Canada).
                 Coût moyen d'un réceptionniste à Montréal: ~42 000 $/an (source: Emploi-Québec 2024). Taux de conversion web-to-member: 6% (clubs haut de gamme).
-                Valeur membre annuelle: 2 700 $ (225 $/mois × 12). Les chiffres réels peuvent varier.
+                Valeur membre annuelle: 2 700 $ (225 $/mois × 12). Abonnement Concierge IA : 1 290 $/mois (forfait Croissance). Les chiffres réels peuvent varier.
               </div>
             </div>
           ) : null}
