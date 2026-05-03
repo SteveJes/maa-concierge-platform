@@ -28,9 +28,12 @@ export default function DemoSlugPage() {
   const [notFound, setNotFound] = useState(false);
   const vpHeightRef = useRef<number | null>(null);
 
-  // Android keyboard fix: keep --vp-h in sync with visual viewport
+  // Android keyboard fix: keep --vp-h in sync with visual viewport.
+  // Samsung Internet fires window.resize; Chrome/others fire visualViewport resize.
+  // We listen to both so every Android browser is covered.
   useEffect(() => {
     function update() {
+      // visualViewport.height is the most accurate; fallback to innerHeight
       const h = window.visualViewport?.height ?? window.innerHeight;
       if (h !== vpHeightRef.current) {
         vpHeightRef.current = h;
@@ -40,9 +43,11 @@ export default function DemoSlugPage() {
     update();
     window.visualViewport?.addEventListener("resize", update);
     window.visualViewport?.addEventListener("scroll", update);
+    window.addEventListener("resize", update); // Samsung Internet + older Android fallback
     return () => {
       window.visualViewport?.removeEventListener("resize", update);
       window.visualViewport?.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
     };
   }, []);
 
@@ -176,7 +181,7 @@ export default function DemoSlugPage() {
           .chat-panel {
             bottom: 0; right: 0; left: 0; width: 100%;
             height: calc(var(--vp-h, 100dvh) - 40px); top: 40px; border-radius: 0;
-            overflow-x: hidden; overflow-y: hidden;
+            overflow-x: hidden;
           }
           .arrow-hint { display: none; }
           .bubble-label { display: none; }
