@@ -813,3 +813,23 @@ export async function createCallbackRequest(
     uuid: payload?.uuid ?? input.uuid,
   };
 }
+
+export async function createTenant(input: { uuid: string; code: string; name: string }): Promise<TenantRow> {
+  const cfg = assertNocoConfigPresent();
+  const payload = await nocoRequest<TenantRow>(
+    `/api/v2/tables/${cfg.tenantsTableId}/records`,
+    { method: "POST", body: JSON.stringify(input) },
+  );
+  const row: TenantRow = { ...input, ...payload };
+  tenantCache.set(input.code, row);
+  return row;
+}
+
+export async function createBookingConfig(input: BookingConfigRow): Promise<void> {
+  const cfg = getNocoConfig();
+  if (!cfg.bookingConfigsTableId) return;
+  await nocoRequest(
+    `/api/v2/tables/${cfg.bookingConfigsTableId}/records`,
+    { method: "POST", body: JSON.stringify(input) },
+  );
+}

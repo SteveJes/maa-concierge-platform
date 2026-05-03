@@ -27,6 +27,8 @@ interface OnboardingData {
   vapiAssistantId: string;
   vapiPhoneNumberId: string;
   openAiModel: string;
+  bookingEnabled: boolean;
+  calendlyUrl: string;
   // Step 5 — Plan & Billing
   plan: string;
   billingTerm: "monthly" | "annual";
@@ -46,6 +48,7 @@ const EMPTY: OnboardingData = {
   language: "fr", tone: "premium-warm", conciergeName: "Sophie", description: "",
   crawlerEnabled: true, crawlerUrl: "", pdfs: [],
   vapiEnabled: false, vapiAssistantId: "", vapiPhoneNumberId: "", openAiModel: "gpt-4o",
+  bookingEnabled: false, calendlyUrl: "",
   plan: "essentiel", billingTerm: "monthly", monthlyPriceCad: "599", implementationFee: "1950", implFeeWaived: false,
   addons: [], contactName: "", contactEmail: "", notifyEmail: "", sendInvoice: true, notes: "",
 };
@@ -174,12 +177,31 @@ export default function OnboardingPage() {
 
   if (submitted) return (
     <AdminShell title="Onboarding" subtitle="New tenant setup">
-      <div style={{ maxWidth: 560, margin: "60px auto", textAlign: "center" }}>
-        <div style={{ fontSize: 56, marginBottom: 20 }}>✓</div>
-        <h2 style={{ color: P.gold, fontWeight: 800, fontSize: 28, margin: "0 0 12px" }}>Tenant créé !</h2>
-        <p style={{ color: P.dim, fontSize: 15, marginBottom: 28 }}>
-          <strong style={{ color: P.white }}>{data.companyName}</strong> est maintenant sur la plateforme.
-        </p>
+      <div style={{ maxWidth: 580, margin: "48px auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <div style={{ width: 64, height: 64, borderRadius: "50%", background: "linear-gradient(135deg,#22d68a,#1a9e65)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30, margin: "0 auto 16px", boxShadow: "0 0 32px rgba(34,214,138,0.3)" }}>✓</div>
+          <h2 style={{ color: P.white, fontWeight: 800, fontSize: 26, margin: "0 0 8px" }}>{data.companyName} est en ligne !</h2>
+          <p style={{ color: P.muted, fontSize: 14, margin: 0 }}>La plateforme est configurée et prête.</p>
+        </div>
+
+        {/* Setup checklist */}
+        <div style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${P.border}`, borderRadius: 12, padding: "18px 22px", marginBottom: 20 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 14 }}>Ce qui a été configuré</div>
+          {[
+            { ok: true, label: `Tenant "${data.companyName}" créé dans la plateforme` },
+            { ok: true, label: "Profil NocoDB créé — conversations et analytics activés" },
+            { ok: data.crawlerEnabled, label: data.crawlerEnabled ? `Crawler web activé — ${data.crawlerUrl || data.website || "URL de Step 1"}` : "Crawler web désactivé" },
+            { ok: data.pdfs.length > 0, label: data.pdfs.length > 0 ? `${data.pdfs.length} PDF(s) téléversé(s)` : "Aucun PDF téléversé" },
+            { ok: data.vapiEnabled, label: data.vapiEnabled ? "VAPI vocal activé — Sophie peut appeler les visiteurs" : "Vocal désactivé — chat uniquement" },
+            { ok: data.bookingEnabled && !!data.calendlyUrl, label: data.bookingEnabled && data.calendlyUrl ? `Booking Calendly configuré` : "Booking non configuré" },
+            { ok: data.sendInvoice && !!data.contactEmail, label: data.sendInvoice && data.contactEmail ? `Facture envoyée à ${data.contactEmail}` : "Pas de facture envoyée" },
+          ].map((item, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderBottom: i < 6 ? `1px solid ${P.border}` : "none" }}>
+              <span style={{ fontSize: 14, width: 20, textAlign: "center", color: item.ok ? P.green : P.muted }}>{item.ok ? "✓" : "–"}</span>
+              <span style={{ fontSize: 13, color: item.ok ? P.dim : P.muted }}>{item.label}</span>
+            </div>
+          ))}
+        </div>
         {submitResult?.invoiceNumber && (
           <div style={{ background: "rgba(201,168,76,0.07)", border: "1px solid rgba(201,168,76,0.25)", borderRadius: 12, padding: "20px 24px", marginBottom: 24, textAlign: "left" }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12 }}>Facturation</div>
@@ -232,9 +254,11 @@ export default function OnboardingPage() {
             </a>
           </div>
         )}
-        <GoldBtn onClick={() => { setData(EMPTY); setStep(1); setSubmitted(false); setSubmitResult(null); setUploadProgress([]); }}>
-          Ajouter un autre tenant
-        </GoldBtn>
+        <div style={{ textAlign: "center" }}>
+          <GoldBtn onClick={() => { setData(EMPTY); setStep(1); setSubmitted(false); setSubmitResult(null); setUploadProgress([]); }}>
+            Ajouter un autre tenant
+          </GoldBtn>
+        </div>
       </div>
     </AdminShell>
   );
@@ -488,6 +512,27 @@ function Step4({ data, set }: { data: OnboardingData; set: <K extends keyof Onbo
           Voice calls disabled — the concierge will be chat-only.
         </div>
       )}
+
+      <div style={{ height: 1, background: P.border }} />
+
+      <SectionTitle>Booking & Visit Scheduling</SectionTitle>
+      <div style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${P.border}`, borderRadius: 12, padding: "18px 20px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Enable Booking</div>
+            <div style={{ color: P.muted, fontSize: 12 }}>Allow the concierge to direct visitors to a booking or visit scheduling link</div>
+          </div>
+          <Toggle on={data.bookingEnabled} onToggle={() => set("bookingEnabled", !data.bookingEnabled)} />
+        </div>
+        {data.bookingEnabled && (
+          <div style={{ marginTop: 16 }}>
+            <Field label="Calendly URL" hint="The booking link you want to share — Calendly, Cal.com, or any scheduling page">
+              <input style={fieldStyle} value={data.calendlyUrl} onChange={e => set("calendlyUrl", e.target.value)}
+                placeholder="https://calendly.com/your-club/visite-30min" />
+            </Field>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -707,6 +752,7 @@ function Step6({ data, uploadProgress }: { data: OnboardingData; uploadProgress:
         <div style={{ fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Voice & Phone</div>
         <Row label="VAPI enabled" value={data.vapiEnabled ? "Yes" : "No"} />
         {data.vapiEnabled && <Row label="Assistant ID" value={<span style={{ fontFamily: "monospace", fontSize: 11 }}>{data.vapiAssistantId || "—"}</span>} />}
+        <Row label="Booking" value={data.bookingEnabled ? (data.calendlyUrl || "Enabled (no URL)") : "Disabled"} />
       </div>
 
       <div>

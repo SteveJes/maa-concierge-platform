@@ -14,8 +14,10 @@ import {
 } from "./services/maa-chat.js";
 import {
   createCallbackRequest,
+  createBookingConfig,
   createConversation,
   createMessage,
+  createTenant,
   findBookingConfigForTenantLocale,
   findTenantByCode,
   isBookingConfigConfigured,
@@ -685,6 +687,32 @@ export function createServer() {
       website: typeof body.website === "string" ? body.website : null,
       notes: typeof body.notes === "string" ? body.notes : null,
     });
+
+    // Create NocoDB tenant row + optional booking config (non-fatal — platform functions without it)
+    let nocoTenantUuid: string | null = null;
+    try {
+      const tenantUuid = newUuid();
+      await createTenant({ uuid: tenantUuid, code: id, name });
+      nocoTenantUuid = tenantUuid;
+      request.log.info({ tenantId: id, uuid: tenantUuid }, "NocoDB tenant row created");
+
+      const calendlyUrl = typeof body.calendlyUrl === "string" ? body.calendlyUrl.trim() : "";
+      if (calendlyUrl) {
+        await createBookingConfig({
+          uuid: newUuid(),
+          tenant_uuid: tenantUuid,
+          locale: null,
+          enabled: true,
+          mode: "calendly",
+          booking_url: calendlyUrl,
+          allow_callback_fallback: true,
+        });
+        request.log.info({ tenantId: id }, "NocoDB booking_config created");
+      }
+    } catch (err) {
+      request.log.warn({ err }, "NocoDB setup failed (non-fatal — tenant still created in registry)");
+    }
+    void nocoTenantUuid; // used for logging
 
     // Build invoice lines
     const invoiceNumber = nextInvoiceNumber();
@@ -2339,6 +2367,26 @@ export function createServer() {
               htmlContent: html,
             }),
           }).catch((e: unknown) => request.log.error({ err: e }, "capture_lead email failed"));
+        }
+
+        // Persist to NocoDB callback_requests (non-fatal)
+        if (isCallbackPersistenceConfigured() && (args.name || args.phone || args.email)) {
+          findTenantByCode("maa").then((tenant) => {
+            return createCallbackRequest({
+              uuid: newUuid(),
+              tenant_uuid: tenant.uuid,
+              locale: args.locale ?? "fr-CA",
+              name: args.name ?? null,
+              phone: args.phone ?? "—",
+              email: args.email ?? null,
+              question_summary: args.note ?? null,
+              status: "new",
+              consent_to_contact: true,
+              brevo_confirmation_sent: true,
+              crm_record_id: null,
+              created_at: new Date().toISOString(),
+            });
+          }).catch((e: unknown) => request.log.warn({ err: e }, "capture_lead NocoDB persist failed"));
         }
 
         const confirmation = isFr
