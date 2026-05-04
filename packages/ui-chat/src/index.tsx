@@ -318,8 +318,9 @@ const pillInput = (extra?: React.CSSProperties): React.CSSProperties => ({
 });
 
 export function ChatShell({
-  accentColor = "var(--accent)",
-  accentGradient = "var(--accent-gradient)",
+  accentColor = "#c9a84c",
+  accentGradient = "linear-gradient(135deg, #c9a84c, #a07830)",
+  accentRgb = "201,168,76",
   mode = "inline",
   tenantId = "maa",
   conciergeName = "Sophie",
@@ -328,9 +329,21 @@ export function ChatShell({
   headerTitle,
   nudgesFr = PROACTIVE_NUDGES_FR,
   nudgesEn = PROACTIVE_NUDGES_EN,
+  nudgeLabelFr = "Conseil Privilège",
+  nudgeLabelEn = "Concierge Insight",
+  nudgeSubLabelFr = "Information du club",
+  nudgeSubLabelEn = "Club information",
+  suggestedQuestionsFr,
+  suggestedQuestionsEn,
+  tenantPhone,
+  pricingCtaFr = "→ Planifier une visite",
+  pricingCtaEn = "→ Schedule a tour",
+  pricingCtaMessageFr = "Je souhaite planifier une visite des installations.",
+  pricingCtaMessageEn = "I'd like to schedule a tour of the facilities.",
 }: {
   accentColor?: string;
   accentGradient?: string;
+  accentRgb?: string;
   mode?: "inline" | "floating";
   tenantId?: string;
   conciergeName?: string;
@@ -339,6 +352,17 @@ export function ChatShell({
   headerTitle?: string;
   nudgesFr?: string[];
   nudgesEn?: string[];
+  nudgeLabelFr?: string;
+  nudgeLabelEn?: string;
+  nudgeSubLabelFr?: string;
+  nudgeSubLabelEn?: string;
+  suggestedQuestionsFr?: string[];
+  suggestedQuestionsEn?: string[];
+  tenantPhone?: string | null;
+  pricingCtaFr?: string;
+  pricingCtaEn?: string;
+  pricingCtaMessageFr?: string;
+  pricingCtaMessageEn?: string;
 } = {}) {
 
   const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
@@ -370,24 +394,23 @@ export function ChatShell({
   // Dynamic suggested questions — fetched from API, fallback to static
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   useEffect(() => {
-    const apiBase = typeof window !== "undefined"
-      ? (window as unknown as Record<string, unknown>).__MAA_API_BASE__ as string | undefined ?? "http://localhost:4000"
-      : "http://localhost:4000";
-    fetch(`${apiBase}/v1/tenants/maa/popular-questions?days=30`)
+    // Use prop-provided questions directly if given
+    if (suggestedQuestionsFr || suggestedQuestionsEn) {
+      const qs = locale === "fr-CA" ? (suggestedQuestionsFr ?? []) : (suggestedQuestionsEn ?? []);
+      setSuggestedQuestions(qs.slice(0, 4));
+      return;
+    }
+    // Otherwise try to fetch from API
+    fetch(`${apiBaseUrl}/v1/tenants/${tenantId}/popular-questions?days=30`)
       .then((r) => r.json())
       .then((data: { fr?: string[]; en?: string[] }) => {
         const questions = locale === "fr-CA" ? (data.fr ?? []) : (data.en ?? []);
         if (questions.length > 0) setSuggestedQuestions(questions.slice(0, 4));
       })
       .catch(() => {
-        // Fallback to hardcoded on fetch failure
-        setSuggestedQuestions(
-          locale === "fr-CA"
-            ? ["Quels sont vos tarifs ?", "C'est quoi les horaires de la piscine ?", "Offrez-vous des cours de groupe ?", "Comment vous joindre ?"]
-            : ["What are your membership fees?", "What are your pool hours?", "Do you offer group classes?", "How do I book a tour?"],
-        );
+        setSuggestedQuestions([]);
       });
-  }, [locale]);
+  }, [locale, tenantId, suggestedQuestionsFr, suggestedQuestionsEn, apiBaseUrl]);
 
   // Name capture state — persisted in localStorage per tenant
   const STORAGE_KEY = "maa_concierge_user";
@@ -839,12 +862,11 @@ export function ChatShell({
         }),
       });
       const data = (await res.json()) as { ok?: boolean; inboundNumber?: string };
-      const displayNumber = data.inboundNumber ?? lastResponse?.vapi?.phoneNumber ?? null;
+      const displayNumber = data.inboundNumber ?? lastResponse?.vapi?.phoneNumber ?? tenantPhone ?? null;
       setInboundReadyNumber(displayNumber);
       setShowInlineCallForm(false);
     } catch {
-      // Fallback: still reveal Sophie's number from VAPI config
-      setInboundReadyNumber(lastResponse?.vapi?.phoneNumber ?? null);
+      setInboundReadyNumber(lastResponse?.vapi?.phoneNumber ?? tenantPhone ?? null);
       setShowInlineCallForm(false);
     } finally {
       setIsRegisteringInbound(false);
@@ -984,6 +1006,7 @@ export function ChatShell({
       style={{
         "--accent": accentColor,
         "--accent-gradient": accentGradient,
+        "--accent-rgb": accentRgb,
         background: "#f7f8f9",
         borderRadius: 20,
         overflow: "hidden",
@@ -1159,31 +1182,31 @@ export function ChatShell({
                 <div key={message.id} style={{ marginBottom: 10, animation: "maa-msg-in 0.3s ease" }}>
                   <div style={{
                     borderRadius: 14,
-                    background: "linear-gradient(135deg, #fdf8ec 0%, #fef5e0 100%)",
-                    border: "1px solid #e8d08a",
-                    boxShadow: "0 2px 8px rgba(201,168,76,0.12)",
+                    background: `linear-gradient(135deg, rgba(var(--accent-rgb),0.07) 0%, rgba(var(--accent-rgb),0.03) 100%)`,
+                    border: `1px solid rgba(var(--accent-rgb),0.25)`,
+                    boxShadow: `0 2px 8px rgba(var(--accent-rgb),0.10)`,
                     overflow: "hidden",
                   }}>
                     {/* Card header */}
                     <div style={{
                       display: "flex", alignItems: "center", gap: 6,
                       padding: "8px 14px 6px",
-                      borderBottom: "1px solid #f0d98a",
-                      background: "rgba(201,168,76,0.08)",
+                      borderBottom: `1px solid rgba(var(--accent-rgb),0.15)`,
+                      background: `rgba(var(--accent-rgb),0.06)`,
                     }}>
                       <span style={{ fontSize: 10 }}>✦</span>
                       <span style={{
                         fontSize: 9, fontWeight: 800, letterSpacing: "0.14em",
-                        textTransform: "uppercase", color: "#7a5c10",
+                        textTransform: "uppercase", color: "var(--accent)",
                       }}>
-                        {locale === "fr-CA" ? "Conseil Privilège" : "Member Insight"}
+                        {locale === "fr-CA" ? nudgeLabelFr : nudgeLabelEn}
                       </span>
-                      <span style={{ marginLeft: "auto", fontSize: 9, color: "#b8960e", fontStyle: "italic", fontWeight: 500 }}>
-                        {locale === "fr-CA" ? "Information du club" : "Club information"}
+                      <span style={{ marginLeft: "auto", fontSize: 9, color: `rgba(var(--accent-rgb),0.7)`, fontStyle: "italic", fontWeight: 500 }}>
+                        {locale === "fr-CA" ? nudgeSubLabelFr : nudgeSubLabelEn}
                       </span>
                     </div>
                     {/* Card body */}
-                    <div style={{ padding: "10px 14px", color: "#5a4010", fontSize: 13, lineHeight: 1.55, fontStyle: "italic" }}>
+                    <div style={{ padding: "10px 14px", color: "#3a3a4a", fontSize: 13, lineHeight: 1.55, fontStyle: "italic" }}>
                       <RichMessageText text={message.text} />
                     </div>
                     {hasPricingSignal && (
@@ -1192,8 +1215,8 @@ export function ChatShell({
                           type="button"
                           onClick={() => {
                             const bookingText = locale === "fr-CA"
-                              ? "Je souhaite planifier une visite des installations."
-                              : "I'd like to schedule a tour of the facilities.";
+                              ? pricingCtaMessageFr
+                              : pricingCtaMessageEn;
                             setInput(bookingText);
                             setTimeout(() => {
                               const sendBtn = document.querySelector<HTMLButtonElement>("[data-send-btn]");
@@ -1206,9 +1229,7 @@ export function ChatShell({
                             fontWeight: 600, textDecoration: "underline", textUnderlineOffset: 2,
                           }}
                         >
-                          {locale === "fr-CA"
-                            ? "→ Planifier une visite"
-                            : "→ Schedule a tour"}
+                          {locale === "fr-CA" ? pricingCtaFr : pricingCtaEn}
                         </button>
                       </div>
                     )}
@@ -1235,22 +1256,22 @@ export function ChatShell({
                       width: 26,
                       height: 26,
                       borderRadius: 8,
-                      background: "#ffffff",
-                      border: "1px solid #e8dfc8",
-                      boxShadow: "0 1px 4px rgba(201,168,76,0.15)",
+                      background: logoUrl ? "#ffffff" : "var(--accent-gradient)",
+                      border: "1px solid rgba(var(--accent-rgb),0.2)",
+                      boxShadow: "0 1px 4px rgba(var(--accent-rgb),0.15)",
                       flexShrink: 0,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       overflow: "hidden",
-                      padding: 3,
+                      padding: logoUrl ? 3 : 0,
                     }}
                   >
-                    <img
-                      src="https://www.clubsportifmaa.com/wp-content/uploads/2021/01/club-sportif-maa-logo.svg"
-                      alt="MAA"
-                      style={{ width: 20, height: 20, objectFit: "contain" }}
-                    />
+                    {logoUrl ? (
+                      <img src={logoUrl} alt={clientName} style={{ width: 20, height: 20, objectFit: "contain" }} />
+                    ) : (
+                      <span style={{ color: "#fff", fontWeight: 800, fontSize: 11 }}>{clientName.charAt(0)}</span>
+                    )}
                   </div>
                   <div
                     style={{
@@ -1274,9 +1295,7 @@ export function ChatShell({
                     <button
                       type="button"
                       onClick={() => {
-                        const bookingText = locale === "fr-CA"
-                          ? "Je souhaite planifier une visite des installations."
-                          : "I'd like to schedule a tour of the facilities.";
+                        const bookingText = locale === "fr-CA" ? pricingCtaMessageFr : pricingCtaMessageEn;
                         setInput(bookingText);
                         setTimeout(() => {
                           const sendBtn = document.querySelector<HTMLButtonElement>("[data-send-btn]");
@@ -1294,8 +1313,8 @@ export function ChatShell({
                       }}
                     >
                       {locale === "fr-CA"
-                        ? "Vous souhaitez voir nos installations ? → Planifier une visite"
-                        : "Want to see our facilities? → Schedule a tour"}
+                        ? `Prochaine étape ? ${pricingCtaFr}`
+                        : `Next step? ${pricingCtaEn}`}
                     </button>
                   </div>
                 ) : null}
@@ -1333,12 +1352,18 @@ export function ChatShell({
         {showLoadingAnimation && (
           <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
             <div style={{
-              width: 26, height: 26, borderRadius: 8, background: "#ffffff",
-              border: "1px solid #e8dfc8", boxShadow: "0 1px 4px rgba(201,168,76,0.15)",
+              width: 26, height: 26, borderRadius: 8,
+              background: logoUrl ? "#ffffff" : "var(--accent-gradient)",
+              border: "1px solid rgba(var(--accent-rgb),0.2)",
+              boxShadow: "0 1px 4px rgba(var(--accent-rgb),0.15)",
               flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
-              overflow: "hidden", padding: 3,
+              overflow: "hidden", padding: logoUrl ? 3 : 0,
             }}>
-              <img src="https://www.clubsportifmaa.com/wp-content/uploads/2021/01/club-sportif-maa-logo.svg" alt="MAA" style={{ width: 20, height: 20, objectFit: "contain" }} />
+              {logoUrl ? (
+                <img src={logoUrl} alt={clientName} style={{ width: 20, height: 20, objectFit: "contain" }} />
+              ) : (
+                <span style={{ color: "#fff", fontWeight: 800, fontSize: 11 }}>{clientName.charAt(0)}</span>
+              )}
             </div>
             <GymLoadingIndicator locale={locale} />
           </div>

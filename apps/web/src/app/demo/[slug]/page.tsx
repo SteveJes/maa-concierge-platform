@@ -12,11 +12,23 @@ interface DemoConfig {
   clientName: string;
   accentColor: string;
   accentGradient: string;
+  accentRgb: string;
   bubbleGradient: string;
   bubbleGlow: string;
   logoUrl: string | null;
   nudgesFr: string[];
   nudgesEn: string[];
+  nudgeLabelFr?: string;
+  nudgeLabelEn?: string;
+  nudgeSubLabelFr?: string;
+  nudgeSubLabelEn?: string;
+  suggestedQuestionsFr?: string[];
+  suggestedQuestionsEn?: string[];
+  tenantPhone?: string | null;
+  pricingCtaFr?: string;
+  pricingCtaEn?: string;
+  pricingCtaMessageFr?: string;
+  pricingCtaMessageEn?: string;
 }
 
 const MAA_NUDGES_FR = [
@@ -47,49 +59,74 @@ const DUBUB_NUDGES_EN = [
   "Did you know our clients reduce front-desk load by over 60%? Let's explore what DUBUB can do for you.",
 ];
 
+const MAA_SUGGESTED_FR = [
+  "Quels sont vos tarifs d'abonnement ?",
+  "C'est quoi les horaires de la piscine ?",
+  "Offrez-vous des cours de pilates ?",
+  "Comment réserver une visite ?",
+];
+const MAA_SUGGESTED_EN = [
+  "What are your membership fees?",
+  "What are your pool hours?",
+  "Do you offer pilates classes?",
+  "How do I book a tour?",
+];
+const DUBUB_SUGGESTED_FR = [
+  "Quels sont vos plans et tarifs ?",
+  "Comment fonctionne le concierge IA ?",
+  "Pouvez-vous nous faire une démo ?",
+  "Combien de temps pour l'intégration ?",
+];
+const DUBUB_SUGGESTED_EN = [
+  "What are your plans and pricing?",
+  "How does the AI concierge work?",
+  "Can you do a live demo for us?",
+  "How long does onboarding take?",
+];
+
 // Hardcoded known tenants — no API call needed for these
 const KNOWN_CONFIGS: Record<string, DemoConfig> = {
   "maa": {
-    tenantId: "maa",
-    name: "Club Sportif MAA",
-    websiteUrl: "https://www.clubsportifmaa.com/fr/",
-    conciergeName: "Sophie",
-    clientName: "Club Sportif MAA",
-    accentColor: "#c9a84c",
-    accentGradient: "linear-gradient(135deg, #c9a84c, #a07830)",
-    bubbleGradient: "linear-gradient(135deg, #c9a84c 0%, #8b6010 100%)",
-    bubbleGlow: "rgba(201,168,76,0.55)",
+    tenantId: "maa", name: "Club Sportif MAA", websiteUrl: "https://www.clubsportifmaa.com/fr/",
+    conciergeName: "Sophie", clientName: "Club Sportif MAA",
+    accentColor: "#c9a84c", accentGradient: "linear-gradient(135deg, #c9a84c, #a07830)", accentRgb: "201,168,76",
+    bubbleGradient: "linear-gradient(135deg, #c9a84c 0%, #8b6010 100%)", bubbleGlow: "rgba(201,168,76,0.55)",
     logoUrl: "https://www.clubsportifmaa.com/wp-content/uploads/2021/01/club-sportif-maa-logo.svg",
-    nudgesFr: MAA_NUDGES_FR,
-    nudgesEn: MAA_NUDGES_EN,
+    nudgesFr: MAA_NUDGES_FR, nudgesEn: MAA_NUDGES_EN,
+    suggestedQuestionsFr: MAA_SUGGESTED_FR, suggestedQuestionsEn: MAA_SUGGESTED_EN,
+    nudgeLabelFr: "Conseil Privilège", nudgeLabelEn: "Member Insight",
+    nudgeSubLabelFr: "Information du club", nudgeSubLabelEn: "Club information",
+    pricingCtaFr: "→ Planifier une visite", pricingCtaEn: "→ Schedule a tour",
+    pricingCtaMessageFr: "Je souhaite planifier une visite des installations.", pricingCtaMessageEn: "I'd like to schedule a tour of the facilities.",
+    tenantPhone: null,
   },
   "club-sportif-maa": {
-    tenantId: "maa",
-    name: "Club Sportif MAA",
-    websiteUrl: "https://www.clubsportifmaa.com/fr/",
-    conciergeName: "Sophie",
-    clientName: "Club Sportif MAA",
-    accentColor: "#c9a84c",
-    accentGradient: "linear-gradient(135deg, #c9a84c, #a07830)",
-    bubbleGradient: "linear-gradient(135deg, #c9a84c 0%, #8b6010 100%)",
-    bubbleGlow: "rgba(201,168,76,0.55)",
+    tenantId: "maa", name: "Club Sportif MAA", websiteUrl: "https://www.clubsportifmaa.com/fr/",
+    conciergeName: "Sophie", clientName: "Club Sportif MAA",
+    accentColor: "#c9a84c", accentGradient: "linear-gradient(135deg, #c9a84c, #a07830)", accentRgb: "201,168,76",
+    bubbleGradient: "linear-gradient(135deg, #c9a84c 0%, #8b6010 100%)", bubbleGlow: "rgba(201,168,76,0.55)",
     logoUrl: "https://www.clubsportifmaa.com/wp-content/uploads/2021/01/club-sportif-maa-logo.svg",
-    nudgesFr: MAA_NUDGES_FR,
-    nudgesEn: MAA_NUDGES_EN,
+    nudgesFr: MAA_NUDGES_FR, nudgesEn: MAA_NUDGES_EN,
+    suggestedQuestionsFr: MAA_SUGGESTED_FR, suggestedQuestionsEn: MAA_SUGGESTED_EN,
+    nudgeLabelFr: "Conseil Privilège", nudgeLabelEn: "Member Insight",
+    nudgeSubLabelFr: "Information du club", nudgeSubLabelEn: "Club information",
+    pricingCtaFr: "→ Planifier une visite", pricingCtaEn: "→ Schedule a tour",
+    pricingCtaMessageFr: "Je souhaite planifier une visite des installations.", pricingCtaMessageEn: "I'd like to schedule a tour of the facilities.",
+    tenantPhone: null,
   },
   "dubub": {
-    tenantId: "dubub",
-    name: "DUBUB",
-    websiteUrl: "https://dubub.ca/",
-    conciergeName: "SophIA",
-    clientName: "DUBUB",
-    accentColor: "#6366f1",
-    accentGradient: "linear-gradient(135deg, #6366f1, #4338ca)",
-    bubbleGradient: "linear-gradient(135deg, #818cf8 0%, #4338ca 100%)",
-    bubbleGlow: "rgba(99,102,241,0.55)",
+    tenantId: "dubub", name: "DUBUB", websiteUrl: "https://dubub.ca/",
+    conciergeName: "SophIA", clientName: "DUBUB",
+    accentColor: "#6366f1", accentGradient: "linear-gradient(135deg, #6366f1, #4338ca)", accentRgb: "99,102,241",
+    bubbleGradient: "linear-gradient(135deg, #818cf8 0%, #4338ca 100%)", bubbleGlow: "rgba(99,102,241,0.55)",
     logoUrl: null,
-    nudgesFr: DUBUB_NUDGES_FR,
-    nudgesEn: DUBUB_NUDGES_EN,
+    nudgesFr: DUBUB_NUDGES_FR, nudgesEn: DUBUB_NUDGES_EN,
+    suggestedQuestionsFr: DUBUB_SUGGESTED_FR, suggestedQuestionsEn: DUBUB_SUGGESTED_EN,
+    nudgeLabelFr: "Conseil SophIA", nudgeLabelEn: "SophIA's Insight",
+    nudgeSubLabelFr: "Plateforme DUBUB", nudgeSubLabelEn: "DUBUB Platform",
+    pricingCtaFr: "→ Planifier une démo", pricingCtaEn: "→ Book a free demo",
+    pricingCtaMessageFr: "Je souhaite planifier une démo de votre plateforme.", pricingCtaMessageEn: "I'd like to schedule a demo of your platform.",
+    tenantPhone: "+14386075588",
   },
 };
 
@@ -164,7 +201,7 @@ export default function DemoSlugPage() {
     if (siteName) {
       setConfig({
         tenantId: slug, name: siteName, websiteUrl: siteUrl, conciergeName: "Sophie",
-        clientName: siteName, accentColor: "#c9a84c", accentGradient: "linear-gradient(135deg, #c9a84c, #a07830)",
+        clientName: siteName, accentColor: "#c9a84c", accentGradient: "linear-gradient(135deg, #c9a84c, #a07830)", accentRgb: "201,168,76",
         bubbleGradient: "linear-gradient(135deg, #c9a84c 0%, #8b6010 100%)", bubbleGlow: "rgba(201,168,76,0.55)",
         logoUrl: null, nudgesFr: MAA_NUDGES_FR, nudgesEn: MAA_NUDGES_EN,
       });
@@ -175,7 +212,7 @@ export default function DemoSlugPage() {
       .then((d) => setConfig({
         ...d,
         clientName: d.name,
-        accentColor: "#c9a84c", accentGradient: "linear-gradient(135deg, #c9a84c, #a07830)",
+        accentColor: "#c9a84c", accentGradient: "linear-gradient(135deg, #c9a84c, #a07830)", accentRgb: "201,168,76",
         bubbleGradient: "linear-gradient(135deg, #c9a84c 0%, #8b6010 100%)", bubbleGlow: "rgba(201,168,76,0.55)",
         logoUrl: null, nudgesFr: MAA_NUDGES_FR, nudgesEn: MAA_NUDGES_EN,
       }))
@@ -347,9 +384,21 @@ export default function DemoSlugPage() {
             clientName={config.clientName}
             accentColor={config.accentColor}
             accentGradient={config.accentGradient}
+            accentRgb={config.accentRgb}
             logoUrl={config.logoUrl}
             nudgesFr={config.nudgesFr}
             nudgesEn={config.nudgesEn}
+            nudgeLabelFr={config.nudgeLabelFr}
+            nudgeLabelEn={config.nudgeLabelEn}
+            nudgeSubLabelFr={config.nudgeSubLabelFr}
+            nudgeSubLabelEn={config.nudgeSubLabelEn}
+            suggestedQuestionsFr={config.suggestedQuestionsFr}
+            suggestedQuestionsEn={config.suggestedQuestionsEn}
+            tenantPhone={config.tenantPhone}
+            pricingCtaFr={config.pricingCtaFr}
+            pricingCtaEn={config.pricingCtaEn}
+            pricingCtaMessageFr={config.pricingCtaMessageFr}
+            pricingCtaMessageEn={config.pricingCtaMessageEn}
           />
         </div>
       ) : (
