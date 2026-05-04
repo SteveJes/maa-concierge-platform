@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 
-export type TenantCode = "maa";
+export type TenantCode = string;
 
 export interface NocoConfig {
   baseUrl: string | undefined;

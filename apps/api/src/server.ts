@@ -1121,13 +1121,6 @@ export function createServer() {
     const { tenantId } = request.params as TenantRouteParams;
     const body = (request.body ?? {}) as Partial<ChatRouteBody>;
 
-    if (tenantId !== "maa") {
-      return reply.code(404).send({
-        error: "tenant_not_supported",
-        message: `Unsupported tenant: ${tenantId}`,
-      });
-    }
-
     if (!body.message || typeof body.message !== "string" || !body.message.trim()) {
       return reply.code(400).send({
         error: "invalid_request",
@@ -1184,7 +1177,7 @@ export function createServer() {
         return tenantUuid;
       }
 
-      const tenant = await findTenantByCode("maa");
+      const tenant = await findTenantByCode(tenantId);
       tenantUuid = tenant.uuid;
       return tenantUuid;
     };
@@ -1246,6 +1239,7 @@ export function createServer() {
       maxResults: body.maxResults,
       conversationHistory,
       userName: userName ?? undefined,
+      tenantCode: tenantId,
     };
 
     const result =

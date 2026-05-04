@@ -40,6 +40,7 @@ export interface MaaChatRequest {
   maxResults?: number;
   conversationHistory?: MaaConversationHistoryTurn[];
   userName?: string;
+  tenantCode?: string;
 }
 
 export interface MaaChatCitation {
@@ -523,7 +524,7 @@ async function callOpenAiForAnswer(
 export async function answerMaaChat(
   request: MaaChatRequest,
 ): Promise<MaaChatResponse> {
-  const tenant = await findTenantByCode("maa");
+  const tenant = await findTenantByCode(request.tenantCode ?? "maa");
   const searchableChunks = await getSearchableChunksForTenant(tenant.uuid);
   const conversationHistory = normalizeConversationHistory(
     request.conversationHistory,
