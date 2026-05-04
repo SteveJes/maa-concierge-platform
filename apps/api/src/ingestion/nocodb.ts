@@ -490,7 +490,8 @@ export async function createDocument(
     },
   );
 
-  return payload;
+  // NocoDB POST returns only { Id } — merge with input to preserve uuid and other fields
+  return { ...input, ...payload, uuid: payload?.uuid ?? input.uuid };
 }
 
 export async function createDocumentChunk(
