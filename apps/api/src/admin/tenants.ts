@@ -49,6 +49,13 @@ export function addTenant(config: TenantConfig): void {
   TENANT_REGISTRY.push(config);
 }
 
+export function removeTenant(id: string): boolean {
+  const idx = TENANT_REGISTRY.findIndex((t) => t.id === id);
+  if (idx === -1) return false;
+  TENANT_REGISTRY.splice(idx, 1);
+  return true;
+}
+
 export function slugify(name: string): string {
   return name
     .toLowerCase()

@@ -50,7 +50,7 @@ const EMPTY: OnboardingData = {
   crawlerEnabled: true, crawlerUrl: "", pdfs: [],
   vapiEnabled: false, vapiAssistantId: "", vapiPhoneNumberId: "", openAiModel: "gpt-4o",
   bookingEnabled: false, calendlyUrl: "",
-  plan: "essentiel", billingTerm: "monthly", monthlyPriceCad: "599", implementationFee: "1950", implFeeWaived: false,
+  plan: "essentiel", billingTerm: "monthly", monthlyPriceCad: "790", implementationFee: "2950", implFeeWaived: false,
   addons: [], contactName: "", contactEmail: "", notifyEmail: "", sendInvoice: true, notes: "",
 };
 
@@ -78,9 +78,9 @@ interface PlanDef {
 }
 
 const PLANS: PlanDef[] = [
-  { value: "essentiel", label: "Essentiel", monthly: 599, implFee: 1950, desc: "Concierge web · Chat IA bilingue · Base de connaissances · Support standard" },
-  { value: "croissance", label: "Croissance", monthly: 1290, implFee: 3950, desc: "Tout Essentiel + IA vocale · Rappel automatique · Analytics · Support prioritaire" },
-  { value: "prestige", label: "Prestige", monthly: 2590, implFee: 7950, desc: "Tout Croissance + Voix personnalisée · Multi-site · Intégrations CRM · SLA garanti" },
+  { value: "essentiel", label: "Essentiel", monthly: 790, implFee: 2950, desc: "Concierge web · Chat IA bilingue · Base de connaissances · Support standard" },
+  { value: "croissance", label: "Croissance", monthly: 1790, implFee: 5950, desc: "Tout Essentiel + IA vocale · Rappel automatique · Analytics · Support prioritaire" },
+  { value: "prestige", label: "Prestige", monthly: 3900, implFee: 12500, desc: "Tout Croissance + Voix personnalisée · Multi-site · Intégrations CRM · SLA garanti" },
   { value: "autre", label: "Autre / Sur mesure", monthly: 0, implFee: 0, custom: true, desc: "Tarification personnalisée — entrez les montants manuellement" },
 ];
 
@@ -182,14 +182,173 @@ export default function OnboardingPage() {
     }
   }
 
+  const hasIngestion = (data.crawlerEnabled && !!(data.crawlerUrl || data.website)) || data.pdfs.length > 0;
+  const isDubub = data.companyName.trim().toLowerCase() === "dubub";
+
   if (submitted) return (
     <AdminShell title="Onboarding" subtitle="New tenant setup">
-      <div style={{ maxWidth: 580, margin: "48px auto" }}>
+      {/* ── DUBUB EASTER EGG ─────────────────────────────────────────────── */}
+      {isDubub && (
+        <>
+          <style>{`
+            @keyframes fw-burst {
+              0%   { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 1; }
+              70%  { opacity: 1; }
+              100% { transform: translate(calc(var(--tx) * 3.5), calc(var(--ty) * 3.5)) scale(1); opacity: 0; }
+            }
+            @keyframes fw-rise {
+              0%   { transform: translateY(0); opacity: 1; }
+              100% { transform: translateY(var(--rise)); opacity: 0; }
+            }
+            @keyframes egg-in {
+              0%   { opacity: 0; transform: scale(0.85) translateY(24px); }
+              100% { opacity: 1; transform: scale(1) translateY(0); }
+            }
+            @keyframes shimmer {
+              0%, 100% { opacity: 1; }
+              50%       { opacity: 0.6; }
+            }
+            @keyframes heart-pop {
+              0%   { transform: scale(1); }
+              40%  { transform: scale(1.35); }
+              70%  { transform: scale(0.92); }
+              100% { transform: scale(1); }
+            }
+            .dubub-egg { animation: egg-in 0.7s cubic-bezier(0.16,1,0.3,1) both; }
+            .dubub-shimmer { animation: shimmer 2.4s ease-in-out infinite; }
+            .dubub-heart { display: inline-block; animation: heart-pop 1.2s ease-in-out infinite; }
+            .fw-particle {
+              position: absolute; width: 7px; height: 7px; border-radius: 50%;
+              animation: fw-burst 1.1s ease-out forwards;
+            }
+            .fw-trail {
+              position: fixed; bottom: 0; width: 4px; border-radius: 2px;
+              animation: fw-rise 0.9s ease-in forwards;
+            }
+          `}</style>
+
+          {/* Fireworks canvas */}
+          {[
+            { left: "15%", colors: ["#c9a84c","#fff","#f9d56e","#e8b84b"], delay: 0 },
+            { left: "50%", colors: ["#ff6b9d","#fff","#ffb347","#c9a84c"], delay: 0.35 },
+            { left: "82%", colors: ["#7ee8a2","#fff","#c9a84c","#80d0ff"], delay: 0.65 },
+            { left: "30%", colors: ["#80d0ff","#fff","#c9a84c","#ff6b9d"], delay: 1.0 },
+            { left: "68%", colors: ["#f9d56e","#fff","#7ee8a2","#ff6b9d"], delay: 1.3 },
+            { left: "20%", colors: ["#c9a84c","#ffb347","#fff","#80d0ff"], delay: 1.8 },
+            { left: "75%", colors: ["#ff6b9d","#7ee8a2","#fff","#f9d56e"], delay: 2.1 },
+          ].map((fw, fi) => {
+            const angles = Array.from({ length: 14 }, (_, i) => (i / 14) * 360);
+            const riseH = `${120 + fi * 28}px`;
+            return (
+              <div key={fi} style={{ position: "fixed", left: fw.left, bottom: 0, zIndex: 9999, pointerEvents: "none" }}>
+                {/* trail */}
+                <div className="fw-trail" style={{
+                  height: riseH,
+                  background: fw.colors[0],
+                  animationDelay: `${fw.delay}s`,
+                  "--rise": `-${riseH}`,
+                } as React.CSSProperties} />
+                {/* burst particles */}
+                {angles.map((angle, pi) => {
+                  const rad = (angle * Math.PI) / 180;
+                  const dist = 55 + (pi % 3) * 18;
+                  const tx = Math.cos(rad) * dist;
+                  const ty = Math.sin(rad) * dist;
+                  const color = fw.colors[pi % fw.colors.length]!;
+                  return (
+                    <div key={pi} className="fw-particle" style={{
+                      background: color,
+                      bottom: riseH,
+                      left: -3,
+                      animationDelay: `${fw.delay + 0.88}s`,
+                      "--tx": `${tx}px`,
+                      "--ty": `${ty}px`,
+                    } as React.CSSProperties} />
+                  );
+                })}
+              </div>
+            );
+          })}
+
+          {/* The message card */}
+          <div className="dubub-egg" style={{
+            position: "relative", zIndex: 100,
+            background: "linear-gradient(135deg, rgba(201,168,76,0.14) 0%, rgba(201,168,76,0.05) 100%)",
+            border: "1.5px solid rgba(201,168,76,0.55)",
+            borderRadius: 20, padding: "36px 40px", textAlign: "center",
+            marginBottom: 32, boxShadow: "0 0 60px rgba(201,168,76,0.18), 0 8px 40px rgba(0,0,0,0.4)",
+          }}>
+            <div style={{ fontSize: 48, marginBottom: 12, lineHeight: 1 }}>🎉🥂🎊</div>
+            <div className="dubub-shimmer" style={{
+              fontSize: 32, fontWeight: 900, letterSpacing: "0.06em",
+              background: "linear-gradient(90deg, #c9a84c, #fff7d6, #c9a84c)",
+              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+              marginBottom: 8,
+            }}>
+              FÉLICITATIONS, DAPHNÉ !
+            </div>
+            <div style={{ fontSize: 17, color: "rgba(255,255,255,0.92)", fontWeight: 600, marginBottom: 20, lineHeight: 1.6 }}>
+              DUBUB est officiellement en ligne. <br />
+              Tu viens de lancer quelque chose d'extraordinaire. 🚀
+            </div>
+            <div style={{
+              background: "rgba(0,0,0,0.28)", borderRadius: 14, padding: "20px 28px",
+              fontSize: 15, color: "rgba(255,255,255,0.85)", lineHeight: 1.8,
+              fontStyle: "italic", marginBottom: 20,
+            }}>
+              « Ton fiancé est <strong style={{ color: "#c9a84c", fontStyle: "normal" }}>infiniment fier de toi</strong>.<br />
+              Ce que tu construis est réel, c'est beau, et c'est à toi.<br />
+              Il t'aime <span className="dubub-heart">❤️</span> »
+            </div>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", letterSpacing: "0.12em", textTransform: "uppercase" }}>
+              — Steve x DUBUB, {new Date().toLocaleDateString("fr-CA", { year: "numeric", month: "long", day: "numeric" })} —
+            </div>
+          </div>
+        </>
+      )}
+      {/* ── END EASTER EGG ───────────────────────────────────────────────── */}
+
+      <div style={{ maxWidth: 600, margin: isDubub ? "0 auto" : "48px auto" }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <div style={{ width: 64, height: 64, borderRadius: "50%", background: "linear-gradient(135deg,#22d68a,#1a9e65)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30, margin: "0 auto 16px", boxShadow: "0 0 32px rgba(34,214,138,0.3)" }}>✓</div>
           <h2 style={{ color: P.white, fontWeight: 800, fontSize: 26, margin: "0 0 8px" }}>{data.companyName} est en ligne !</h2>
-          <p style={{ color: P.muted, fontSize: 14, margin: 0 }}>La plateforme est configurée et prête.</p>
+          <p style={{ color: P.muted, fontSize: 14, margin: 0 }}>Tenant créé — la base de connaissances se construit en arrière-plan.</p>
         </div>
+
+        {/* Ingestion status banner */}
+        {hasIngestion && (
+          <div style={{ background: "rgba(201,168,76,0.08)", border: "1px solid rgba(201,168,76,0.3)", borderRadius: 12, padding: "18px 22px", marginBottom: 20 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+              <span style={{ fontSize: 20 }}>⏳</span>
+              <span style={{ color: P.gold, fontWeight: 700, fontSize: 15 }}>Ingestion de la base de connaissances en cours</span>
+            </div>
+            <p style={{ color: P.dim, fontSize: 13, margin: "0 0 10px", lineHeight: 1.6 }}>
+              Le serveur est en train de lire et d'indexer {[
+                data.crawlerEnabled && (data.crawlerUrl || data.website) ? "le site web" : null,
+                data.pdfs.length > 0 ? `${data.pdfs.length} PDF(s)` : null,
+              ].filter(Boolean).join(" + ")}. Ce processus tourne <strong style={{ color: P.white }}>en arrière-plan sur le serveur</strong> — il n'est pas lié à cette page.
+            </p>
+            <div style={{ background: "rgba(0,0,0,0.25)", borderRadius: 8, padding: "12px 16px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: P.dim }}>
+                  <span style={{ color: P.green }}>✓</span> Tenant créé et enregistré dans la plateforme
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: P.dim }}>
+                  <span style={{ color: P.green }}>✓</span> Sources ajoutées à NocoDB — ingestion démarrée
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: P.gold }}>
+                  <span>⟳</span> Extraction du contenu et création des chunks (20–40 min selon le volume)
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: P.muted }}>
+                  <span>○</span> Base de connaissances disponible une fois l'indexation terminée
+                </div>
+              </div>
+            </div>
+            <p style={{ color: P.muted, fontSize: 12, margin: "12px 0 0", fontStyle: "italic" }}>
+              ✅ Vous pouvez fermer cette page — l'ingestion continue sur le serveur. Vérifiez NocoDB (tables <code style={{ fontSize: 11 }}>sources</code>, <code style={{ fontSize: 11 }}>documents</code>, <code style={{ fontSize: 11 }}>document_chunks</code>) pour confirmer la progression.
+            </p>
+          </div>
+        )}
 
         {/* Setup checklist */}
         <div style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${P.border}`, borderRadius: 12, padding: "18px 22px", marginBottom: 20 }}>
@@ -197,10 +356,10 @@ export default function OnboardingPage() {
           {[
             { ok: true, label: `Tenant "${data.companyName}" créé dans la plateforme` },
             { ok: true, label: "Profil NocoDB créé — conversations et analytics activés" },
-            { ok: data.crawlerEnabled, label: data.crawlerEnabled ? `Crawler web activé — ${data.crawlerUrl || data.website || "URL de Step 1"}` : "Crawler web désactivé" },
-            { ok: data.pdfs.length > 0, label: data.pdfs.length > 0 ? `${data.pdfs.length} PDF(s) téléversé(s)` : "Aucun PDF téléversé" },
+            { ok: data.crawlerEnabled, label: data.crawlerEnabled ? `Crawler web — ${data.crawlerUrl || data.website || "URL Step 1"} — ingestion en cours` : "Crawler web désactivé" },
+            { ok: data.pdfs.length > 0, label: data.pdfs.length > 0 ? `${data.pdfs.length} PDF(s) téléversé(s) — ingestion en cours` : "Aucun PDF téléversé" },
             { ok: data.vapiEnabled, label: data.vapiEnabled ? "VAPI vocal activé — Sophie peut appeler les visiteurs" : "Vocal désactivé — chat uniquement" },
-            { ok: data.bookingEnabled && !!data.calendlyUrl, label: data.bookingEnabled && data.calendlyUrl ? `Booking Calendly configuré` : "Booking non configuré" },
+            { ok: data.bookingEnabled && !!data.calendlyUrl, label: data.bookingEnabled && data.calendlyUrl ? "Booking Calendly configuré" : "Booking non configuré" },
             { ok: data.sendInvoice && !!data.contactEmail, label: data.sendInvoice && data.contactEmail ? `Facture envoyée à ${data.contactEmail}` : "Pas de facture envoyée" },
           ].map((item, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderBottom: i < 6 ? `1px solid ${P.border}` : "none" }}>

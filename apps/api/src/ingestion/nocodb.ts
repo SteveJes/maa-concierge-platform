@@ -22,6 +22,11 @@ export interface TenantRow {
   uuid: string;
   code: string;
   name?: string;
+  status?: string;
+  default_locale?: string;
+  timezone?: string;
+  website_url?: string | null;
+  support_email?: string | null;
 }
 
 export interface IngestionRunRow {
@@ -814,7 +819,7 @@ export async function createCallbackRequest(
   };
 }
 
-export async function createTenant(input: { uuid: string; code: string; name: string }): Promise<TenantRow> {
+export async function createTenant(input: { uuid: string; code: string; name: string; status?: string; default_locale?: string; timezone?: string; website_url?: string | null; support_email?: string | null }): Promise<TenantRow> {
   const cfg = assertNocoConfigPresent();
   const payload = await nocoRequest<TenantRow>(
     `/api/v2/tables/${cfg.tenantsTableId}/records`,

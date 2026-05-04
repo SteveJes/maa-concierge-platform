@@ -3,7 +3,7 @@ import cors from "@fastify/cors";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { resolveDirectCoreFactResponse } from "./core-facts.js";
 import { sendLeadNotificationEmail } from "./services/email-notifications.js";
-import { TENANT_REGISTRY, getTenant, addTenant, slugify } from "./admin/tenants.js";
+import { TENANT_REGISTRY, getTenant, addTenant, removeTenant, slugify } from "./admin/tenants.js";
 import { sendInvoiceEmail, createStripeCheckout, nextInvoiceNumber, buildInvoice } from "./admin/invoice.js";
 import { buildTenantHealthReport } from "./admin/health.js";
 import { loadApprovedSourceRegistry } from "@platform/config";
@@ -29,6 +29,7 @@ import {
   newUuid,
   updateConversation,
 } from "./ingestion/nocodb.js";
+import { runTenantIngestion } from "./ingestion/tenant-ingestion.js";
 
 type TenantRouteParams = {
   tenantId: string;
@@ -692,7 +693,18 @@ export function createServer() {
     let nocoTenantUuid: string | null = null;
     try {
       const tenantUuid = newUuid();
-      await createTenant({ uuid: tenantUuid, code: id, name });
+      const websiteUrl = typeof body.website === "string" && body.website ? body.website : null;
+      const locale = typeof body.locale === "string" && body.locale ? body.locale : "fr-CA";
+      await createTenant({
+        uuid: tenantUuid,
+        code: id,
+        name,
+        status: "active",
+        default_locale: locale,
+        timezone: "America/Toronto",
+        website_url: websiteUrl,
+        support_email: clientEmail || null,
+      });
       nocoTenantUuid = tenantUuid;
       request.log.info({ tenantId: id, uuid: tenantUuid }, "NocoDB tenant row created");
 
@@ -712,7 +724,37 @@ export function createServer() {
     } catch (err) {
       request.log.warn({ err }, "NocoDB setup failed (non-fatal — tenant still created in registry)");
     }
-    void nocoTenantUuid; // used for logging
+
+    // Trigger knowledge base ingestion (non-fatal, runs in background)
+    if (nocoTenantUuid) {
+      const crawlerEnabled = body.crawlerEnabled !== false;
+      const crawlerUrl = typeof body.crawlerUrl === "string" && body.crawlerUrl.trim() ? body.crawlerUrl.trim() : null;
+      const websiteUrl = typeof body.website === "string" && body.website.trim() ? body.website.trim() : null;
+      const webUrls: string[] = [];
+      if (crawlerEnabled) {
+        const targetUrl = crawlerUrl ?? websiteUrl;
+        if (targetUrl) webUrls.push(targetUrl);
+      }
+      const pdfServerPaths: string[] = Array.isArray(body.uploadedPdfUrls)
+        ? (body.uploadedPdfUrls as unknown[]).filter((u): u is string => typeof u === "string")
+        : [];
+      const tenantLocale = typeof body.locale === "string" && body.locale ? body.locale : "fr-CA";
+
+      if (webUrls.length > 0 || pdfServerPaths.length > 0) {
+        const tenantUuidCapture = nocoTenantUuid;
+        void runTenantIngestion({
+          tenantUuid: tenantUuidCapture,
+          tenantCode: id,
+          locale: tenantLocale,
+          webUrls,
+          pdfServerPaths,
+        }).then(r => {
+          request.log.info({ tenantId: id, ...r }, "Tenant ingestion complete");
+        }).catch(err => {
+          request.log.warn({ err, tenantId: id }, "Tenant ingestion failed (non-fatal)");
+        });
+      }
+    }
 
     // Build invoice lines
     const invoiceNumber = nextInvoiceNumber();
@@ -752,6 +794,15 @@ export function createServer() {
       stripeUrl,
       total: invoiceResult?.total ?? null,
     });
+  });
+
+  // DELETE /v1/admin/tenants/:id — remove tenant from registry (for re-onboarding)
+  app.delete("/v1/admin/tenants/:id", async (request, reply) => {
+    if (!adminAuth(request, reply)) return;
+    const { id } = request.params as { id: string };
+    const removed = removeTenant(id);
+    if (!removed) return reply.code(404).send({ error: "tenant_not_found" });
+    return reply.send({ ok: true, removedId: id });
   });
 
   // GET /v1/demo-config/:slug — returns tenant config for demo pages

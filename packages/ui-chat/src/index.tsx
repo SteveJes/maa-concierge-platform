@@ -320,9 +320,11 @@ const pillInput = (extra?: React.CSSProperties): React.CSSProperties => ({
 export function ChatShell({
   accentColor = "#1d4ed8",
   mode = "inline",
+  tenantId = "maa",
 }: {
   accentColor?: string;
   mode?: "inline" | "floating";
+  tenantId?: string;
 } = {}) {
   // suppress unused accentColor warning — kept for API compatibility
   void accentColor;
@@ -501,7 +503,7 @@ export function ChatShell({
     setInput("");
 
     try {
-      const response = await fetch(`${apiBaseUrl}/v1/tenants/maa/chat`, {
+      const response = await fetch(`${apiBaseUrl}/v1/tenants/${tenantId}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -708,7 +710,7 @@ export function ChatShell({
       [...messages].reverse().find((message) => message.role === "user")?.text ?? "";
 
     try {
-      const response = await fetch(`${apiBaseUrl}/v1/tenants/maa/chat`, {
+      const response = await fetch(`${apiBaseUrl}/v1/tenants/${tenantId}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -771,7 +773,7 @@ export function ChatShell({
     chatSummary?: string;
     handoffSource: string;
   }): Promise<void> {
-    const response = await fetch(`${apiBaseUrl}/v1/tenants/maa/call-now`, {
+    const response = await fetch(`${apiBaseUrl}/v1/tenants/${tenantId}/call-now`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -810,7 +812,7 @@ export function ChatShell({
         .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.text}`)
         .join(" | ");
 
-      const res = await fetch(`${apiBaseUrl}/v1/tenants/maa/inbound-handoff`, {
+      const res = await fetch(`${apiBaseUrl}/v1/tenants/${tenantId}/inbound-handoff`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -225,7 +225,7 @@ export default function DemoSlugPage() {
           >
             ×
           </button>
-          <ChatShell mode="inline" />
+          <ChatShell mode="inline" tenantId={config.tenantId} />
         </div>
       ) : (
         <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 1000, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10 }}>
