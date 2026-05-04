@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const API = typeof window !== "undefined" && window.location.hostname === "clients.dubub.com"
   ? "https://api.dubub.com"
@@ -8,10 +8,17 @@ const API = typeof window !== "undefined" && window.location.hostname === "clien
 
 export default function AdminLogin() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("expired") === "1") {
+      setError("Session expirée — veuillez vous reconnecter.");
+    }
+  }, [searchParams]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

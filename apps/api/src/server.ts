@@ -561,7 +561,7 @@ export function createServer() {
   const ADMIN_SECRET = process.env.ADMIN_SECRET ?? "dubub-admin-secret-change-me";
 
   function signAdminToken(username: string): string {
-    const payload = `${username}:${Math.floor(Date.now() / (1000 * 60 * 60 * 24))}`; // daily rotation
+    const payload = `${username}:${Math.floor(Date.now() / (1000 * 60 * 60 * 24 * 7))}`; // weekly rotation
     return createHmac("sha256", ADMIN_SECRET).update(payload).digest("hex") + ":" + username;
   }
 

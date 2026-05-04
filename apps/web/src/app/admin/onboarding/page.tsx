@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import AdminShell, { P, API, adminHeaders, Card, SectionTitle, GoldBtn, GhostBtn, Field, fieldStyle, labelStyle } from "../_components/AdminShell";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -104,6 +105,7 @@ const STEPS = [
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function OnboardingPage() {
+  const router = useRouter();
   const [step, setStep] = useState(1);
   const [data, setData] = useState<OnboardingData>(EMPTY);
   const [submitting, setSubmitting] = useState(false);
@@ -161,6 +163,11 @@ export default function OnboardingPage() {
           implementationFee: data.implFeeWaived ? "0" : data.implementationFee,
         }),
       });
+      if (res.status === 401) {
+        localStorage.removeItem("dubub_admin_token");
+        router.push("/admin/login?expired=1");
+        return;
+      }
       if (!res.ok) {
         const e = await res.json().catch(() => ({})) as { error?: string };
         throw new Error(e.error ?? `HTTP ${res.status}`);
