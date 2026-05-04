@@ -4,7 +4,8 @@ import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import { createServer } from "./server.js";
 import { warmupSearchableChunks } from "./services/maa-chat.js";
-import { findTenantByCode } from "./ingestion/nocodb.js";
+import { findTenantByCode, listAllTenants } from "./ingestion/nocodb.js";
+import { addTenant, getTenant } from "./admin/tenants.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,7 +32,34 @@ const host = process.env.API_HOST ?? "0.0.0.0";
 const app = createServer();
 
 app.listen({ port, host }).then(() => {
-  // Warm up knowledge base cache immediately so first request is fast
+  // Load all active NocoDB tenants into the in-memory registry on startup
+  void listAllTenants().then((rows) => {
+    for (const row of rows) {
+      if (!row.code || getTenant(row.code)) continue; // skip MAA (already in static registry) and unknowns
+      addTenant({
+        id: row.code,
+        name: row.name ?? row.code,
+        plan: "starter",
+        status: "active",
+        since: new Date().toISOString().slice(0, 10),
+        notifyEmail: row.support_email ?? "",
+        vapiAssistantId: null,
+        vapiPhoneNumberId: null,
+        openAiModel: "gpt-4o",
+        monthlyPriceCad: 0,
+        addons: [],
+        contactName: row.name ?? null,
+        contactEmail: row.support_email ?? null,
+        website: row.website_url ?? null,
+        notes: null,
+      });
+      app.log.info({ tenantCode: row.code }, "Tenant loaded from NocoDB into registry");
+    }
+  }).catch((err) => {
+    app.log.warn({ err }, "Failed to load tenants from NocoDB on startup (non-fatal)");
+  });
+
+  // Warm up MAA knowledge base cache immediately so first request is fast
   void findTenantByCode("maa").then((tenant) => {
     if (!tenant?.uuid) return;
     void warmupSearchableChunks(tenant.uuid);

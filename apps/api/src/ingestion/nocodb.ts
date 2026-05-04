@@ -820,6 +820,15 @@ export async function createCallbackRequest(
   };
 }
 
+export async function listAllTenants(): Promise<TenantRow[]> {
+  const cfg = assertNocoConfigPresent();
+  const data = await nocoRequest<{ list: TenantRow[] }>(
+    `/api/v2/tables/${cfg.tenantsTableId}/records?limit=100&where=(status,eq,active)`,
+    { method: "GET" },
+  );
+  return data?.list ?? [];
+}
+
 export async function createTenant(input: { uuid: string; code: string; name: string; status?: string; default_locale?: string; timezone?: string; website_url?: string | null; support_email?: string | null }): Promise<TenantRow> {
   const cfg = assertNocoConfigPresent();
   const payload = await nocoRequest<TenantRow>(
