@@ -15,6 +15,7 @@ interface DemoConfig {
 const KNOWN_CONFIGS: Record<string, DemoConfig> = {
   "maa": { tenantId: "maa", name: "Club Sportif MAA", websiteUrl: "https://www.clubsportifmaa.com/fr/", conciergeName: "Sophie" },
   "club-sportif-maa": { tenantId: "maa", name: "Club Sportif MAA", websiteUrl: "https://www.clubsportifmaa.com/fr/", conciergeName: "Sophie" },
+  "dubub": { tenantId: "dubub", name: "DUBUB", websiteUrl: "https://dubub.ca/", conciergeName: "SophIA" },
 };
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "https://api.dubub.com";
@@ -225,7 +226,7 @@ export default function DemoSlugPage() {
           >
             ×
           </button>
-          <ChatShell mode="inline" tenantId={config.tenantId} />
+          <ChatShell mode="inline" tenantId={config.tenantId} conciergeName={config.conciergeName} />
         </div>
       ) : (
         <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 1000, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10 }}>

@@ -321,10 +321,12 @@ export function ChatShell({
   accentColor = "#1d4ed8",
   mode = "inline",
   tenantId = "maa",
+  conciergeName = "Sophie",
 }: {
   accentColor?: string;
   mode?: "inline" | "floating";
   tenantId?: string;
+  conciergeName?: string;
 } = {}) {
   // suppress unused accentColor warning — kept for API compatibility
   void accentColor;
@@ -1556,13 +1558,13 @@ export function ChatShell({
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
             <span style={{ fontSize: 18 }}>📞</span>
             <span style={{ color: "#fff", fontWeight: 800, fontSize: 15 }}>
-              {locale === "fr-CA" ? "Parler à Sophie" : "Speak with Sophie"}
+              {locale === "fr-CA" ? `Parler à ${conciergeName}` : `Speak with ${conciergeName}`}
             </span>
           </div>
           <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginBottom: 14, lineHeight: 1.5 }}>
             {locale === "fr-CA"
-              ? "Entrez votre numéro — Sophie sera briefée sur votre demande avant que vous appeliez."
-              : "Enter your number — Sophie will be briefed on your request before you call."}
+              ? `Entrez votre numéro — ${conciergeName} sera briefée sur votre demande avant que vous appeliez.`
+              : `Enter your number — ${conciergeName} will be briefed on your request before you call.`}
           </div>
           <div style={{ display: "grid", gap: 8 }}>
             <input
@@ -1628,7 +1630,7 @@ export function ChatShell({
         </div>
       ) : null}
 
-      {/* Inbound ready — show Sophie's number after context registration */}
+      {/* Inbound ready — show concierge number after context registration */}
       {inboundReadyNumber ? (
         <div
           style={{
@@ -1642,7 +1644,7 @@ export function ChatShell({
           }}
         >
           <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 4 }}>
-            {locale === "fr-CA" ? "Sophie est prête à vous recevoir" : "Sophie is ready for your call"}
+            {locale === "fr-CA" ? `${conciergeName} est prête à vous recevoir` : `${conciergeName} is ready for your call`}
           </div>
           <div style={{ fontSize: 11, color: "rgba(201,168,76,0.7)", marginBottom: 14, letterSpacing: "0.06em", textTransform: "uppercase" }}>
             {locale === "fr-CA" ? "Elle connaît déjà votre demande" : "She already knows your request"}

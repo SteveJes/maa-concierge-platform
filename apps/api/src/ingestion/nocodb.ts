@@ -27,6 +27,8 @@ export interface TenantRow {
   timezone?: string;
   website_url?: string | null;
   support_email?: string | null;
+  vapi_assistant_id?: string | null;
+  vapi_phone_number_id?: string | null;
 }
 
 export interface IngestionRunRow {
@@ -829,7 +831,7 @@ export async function listAllTenants(): Promise<TenantRow[]> {
   return data?.list ?? [];
 }
 
-export async function createTenant(input: { uuid: string; code: string; name: string; status?: string; default_locale?: string; timezone?: string; website_url?: string | null; support_email?: string | null }): Promise<TenantRow> {
+export async function createTenant(input: { uuid: string; code: string; name: string; status?: string; default_locale?: string; timezone?: string; website_url?: string | null; support_email?: string | null; vapi_assistant_id?: string | null; vapi_phone_number_id?: string | null }): Promise<TenantRow> {
   const cfg = assertNocoConfigPresent();
   const payload = await nocoRequest<TenantRow>(
     `/api/v2/tables/${cfg.tenantsTableId}/records`,

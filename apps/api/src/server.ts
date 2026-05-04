@@ -704,6 +704,8 @@ export function createServer() {
         timezone: "America/Toronto",
         website_url: websiteUrl,
         support_email: clientEmail || null,
+        vapi_assistant_id: typeof body.vapiAssistantId === "string" && body.vapiAssistantId ? body.vapiAssistantId : null,
+        vapi_phone_number_id: typeof body.vapiPhoneNumberId === "string" && body.vapiPhoneNumberId ? body.vapiPhoneNumberId : null,
       });
       nocoTenantUuid = tenantUuid;
       request.log.info({ tenantId: id, uuid: tenantUuid }, "NocoDB tenant row created");
@@ -810,11 +812,12 @@ export function createServer() {
     const { slug } = request.params as { slug: string };
     const tenant = getTenant(slug) ?? TENANT_REGISTRY.find(t => slugify(t.name) === slug);
     if (!tenant) return reply.code(404).send({ error: "not_found" });
+    const conciergeName = tenant.id === "maa" ? "Sophie" : tenant.id === "dubub" ? "SophIA" : "SophIA";
     return reply.send({
       tenantId: tenant.id,
       name: tenant.name,
       websiteUrl: tenant.website ?? null,
-      conciergeName: "Sophie",
+      conciergeName,
     });
   });
 
