@@ -9,13 +9,88 @@ interface DemoConfig {
   name: string;
   websiteUrl: string | null;
   conciergeName: string;
+  clientName: string;
+  accentColor: string;
+  accentGradient: string;
+  bubbleGradient: string;
+  bubbleGlow: string;
+  logoUrl: string | null;
+  nudgesFr: string[];
+  nudgesEn: string[];
 }
+
+const MAA_NUDGES_FR = [
+  "Saviez-vous que nos membres bénéficient d'un accès complet à la piscine, au spa et à plus de 50 cours de groupe par semaine ? Je peux vous aider à trouver la formule idéale.",
+  "Le Club Sportif MAA est l'un des clubs les plus prestigieux de Montréal, fondé en 1881. Souhaitez-vous en savoir plus sur nos installations ou nos tarifs ?",
+  "Notre piscine intérieure de 25 mètres, notre spa et nos courts de squash sont parmi les meilleures installations du centre-ville. Puis-je répondre à vos questions ?",
+  "Vous pensez à l'abonnement ? Je peux vous donner un aperçu de nos formules et vous aider à choisir la meilleure option selon vos besoins.",
+  "Besoin d'un coup de pouce ? Je suis disponible pour vous aider avec les tarifs, les horaires, les cours ou pour planifier une visite des installations.",
+];
+const MAA_NUDGES_EN = [
+  "Did you know our members enjoy full access to the pool, spa, and over 50 group classes per week? I can help you find the perfect plan.",
+  "Club Sportif MAA has been a Montreal landmark since 1881. Would you like to learn more about our facilities or membership options?",
+  "Our 25m indoor pool, full spa, and squash courts are among the finest facilities in downtown Montreal. Can I answer any questions for you?",
+  "Thinking about membership? I can walk you through our plans and help you find the best fit for your lifestyle.",
+  "Need a hand? I'm here to help with pricing, hours, group classes, or to schedule a tour of the club.",
+];
+
+const DUBUB_NUDGES_FR = [
+  "Vous cherchez à automatiser votre service client ? SophIA peut vous expliquer comment nos concierges IA transforment l'expérience client.",
+  "Nos plans commencent à 790 $/mois — je peux vous guider vers la formule idéale pour votre entreprise.",
+  "Vous souhaitez une démo live ? Je peux organiser ça avec l'équipe DUBUB dès maintenant.",
+  "Saviez-vous que nos clients réduisent leur charge de front-desk de plus de 60 % ? Voyons ce que DUBUB peut faire pour vous.",
+];
+const DUBUB_NUDGES_EN = [
+  "Looking to automate your customer service? SophIA can walk you through how our AI concierges transform the client experience.",
+  "Our plans start at $790/month — I can help you find the right fit for your business.",
+  "Want a live demo? I can arrange that with the DUBUB team right now.",
+  "Did you know our clients reduce front-desk load by over 60%? Let's explore what DUBUB can do for you.",
+];
 
 // Hardcoded known tenants — no API call needed for these
 const KNOWN_CONFIGS: Record<string, DemoConfig> = {
-  "maa": { tenantId: "maa", name: "Club Sportif MAA", websiteUrl: "https://www.clubsportifmaa.com/fr/", conciergeName: "Sophie" },
-  "club-sportif-maa": { tenantId: "maa", name: "Club Sportif MAA", websiteUrl: "https://www.clubsportifmaa.com/fr/", conciergeName: "Sophie" },
-  "dubub": { tenantId: "dubub", name: "DUBUB", websiteUrl: "https://dubub.ca/", conciergeName: "SophIA" },
+  "maa": {
+    tenantId: "maa",
+    name: "Club Sportif MAA",
+    websiteUrl: "https://www.clubsportifmaa.com/fr/",
+    conciergeName: "Sophie",
+    clientName: "Club Sportif MAA",
+    accentColor: "#c9a84c",
+    accentGradient: "linear-gradient(135deg, #c9a84c, #a07830)",
+    bubbleGradient: "linear-gradient(135deg, #c9a84c 0%, #8b6010 100%)",
+    bubbleGlow: "rgba(201,168,76,0.55)",
+    logoUrl: "https://www.clubsportifmaa.com/wp-content/uploads/2021/01/club-sportif-maa-logo.svg",
+    nudgesFr: MAA_NUDGES_FR,
+    nudgesEn: MAA_NUDGES_EN,
+  },
+  "club-sportif-maa": {
+    tenantId: "maa",
+    name: "Club Sportif MAA",
+    websiteUrl: "https://www.clubsportifmaa.com/fr/",
+    conciergeName: "Sophie",
+    clientName: "Club Sportif MAA",
+    accentColor: "#c9a84c",
+    accentGradient: "linear-gradient(135deg, #c9a84c, #a07830)",
+    bubbleGradient: "linear-gradient(135deg, #c9a84c 0%, #8b6010 100%)",
+    bubbleGlow: "rgba(201,168,76,0.55)",
+    logoUrl: "https://www.clubsportifmaa.com/wp-content/uploads/2021/01/club-sportif-maa-logo.svg",
+    nudgesFr: MAA_NUDGES_FR,
+    nudgesEn: MAA_NUDGES_EN,
+  },
+  "dubub": {
+    tenantId: "dubub",
+    name: "DUBUB",
+    websiteUrl: "https://dubub.ca/",
+    conciergeName: "SophIA",
+    clientName: "DUBUB",
+    accentColor: "#6366f1",
+    accentGradient: "linear-gradient(135deg, #6366f1, #4338ca)",
+    bubbleGradient: "linear-gradient(135deg, #818cf8 0%, #4338ca 100%)",
+    bubbleGlow: "rgba(99,102,241,0.55)",
+    logoUrl: null,
+    nudgesFr: DUBUB_NUDGES_FR,
+    nudgesEn: DUBUB_NUDGES_EN,
+  },
 };
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "https://api.dubub.com";
@@ -28,12 +103,12 @@ export default function DemoSlugPage() {
   const [config, setConfig] = useState<DemoConfig | null>(null);
   const [notFound, setNotFound] = useState(false);
   const vpHeightRef = useRef<number | null>(null);
+  const [bubbleOffset, setBubbleOffset] = useState({ x: 0, y: 0 });
 
-  // Android-only keyboard fix: on iOS, 100dvh already shrinks with the keyboard natively.
-  // On Android (Chrome + Samsung Internet), 100dvh does NOT update — we use visualViewport.
+  // Android-only keyboard fix
   useEffect(() => {
     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-    if (isIOS) return; // iOS handles dvh natively — no JS needed, no override
+    if (isIOS) return;
 
     function update() {
       const h = window.visualViewport?.height ?? window.innerHeight;
@@ -45,7 +120,7 @@ export default function DemoSlugPage() {
     update();
     window.visualViewport?.addEventListener("resize", update);
     window.visualViewport?.addEventListener("scroll", update);
-    window.addEventListener("resize", update); // Samsung Internet fallback
+    window.addEventListener("resize", update);
     return () => {
       window.visualViewport?.removeEventListener("resize", update);
       window.visualViewport?.removeEventListener("scroll", update);
@@ -53,18 +128,57 @@ export default function DemoSlugPage() {
     };
   }, []);
 
+  // Mouse-magnetic bubble — pulls bubble toward cursor when nearby
   useEffect(() => {
-    // 1. Known slug — instant, no network
+    if (chatOpen || typeof window === "undefined") return;
+    const isMobile = window.innerWidth < 600;
+    if (isMobile) return;
+
+    function onMouseMove(e: MouseEvent) {
+      const bx = window.innerWidth - 24 - 31;
+      const by = window.innerHeight - 24 - 31;
+      const dx = e.clientX - bx;
+      const dy = e.clientY - by;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const maxDist = 220;
+      if (dist < maxDist) {
+        const pull = ((1 - dist / maxDist) ** 1.5) * 14;
+        setBubbleOffset({ x: (dx / dist) * pull, y: (dy / dist) * pull });
+      } else {
+        setBubbleOffset({ x: 0, y: 0 });
+      }
+    }
+
+    window.addEventListener("mousemove", onMouseMove);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      setBubbleOffset({ x: 0, y: 0 });
+    };
+  }, [chatOpen]);
+
+  useEffect(() => {
     if (KNOWN_CONFIGS[slug]) { setConfig(KNOWN_CONFIGS[slug]!); return; }
-    // 2. Query params: ?name=Club+Name&site=https://...
     const qp = new URLSearchParams(window.location.search);
     const siteName = qp.get("name");
     const siteUrl = qp.get("site");
-    if (siteName) { setConfig({ tenantId: slug, name: siteName, websiteUrl: siteUrl, conciergeName: "Sophie" }); return; }
-    // 3. API fallback for dynamically created tenants
+    if (siteName) {
+      setConfig({
+        tenantId: slug, name: siteName, websiteUrl: siteUrl, conciergeName: "Sophie",
+        clientName: siteName, accentColor: "#c9a84c", accentGradient: "linear-gradient(135deg, #c9a84c, #a07830)",
+        bubbleGradient: "linear-gradient(135deg, #c9a84c 0%, #8b6010 100%)", bubbleGlow: "rgba(201,168,76,0.55)",
+        logoUrl: null, nudgesFr: MAA_NUDGES_FR, nudgesEn: MAA_NUDGES_EN,
+      });
+      return;
+    }
     fetch(`${API}/v1/demo-config/${slug}`)
-      .then((r) => { if (!r.ok) throw new Error("not_found"); return r.json() as Promise<DemoConfig>; })
-      .then((d) => setConfig(d))
+      .then((r) => { if (!r.ok) throw new Error("not_found"); return r.json() as Promise<{ tenantId: string; name: string; websiteUrl: string | null; conciergeName: string }>; })
+      .then((d) => setConfig({
+        ...d,
+        clientName: d.name,
+        accentColor: "#c9a84c", accentGradient: "linear-gradient(135deg, #c9a84c, #a07830)",
+        bubbleGradient: "linear-gradient(135deg, #c9a84c 0%, #8b6010 100%)", bubbleGlow: "rgba(201,168,76,0.55)",
+        logoUrl: null, nudgesFr: MAA_NUDGES_FR, nudgesEn: MAA_NUDGES_EN,
+      }))
       .catch(() => setNotFound(true));
   }, [slug]);
 
@@ -89,14 +203,16 @@ export default function DemoSlugPage() {
     );
   }
 
+  const glowColor = config.bubbleGlow;
+
   return (
     <>
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body { overflow: hidden; overflow-x: hidden; height: 100%; max-width: 100%; }
         @keyframes bubblePulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(201,168,76,0.55), 0 8px 32px rgba(0,0,0,0.4); }
-          55%       { box-shadow: 0 0 0 16px rgba(201,168,76,0), 0 8px 32px rgba(0,0,0,0.4); }
+          0%, 100% { box-shadow: 0 0 0 0 ${glowColor}, 0 8px 32px rgba(0,0,0,0.4); }
+          55%       { box-shadow: 0 0 0 16px rgba(0,0,0,0), 0 8px 32px rgba(0,0,0,0.4); }
         }
         @keyframes ripple {
           0%   { transform: scale(1); opacity: 0.7; }
@@ -110,9 +226,9 @@ export default function DemoSlugPage() {
           from { opacity: 0; transform: translateY(24px) scale(0.97); }
           to   { opacity: 1; transform: translateY(0) scale(1); }
         }
-        @keyframes arrowBounce {
-          0%, 100% { transform: translate(0, 0) rotate(-30deg); }
-          50%       { transform: translate(4px, 6px) rotate(-30deg); }
+        @keyframes floatBob {
+          0%, 100% { transform: translateY(0px); }
+          50%       { transform: translateY(-5px); }
         }
         .bubble-label {
           position: relative;
@@ -143,15 +259,14 @@ export default function DemoSlugPage() {
         .bubble-btn {
           width: 62px; height: 62px;
           border-radius: 50%;
-          background: linear-gradient(135deg, #c9a84c 0%, #8b6010 100%);
           border: none; cursor: pointer;
-          box-shadow: 0 0 0 0 rgba(201,168,76,0.55), 0 8px 32px rgba(0,0,0,0.4);
-          animation: bubblePulse 3s ease-in-out infinite, fadeUp 0.5s ease 0.3s both;
+          animation: bubblePulse 3s ease-in-out infinite, fadeUp 0.5s ease 0.3s both, floatBob 4s ease-in-out 1s infinite;
           position: relative; display: flex; align-items: center; justify-content: center;
+          will-change: transform;
+          filter: drop-shadow(0 8px 24px rgba(0,0,0,0.35));
         }
         .bubble-ripple, .bubble-ripple-2 {
           position: absolute; inset: 0; border-radius: 50%;
-          border: 2px solid rgba(201,168,76,0.35);
           animation: ripple 2.2s ease-out 0.8s infinite;
           pointer-events: none;
         }
@@ -196,7 +311,6 @@ export default function DemoSlugPage() {
         <span className="badge-short">Démo · {config.name}</span>
       </div>
 
-      {/* Client website background */}
       {config.websiteUrl ? (
         <iframe
           src={config.websiteUrl}
@@ -226,19 +340,41 @@ export default function DemoSlugPage() {
           >
             ×
           </button>
-          <ChatShell mode="inline" tenantId={config.tenantId} conciergeName={config.conciergeName} />
+          <ChatShell
+            mode="inline"
+            tenantId={config.tenantId}
+            conciergeName={config.conciergeName}
+            clientName={config.clientName}
+            accentColor={config.accentColor}
+            accentGradient={config.accentGradient}
+            logoUrl={config.logoUrl}
+            nudgesFr={config.nudgesFr}
+            nudgesEn={config.nudgesEn}
+          />
         </div>
       ) : (
-        <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 1000, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10 }}>
+        <div
+          style={{
+            position: "fixed", bottom: 24, right: 24, zIndex: 1000,
+            display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10,
+            transform: `translate(${bubbleOffset.x}px, ${bubbleOffset.y}px)`,
+            transition: "transform 0.25s cubic-bezier(0.34,1.56,0.64,1)",
+          }}
+        >
           {!labelDismissed && (
             <div className="bubble-label" onClick={() => { setChatOpen(true); setLabelDismissed(true); }}>
               💬 Bonjour ! Je suis votre concierge {config.name}
               <span onClick={(e) => { e.stopPropagation(); setLabelDismissed(true); }} style={{ marginLeft: 8, opacity: 0.4, cursor: "pointer", fontSize: 12 }}>✕</span>
             </div>
           )}
-          <button className="bubble-btn" onClick={() => { setChatOpen(true); setLabelDismissed(true); }} aria-label={`Ouvrir le Concierge ${config.name}`}>
-            <span className="bubble-ripple" />
-            <span className="bubble-ripple-2" />
+          <button
+            className="bubble-btn"
+            style={{ background: config.bubbleGradient }}
+            onClick={() => { setChatOpen(true); setLabelDismissed(true); }}
+            aria-label={`Ouvrir le Concierge ${config.name}`}
+          >
+            <span className="bubble-ripple" style={{ border: `2px solid ${config.accentColor}55` }} />
+            <span className="bubble-ripple-2" style={{ border: `2px solid ${config.accentColor}55` }} />
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" style={{ position: "relative", zIndex: 1 }}>
               <path d="M12 2C6.48 2 2 6.04 2 11c0 2.7 1.18 5.13 3.07 6.84L4 22l4.36-1.45C9.51 20.84 10.72 21 12 21c5.52 0 10-4.04 10-9s-4.48-9-10-9z" fill="white" />
             </svg>

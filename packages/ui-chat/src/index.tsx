@@ -70,7 +70,7 @@ function GymLoadingIndicator({ locale }: { locale: string }) {
               width: 7,
               height: 7,
               borderRadius: "50%",
-              background: "linear-gradient(135deg, #c9a84c, #a07830)",
+              background: "var(--accent-gradient)",
               animation: `maa-dot-bounce 1.2s ease-in-out ${i * 0.18}s infinite`,
             }}
           />
@@ -119,7 +119,7 @@ function RichMessageText({ text }: { text: string }) {
       const icon = getBulletIcon(bulletIndex++);
       elements.push(
         <div key={elements.length} style={{ display: "flex", alignItems: "baseline", gap: 8, margin: "4px 0" }}>
-          <span style={{ fontSize: 7, color: "#c9a84c", flexShrink: 0, position: "relative", top: -1, letterSpacing: 0 }}>{icon}</span>
+          <span style={{ fontSize: 7, color: "var(--accent)", flexShrink: 0, position: "relative", top: -1, letterSpacing: 0 }}>{icon}</span>
           <span style={{ lineHeight: 1.55, color: "#1a1a1a" }}>{renderInline(content)}</span>
         </div>
       );
@@ -318,18 +318,28 @@ const pillInput = (extra?: React.CSSProperties): React.CSSProperties => ({
 });
 
 export function ChatShell({
-  accentColor = "#1d4ed8",
+  accentColor = "var(--accent)",
+  accentGradient = "var(--accent-gradient)",
   mode = "inline",
   tenantId = "maa",
   conciergeName = "Sophie",
+  clientName = "Club Sportif MAA",
+  logoUrl = "https://www.clubsportifmaa.com/wp-content/uploads/2021/01/club-sportif-maa-logo.svg",
+  headerTitle,
+  nudgesFr = PROACTIVE_NUDGES_FR,
+  nudgesEn = PROACTIVE_NUDGES_EN,
 }: {
   accentColor?: string;
+  accentGradient?: string;
   mode?: "inline" | "floating";
   tenantId?: string;
   conciergeName?: string;
+  clientName?: string;
+  logoUrl?: string | null;
+  headerTitle?: string;
+  nudgesFr?: string[];
+  nudgesEn?: string[];
 } = {}) {
-  // suppress unused accentColor warning — kept for API compatibility
-  void accentColor;
 
   const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
   const [locale, setLocale] = useState<"fr-CA" | "en-CA">("fr-CA");
@@ -387,8 +397,8 @@ export function ChatShell({
   const [nameInput, setNameInput] = useState("");
 
   const defaultGreeting = locale === "fr-CA"
-    ? "Bonjour, bienvenue au Club Sportif MAA. Je suis votre concierge IA. Comment puis-je vous aider aujourd'hui ?"
-    : "Hello, welcome to Club Sportif MAA. I'm your AI concierge. How can I help you today?";
+    ? `Bonjour, bienvenue à ${clientName}. Je suis ${conciergeName}, votre concierge IA. Comment puis-je vous aider aujourd'hui ?`
+    : `Hello, welcome to ${clientName}. I'm ${conciergeName}, your AI concierge. How can I help you today?`;
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     { id: newId(), role: "assistant", text: defaultGreeting },
@@ -464,7 +474,7 @@ export function ChatShell({
     if (messages.length > 1 || nudgeIndex >= 5) return;
     const delay = nudgeIndex === 0 ? 25000 : 35000;
     const timer = setTimeout(() => {
-      const nudges = locale === "fr-CA" ? PROACTIVE_NUDGES_FR : PROACTIVE_NUDGES_EN;
+      const nudges = locale === "fr-CA" ? nudgesFr : nudgesEn;
       const text = nudges[nudgeIndex % nudges.length]!;
       setMessages((current) => [...current, { id: newId(), role: "assistant", text, kind: "nudge" }]);
       setNudgeIndex((i) => i + 1);
@@ -526,8 +536,8 @@ export function ChatShell({
       const assistantText =
         body.followUpMode === "callback" && !body.callbackPersistence.saved
           ? requestLocale === "fr-CA"
-            ? "Bien sûr — remplissez le formulaire de rappel ci-dessous et un membre de l'équipe du Club Sportif MAA vous contactera."
-            : "Of course — fill in the callback form below and a Club Sportif MAA team member will get back to you."
+            ? `Bien sûr — remplissez le formulaire ci-dessous et un membre de l'équipe ${clientName} vous contactera.`
+            : `Of course — fill in the form below and a ${clientName} team member will get back to you.`
           : body.assistantMessage;
 
       setConversationId(body.conversationId);
@@ -972,6 +982,8 @@ export function ChatShell({
   const widget = (
     <section
       style={{
+        "--accent": accentColor,
+        "--accent-gradient": accentGradient,
         background: "#f7f8f9",
         borderRadius: 20,
         overflow: "hidden",
@@ -983,7 +995,7 @@ export function ChatShell({
         width: "100%",
         maxWidth: "100%",
         boxSizing: "border-box",
-      }}
+      } as React.CSSProperties}
     >
       <style>{globalCss}</style>
 
@@ -1015,15 +1027,21 @@ export function ChatShell({
               padding: 4,
             }}
           >
-            <img
-              src="https://www.clubsportifmaa.com/wp-content/uploads/2021/01/club-sportif-maa-logo.svg"
-              alt="MAA"
-              style={{ width: 34, height: 34, objectFit: "contain" }}
-            />
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt={clientName}
+                style={{ width: 34, height: 34, objectFit: "contain" }}
+              />
+            ) : (
+              <div style={{ width: 34, height: 34, borderRadius: 8, background: "var(--accent-gradient)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 16 }}>
+                {clientName.charAt(0)}
+              </div>
+            )}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
             <span style={{ color: "#f0f0f6", fontWeight: 700, fontSize: 14, letterSpacing: "0.02em" }}>
-              {locale === "fr-CA" ? "Concierge · MAA" : "MAA Concierge"}
+              {headerTitle ?? (locale === "fr-CA" ? `Concierge · ${clientName}` : `${clientName} Concierge`)}
             </span>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <div
@@ -1114,7 +1132,7 @@ export function ChatShell({
                     maxWidth: "75%",
                     padding: "10px 16px",
                     borderRadius: "20px 20px 4px 20px",
-                    background: "linear-gradient(135deg, #c9a84c 0%, #a07830 100%)",
+                    background: "var(--accent-gradient)",
                     color: "#1a1a1a",
                     fontSize: 14,
                     fontWeight: 500,
@@ -1394,7 +1412,7 @@ export function ChatShell({
             animation: "maa-msg-in 0.3s ease",
           }}
         >
-          <div style={{ color: "#c9a84c", fontSize: 13, fontWeight: 600, marginBottom: 10 }}>
+          <div style={{ color: "var(--accent)", fontSize: 13, fontWeight: 600, marginBottom: 10 }}>
             {locale === "fr-CA"
               ? "Au fait, quel est votre prénom ?"
               : "By the way, what's your name?"}
@@ -1448,7 +1466,7 @@ export function ChatShell({
               style={{
                 padding: "8px 16px",
                 borderRadius: 20,
-                background: "linear-gradient(135deg, #c9a84c, #a07830)",
+                background: "var(--accent-gradient)",
                 border: "none",
                 color: "#111116",
                 fontWeight: 700,
@@ -1585,12 +1603,12 @@ export function ChatShell({
                 type="checkbox"
                 checked={callbackConsent}
                 onChange={(e) => setCallbackConsent(e.target.checked)}
-                style={{ accentColor: "#c9a84c" }}
+                style={{ accentColor: "var(--accent)" }}
               />
               <span>
                 {locale === "fr-CA"
-                  ? "J'accepte d'être contacté par Club Sportif MAA."
-                  : "I agree to be contacted by Club Sportif MAA."}
+                  ? `J'accepte d'être contacté par ${clientName}.`
+                  : `I agree to be contacted by ${clientName}.`}
               </span>
             </label>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -1605,7 +1623,7 @@ export function ChatShell({
                   border: "none",
                   background: isRegisteringInbound || !callbackPhone.trim() || !callbackConsent
                     ? "rgba(201,168,76,0.3)"
-                    : "linear-gradient(135deg, #c9a84c, #a07830)",
+                    : "var(--accent-gradient)",
                   color: "#111116",
                   fontWeight: 700,
                   fontSize: 13,
@@ -1653,7 +1671,7 @@ export function ChatShell({
             href={`tel:${inboundReadyNumber}`}
             style={{
               display: "block",
-              background: "linear-gradient(135deg, #c9a84c, #a07830)",
+              background: "var(--accent-gradient)",
               color: "#111116",
               fontWeight: 800,
               fontSize: 22,
@@ -1714,8 +1732,8 @@ export function ChatShell({
                   />
                   <span>
                     {locale === "fr-CA"
-                      ? "J'accepte d'être contacté par l'équipe du Club Sportif MAA."
-                      : "I agree to be contacted by the Club Sportif MAA team."}
+                      ? `J'accepte d'être contacté par l'équipe ${clientName}.`
+                      : `I agree to be contacted by the ${clientName} team.`}
                   </span>
                 </label>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -1727,7 +1745,7 @@ export function ChatShell({
                       padding: "10px 18px",
                       borderRadius: 20,
                       border: "none",
-                      background: "linear-gradient(135deg, #c9a84c, #a07830)",
+                      background: "var(--accent-gradient)",
                       color: "#111116",
                       fontWeight: 700,
                       fontSize: 13,
@@ -1822,8 +1840,8 @@ export function ChatShell({
               />
               <span>
                 {locale === "fr-CA"
-                  ? "J'accepte d'être contacté par l'équipe du Club Sportif MAA."
-                  : "I agree to be contacted by the Club Sportif MAA team."}
+                  ? `J'accepte d'être contacté par l'équipe ${clientName}.`
+                  : `I agree to be contacted by the ${clientName} team.`}
               </span>
             </label>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -1856,7 +1874,7 @@ export function ChatShell({
                   padding: "10px 18px",
                   borderRadius: 20,
                   border: "none",
-                  background: "linear-gradient(135deg, #c9a84c, #a07830)",
+                  background: "var(--accent-gradient)",
                   color: "#111116",
                   fontWeight: 700,
                   fontSize: 13,
@@ -1877,11 +1895,11 @@ export function ChatShell({
       {/* Persistent lead capture form */}
       {showLeadForm && !lastResponse?.callbackPersistence?.saved ? (
         <div style={{ margin: "0 16px 12px", padding: 16, borderRadius: 16, background: "#ffffff", border: "1px solid rgba(201,168,76,0.35)", boxShadow: "0 1px 8px rgba(201,168,76,0.08)", animation: "maa-msg-in 0.25s ease" }}>
-          <div style={{ color: "#c9a84c", fontWeight: 700, fontSize: 14, marginBottom: 4 }}>
+          <div style={{ color: "var(--accent)", fontWeight: 700, fontSize: 14, marginBottom: 4 }}>
             {locale === "fr-CA" ? "Laissez-nous vos coordonnées" : "Leave us your contact info"}
           </div>
           <div style={{ color: "#6a6a80", fontSize: 11, marginBottom: 12 }}>
-            {locale === "fr-CA" ? "Un membre de l'équipe MAA vous contactera sous peu." : "A Club Sportif MAA team member will reach out shortly."}
+            {locale === "fr-CA" ? `Un membre de l'équipe ${clientName} vous contactera sous peu.` : `A ${clientName} team member will reach out shortly.`}
           </div>
           <div style={{ display: "grid", gap: 8 }}>
             <input value={callbackName} onChange={(e) => setCallbackName(e.target.value)} placeholder={locale === "fr-CA" ? "Votre nom (optionnel)" : "Your name (optional)"} style={pillInput()} />
@@ -1889,14 +1907,14 @@ export function ChatShell({
             <input value={callbackEmail} onChange={(e) => setCallbackEmail(e.target.value)} placeholder={locale === "fr-CA" ? "Courriel (optionnel)" : "Email (optional)"} style={pillInput()} />
             <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: "#8a8aa0", cursor: "pointer" }}>
               <input type="checkbox" checked={callbackConsent} onChange={(e) => setCallbackConsent(e.target.checked)} />
-              <span>{locale === "fr-CA" ? "J'accepte d'être contacté par Club Sportif MAA." : "I agree to be contacted by Club Sportif MAA."}</span>
+              <span>{locale === "fr-CA" ? `J'accepte d'être contacté par ${clientName}.` : `I agree to be contacted by ${clientName}.`}</span>
             </label>
             <div style={{ display: "flex", gap: 8 }}>
               <button
                 type="button"
                 onClick={() => void submitCallbackRequest()}
                 disabled={isSubmittingCallback || !callbackPhone.trim() || !callbackConsent}
-                style={{ padding: "10px 18px", borderRadius: 20, border: "none", background: "linear-gradient(135deg, #c9a84c, #a07830)", color: "#111116", fontWeight: 700, fontSize: 13, cursor: isSubmittingCallback || !callbackPhone.trim() || !callbackConsent ? "default" : "pointer", opacity: isSubmittingCallback || !callbackPhone.trim() || !callbackConsent ? 0.6 : 1 }}
+                style={{ padding: "10px 18px", borderRadius: 20, border: "none", background: "var(--accent-gradient)", color: "#111116", fontWeight: 700, fontSize: 13, cursor: isSubmittingCallback || !callbackPhone.trim() || !callbackConsent ? "default" : "pointer", opacity: isSubmittingCallback || !callbackPhone.trim() || !callbackConsent ? 0.6 : 1 }}
               >
                 {isSubmittingCallback ? (locale === "fr-CA" ? "Envoi..." : "Sending...") : (locale === "fr-CA" ? "Envoyer" : "Send")}
               </button>
@@ -1984,7 +2002,7 @@ export function ChatShell({
             cursor: isSending ? "default" : "pointer",
             background: isSending
               ? "#e0e3e8"
-              : "linear-gradient(135deg, #c9a84c, #a07830)",
+              : "var(--accent-gradient)",
             color: isSending ? "#aab0bc" : "#1a1a1a",
             fontSize: 18,
             transition: "background 0.2s",
@@ -1999,7 +2017,7 @@ export function ChatShell({
         <button
           type="button"
           onClick={() => { setShowLeadForm((v) => !v); setShowInlineCallForm(false); setShowPhoneFallback(false); }}
-          style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#c9a84c", fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textDecoration: "underline", textUnderlineOffset: 2 }}
+          style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--accent)", fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textDecoration: "underline", textUnderlineOffset: 2 }}
         >
           {locale === "fr-CA" ? "Laisser mes coordonnées" : "Leave my contact info"}
         </button>
@@ -2011,13 +2029,13 @@ export function ChatShell({
         >
           {/* Subtle AI orbit animation */}
           <span style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", width: 12, height: 12 }}>
-            <span style={{ width: 3, height: 3, borderRadius: "50%", background: "#c9a84c", display: "block", animation: "maa-ai-pulse 2.2s ease-in-out infinite" }} />
+            <span style={{ width: 3, height: 3, borderRadius: "50%", background: "var(--accent)", display: "block", animation: "maa-ai-pulse 2.2s ease-in-out infinite" }} />
             <span style={{ position: "absolute", width: 3, height: 3, borderRadius: "50%", background: "rgba(201,168,76,0.6)", animation: "maa-ai-orbit 3s linear infinite" }} />
             <span style={{ position: "absolute", width: 2, height: 2, borderRadius: "50%", background: "rgba(201,168,76,0.4)", animation: "maa-ai-orbit 3s linear infinite", animationDelay: "-1.5s" }} />
           </span>
           Concierge IA par{" "}
           <strong style={{ color: "#7a82a0", fontWeight: 700 }}>DUBUB</strong>
-          <span style={{ color: "#c9a84c", fontWeight: 700 }}>.ca</span>
+          <span style={{ color: "var(--accent)", fontWeight: 700 }}>.ca</span>
         </a>
       </div>
     </section>
@@ -2038,7 +2056,7 @@ export function ChatShell({
             width: 60,
             height: 60,
             borderRadius: "50%",
-            background: "linear-gradient(135deg, #c9a84c, #a07830)",
+            background: "var(--accent-gradient)",
             border: "2px solid rgba(201,168,76,0.3)",
             boxShadow: "0 4px 24px rgba(201,168,76,0.35)",
             zIndex: 9999,
