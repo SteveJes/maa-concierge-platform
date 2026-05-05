@@ -6021,10 +6021,11 @@ document.addEventListener("DOMContentLoaded", function () {
 </div>
 <style>
   #dubub-float-bubble {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    z-index: 9000;
+    position: fixed !important;
+    bottom: 24px !important;
+    right: 24px !important;
+    z-index: 9999 !important;
+    transform: none !important;
     display: flex;
     flex-direction: column;
     align-items: flex-end;
@@ -6177,14 +6178,14 @@ document.addEventListener("DOMContentLoaded", function () {
   var label = document.getElementById("dubub-float-label");
   var dismiss = document.getElementById("dubub-float-dismiss");
 
-  // Show bubble once the tablet scrolls out of view
+  // Show bubble once user scrolls past the hero tablet
   var heroStage = document.getElementById("heroStage");
   bubble.style.display = "none";
 
   function checkVisibility() {
-    if (!heroStage) { bubble.style.display = "flex"; return; }
-    var rect = heroStage.getBoundingClientRect();
-    if (rect.top < -120 || rect.bottom < 0) {
+    var scrolled = window.scrollY || window.pageYOffset;
+    var threshold = heroStage ? (heroStage.offsetTop + heroStage.offsetHeight * 0.6) : 600;
+    if (scrolled > threshold) {
       bubble.style.display = "flex";
     } else {
       if (!panel.classList.contains("open")) bubble.style.display = "none";
