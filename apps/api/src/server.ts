@@ -165,7 +165,7 @@ export const TOKEN_PACKAGES: TokenPackage[] = [
   { id: "unlimited",name: "Unlimited",tokens: 0,          priceUsd: 0,     pricesCad: 0     }, // covered by monthly plan
 ];
 
-function getPendingInboundHandoff(phoneE164: string): PendingInboundHandoff | null {
+function getPendingInboundHandoff(phoneE164: string, tenantId?: string): PendingInboundHandoff | null {
   const record = pendingInboundHandoffStore.get(phoneE164);
   if (!record) return null;
   if (record.status !== "pending") return null;
@@ -173,6 +173,8 @@ function getPendingInboundHandoff(phoneE164: string): PendingInboundHandoff | nu
     record.status = "expired";
     return null;
   }
+  // Never cross-contaminate tenants — MAA chat context must not leak into DUBUB calls
+  if (tenantId && record.tenantId !== tenantId) return null;
   return record;
 }
 
@@ -1024,8 +1026,8 @@ export function createServer() {
       return reply.code(200).send({});
     }
 
-    // Try to match a pending inbound handoff
-    const handoff = callerE164 ? getPendingInboundHandoff(callerE164) : null;
+    // Try to match a pending inbound handoff — must match both phone AND tenant
+    const handoff = callerE164 ? getPendingInboundHandoff(callerE164, vapiTenantId) : null;
 
     if (handoff) {
       // Mark matched immediately to prevent reuse on re-dial
@@ -1487,8 +1489,9 @@ export function createServer() {
         }
       }
 
-      // For DUBUB: no Calendly configured — start conversational lead capture instead
+      // For DUBUB: no Calendly — start conversational lead capture, suppress all booking/callback UI
       if (tenantId === "dubub") {
+        responseFollowUpMode = "clarify";
         responseAssistantMessage = isFrenchLocale(locale)
           ? "Avec plaisir ! Pour vous réserver un créneau de démo, j'ai besoin de quelques informations. Quel est votre prénom ?"
           : "Absolutely! To get your demo scheduled, I just need a couple of details. What's your first name?";
