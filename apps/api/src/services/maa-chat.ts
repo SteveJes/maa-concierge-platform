@@ -584,13 +584,13 @@ export async function answerMaaChat(
       ? isFr
         ? "ÉTAT: Ce visiteur est un lead confirmé — la démo est déjà planifiée avec notre équipe. " +
           "NE propose PLUS jamais de démo ou de rendez-vous dans cette conversation. " +
-          "Réponds à ses questions comme un conseiller chaleureux. " +
-          "Si pertinent, dis : 'Notre équipe vous en parlera en détail lors de votre démo.' " +
+          "Réponds à ses questions directement et complètement comme un conseiller chaleureux. " +
+          "NE termine PAS chaque réponse par une mention de la démo — c'est répétitif et agaçant. " +
           "Utilise followUpMode: 'clarify' pour tous les messages restants."
         : "STATE: This visitor is a confirmed lead — the demo is already scheduled with our team. " +
           "NEVER suggest booking a demo or meeting again in this conversation. " +
-          "Answer questions as a warm consultant. " +
-          "If relevant, say: 'Our team will walk you through that during your demo.' " +
+          "Answer questions directly and fully as a warm consultant. " +
+          "Do NOT end every response with a mention of the upcoming demo — it is repetitive. " +
           "Use followUpMode: 'clarify' for all remaining messages."
       : undefined;
 
