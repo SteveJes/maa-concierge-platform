@@ -1311,14 +1311,9 @@ export function createServer() {
         ? "calendly"
         : result.followUpMode;
 
-    // DUBUB: once lead captured (confirmed message in history), suppress any further "calendly" re-triggers
-    if (
-      tenantId === "dubub" &&
-      responseFollowUpMode === "calendly" &&
-      (conversationHistory ?? []).some(
-        (m) => m.role === "assistant" && /Notre équipe vous contacte|our team will contact/i.test(m.content),
-      )
-    ) {
+    // DUBUB: suppress "calendly" unless the user explicitly used booking keywords.
+    // Prevents the AI from re-triggering the booking opener on casual comments (e.g., "c'est rapide").
+    if (tenantId === "dubub" && responseFollowUpMode === "calendly" && !hasExplicitBookingIntent) {
       responseFollowUpMode = "clarify";
     }
 
