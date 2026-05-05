@@ -1156,7 +1156,8 @@ export function ChatShell({
                     padding: "10px 16px",
                     borderRadius: "20px 20px 4px 20px",
                     background: "var(--accent-gradient)",
-                    color: "#1a1a1a",
+                    color: "#fff",
+                    textShadow: "0 1px 3px rgba(0,0,0,0.25)",
                     fontSize: 14,
                     fontWeight: 500,
                     lineHeight: 1.4,
@@ -1687,10 +1688,10 @@ export function ChatShell({
             textAlign: "center",
           }}
         >
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 4 }}>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", fontWeight: 600, marginBottom: 4 }}>
             {locale === "fr-CA" ? `${conciergeName} est prête à vous recevoir` : `${conciergeName} is ready for your call`}
           </div>
-          <div style={{ fontSize: 11, color: `rgba(var(--accent-rgb),0.85)`, marginBottom: 14, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", marginBottom: 14, letterSpacing: "0.06em", textTransform: "uppercase" }}>
             {locale === "fr-CA" ? "Elle connaît déjà votre demande" : "She already knows your request"}
           </div>
           <a
@@ -1902,7 +1903,8 @@ export function ChatShell({
                   borderRadius: 20,
                   border: "none",
                   background: "var(--accent-gradient)",
-                  color: "#111116",
+                  color: "#fff",
+                  textShadow: "0 1px 3px rgba(0,0,0,0.35)",
                   fontWeight: 700,
                   fontSize: 13,
                   cursor: isCallingNow || !callbackPhone.trim() || !callbackConsent ? "default" : "pointer",
@@ -1941,7 +1943,7 @@ export function ChatShell({
                 type="button"
                 onClick={() => void submitCallbackRequest()}
                 disabled={isSubmittingCallback || !callbackPhone.trim() || !callbackConsent}
-                style={{ padding: "10px 18px", borderRadius: 20, border: "none", background: "var(--accent-gradient)", color: "#111116", fontWeight: 700, fontSize: 13, cursor: isSubmittingCallback || !callbackPhone.trim() || !callbackConsent ? "default" : "pointer", opacity: isSubmittingCallback || !callbackPhone.trim() || !callbackConsent ? 0.6 : 1 }}
+                style={{ padding: "10px 18px", borderRadius: 20, border: "none", background: "var(--accent-gradient)", color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.35)", fontWeight: 700, fontSize: 13, cursor: isSubmittingCallback || !callbackPhone.trim() || !callbackConsent ? "default" : "pointer", opacity: isSubmittingCallback || !callbackPhone.trim() || !callbackConsent ? 0.6 : 1 }}
               >
                 {isSubmittingCallback ? (locale === "fr-CA" ? "Envoi..." : "Sending...") : (locale === "fr-CA" ? "Envoyer" : "Send")}
               </button>
@@ -2030,7 +2032,8 @@ export function ChatShell({
             background: isSending
               ? "#e0e3e8"
               : "var(--accent-gradient)",
-            color: isSending ? "#aab0bc" : "#1a1a1a",
+            color: isSending ? "#aab0bc" : "#fff",
+            textShadow: isSending ? "none" : "0 1px 3px rgba(0,0,0,0.3)",
             fontSize: 18,
             transition: "background 0.2s",
           }}

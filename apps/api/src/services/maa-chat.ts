@@ -9,6 +9,7 @@ import {
   listDocuments,
 } from "../ingestion/nocodb.js";
 import { buildMaaChatSystemPrompt } from "../prompts/maa-chat-system.js";
+import { buildDububChatSystemPrompt } from "../prompts/dubub-chat-system.js";
 import {
   isPricingQuestion,
   tryAnswerPricingQuestion,
@@ -411,6 +412,7 @@ async function callOpenAiForAnswer(
   searchResults: SearchResult[],
   conversationHistory: MaaConversationHistoryTurn[],
   userName?: string,
+  tenantCode?: string,
 ): Promise<OpenAiJsonResponse> {
   const { apiKey, model } = getOpenAiConfig();
 
@@ -465,7 +467,9 @@ async function callOpenAiForAnswer(
       messages: [
         {
           role: "system",
-          content: buildMaaChatSystemPrompt(locale),
+          content: tenantCode === "dubub"
+            ? buildDububChatSystemPrompt(locale)
+            : buildMaaChatSystemPrompt(locale),
         },
         {
           role: "user",
@@ -675,6 +679,7 @@ export async function answerMaaChat(
     searchResults,
     conversationHistory,
     request.userName,
+    request.tenantCode,
   );
 
   const cleanedAssistantMessage = stripCitationMarkersFromAssistantMessage(
