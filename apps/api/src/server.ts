@@ -1527,11 +1527,11 @@ export function createServer() {
         const knownName = userName ? userName.split(" ")[0] : null;
         responseAssistantMessage = isFrenchLocale(locale)
           ? knownName
-            ? `Avec plaisir ${knownName} ! Votre entreprise et courriel pour confirmer votre créneau ?`
-            : "Avec plaisir ! Votre prénom et entreprise pour commencer ?"
+            ? `Avec plaisir ${knownName} ! Pour vous mettre en contact avec notre équipe, j'ai besoin de votre entreprise et de votre courriel.`
+            : "Avec plaisir ! Pour commencer, j'ai besoin de votre prénom, entreprise et courriel."
           : knownName
-            ? `Absolutely ${knownName}! Your company and email to lock in your demo slot?`
-            : "Absolutely! Your name and company to get started?";
+            ? `Absolutely ${knownName}! To connect you with our team, I just need your company name and email.`
+            : "Absolutely! To get started, I just need your name, company, and email.";
       } else {
         responseAssistantMessage = buildBookingUnavailableMessage(
           locale,
