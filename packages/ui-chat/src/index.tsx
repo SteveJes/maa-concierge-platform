@@ -120,7 +120,7 @@ function RichMessageText({ text }: { text: string }) {
       elements.push(
         <div key={elements.length} style={{ display: "flex", alignItems: "baseline", gap: 8, margin: "4px 0" }}>
           <span style={{ fontSize: 7, color: "var(--accent)", flexShrink: 0, position: "relative", top: -1, letterSpacing: 0 }}>{icon}</span>
-          <span style={{ lineHeight: 1.55, color: "#1a1a1a" }}>{renderInline(content)}</span>
+          <span style={{ lineHeight: 1.55, color: "inherit" }}>{renderInline(content)}</span>
         </div>
       );
     } else if (trimmed === "") {

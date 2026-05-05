@@ -1513,9 +1513,14 @@ export function createServer() {
       // For DUBUB: no Calendly — start conversational lead capture, suppress all booking/callback UI
       if (tenantId === "dubub") {
         responseFollowUpMode = "clarify";
+        const knownName = userName ? userName.split(" ")[0] : null;
         responseAssistantMessage = isFrenchLocale(locale)
-          ? "Avec plaisir ! Pour vous réserver un créneau de démo, j'ai besoin de quelques informations. Quel est votre prénom ?"
-          : "Absolutely! To get your demo scheduled, I just need a couple of details. What's your first name?";
+          ? knownName
+            ? `Avec plaisir ${knownName} ! Votre entreprise et courriel pour confirmer votre créneau ?`
+            : "Avec plaisir ! Votre prénom et entreprise pour commencer ?"
+          : knownName
+            ? `Absolutely ${knownName}! Your company and email to lock in your demo slot?`
+            : "Absolutely! Your name and company to get started?";
       } else {
         responseAssistantMessage = buildBookingUnavailableMessage(
           locale,
