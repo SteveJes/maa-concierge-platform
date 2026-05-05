@@ -247,6 +247,11 @@ function isFrenchLocale(locale: string | null): boolean {
 function looksLikeBookingIntent(userMessage: string, locale: string | null): boolean {
   const normalized = userMessage.trim().toLowerCase();
 
+  // Exclude "I already have / already scheduled" — past tense, not a new request
+  if (/d[ée]j[aà]\s+(une\s+d[ée]mo|planifi[ée]|un\s+rendez|r[ée]serv[ée])|j['']?ai\s+d[ée]j[aà]|already\s+(have|scheduled|booked)/i.test(normalized)) {
+    return false;
+  }
+
   const frenchMatch =
     /(?:réserver|reserver|réservation|reservation|rendez-vous|planifier|visite|visiter|équipe des ventes|equipe des ventes|ventes|démo|demo|démonstration|demonstration|essai|présentation|presentation|rencontrer|m'adresser|me parler|contacter votre équipe|contacter l'équipe|prendre contact)/i.test(
       normalized,
@@ -1320,11 +1325,16 @@ export function createServer() {
     let responseCitations = result.citations;
 
     // DUBUB chat lead capture: when AI signals "done" (collected company + email), fire lead email
-    if (tenantId === "dubub" && responseFollowUpMode === "done") {
+    // DUBUB lead email: only fire on the actual confirmation turn (when assistant says "Notre équipe vous contacte").
+    // This prevents duplicate sends on subsequent "done" turns (e.g., "merci" after capture).
+    if (
+      tenantId === "dubub" &&
+      responseFollowUpMode === "done" &&
+      /Notre[- ]équipe vous contacte|our team will contact/i.test(result.assistantMessage)
+    ) {
       const allMsgText = [
         ...(conversationHistory ?? []).map((m) => m.content),
         trimmedMessage,
-        result.assistantMessage,
       ].join(" ");
       const emailMatch = allMsgText.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
       const dububTenant = getTenant("dubub");
