@@ -317,6 +317,98 @@ const pillInput = (extra?: React.CSSProperties): React.CSSProperties => ({
   ...extra,
 });
 
+// ---------------------------------------------------------------------------
+// DUBUB intro animation — shown once when the chat first opens (darkMode only)
+// ---------------------------------------------------------------------------
+const DUBUB_INTRO_KEYFRAMES = `
+@keyframes dubub-fade-in { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+@keyframes dubub-expand   { from { opacity:0; letter-spacing:0.04em; } to { opacity:1; letter-spacing:0.22em; } }
+@keyframes dubub-bow      { 0%{transform:translateY(0)} 40%{transform:translateY(9px)} 70%{transform:translateY(-3px)} 100%{transform:translateY(0)} }
+@keyframes dubub-out      { from { opacity:1; transform:scale(1); } to { opacity:0; transform:scale(0.97); } }
+`;
+
+function DububIntroAnimation({ accentColor, onDone }: { accentColor: string; onDone: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 3400);
+    return () => clearTimeout(t);
+  }, [onDone]);
+
+  return (
+    <>
+      <style>{DUBUB_INTRO_KEYFRAMES}</style>
+      <div style={{
+        position: "absolute", inset: 0, zIndex: 200,
+        background: "#080d08",
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        gap: 0,
+        animation: "dubub-out 0.6s 2.8s both",
+        pointerEvents: "none",
+      }}>
+        {/* BONJOUR */}
+        <div style={{
+          fontSize: 11, fontWeight: 700, letterSpacing: "0.28em",
+          color: "rgba(255,255,255,0.28)", marginBottom: 24,
+          animation: "dubub-fade-in 0.5s 0.2s both",
+        }}>
+          BONJOUR
+        </div>
+
+        {/* ICI SOPH·IA */}
+        <div style={{ display: "flex", alignItems: "baseline", gap: 0 }}>
+          <span style={{
+            fontSize: 42, fontWeight: 800, letterSpacing: "0.12em",
+            color: "#fff", lineHeight: 1,
+            animation: "dubub-fade-in 0.5s 0.5s both",
+          }}>SOPH</span>
+
+          {/* I with animated dot */}
+          <span style={{
+            position: "relative", display: "inline-block",
+            fontSize: 42, fontWeight: 800,
+            color: accentColor, lineHeight: 1, letterSpacing: "0.12em",
+            animation: "dubub-fade-in 0.5s 0.8s both",
+          }}>
+            {/* Dot that bows */}
+            <span style={{
+              position: "absolute", top: -3, left: "50%",
+              transform: "translateX(-50%)",
+              width: 7, height: 7, borderRadius: "50%",
+              background: accentColor,
+              animation: "dubub-bow 0.7s 1.4s ease-in-out both",
+            }} />
+            {"I"}
+          </span>
+          <span style={{
+            fontSize: 42, fontWeight: 800, letterSpacing: "0.12em",
+            color: accentColor, lineHeight: 1,
+            animation: "dubub-fade-in 0.5s 0.8s both",
+          }}>A</span>
+        </div>
+
+        {/* Intelligence Artificielle */}
+        <div style={{
+          fontSize: 10, fontWeight: 600,
+          color: accentColor, marginTop: 14, opacity: 0,
+          animation: "dubub-expand 0.7s 1.1s both",
+          overflow: "hidden", whiteSpace: "nowrap",
+        }}>
+          Intelligence Artificielle
+        </div>
+
+        {/* Tagline */}
+        <div style={{
+          fontSize: 9, fontWeight: 500, letterSpacing: "0.18em",
+          color: "rgba(255,255,255,0.22)", marginTop: 32,
+          animation: "dubub-fade-in 0.5s 1.5s both",
+          textTransform: "uppercase",
+        }}>
+          Technologie développée par DUBUB
+        </div>
+      </div>
+    </>
+  );
+}
+
 export function ChatShell({
   accentColor = "#c9a84c",
   accentGradient = "linear-gradient(135deg, #c9a84c, #a07830)",
@@ -394,6 +486,7 @@ export function ChatShell({
   const [showLeadForm, setShowLeadForm] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [isCallingNow, setIsCallingNow] = useState(false);
+  const [showIntro, setShowIntro] = useState(darkMode); // DUBUB only: show on first open
 
   // Dynamic suggested questions — fetched from API, fallback to static
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
@@ -1012,6 +1105,7 @@ export function ChatShell({
         "--accent-gradient": accentGradient,
         "--accent-rgb": accentRgb,
         "--accent-text": accentTextColor,
+        position: "relative",
         background: darkMode ? "#0a0f0a" : "#f7f8f9",
         borderRadius: 20,
         overflow: "hidden",
@@ -1026,6 +1120,14 @@ export function ChatShell({
       } as React.CSSProperties}
     >
       <style>{globalCss}</style>
+
+      {/* DUBUB intro animation — shown once on first open */}
+      {showIntro && (
+        <DububIntroAnimation
+          accentColor={accentColor}
+          onDone={() => setShowIntro(false)}
+        />
+      )}
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div

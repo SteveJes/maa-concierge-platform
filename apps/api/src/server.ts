@@ -248,12 +248,12 @@ function looksLikeBookingIntent(userMessage: string, locale: string | null): boo
   const normalized = userMessage.trim().toLowerCase();
 
   const frenchMatch =
-    /(?:réserver|reserver|réservation|reservation|rendez-vous|planifier|visite|visiter|équipe des ventes|equipe des ventes|ventes)/i.test(
+    /(?:réserver|reserver|réservation|reservation|rendez-vous|planifier|visite|visiter|équipe des ventes|equipe des ventes|ventes|démo|demo|démonstration|demonstration|essai|présentation|presentation|rencontrer|m'adresser|me parler|contacter votre équipe|contacter l'équipe|prendre contact)/i.test(
       normalized,
     );
 
   const englishMatch =
-    /(?:book|booking|tour|sales team|speak with sales|talk to sales|book a call|book an appointment|schedule a|schedule an|schedule my)/i.test(
+    /(?:book|booking|tour|sales team|speak with sales|talk to sales|book a call|book an appointment|schedule a|schedule an|schedule my|demo|demonstration|trial|presentation|meet with|get in touch)/i.test(
       normalized,
     );
 
@@ -1560,7 +1560,9 @@ export function createServer() {
         responseCitations = [];
 
         // Fire lead email even in dry-run (e.g. when NocoDB not configured)
-        const notifyEmailDry = process.env.LEAD_NOTIFY_EMAIL ?? "";
+        const tenantForEmail = getTenant(tenantId);
+        const notifyEmailDry = tenantForEmail?.notifyEmail || process.env.LEAD_NOTIFY_EMAIL || "";
+        const tenantDisplayName = tenantForEmail?.name ?? "Club Sportif MAA";
         if (notifyEmailDry) {
           setImmediate(() => {
             sendLeadNotificationEmail({
@@ -1571,7 +1573,7 @@ export function createServer() {
               locale: locale ?? "fr-CA",
               questionSummary: toNullableTrimmedString(body.callback?.questionSummary) ?? trimmedMessage,
               conversationId: conversationId ?? null,
-              tenantName: "Club Sportif MAA",
+              tenantName: tenantDisplayName,
               notifyEmail: notifyEmailDry,
             }).catch((err) => request.log.error({ err }, "Lead email (dry-run) failed"));
           });
@@ -1622,7 +1624,9 @@ export function createServer() {
         responseCitations = [];
 
         // Fire lead notification email in background — do not block response
-        const notifyEmail = process.env.LEAD_NOTIFY_EMAIL ?? "";
+        const tenantForLeadEmail = getTenant(tenantId);
+        const notifyEmail = tenantForLeadEmail?.notifyEmail || process.env.LEAD_NOTIFY_EMAIL || "";
+        const leadTenantName = tenantForLeadEmail?.name ?? "Club Sportif MAA";
         if (notifyEmail) {
           setImmediate(() => {
             sendLeadNotificationEmail({
@@ -1633,7 +1637,7 @@ export function createServer() {
               locale: locale ?? "fr-CA",
               questionSummary: toNullableTrimmedString(body.callback?.questionSummary) ?? trimmedMessage,
               conversationId: conversationId ?? null,
-              tenantName: "Club Sportif MAA",
+              tenantName: leadTenantName,
               notifyEmail,
             }).catch((err) => request.log.error({ err }, "Lead email failed"));
           });
@@ -2417,11 +2421,14 @@ export function createServer() {
             : (call.function.arguments as typeof args);
         } catch { /* ok */ }
 
-        const notifyEmail = process.env.LEAD_NOTIFY_EMAIL ?? "steve@dubub.com";
+        const vapiToolTenantId = ((request.query as Record<string, string | undefined>).tenantId ?? "maa").toLowerCase();
+        const vapiToolTenant = getTenant(vapiToolTenantId);
+        const notifyEmail = vapiToolTenant?.notifyEmail || process.env.LEAD_NOTIFY_EMAIL || "steve@dubub.com";
+        const vapiToolTenantName = vapiToolTenant?.name ?? "Club M.A.A.";
         const apiKey = process.env.BREVO_API_KEY ?? process.env.BREVO_SMTP_KEY;
         const isFr = !args.locale?.startsWith("en");
 
-        request.log.info({ name: args.name, phone: args.phone, email: args.email, note: args.note, notifyEmail }, "capture_lead fired");
+        request.log.info({ name: args.name, phone: args.phone, email: args.email, note: args.note, notifyEmail, vapiToolTenantId }, "capture_lead fired");
 
         if (!apiKey) {
           request.log.error("capture_lead: BREVO_API_KEY is missing — lead email NOT sent. Set LEAD_NOTIFY_EMAIL and BREVO_API_KEY in .env.local");
@@ -2443,7 +2450,7 @@ export function createServer() {
       <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#c9a84c,#8b6010);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#111;flex-shrink:0">${initial}</div>
       <div>
         <div style="color:#fff;font-size:22px;font-weight:800;line-height:1.2">${args.name ?? "Nouveau contact"}</div>
-        <div style="color:rgba(201,168,76,0.8);font-size:12px;margin-top:4px;letter-spacing:0.06em;text-transform:uppercase">Lead capturé par Sophie · Club M.A.A.</div>
+        <div style="color:rgba(201,168,76,0.8);font-size:12px;margin-top:4px;letter-spacing:0.06em;text-transform:uppercase">Lead capturé par SophIA · ${vapiToolTenantName}</div>
       </div>
     </div>
   </div>
@@ -2487,9 +2494,9 @@ export function createServer() {
             method: "POST",
             headers: { "api-key": apiKey, "Content-Type": "application/json" },
             body: JSON.stringify({
-              sender: { name: "Sophie — Club M.A.A.", email: process.env.BREVO_SENDER_EMAIL ?? "noreply@dubub.com" },
+              sender: { name: `SophIA — ${vapiToolTenantName}`, email: process.env.BREVO_SENDER_EMAIL ?? "noreply@dubub.com" },
               to: [{ email: notifyEmail }],
-              subject: `🎯 Nouveau lead — ${args.name ?? args.phone ?? "Contact"} · Club M.A.A.`,
+              subject: `🎯 Nouveau lead — ${args.name ?? args.phone ?? "Contact"} · ${vapiToolTenantName}`,
               htmlContent: html,
             }),
           }).then(async (r) => {

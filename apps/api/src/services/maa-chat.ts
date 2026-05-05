@@ -207,6 +207,31 @@ function resolveMembershipFollowUpIntent(
 
 const SHORT_AFFIRMATIVES = /^(oui|yes|ok|okay|sure|pourquoi pas|why not|allez|allons-y|bien sûr|d'accord|daccord|go ahead|go|yep|yup|absolument|parfait|super|génial|great|sounds good|cool|let's go|lets go|dis-moi|dis moi|tell me more|en savoir plus|j'écoute|je veux savoir|interessant|intéressant|vraiment|really|ah bon|ah oui|c'est quoi|c'est quand|c'est combien)[\s!?.]*$/i;
 
+const DUBUB_BOOKING_COLLECTION_SIGNAL = /entreprise|courriel|email|t[ée]l[ée]phone|nom de famille|pr[ée]nom|confirmer votre cr[ée]neau|cr[ée]neau d[ée]mo|pour planifier|pour r[ée]server|votre num[ée]ro/i;
+
+function resolveDububShortAffirmative(
+  userMessage: string,
+  conversationHistory: MaaConversationHistoryTurn[],
+  locale: string | undefined,
+): string {
+  if (!SHORT_AFFIRMATIVES.test(userMessage.trim())) return userMessage;
+
+  const lastAssistant = [...conversationHistory].reverse().find((t) => t.role === "assistant");
+  if (!lastAssistant) return userMessage;
+
+  const ctx = lastAssistant.content.toLowerCase();
+  const fr = isFrenchLocale(locale);
+
+  // "oui" after scheduling/demo offer → trigger booking
+  if (/planifier|démo|demo|rendez-vous|rdv|échange|créneau|rencontre|meeting|schedule/.test(ctx)) {
+    return fr ? "Je voudrais planifier une démo." : "I'd like to schedule a demo.";
+  }
+  if (/tarif|plan|prix|essentiel|croissance|prestige|forfait/.test(ctx)) {
+    return fr ? "Pouvez-vous m'en dire plus sur vos plans ?" : "Can you tell me more about your plans?";
+  }
+  return fr ? "Pouvez-vous m'en dire plus ?" : "Can you tell me more?";
+}
+
 function resolveShortAffirmativeFollowUp(
   userMessage: string,
   conversationHistory: MaaConversationHistoryTurn[],
@@ -534,24 +559,49 @@ export async function answerMaaChat(
     request.conversationHistory,
   );
 
-  const affirmativeResolved = resolveShortAffirmativeFollowUp(
-    request.userMessage,
-    conversationHistory,
-    request.locale,
-  );
+  const isDubub = request.tenantCode === "dubub";
 
-  const resolvedUserMessage = resolveMembershipFollowUpIntent(
-    affirmativeResolved,
-    request.locale,
-    conversationHistory,
-  );
+  // For DUBUB: if the last assistant message was asking for booking fields, skip RAG entirely.
+  // Feeding pricing chunks overrides the AI's booking context (confirmed by NocoDB logs).
+  const lastAssistantMsg = [...conversationHistory].reverse().find((t) => t.role === "assistant");
+  const isDububBookingContinuation =
+    isDubub &&
+    lastAssistantMsg != null &&
+    DUBUB_BOOKING_COLLECTION_SIGNAL.test(lastAssistantMsg.content);
+
+  if (isDububBookingContinuation) {
+    const openAiResult = await callOpenAiForAnswer(
+      request.userMessage,
+      request.userMessage,
+      request.locale,
+      [],
+      conversationHistory,
+      request.userName,
+      request.tenantCode,
+    );
+    return {
+      assistantMessage: openAiResult.assistantMessage,
+      followUpMode: openAiResult.followUpMode,
+      citations: [],
+      retrieval: { query: request.userMessage, chunkCount: 0, resultCount: 0 },
+      usage: (openAiResult as typeof openAiResult & { _usage?: { model: string; inputTokens: number; outputTokens: number } })._usage,
+    };
+  }
+
+  const affirmativeResolved = isDubub
+    ? resolveDububShortAffirmative(request.userMessage, conversationHistory, request.locale)
+    : resolveShortAffirmativeFollowUp(request.userMessage, conversationHistory, request.locale);
+
+  const resolvedUserMessage = isDubub
+    ? affirmativeResolved
+    : resolveMembershipFollowUpIntent(affirmativeResolved, request.locale, conversationHistory);
 
   const shouldExpandMembershipPricingSearch =
-    isPricingQuestion(resolvedUserMessage) ||
-    looksLikeMembershipPricingTopic(resolvedUserMessage);
+    !isDubub &&
+    (isPricingQuestion(resolvedUserMessage) || looksLikeMembershipPricingTopic(resolvedUserMessage));
 
   // Normalize casual hours queries so the vector search finds relevant chunks
-  const looksLikeHoursQuery = /heure|horaire|ouv(re|ert|erts|rir)|ferm(e|é)|open|close|closing|hours|schedule/i.test(resolvedUserMessage);
+  const looksLikeHoursQuery = !isDubub && /heure|horaire|ouv(re|ert|erts|rir)|ferm(e|é)|open|close|closing|hours|schedule/i.test(resolvedUserMessage);
 
   const searchQuery = shouldExpandMembershipPricingSearch
     ? expandSearchQueryForMembershipPricing(resolvedUserMessage, request.locale)
@@ -560,9 +610,11 @@ export async function answerMaaChat(
       : resolvedUserMessage;
 
   const requiresDeterministicFloor =
-    isPricingQuestion(resolvedUserMessage) ||
-    isScheduleQuestion(resolvedUserMessage) ||
-    isPolicyQuestion(resolvedUserMessage);
+    !isDubub && (
+      isPricingQuestion(resolvedUserMessage) ||
+      isScheduleQuestion(resolvedUserMessage) ||
+      isPolicyQuestion(resolvedUserMessage)
+    );
 
   const effectiveMaxResults = requiresDeterministicFloor
     ? Math.max(request.maxResults ?? 5, 12)
@@ -584,7 +636,7 @@ export async function answerMaaChat(
     return buildFallbackResponse(request.userMessage, request.locale);
   }
 
-  const pricingAnswer = tryAnswerPricingQuestion(
+  const pricingAnswer = !isDubub && tryAnswerPricingQuestion(
     resolvedUserMessage,
     searchResults,
     request.locale,
@@ -614,7 +666,7 @@ export async function answerMaaChat(
     };
   }
 
-  const scheduleAnswer = tryAnswerScheduleQuestion(
+  const scheduleAnswer = !isDubub && tryAnswerScheduleQuestion(
     resolvedUserMessage,
     searchResults,
   );
@@ -643,7 +695,7 @@ export async function answerMaaChat(
     };
   }
 
-  const policyAnswer = tryAnswerPolicyQuestion(
+  const policyAnswer = !isDubub && tryAnswerPolicyQuestion(
     resolvedUserMessage,
     searchResults,
   );
