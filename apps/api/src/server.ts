@@ -1310,6 +1310,18 @@ export function createServer() {
       : hasExplicitBookingIntent
         ? "calendly"
         : result.followUpMode;
+
+    // DUBUB: once lead captured (confirmed message in history), suppress any further "calendly" re-triggers
+    if (
+      tenantId === "dubub" &&
+      responseFollowUpMode === "calendly" &&
+      (conversationHistory ?? []).some(
+        (m) => m.role === "assistant" && /Notre équipe vous contacte|our team will contact/i.test(m.content),
+      )
+    ) {
+      responseFollowUpMode = "clarify";
+    }
+
     let responseCitations = result.citations;
 
     // DUBUB chat lead capture: when AI signals "done" (collected company + email), fire lead email

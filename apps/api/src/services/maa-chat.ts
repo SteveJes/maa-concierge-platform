@@ -561,18 +561,19 @@ export async function answerMaaChat(
 
   const isDubub = request.tenantCode === "dubub";
 
-  // For DUBUB: if the last assistant message was asking for booking fields, skip RAG entirely.
-  // Feeding pricing chunks overrides the AI's booking context (confirmed by NocoDB logs).
-  const lastAssistantMsg = [...conversationHistory].reverse().find((t) => t.role === "assistant");
-  const isDububBookingContinuation =
-    isDubub &&
-    lastAssistantMsg != null &&
-    DUBUB_BOOKING_COLLECTION_SIGNAL.test(lastAssistantMsg.content);
+  const affirmativeResolved = isDubub
+    ? resolveDububShortAffirmative(request.userMessage, conversationHistory, request.locale)
+    : resolveShortAffirmativeFollowUp(request.userMessage, conversationHistory, request.locale);
 
-  if (isDububBookingContinuation) {
+  const resolvedUserMessage = isDubub
+    ? affirmativeResolved
+    : resolveMembershipFollowUpIntent(affirmativeResolved, request.locale, conversationHistory);
+
+  // DUBUB: skip RAG entirely — system prompt has all knowledge, RAG adds latency with no benefit.
+  if (isDubub) {
     const openAiResult = await callOpenAiForAnswer(
-      request.userMessage,
-      request.userMessage,
+      resolvedUserMessage,
+      resolvedUserMessage,
       request.locale,
       [],
       conversationHistory,
@@ -581,20 +582,12 @@ export async function answerMaaChat(
     );
     return {
       assistantMessage: openAiResult.assistantMessage,
-      followUpMode: openAiResult.followUpMode === "done" ? "done" : "clarify",
+      followUpMode: openAiResult.followUpMode,
       citations: [],
-      retrieval: { query: request.userMessage, chunkCount: 0, resultCount: 0 },
+      retrieval: { query: resolvedUserMessage, chunkCount: 0, resultCount: 0 },
       usage: (openAiResult as typeof openAiResult & { _usage?: { model: string; inputTokens: number; outputTokens: number } })._usage,
     };
   }
-
-  const affirmativeResolved = isDubub
-    ? resolveDububShortAffirmative(request.userMessage, conversationHistory, request.locale)
-    : resolveShortAffirmativeFollowUp(request.userMessage, conversationHistory, request.locale);
-
-  const resolvedUserMessage = isDubub
-    ? affirmativeResolved
-    : resolveMembershipFollowUpIntent(affirmativeResolved, request.locale, conversationHistory);
 
   const shouldExpandMembershipPricingSearch =
     !isDubub &&
