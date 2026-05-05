@@ -5973,7 +5973,7 @@ document.addEventListener("DOMContentLoaded", function () {
         event.stopPropagation();
         const questionText = question ? question.textContent.trim() : "";
         orbs.forEach((item) => setOpen(item, false));
-        const chatIframe = document.getElementById("dububChatIframe");
+        const chatIframe = document.getElementById("dububSharedChat");
         if (chatIframe && questionText) {
           chatIframe.contentWindow.postMessage({ type: "dubub-question", text: questionText }, "*");
         }
@@ -6103,12 +6103,13 @@ document.addEventListener("DOMContentLoaded", function () {
     overflow: hidden;
     box-shadow: 0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(214,247,182,0.2);
     border: 1px solid rgba(214,247,182,0.18);
-    animation: dububPanelIn 0.38s cubic-bezier(0.16,1,0.3,1) both;
     z-index: 9001;
-    display: flex;
     flex-direction: column;
   }
-  #dubub-float-panel.open { display: flex; }
+  #dubub-float-panel.open {
+    display: flex;
+    animation: dububPanelIn 0.38s cubic-bezier(0.16,1,0.3,1) both;
+  }
   #dubub-float-slot {
     flex: 1;
     min-height: 0;
@@ -6215,32 +6216,50 @@ document.addEventListener("DOMContentLoaded", function () {
   window.addEventListener("scroll", checkVisibility, { passive: true });
   checkVisibility();
 
+  // Track whether user has ever opened the float panel
+  var floatEverOpened = false;
+
   function openPanel() {
     label.style.display = "none";
+    floatEverOpened = true;
     moveIframeTo(floatSlot);
     panel.classList.add("open");
   }
 
-  function closePanel() {
+  // Minimize: just hide the panel — iframe STAYS in floatSlot so conversation is preserved
+  function minimizePanel() {
     panel.classList.remove("open");
+  }
+
+  // Return to tablet: hide panel and move iframe back (only when scrolling back to hero)
+  function returnToTablet() {
+    panel.classList.remove("open");
+    floatEverOpened = false;
     moveIframeTo(tabletSlot);
   }
 
-  btn.addEventListener("click", openPanel);
+  btn.addEventListener("click", function() {
+    if (panel.classList.contains("open")) {
+      minimizePanel();
+    } else {
+      openPanel();
+    }
+  });
 
   label.addEventListener("click", function(e) {
     if (e.target === dismiss) { label.style.display = "none"; return; }
     openPanel();
   });
 
-  closeBtn.addEventListener("click", closePanel);
+  // × button minimizes (hides panel, keeps conversation alive in floatSlot)
+  closeBtn.addEventListener("click", minimizePanel);
 
-  // When user scrolls back to tablet, close panel and return iframe
+  // When user scrolls back up to the tablet, return iframe to tablet
   window.addEventListener("scroll", function() {
     var scrolled = window.scrollY || window.pageYOffset;
     var threshold = heroStage ? (heroStage.offsetTop + heroStage.offsetHeight * 0.55) : 500;
-    if (scrolled <= threshold && panel.classList.contains("open")) {
-      closePanel();
+    if (scrolled <= threshold && floatEverOpened) {
+      returnToTablet();
     }
   }, { passive: true });
 })();
