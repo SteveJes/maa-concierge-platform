@@ -1113,9 +1113,12 @@
     }
 
     footer {
-      padding: 46px 0;
+      padding: 32px 0 24px;
       border-top: 1px solid var(--line);
       color: rgba(255,255,255,.58);
+    }
+    section:last-of-type {
+      padding-bottom: 40px;
     }
     .footer-grid {
       display: flex;
@@ -3754,6 +3757,20 @@
     .chat-iframe-slot {
       height: 100% !important;
       min-height: unset !important;
+      position: relative;
+    }
+    #dububTabletSlot.chat-in-bubble::after {
+      content: "💬 Chat ouvert dans la bulle ↓";
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(214,247,182,0.45);
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      pointer-events: none;
     }
 
     /* keep the hidden-note rule from the old block */
@@ -4869,9 +4886,9 @@
 <div>
 <label for="budget">Budget / niveau prévu</label>
 <select id="budget" name="budget">
-<option>Croissance — à partir de 1 290 $/mois</option>
-<option>Essentiel — à partir de 599 $/mois</option>
-<option>Prestige — à partir de 2 590 $/mois</option>
+<option>Croissance — à partir de 1 790 $/mois</option>
+<option>Essentiel — à partir de 790 $/mois</option>
+<option>Prestige — à partir de 3 900 $/mois</option>
 <option>À discuter</option>
 </select>
 </div>
@@ -5977,7 +5994,6 @@ document.addEventListener("DOMContentLoaded", function () {
         if (chatIframe && questionText) {
           chatIframe.contentWindow.postMessage({ type: "dubub-question", text: questionText }, "*");
         }
-        scrollToChat();
       });
     }
   });
@@ -6193,7 +6209,10 @@ document.addEventListener("DOMContentLoaded", function () {
   function moveIframeTo(container) {
     if (chatIframe.parentNode !== container) {
       container.appendChild(chatIframe);
+      void chatIframe.offsetHeight; // force repaint after DOM move
     }
+    // Show placeholder in tablet when chat is in float panel
+    tabletSlot.classList.toggle("chat-in-bubble", container !== tabletSlot);
   }
 
   // Start in tablet
