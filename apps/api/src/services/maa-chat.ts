@@ -581,7 +581,7 @@ export async function answerMaaChat(
     );
     return {
       assistantMessage: openAiResult.assistantMessage,
-      followUpMode: "clarify", // force — prevents resolveBookingFollowUp from firing again
+      followUpMode: openAiResult.followUpMode === "done" ? "done" : "clarify",
       citations: [],
       retrieval: { query: request.userMessage, chunkCount: 0, resultCount: 0 },
       usage: (openAiResult as typeof openAiResult & { _usage?: { model: string; inputTokens: number; outputTokens: number } })._usage,

@@ -1312,6 +1312,33 @@ export function createServer() {
         : result.followUpMode;
     let responseCitations = result.citations;
 
+    // DUBUB chat lead capture: when AI signals "done" (collected company + email), fire lead email
+    if (tenantId === "dubub" && responseFollowUpMode === "done") {
+      const allMsgText = [
+        ...(conversationHistory ?? []).map((m) => m.content),
+        trimmedMessage,
+        result.assistantMessage,
+      ].join(" ");
+      const emailMatch = allMsgText.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
+      const dububTenant = getTenant("dubub");
+      const dububNotifyEmail = dububTenant?.notifyEmail || process.env.LEAD_NOTIFY_EMAIL || "";
+      if (dububNotifyEmail && emailMatch) {
+        setImmediate(() => {
+          sendLeadNotificationEmail({
+            name: userName ?? null,
+            phone: "",
+            email: emailMatch[0],
+            preferredTime: null,
+            locale: locale ?? "fr-CA",
+            questionSummary: "Demande de démo via chat DUBUB",
+            conversationId: conversationId ?? null,
+            tenantName: dububTenant?.name ?? "DUBUB",
+            notifyEmail: dububNotifyEmail,
+          });
+        });
+      }
+    }
+
     const persistence = {
       enabled: isDryRunPersistence ? true : isChatPersistenceConfigured(),
       saved: false,
