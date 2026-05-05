@@ -1037,9 +1037,23 @@ export function createServer() {
       const name = handoff.customerName;
       const isFr = !handoff.locale.startsWith("en");
 
-      // Build a topic-aware opening so Sophie sounds genuinely briefed, not generic
+      // Build a topic-aware opening — tenant-specific so DUBUB never gets MAA club topics
       const detectInboundTopic = (msg: string): { fr: string; en: string } => {
         const m = msg.toLowerCase();
+        if (vapiTenantId === "dubub") {
+          if (m.includes("tarif") || m.includes("prix") || m.includes("plan") || m.includes("cost") || m.includes("price") || m.includes("pricing"))
+            return { fr: "nos plans et tarifs", en: "our plans and pricing" };
+          if (m.includes("demo") || m.includes("démo") || m.includes("démonstration") || m.includes("demonstration"))
+            return { fr: "une démo de notre plateforme", en: "a platform demo" };
+          if (m.includes("fonctionn") || m.includes("concierge ia") || m.includes("how it works") || m.includes("comment ça"))
+            return { fr: "le fonctionnement de notre solution", en: "how our solution works" };
+          if (m.includes("intégr") || m.includes("délai") || m.includes("onboarding") || m.includes("integration") || m.includes("timeline"))
+            return { fr: "le délai d'intégration", en: "the onboarding timeline" };
+          if (m.includes("visite") || m.includes("rendez-vous") || m.includes("rencontrer") || m.includes("meeting"))
+            return { fr: "une rencontre avec notre équipe", en: "a meeting with our team" };
+          return { fr: "", en: "" };
+        }
+        // MAA — original topic detection
         if (m.includes("tarif") || m.includes("prix") || m.includes("abonnement") || m.includes("cost") || m.includes("price") || m.includes("membership"))
           return { fr: "nos tarifs et abonnements", en: "our membership pricing" };
         if (m.includes("piscine") || m.includes("pool") || m.includes("nage"))

@@ -1594,7 +1594,7 @@ export function ChatShell({
             padding: "18px 16px",
             borderRadius: 18,
             background: "linear-gradient(160deg, #111116 0%, #1a1a2a 100%)",
-            border: "1px solid rgba(201,168,76,0.25)",
+            border: `1px solid rgba(var(--accent-rgb),0.25)`,
             boxShadow: "0 4px 24px rgba(0,0,0,0.18)",
           }}
         >
@@ -1647,9 +1647,10 @@ export function ChatShell({
                   borderRadius: 20,
                   border: "none",
                   background: isRegisteringInbound || !callbackPhone.trim() || !callbackConsent
-                    ? "rgba(201,168,76,0.3)"
+                    ? `rgba(var(--accent-rgb),0.3)`
                     : "var(--accent-gradient)",
-                  color: "#111116",
+                  color: "#fff",
+                  textShadow: "0 1px 3px rgba(0,0,0,0.35)",
                   fontWeight: 700,
                   fontSize: 13,
                   cursor: isRegisteringInbound || !callbackPhone.trim() || !callbackConsent ? "default" : "pointer",
@@ -1681,7 +1682,7 @@ export function ChatShell({
             padding: "20px 18px",
             borderRadius: 18,
             background: "linear-gradient(160deg, #111116 0%, #1a1a2a 100%)",
-            border: "1px solid rgba(201,168,76,0.35)",
+            border: `1px solid rgba(var(--accent-rgb),0.35)`,
             boxShadow: "0 4px 24px rgba(0,0,0,0.18)",
             textAlign: "center",
           }}
@@ -1689,7 +1690,7 @@ export function ChatShell({
           <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 4 }}>
             {locale === "fr-CA" ? `${conciergeName} est prête à vous recevoir` : `${conciergeName} is ready for your call`}
           </div>
-          <div style={{ fontSize: 11, color: "rgba(201,168,76,0.7)", marginBottom: 14, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+          <div style={{ fontSize: 11, color: `rgba(var(--accent-rgb),0.85)`, marginBottom: 14, letterSpacing: "0.06em", textTransform: "uppercase" }}>
             {locale === "fr-CA" ? "Elle connaît déjà votre demande" : "She already knows your request"}
           </div>
           <a
@@ -1697,7 +1698,8 @@ export function ChatShell({
             style={{
               display: "block",
               background: "var(--accent-gradient)",
-              color: "#111116",
+              color: "#fff",
+              textShadow: "0 1px 4px rgba(0,0,0,0.4)",
               fontWeight: 800,
               fontSize: 22,
               padding: "14px 24px",
