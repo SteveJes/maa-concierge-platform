@@ -56,10 +56,13 @@ app.listen({ port, host }).then(() => {
       });
       app.log.info({ tenantCode: row.code }, "Tenant loaded from NocoDB into registry");
     }
-    // Patch known inbound phones that predate the vapi_inbound_phone NocoDB column
+    // Patch DUBUB fields that may be missing from NocoDB (env vars take precedence when set)
     const dubub = getTenant("dubub");
     if (dubub && !dubub.inboundPhoneNumber) {
       dubub.inboundPhoneNumber = process.env.DUBUB_INBOUND_PHONE ?? "+14386075588";
+    }
+    if (dubub && !dubub.vapiAssistantId && process.env.VAPI_DUBUB_ASSISTANT_ID) {
+      dubub.vapiAssistantId = process.env.VAPI_DUBUB_ASSISTANT_ID;
     }
   }).catch((err) => {
     app.log.warn({ err }, "Failed to load tenants from NocoDB on startup (non-fatal)");

@@ -1018,6 +1018,7 @@ export function createServer() {
     const callerE164 = normalizePhoneE164(rawCallerNumber);
 
     const assistantId = vapiTenant?.vapiAssistantId
+      ?? (vapiTenantId === "dubub" ? toNullableTrimmedString(process.env.VAPI_DUBUB_ASSISTANT_ID) : null)
       ?? toNullableTrimmedString(process.env.VAPI_INBOUND_ASSISTANT_ID)
       ?? toNullableTrimmedString(process.env.VAPI_ASSISTANT_ID);
 
@@ -1078,8 +1079,8 @@ export function createServer() {
       const topic = detectInboundTopic(handoff.lastUserMessage + " " + handoff.handoffSummary);
       const hasTopic = topic.fr.length > 0;
 
-      const agentName = vapiTenant?.id === "dubub" ? "SophIA" : "Sophie";
-      const orgName = vapiTenant?.id === "dubub" ? "DUBUB" : "Club M.A.A.";
+      const agentName = vapiTenantId === "dubub" ? "SophIA" : "Sophie";
+      const orgName = vapiTenantId === "dubub" ? "DUBUB" : "Club M.A.A.";
 
       let firstMessage: string;
       if (isFr) {
@@ -1127,8 +1128,8 @@ export function createServer() {
     }
 
     // No match — cold greeting, tenant-aware
-    const coldAgentName = vapiTenant?.id === "dubub" ? "SophIA" : "Sophie";
-    const coldOrgName = vapiTenant?.id === "dubub" ? "DUBUB" : "Club M.A.A.";
+    const coldAgentName = vapiTenantId === "dubub" ? "SophIA" : "Sophie";
+    const coldOrgName = vapiTenantId === "dubub" ? "DUBUB" : "Club M.A.A.";
     const coldFirstMessage = `Bonjour. Ici ${coldAgentName}, de ${coldOrgName}. Comment puis-je vous aider ?`;
 
     request.log.info({ callId, matched: false, callerKnown: !!callerE164 }, "VAPI assistant-request: no match, cold greeting");
