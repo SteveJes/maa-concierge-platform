@@ -4592,7 +4592,14 @@
 </div>
 <div class="dubub-screen-body">
 <div class="dubub-chat-slot" id="dubub-chat-slot" style="width:100%;height:100%;padding:0;border:none;background:none;box-shadow:none;border-radius:0;">
-<div class="chat-iframe-slot" id="dububTabletSlot" style="width:100%;height:100%;min-height:unset;"></div>
+<div class="chat-iframe-slot" id="dububTabletSlot" style="width:100%;height:100%;min-height:unset;">
+<iframe
+  id="dububSharedChat"
+  src="https://clients.dubub.com/chat/dubub"
+  title="SophIA — Concierge IA DUBUB"
+  allow="microphone; clipboard-write"
+></iframe>
+</div>
 </div>
 </div>
 <div class="dubub-screen-bottom">
@@ -6007,15 +6014,6 @@ document.addEventListener("DOMContentLoaded", function () {
 </script>
 
 <!-- DUBUB Floating Chat Bubble -->
-<!-- Single shared SophIA iframe — moved between tablet and float panel -->
-<iframe
-  id="dububSharedChat"
-  src="https://clients.dubub.com/chat/dubub"
-  title="SophIA — Concierge IA DUBUB"
-  allow="microphone; clipboard-write"
-  style="display:none;"
-></iframe>
-
 <div id="dubub-float-bubble" aria-label="Ouvrir SophIA — Concierge IA DUBUB">
   <div id="dubub-float-panel">
     <button id="dubub-float-close" aria-label="Fermer le chat">×</button>
@@ -6134,6 +6132,8 @@ document.addEventListener("DOMContentLoaded", function () {
   #dubub-float-slot iframe,
   #dububTabletSlot iframe,
   #dububSharedChat {
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
     border: none;
@@ -6203,20 +6203,24 @@ document.addEventListener("DOMContentLoaded", function () {
   var floatSlot  = document.getElementById("dubub-float-slot");
   var chatIframe = document.getElementById("dububSharedChat");
 
-  // Shared iframe — move between tablet and float panel (no reload, conversation preserved)
-  chatIframe.style.cssText = "width:100%;height:100%;border:none;display:block;background:#040404;";
-
-  function moveIframeTo(container) {
-    if (chatIframe.parentNode !== container) {
-      container.appendChild(chatIframe);
-      void chatIframe.offsetHeight; // force repaint after DOM move
-    }
-    // Show placeholder in tablet when chat is in float panel
-    tabletSlot.classList.toggle("chat-in-bubble", container !== tabletSlot);
+  // iframe starts inside #dububTabletSlot (in the HTML already)
+  // Apply inline style for absolute fill — works in both tablet and float panel
+  if (chatIframe) {
+    chatIframe.style.cssText = "position:absolute;inset:0;width:100%;height:100%;border:none;display:block;background:#040404;";
   }
 
-  // Start in tablet
-  moveIframeTo(tabletSlot);
+  // ONE-WAY move: tablet → float panel. Never moved back automatically.
+  // This preserves the conversation without triggering iframe reload.
+  var movedToFloat = false;
+
+  function moveToFloat() {
+    if (!movedToFloat && chatIframe) {
+      floatSlot.appendChild(chatIframe);
+      void chatIframe.offsetHeight;
+      movedToFloat = true;
+      tabletSlot.classList.add("chat-in-bubble");
+    }
+  }
 
   // Show bubble once user scrolls past the hero tablet
   var heroStage = document.getElementById("heroStage");
@@ -6235,26 +6239,14 @@ document.addEventListener("DOMContentLoaded", function () {
   window.addEventListener("scroll", checkVisibility, { passive: true });
   checkVisibility();
 
-  // Track whether user has ever opened the float panel
-  var floatEverOpened = false;
-
   function openPanel() {
     label.style.display = "none";
-    floatEverOpened = true;
-    moveIframeTo(floatSlot);
+    moveToFloat();
     panel.classList.add("open");
   }
 
-  // Minimize: just hide the panel — iframe STAYS in floatSlot so conversation is preserved
   function minimizePanel() {
     panel.classList.remove("open");
-  }
-
-  // Return to tablet: hide panel and move iframe back (only when scrolling back to hero)
-  function returnToTablet() {
-    panel.classList.remove("open");
-    floatEverOpened = false;
-    moveIframeTo(tabletSlot);
   }
 
   btn.addEventListener("click", function() {
@@ -6270,17 +6262,7 @@ document.addEventListener("DOMContentLoaded", function () {
     openPanel();
   });
 
-  // × button minimizes (hides panel, keeps conversation alive in floatSlot)
   closeBtn.addEventListener("click", minimizePanel);
-
-  // When user scrolls back up to the tablet, return iframe to tablet
-  window.addEventListener("scroll", function() {
-    var scrolled = window.scrollY || window.pageYOffset;
-    var threshold = heroStage ? (heroStage.offsetTop + heroStage.offsetHeight * 0.55) : 500;
-    if (scrolled <= threshold && floatEverOpened) {
-      returnToTablet();
-    }
-  }, { passive: true });
 })();
 </script>
 
