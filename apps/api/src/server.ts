@@ -680,6 +680,7 @@ export function createServer() {
       notifyEmail: typeof body.notifyEmail === "string" ? body.notifyEmail : "",
       vapiAssistantId: typeof body.vapiAssistantId === "string" && body.vapiAssistantId ? body.vapiAssistantId : null,
       vapiPhoneNumberId: typeof body.vapiPhoneNumberId === "string" && body.vapiPhoneNumberId ? body.vapiPhoneNumberId : null,
+      inboundPhoneNumber: typeof body.inboundPhoneNumber === "string" && body.inboundPhoneNumber ? body.inboundPhoneNumber : null,
       openAiModel: typeof body.openAiModel === "string" ? body.openAiModel : "gpt-4o",
       monthlyPriceCad: monthlyPrice,
       addons: Array.isArray(body.addons) ? (body.addons as string[]) : [],
@@ -706,6 +707,7 @@ export function createServer() {
         support_email: clientEmail || null,
         vapi_assistant_id: typeof body.vapiAssistantId === "string" && body.vapiAssistantId ? body.vapiAssistantId : null,
         vapi_phone_number_id: typeof body.vapiPhoneNumberId === "string" && body.vapiPhoneNumberId ? body.vapiPhoneNumberId : null,
+        vapi_inbound_phone: typeof body.inboundPhoneNumber === "string" && body.inboundPhoneNumber ? body.inboundPhoneNumber : null,
       });
       nocoTenantUuid = tenantUuid;
       request.log.info({ tenantId: id, uuid: tenantUuid }, "NocoDB tenant row created");
@@ -953,8 +955,10 @@ export function createServer() {
       matchedCallId: null,
     });
 
-    // Fall back to VAPI_PHONE_NUMBER if dedicated inbound number not set
-    const inboundNumber = toNullableTrimmedString(process.env.VAPI_INBOUND_PHONE_NUMBER)
+    // Use tenant-specific inbound phone if available, fall back to env vars (MAA default)
+    const tenantForHandoff = getTenant(tenantId);
+    const inboundNumber = tenantForHandoff?.inboundPhoneNumber
+      ?? toNullableTrimmedString(process.env.VAPI_INBOUND_PHONE_NUMBER)
       ?? toNullableTrimmedString(process.env.VAPI_PHONE_NUMBER);
     request.log.info({ tenantId, matched: false, handoffSource: "web_inbound", hasContext: !!lastUserMessage }, "inbound-handoff registered");
 
@@ -1001,11 +1005,18 @@ export function createServer() {
       return reply.code(200).send({});
     }
 
+    // Tenant is identified via ?tenantId= query param set in VAPI dashboard server URL.
+    // E.g. https://api.dubub.com/v1/vapi/server?tenantId=dubub
+    // Defaults to "maa" for backward compatibility.
+    const vapiTenantId = ((request.query as Record<string, string | undefined>).tenantId ?? "maa").toLowerCase();
+    const vapiTenant = getTenant(vapiTenantId);
+
     const rawCallerNumber = body.message?.call?.customer?.number ?? null;
     const callId = body.message?.call?.id ?? null;
     const callerE164 = normalizePhoneE164(rawCallerNumber);
 
-    const assistantId = toNullableTrimmedString(process.env.VAPI_INBOUND_ASSISTANT_ID)
+    const assistantId = vapiTenant?.vapiAssistantId
+      ?? toNullableTrimmedString(process.env.VAPI_INBOUND_ASSISTANT_ID)
       ?? toNullableTrimmedString(process.env.VAPI_ASSISTANT_ID);
 
     if (!assistantId) {
@@ -1051,25 +1062,28 @@ export function createServer() {
       const topic = detectInboundTopic(handoff.lastUserMessage + " " + handoff.handoffSummary);
       const hasTopic = topic.fr.length > 0;
 
+      const agentName = vapiTenant?.id === "dubub" ? "SophIA" : "Sophie";
+      const orgName = vapiTenant?.id === "dubub" ? "DUBUB" : "Club M.A.A.";
+
       let firstMessage: string;
       if (isFr) {
         if (name && hasTopic)
-          firstMessage = `Bonjour ${name}. Ici Sophie, du Club M.A.A. Je vois que vous aviez une question sur ${topic.fr}. Je suis là pour vous aider.`;
+          firstMessage = `Bonjour ${name}. Ici ${agentName}, de ${orgName}. Je vois que vous aviez une question sur ${topic.fr}. Je suis là pour vous aider.`;
         else if (name)
-          firstMessage = `Bonjour ${name}. Ici Sophie, du Club M.A.A. J'ai votre demande devant moi. Je vous écoute.`;
+          firstMessage = `Bonjour ${name}. Ici ${agentName}, de ${orgName}. J'ai votre demande devant moi. Je vous écoute.`;
         else if (hasTopic)
-          firstMessage = `Bonjour. Ici Sophie, du Club M.A.A. Je vois que vous vous intéressiez à ${topic.fr}. Je vous écoute.`;
+          firstMessage = `Bonjour. Ici ${agentName}, de ${orgName}. Je vois que vous vous intéressiez à ${topic.fr}. Je vous écoute.`;
         else
-          firstMessage = `Bonjour. Ici Sophie, du Club M.A.A. J'ai votre demande devant moi. Je vous écoute.`;
+          firstMessage = `Bonjour. Ici ${agentName}, de ${orgName}. J'ai votre demande devant moi. Je vous écoute.`;
       } else {
         if (name && hasTopic)
-          firstMessage = `Hello ${name}. This is Sophie at Club M.A.A. I see you had a question about ${topic.en}. I'm here to help.`;
+          firstMessage = `Hello ${name}. This is ${agentName} at ${orgName}. I see you had a question about ${topic.en}. I'm here to help.`;
         else if (name)
-          firstMessage = `Hello ${name}. This is Sophie at Club M.A.A. I have your request right here. Go ahead.`;
+          firstMessage = `Hello ${name}. This is ${agentName} at ${orgName}. I have your request right here. Go ahead.`;
         else if (hasTopic)
-          firstMessage = `Hello. This is Sophie at Club M.A.A. I see you were asking about ${topic.en}. How can I help?`;
+          firstMessage = `Hello. This is ${agentName} at ${orgName}. I see you were asking about ${topic.en}. How can I help?`;
         else
-          firstMessage = `Hello. This is Sophie at Club M.A.A. I have your request right here. Go ahead.`;
+          firstMessage = `Hello. This is ${agentName} at ${orgName}. I have your request right here. Go ahead.`;
       }
 
       request.log.info({
@@ -1096,11 +1110,10 @@ export function createServer() {
       });
     }
 
-    // No match — Sophie answers cold, standard greeting
-    const isFr = true; // default to French, Sophie detects language from caller
-    const coldFirstMessage = isFr
-      ? "Bonjour. Ici Sophie, du Club M.A.A. Comment puis-je vous aider ?"
-      : "Hello. This is Sophie at Club M.A.A. How can I help you today?";
+    // No match — cold greeting, tenant-aware
+    const coldAgentName = vapiTenant?.id === "dubub" ? "SophIA" : "Sophie";
+    const coldOrgName = vapiTenant?.id === "dubub" ? "DUBUB" : "Club M.A.A.";
+    const coldFirstMessage = `Bonjour. Ici ${coldAgentName}, de ${coldOrgName}. Comment puis-je vous aider ?`;
 
     request.log.info({ callId, matched: false, callerKnown: !!callerE164 }, "VAPI assistant-request: no match, cold greeting");
 
@@ -1474,10 +1487,17 @@ export function createServer() {
         }
       }
 
-      responseAssistantMessage = buildBookingUnavailableMessage(
-        locale,
-        booking.allowCallbackFallback,
-      );
+      // For DUBUB: no Calendly configured — start conversational lead capture instead
+      if (tenantId === "dubub") {
+        responseAssistantMessage = isFrenchLocale(locale)
+          ? "Avec plaisir ! Pour vous réserver un créneau de démo, j'ai besoin de quelques informations. Quel est votre prénom ?"
+          : "Absolutely! To get your demo scheduled, I just need a couple of details. What's your first name?";
+      } else {
+        responseAssistantMessage = buildBookingUnavailableMessage(
+          locale,
+          booking.allowCallbackFallback,
+        );
+      }
       responseCitations = [];
     };
 
@@ -1857,10 +1877,11 @@ export function createServer() {
       dryRunPersistence?: boolean;
     };
 
-    if (tenantId !== "maa") {
+    const callNowTenant = getTenant(tenantId);
+    if (!callNowTenant) {
       return reply.code(404).send({
-        error: "tenant_not_supported",
-        message: `Unsupported tenant: ${tenantId}`,
+        error: "tenant_not_found",
+        message: `Tenant not found: ${tenantId}`,
       });
     }
 
@@ -1908,10 +1929,10 @@ export function createServer() {
 
     const isDryRun = body.dryRunPersistence === true;
 
-    const assistantId = toNullableTrimmedString(process.env.VAPI_ASSISTANT_ID);
-    const phoneNumberId = toNullableTrimmedString(
-      process.env.VAPI_OUTBOUND_PHONE_NUMBER_ID,
-    );
+    const assistantId = callNowTenant.vapiAssistantId
+      ?? toNullableTrimmedString(process.env.VAPI_ASSISTANT_ID);
+    const phoneNumberId = callNowTenant.vapiPhoneNumberId
+      ?? toNullableTrimmedString(process.env.VAPI_OUTBOUND_PHONE_NUMBER_ID);
     const apiKey = toNullableTrimmedString(process.env.VAPI_API_KEY);
 
     const resolvedQuestionSummary =
@@ -1948,18 +1969,21 @@ export function createServer() {
       return { fr: "votre question", en: "your question" };
     };
 
+    const callNowAgentName = callNowTenant.id === "dubub" ? "SophIA" : "Sophie";
+    const callNowOrgName = callNowTenant.id === "dubub" ? "DUBUB" : "Club M.A.A.";
+
     const buildOpeningLine = (): string => {
       const cleanedName = cleanCustomerName(name);
       const topic = detectHandoffTopic(questionSummary);
       const isEn = !isFrenchLocale(locale);
       if (isEn) {
         return cleanedName
-          ? `Hello ${cleanedName}, this is Sophie from Club M.A.A. You had a question about ${topic.en}?`
-          : `Hello, this is Sophie from Club M.A.A. You had a question about ${topic.en}?`;
+          ? `Hello ${cleanedName}, this is ${callNowAgentName} from ${callNowOrgName}. You had a question about ${topic.en}?`
+          : `Hello, this is ${callNowAgentName} from ${callNowOrgName}. You had a question about ${topic.en}?`;
       }
       return cleanedName
-        ? `Bonjour ${cleanedName}, ici Sophie du Club M.A.A. Vous aviez une question sur ${topic.fr}?`
-        : `Bonjour, ici Sophie du Club M.A.A. Vous aviez une question sur ${topic.fr}?`;
+        ? `Bonjour ${cleanedName}, ici ${callNowAgentName} de ${callNowOrgName}. Vous aviez une question sur ${topic.fr}?`
+        : `Bonjour, ici ${callNowAgentName} de ${callNowOrgName}. Vous aviez une question sur ${topic.fr}?`;
     };
 
     const BANNED_SUMMARY_PHRASES = [
@@ -1973,16 +1997,19 @@ export function createServer() {
 
     const summarizeFromMessage = (message: string | null): string => {
       const m = (message ?? "").toLowerCase();
-      if (m.includes("tarif") || m.includes("prix") || m.includes("abonnement"))
-        return "La personne veut connaître les tarifs d'abonnement du Club Sportif MAA.";
+      const org = callNowTenant.name;
+      if (m.includes("tarif") || m.includes("prix") || m.includes("abonnement") || m.includes("plan"))
+        return `La personne veut connaître les tarifs de ${org}.`;
+      if (m.includes("demo") || m.includes("démo") || m.includes("démonstration"))
+        return `La personne souhaite une démonstration de ${org}.`;
       if (m.includes("piscine") || m.includes("pool"))
-        return "La personne veut savoir si le Club Sportif MAA possède une piscine.";
+        return `La personne veut savoir si ${org} possède une piscine.`;
       if (m.includes("cours") || m.includes("classe") || m.includes("yoga") || m.includes("pilates"))
-        return "La personne veut obtenir de l'information sur les cours du Club Sportif MAA.";
+        return `La personne veut de l'information sur les cours de ${org}.`;
       if (m.includes("horaire") || m.includes("heure") || m.includes("ouvert"))
-        return "La personne veut connaître les horaires du Club Sportif MAA.";
+        return `La personne veut connaître les horaires de ${org}.`;
       if (m.includes("spa") || m.includes("sauna"))
-        return "La personne veut de l'information sur le spa du Club Sportif MAA.";
+        return `La personne veut de l'information sur le spa de ${org}.`;
       if (m.includes("personne") || m.includes("humain") || m.includes("quelqu'un"))
         return "La personne souhaite parler avec quelqu'un de l'équipe.";
       if (message) return `La personne a demandé: ${message}`;

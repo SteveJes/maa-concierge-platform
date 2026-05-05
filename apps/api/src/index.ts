@@ -45,6 +45,7 @@ app.listen({ port, host }).then(() => {
         notifyEmail: row.support_email ?? "",
         vapiAssistantId: row.vapi_assistant_id ?? null,
         vapiPhoneNumberId: row.vapi_phone_number_id ?? null,
+        inboundPhoneNumber: row.vapi_inbound_phone ?? null,
         openAiModel: "gpt-4o",
         monthlyPriceCad: 0,
         addons: [],
@@ -54,6 +55,11 @@ app.listen({ port, host }).then(() => {
         notes: null,
       });
       app.log.info({ tenantCode: row.code }, "Tenant loaded from NocoDB into registry");
+    }
+    // Patch known inbound phones that predate the vapi_inbound_phone NocoDB column
+    const dubub = getTenant("dubub");
+    if (dubub && !dubub.inboundPhoneNumber) {
+      dubub.inboundPhoneNumber = process.env.DUBUB_INBOUND_PHONE ?? "+14386075588";
     }
   }).catch((err) => {
     app.log.warn({ err }, "Failed to load tenants from NocoDB on startup (non-fatal)");

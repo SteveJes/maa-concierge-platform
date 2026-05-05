@@ -12,6 +12,8 @@ export interface TenantConfig {
   notifyEmail: string;
   vapiAssistantId: string | null;
   vapiPhoneNumberId: string | null;
+  /** Human-readable E.164 inbound phone number shown to users (e.g. "+14385551234") */
+  inboundPhoneNumber: string | null;
   openAiModel: string;
   monthlyPriceCad: number;
   addons: string[];
@@ -31,6 +33,7 @@ export const TENANT_REGISTRY: TenantConfig[] = [
     notifyEmail: "info@clubsportifmaa.com",
     vapiAssistantId: process.env.VAPI_ASSISTANT_ID ?? "ec272999-2782-4e57-9068-55a3bacd4915",
     vapiPhoneNumberId: process.env.VAPI_OUTBOUND_PHONE_NUMBER_ID ?? null,
+    inboundPhoneNumber: process.env.VAPI_INBOUND_PHONE_NUMBER ?? process.env.VAPI_PHONE_NUMBER ?? null,
     openAiModel: "gpt-4o-mini",
     monthlyPriceCad: 955,
     addons: ["voice-concierge", "bilingual", "lead-capture", "analytics"],

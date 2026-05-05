@@ -117,8 +117,9 @@ const KNOWN_CONFIGS: Record<string, DemoConfig> = {
   "dubub": {
     tenantId: "dubub", name: "DUBUB", websiteUrl: "https://dubub.ca/",
     conciergeName: "SophIA", clientName: "DUBUB",
-    accentColor: "#6366f1", accentGradient: "linear-gradient(135deg, #6366f1, #4338ca)", accentRgb: "99,102,241",
-    bubbleGradient: "linear-gradient(135deg, #818cf8 0%, #4338ca 100%)", bubbleGlow: "rgba(99,102,241,0.55)",
+    // Deep violet-indigo — trust + innovation, ideal for B2B SaaS targeting decision-makers
+    accentColor: "#5b21b6", accentGradient: "linear-gradient(135deg, #7c3aed, #4c1d95)", accentRgb: "91,33,182",
+    bubbleGradient: "linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%)", bubbleGlow: "rgba(124,58,237,0.6)",
     logoUrl: null,
     nudgesFr: DUBUB_NUDGES_FR, nudgesEn: DUBUB_NUDGES_EN,
     suggestedQuestionsFr: DUBUB_SUGGESTED_FR, suggestedQuestionsEn: DUBUB_SUGGESTED_EN,
