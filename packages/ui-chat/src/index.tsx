@@ -321,6 +321,8 @@ export function ChatShell({
   accentColor = "#c9a84c",
   accentGradient = "linear-gradient(135deg, #c9a84c, #a07830)",
   accentRgb = "201,168,76",
+  accentTextColor = "#fff",
+  darkMode = false,
   mode = "inline",
   tenantId = "maa",
   conciergeName = "Sophie",
@@ -344,6 +346,8 @@ export function ChatShell({
   accentColor?: string;
   accentGradient?: string;
   accentRgb?: string;
+  accentTextColor?: string;
+  darkMode?: boolean;
   mode?: "inline" | "floating";
   tenantId?: string;
   conciergeName?: string;
@@ -1007,7 +1011,8 @@ export function ChatShell({
         "--accent": accentColor,
         "--accent-gradient": accentGradient,
         "--accent-rgb": accentRgb,
-        background: "#f7f8f9",
+        "--accent-text": accentTextColor,
+        background: darkMode ? "#0a0f0a" : "#f7f8f9",
         borderRadius: 20,
         overflow: "hidden",
         overflowX: "hidden",
@@ -1057,7 +1062,7 @@ export function ChatShell({
                 style={{ width: 34, height: 34, objectFit: "contain" }}
               />
             ) : (
-              <div style={{ width: 34, height: 34, borderRadius: 8, background: "var(--accent-gradient)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 16 }}>
+              <div style={{ width: 34, height: 34, borderRadius: 8, background: "var(--accent-gradient)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent-text)", fontWeight: 900, fontSize: 16 }}>
                 {clientName.charAt(0)}
               </div>
             )}
@@ -1110,11 +1115,11 @@ export function ChatShell({
       <div
         style={{
           padding: "5px 16px 5px",
-          background: "#f7f8f9",
-          color: "#8a90a0",
+          background: darkMode ? "#0a0f0a" : "#f7f8f9",
+          color: darkMode ? "rgba(255,255,255,0.3)" : "#8a90a0",
           fontSize: 10,
           letterSpacing: "0.08em",
-          borderTop: "1px solid #eaecf0",
+          borderTop: darkMode ? "1px solid rgba(255,255,255,0.05)" : "1px solid #eaecf0",
         }}
       >
         {locale === "fr-CA"
@@ -1126,7 +1131,7 @@ export function ChatShell({
       <div
         data-msg-count={messages.length}
         style={{
-          background: "#f7f8f9",
+          background: darkMode ? "#0a0f0a" : "#f7f8f9",
           padding: 16,
           flex: 1,
           minHeight: 0,
@@ -1156,8 +1161,8 @@ export function ChatShell({
                     padding: "10px 16px",
                     borderRadius: "20px 20px 4px 20px",
                     background: "var(--accent-gradient)",
-                    color: "#fff",
-                    textShadow: "0 1px 3px rgba(0,0,0,0.25)",
+                    color: "var(--accent-text)",
+                    textShadow: accentTextColor === "#fff" ? "0 1px 3px rgba(0,0,0,0.25)" : "none",
                     fontSize: 14,
                     fontWeight: 500,
                     lineHeight: 1.4,
@@ -1226,7 +1231,7 @@ export function ChatShell({
                           }}
                           style={{
                             background: "none", border: "none", padding: 0,
-                            cursor: "pointer", fontSize: 12, color: "#a07830",
+                            cursor: "pointer", fontSize: 12, color: "var(--accent)",
                             fontWeight: 600, textDecoration: "underline", textUnderlineOffset: 2,
                           }}
                         >
@@ -1271,7 +1276,7 @@ export function ChatShell({
                     {logoUrl ? (
                       <img src={logoUrl} alt={clientName} style={{ width: 20, height: 20, objectFit: "contain" }} />
                     ) : (
-                      <span style={{ color: "#fff", fontWeight: 800, fontSize: 11 }}>{clientName.charAt(0)}</span>
+                      <span style={{ color: "var(--accent-text)", fontWeight: 800, fontSize: 11 }}>{clientName.charAt(0)}</span>
                     )}
                   </div>
                   <div
@@ -1279,10 +1284,10 @@ export function ChatShell({
                       maxWidth: "80%",
                       padding: "10px 14px",
                       borderRadius: "4px 20px 20px 20px",
-                      background: "#ffffff",
-                      border: "1px solid #e8eaed",
-                      boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
-                      color: "#1a1a1a",
+                      background: darkMode ? "#141a14" : "#ffffff",
+                      border: darkMode ? "1px solid rgba(255,255,255,0.07)" : "1px solid #e8eaed",
+                      boxShadow: darkMode ? "none" : "0 1px 4px rgba(0,0,0,0.08)",
+                      color: darkMode ? "#d8e8d0" : "#1a1a1a",
                       fontSize: 14,
                       lineHeight: 1.5,
                     }}
@@ -1309,7 +1314,7 @@ export function ChatShell({
                         padding: "2px 0",
                         cursor: "pointer",
                         fontSize: 12,
-                        color: "#a07830",
+                        color: "var(--accent)",
                         textDecoration: "none",
                       }}
                     >
@@ -1363,7 +1368,7 @@ export function ChatShell({
               {logoUrl ? (
                 <img src={logoUrl} alt={clientName} style={{ width: 20, height: 20, objectFit: "contain" }} />
               ) : (
-                <span style={{ color: "#fff", fontWeight: 800, fontSize: 11 }}>{clientName.charAt(0)}</span>
+                <span style={{ color: "var(--accent-text)", fontWeight: 800, fontSize: 11 }}>{clientName.charAt(0)}</span>
               )}
             </div>
             <GymLoadingIndicator locale={locale} />
@@ -1607,7 +1612,7 @@ export function ChatShell({
           </div>
           <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginBottom: 14, lineHeight: 1.5 }}>
             {locale === "fr-CA"
-              ? `Entrez votre numéro — ${conciergeName} sera briefée sur votre demande avant que vous appeliez.`
+              ? `Entrez votre numéro — ${conciergeName} connaîtra déjà votre demande dès le début de l'appel.`
               : `Enter your number — ${conciergeName} will be briefed on your request before you call.`}
           </div>
           <div style={{ display: "grid", gap: 8 }}>
@@ -1650,8 +1655,8 @@ export function ChatShell({
                   background: isRegisteringInbound || !callbackPhone.trim() || !callbackConsent
                     ? `rgba(var(--accent-rgb),0.3)`
                     : "var(--accent-gradient)",
-                  color: "#fff",
-                  textShadow: "0 1px 3px rgba(0,0,0,0.35)",
+                  color: "var(--accent-text)",
+                  textShadow: accentTextColor === "#fff" ? "0 1px 3px rgba(0,0,0,0.35)" : "none",
                   fontWeight: 700,
                   fontSize: 13,
                   cursor: isRegisteringInbound || !callbackPhone.trim() || !callbackConsent ? "default" : "pointer",
@@ -1699,8 +1704,8 @@ export function ChatShell({
             style={{
               display: "block",
               background: "var(--accent-gradient)",
-              color: "#fff",
-              textShadow: "0 1px 4px rgba(0,0,0,0.4)",
+              color: "var(--accent-text)",
+              textShadow: accentTextColor === "#fff" ? "0 1px 4px rgba(0,0,0,0.4)" : "none",
               fontWeight: 800,
               fontSize: 22,
               padding: "14px 24px",
@@ -1903,8 +1908,8 @@ export function ChatShell({
                   borderRadius: 20,
                   border: "none",
                   background: "var(--accent-gradient)",
-                  color: "#fff",
-                  textShadow: "0 1px 3px rgba(0,0,0,0.35)",
+                  color: "var(--accent-text)",
+                  textShadow: accentTextColor === "#fff" ? "0 1px 3px rgba(0,0,0,0.35)" : "none",
                   fontWeight: 700,
                   fontSize: 13,
                   cursor: isCallingNow || !callbackPhone.trim() || !callbackConsent ? "default" : "pointer",
@@ -1943,7 +1948,7 @@ export function ChatShell({
                 type="button"
                 onClick={() => void submitCallbackRequest()}
                 disabled={isSubmittingCallback || !callbackPhone.trim() || !callbackConsent}
-                style={{ padding: "10px 18px", borderRadius: 20, border: "none", background: "var(--accent-gradient)", color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.35)", fontWeight: 700, fontSize: 13, cursor: isSubmittingCallback || !callbackPhone.trim() || !callbackConsent ? "default" : "pointer", opacity: isSubmittingCallback || !callbackPhone.trim() || !callbackConsent ? 0.6 : 1 }}
+                style={{ padding: "10px 18px", borderRadius: 20, border: "none", background: "var(--accent-gradient)", color: "var(--accent-text)", textShadow: accentTextColor === "#fff" ? "0 1px 3px rgba(0,0,0,0.35)" : "none", fontWeight: 700, fontSize: 13, cursor: isSubmittingCallback || !callbackPhone.trim() || !callbackConsent ? "default" : "pointer", opacity: isSubmittingCallback || !callbackPhone.trim() || !callbackConsent ? 0.6 : 1 }}
               >
                 {isSubmittingCallback ? (locale === "fr-CA" ? "Envoi..." : "Sending...") : (locale === "fr-CA" ? "Envoyer" : "Send")}
               </button>
@@ -1976,8 +1981,8 @@ export function ChatShell({
       <div
         style={{
           padding: "12px 16px",
-          background: "#ffffff",
-          borderTop: "1px solid #e0e3e8",
+          background: darkMode ? "#0d120d" : "#ffffff",
+          borderTop: darkMode ? "1px solid rgba(255,255,255,0.06)" : "1px solid #e0e3e8",
           display: "flex",
           gap: 8,
           alignItems: "center",
@@ -2005,9 +2010,9 @@ export function ChatShell({
             flex: 1,
             padding: "12px 18px",
             borderRadius: 24,
-            border: "1px solid #e0e3e8",
-            background: "#ffffff",
-            color: "#1a1a1a",
+            border: darkMode ? "1px solid rgba(255,255,255,0.1)" : "1px solid #e0e3e8",
+            background: darkMode ? "#1a221a" : "#ffffff",
+            color: darkMode ? "#e0eeda" : "#1a1a1a",
             fontSize: 16, // 16px prevents iOS auto-zoom, better Android too
             outline: "none",
             minWidth: 0,
@@ -2032,8 +2037,8 @@ export function ChatShell({
             background: isSending
               ? "#e0e3e8"
               : "var(--accent-gradient)",
-            color: isSending ? "#aab0bc" : "#fff",
-            textShadow: isSending ? "none" : "0 1px 3px rgba(0,0,0,0.3)",
+            color: isSending ? "#aab0bc" : "var(--accent-text)",
+            textShadow: isSending ? "none" : (accentTextColor === "#fff" ? "0 1px 3px rgba(0,0,0,0.3)" : "none"),
             fontSize: 18,
             transition: "background 0.2s",
           }}

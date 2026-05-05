@@ -13,6 +13,8 @@ interface DemoConfig {
   accentColor: string;
   accentGradient: string;
   accentRgb: string;
+  accentTextColor?: string;
+  darkMode?: boolean;
   bubbleGradient: string;
   bubbleGlow: string;
   logoUrl: string | null;
@@ -117,9 +119,10 @@ const KNOWN_CONFIGS: Record<string, DemoConfig> = {
   "dubub": {
     tenantId: "dubub", name: "DUBUB", websiteUrl: "https://dubub.ca/",
     conciergeName: "SophIA", clientName: "DUBUB",
-    // Deep violet-indigo — trust + innovation, ideal for B2B SaaS targeting decision-makers
-    accentColor: "#5b21b6", accentGradient: "linear-gradient(135deg, #7c3aed, #4c1d95)", accentRgb: "91,33,182",
-    bubbleGradient: "linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%)", bubbleGlow: "rgba(124,58,237,0.6)",
+    // Daphne's brand: bright lime on near-black — matches dubub.ca landing page exactly
+    accentColor: "#b8f04a", accentGradient: "linear-gradient(135deg, #c2f55a, #8abf2e)", accentRgb: "184,240,74",
+    accentTextColor: "#0d1208", darkMode: true,
+    bubbleGradient: "linear-gradient(135deg, #c2f55a 0%, #8abf2e 100%)", bubbleGlow: "rgba(184,240,74,0.55)",
     logoUrl: null,
     nudgesFr: DUBUB_NUDGES_FR, nudgesEn: DUBUB_NUDGES_EN,
     suggestedQuestionsFr: DUBUB_SUGGESTED_FR, suggestedQuestionsEn: DUBUB_SUGGESTED_EN,
@@ -386,6 +389,8 @@ export default function DemoSlugPage() {
             accentColor={config.accentColor}
             accentGradient={config.accentGradient}
             accentRgb={config.accentRgb}
+            accentTextColor={config.accentTextColor}
+            darkMode={config.darkMode}
             logoUrl={config.logoUrl}
             nudgesFr={config.nudgesFr}
             nudgesEn={config.nudgesEn}
