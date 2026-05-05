@@ -46,8 +46,8 @@ export default function DububChatPage() {
     <>
       <style>{`
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
-        #dubub-root { position: absolute; inset: 0; display: flex; flex-direction: column; }
-        #dubub-root > section { flex: 1; min-height: 0; height: 0; }
+        #dubub-root { position: absolute; inset: 0; }
+        #dubub-root > section { position: absolute !important; inset: 0 !important; height: auto !important; border-radius: 0 !important; box-shadow: none !important; }
       `}</style>
       <div id="dubub-root">
       <ChatShell
