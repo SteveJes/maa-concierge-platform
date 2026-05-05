@@ -438,6 +438,7 @@ async function callOpenAiForAnswer(
   conversationHistory: MaaConversationHistoryTurn[],
   userName?: string,
   tenantCode?: string,
+  extraContext?: string,
 ): Promise<OpenAiJsonResponse> {
   const { apiKey, model } = getOpenAiConfig();
 
@@ -516,6 +517,7 @@ async function callOpenAiForAnswer(
             "Do not rewrite a table row into a different pricing meaning.",
             "Do not invent policies or restrictions that are not explicitly supported by the evidence.",
             "Only choose calendly, callback, or vapi if the evidence is insufficient or the user clearly wants a human handoff.",
+            ...(extraContext ? [extraContext] : []),
           ].join("\n"),
         },
       ],
@@ -571,6 +573,27 @@ export async function answerMaaChat(
 
   // DUBUB: skip RAG entirely — system prompt has all knowledge, RAG adds latency with no benefit.
   if (isDubub) {
+    // Detect post-capture state: if the assistant already confirmed "Notre équipe vous contacte",
+    // the lead is captured. Switch to consultation mode — stop pushing demo, answer freely.
+    const leadAlreadyCaptured = conversationHistory.some(
+      (m) => m.role === "assistant" && /Notre[- ]équipe vous contacte|our team will contact/i.test(m.content),
+    );
+
+    const isFr = !request.locale?.startsWith("en");
+    const postCaptureContext = leadAlreadyCaptured
+      ? isFr
+        ? "ÉTAT: Ce visiteur est un lead confirmé — la démo est déjà planifiée avec notre équipe. " +
+          "NE propose PLUS jamais de démo ou de rendez-vous dans cette conversation. " +
+          "Réponds à ses questions comme un conseiller chaleureux. " +
+          "Si pertinent, dis : 'Notre équipe vous en parlera en détail lors de votre démo.' " +
+          "Utilise followUpMode: 'clarify' pour tous les messages restants."
+        : "STATE: This visitor is a confirmed lead — the demo is already scheduled with our team. " +
+          "NEVER suggest booking a demo or meeting again in this conversation. " +
+          "Answer questions as a warm consultant. " +
+          "If relevant, say: 'Our team will walk you through that during your demo.' " +
+          "Use followUpMode: 'clarify' for all remaining messages."
+      : undefined;
+
     const openAiResult = await callOpenAiForAnswer(
       resolvedUserMessage,
       resolvedUserMessage,
@@ -579,6 +602,7 @@ export async function answerMaaChat(
       conversationHistory,
       request.userName,
       request.tenantCode,
+      postCaptureContext,
     );
     return {
       assistantMessage: openAiResult.assistantMessage,
