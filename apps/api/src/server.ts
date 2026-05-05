@@ -1082,25 +1082,32 @@ export function createServer() {
       const agentName = vapiTenantId === "dubub" ? "SophIA" : "Sophie";
       const orgName = vapiTenantId === "dubub" ? "DUBUB" : "Club M.A.A.";
 
+      const interruptFr = vapiTenantId === "dubub"
+        ? " J'ai tendance à être assez détaillée — n'hésitez surtout pas à m'interrompre à tout moment."
+        : "";
+      const interruptEn = vapiTenantId === "dubub"
+        ? " I tend to go into detail — please feel free to jump in at any point."
+        : "";
+
       let firstMessage: string;
       if (isFr) {
         if (name && hasTopic)
-          firstMessage = `Bonjour ${name}. Ici ${agentName}, de ${orgName}. Je vois que vous aviez une question sur ${topic.fr}. Je suis là pour vous aider.`;
+          firstMessage = `Bonjour ${name}. Ici ${agentName}, de ${orgName}. Je vois que vous aviez une question sur ${topic.fr}. Je suis là pour vous aider.${interruptFr}`;
         else if (name)
-          firstMessage = `Bonjour ${name}. Ici ${agentName}, de ${orgName}. J'ai votre demande devant moi. Je vous écoute.`;
+          firstMessage = `Bonjour ${name}. Ici ${agentName}, de ${orgName}. J'ai votre demande devant moi.${interruptFr}`;
         else if (hasTopic)
-          firstMessage = `Bonjour. Ici ${agentName}, de ${orgName}. Je vois que vous vous intéressiez à ${topic.fr}. Je vous écoute.`;
+          firstMessage = `Bonjour. Ici ${agentName}, de ${orgName}. Je vois que vous vous intéressiez à ${topic.fr}. Je vous écoute.${interruptFr}`;
         else
-          firstMessage = `Bonjour. Ici ${agentName}, de ${orgName}. J'ai votre demande devant moi. Je vous écoute.`;
+          firstMessage = `Bonjour. Ici ${agentName}, de ${orgName}. J'ai votre demande devant moi.${interruptFr}`;
       } else {
         if (name && hasTopic)
-          firstMessage = `Hello ${name}. This is ${agentName} at ${orgName}. I see you had a question about ${topic.en}. I'm here to help.`;
+          firstMessage = `Hello ${name}. This is ${agentName} at ${orgName}. I see you had a question about ${topic.en}. I'm here to help.${interruptEn}`;
         else if (name)
-          firstMessage = `Hello ${name}. This is ${agentName} at ${orgName}. I have your request right here. Go ahead.`;
+          firstMessage = `Hello ${name}. This is ${agentName} at ${orgName}. I have your request right here.${interruptEn}`;
         else if (hasTopic)
-          firstMessage = `Hello. This is ${agentName} at ${orgName}. I see you were asking about ${topic.en}. How can I help?`;
+          firstMessage = `Hello. This is ${agentName} at ${orgName}. I see you were asking about ${topic.en}. How can I help?${interruptEn}`;
         else
-          firstMessage = `Hello. This is ${agentName} at ${orgName}. I have your request right here. Go ahead.`;
+          firstMessage = `Hello. This is ${agentName} at ${orgName}. I have your request right here.${interruptEn}`;
       }
 
       request.log.info({
@@ -1130,7 +1137,10 @@ export function createServer() {
     // No match — cold greeting, tenant-aware
     const coldAgentName = vapiTenantId === "dubub" ? "SophIA" : "Sophie";
     const coldOrgName = vapiTenantId === "dubub" ? "DUBUB" : "Club M.A.A.";
-    const coldFirstMessage = `Bonjour. Ici ${coldAgentName}, de ${coldOrgName}. Comment puis-je vous aider ?`;
+    const coldInterrupt = vapiTenantId === "dubub"
+      ? " J'ai tendance à être assez détaillée — n'hésitez surtout pas à m'interrompre à tout moment."
+      : "";
+    const coldFirstMessage = `Bonjour. Ici ${coldAgentName}, de ${coldOrgName}. Comment puis-je vous aider ?${coldInterrupt}`;
 
     request.log.info({ callId, matched: false, callerKnown: !!callerE164 }, "VAPI assistant-request: no match, cold greeting");
 
