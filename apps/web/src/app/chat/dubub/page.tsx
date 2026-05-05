@@ -46,9 +46,10 @@ export default function DububChatPage() {
     <>
       <style>{`
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
-        body > div { height: 100%; display: flex; flex-direction: column; }
-        body > div > section { flex: 1; min-height: 0; height: 100% !important; }
+        #dubub-root { height: 100%; display: flex; flex-direction: column; }
+        #dubub-root > section { flex: 1; min-height: 0; }
       `}</style>
+      <div id="dubub-root">
       <ChatShell
         mode="inline"
         tenantId="dubub"
@@ -75,6 +76,7 @@ export default function DububChatPage() {
         tenantPhone="+14386075588"
         injectMessage={injectMessage}
       />
+      </div>
     </>
   );
 }

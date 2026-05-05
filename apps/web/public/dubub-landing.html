@@ -4574,16 +4574,8 @@
 <span aria-hidden="true"></span>
 </div>
 <div class="dubub-screen-body">
-<div class="dubub-chat-slot" id="dubub-chat-slot">
-<div class="chat-iframe-slot">
-<iframe allow="microphone; camera" loading="lazy" src="https://clients.dubub.com/chat/dubub" title="Chat DUBUB" id="dububChatIframe"></iframe>
-<div class="dubub-iframe-placeholder">
-<div class="dubub-slot-badge">Espace réservé</div>
-<h3>Votre chat DUBUB ira ici.</h3>
-<p>Quand votre vrai chat sera prêt, remplacez seulement le contenu de cette zone par votre iframe.</p>
-<div aria-hidden="true" class="dubub-slot-skeleton"><span></span><span></span><span></span></div>
-</div>
-</div>
+<div class="dubub-chat-slot" id="dubub-chat-slot" style="width:100%;height:100%;padding:0;border:none;background:none;box-shadow:none;border-radius:0;">
+<div class="chat-iframe-slot" id="dububTabletSlot" style="width:100%;height:100%;min-height:unset;"></div>
 </div>
 </div>
 <div class="dubub-screen-bottom">
@@ -5999,17 +5991,21 @@ document.addEventListener("DOMContentLoaded", function () {
 </script>
 
 <!-- DUBUB Floating Chat Bubble -->
+<!-- Single shared SophIA iframe — moved between tablet and float panel -->
+<iframe
+  id="dububSharedChat"
+  src="https://clients.dubub.com/chat/dubub"
+  title="SophIA — Concierge IA DUBUB"
+  allow="microphone; clipboard-write"
+  style="display:none;"
+></iframe>
+
 <div id="dubub-float-bubble" aria-label="Ouvrir SophIA — Concierge IA DUBUB">
   <div id="dubub-float-panel">
     <button id="dubub-float-close" aria-label="Fermer le chat">×</button>
-    <iframe
-      id="dububFloatIframe"
-      src="https://clients.dubub.com/chat/dubub"
-      title="SophIA — Concierge IA DUBUB"
-      allow="microphone; clipboard-write"
-      loading="lazy"
-    ></iframe>
+    <div id="dubub-float-slot"></div>
   </div>
+  <div id="dubub-float-label">💬 Parlez à SophIA <span id="dubub-float-dismiss">✕</span></div>
   <button id="dubub-float-btn" type="button" aria-label="Parler à SophIA">
     <span class="dubub-float-ripple"></span>
     <span class="dubub-float-ripple dubub-float-ripple-2"></span>
@@ -6017,7 +6013,6 @@ document.addEventListener("DOMContentLoaded", function () {
       <path d="M12 2C6.48 2 2 6.04 2 11c0 2.7 1.18 5.13 3.07 6.84L4 22l4.36-1.45C9.51 20.84 10.72 21 12 21c5.52 0 10-4.04 10-9s-4.48-9-10-9z" fill="#0d1208"/>
     </svg>
   </button>
-  <div id="dubub-float-label">💬 Parlez à SophIA <span id="dubub-float-dismiss">✕</span></div>
 </div>
 <style>
   #dubub-float-bubble {
@@ -6100,24 +6095,34 @@ document.addEventListener("DOMContentLoaded", function () {
   #dubub-float-panel {
     display: none;
     position: fixed;
-    bottom: 100px;
+    bottom: 90px;
     right: 24px;
     width: 380px;
-    height: min(640px, calc(100vh - 120px));
+    height: min(580px, calc(100vh - 110px));
     border-radius: 20px;
     overflow: hidden;
     box-shadow: 0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(214,247,182,0.2);
     border: 1px solid rgba(214,247,182,0.18);
     animation: dububPanelIn 0.38s cubic-bezier(0.16,1,0.3,1) both;
     z-index: 9001;
+    display: flex;
+    flex-direction: column;
   }
-  #dubub-float-panel.open { display: block; }
-  #dubub-float-panel iframe {
+  #dubub-float-panel.open { display: flex; }
+  #dubub-float-slot {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+  }
+  #dubub-float-slot iframe,
+  #dububTabletSlot iframe,
+  #dububSharedChat {
     width: 100%;
     height: 100%;
     border: none;
     display: block;
     background: #040404;
+    border-radius: inherit;
   }
   #dubub-float-close {
     position: absolute;
@@ -6171,12 +6176,27 @@ document.addEventListener("DOMContentLoaded", function () {
 </style>
 <script>
 (function() {
-  var bubble = document.getElementById("dubub-float-bubble");
-  var btn = document.getElementById("dubub-float-btn");
-  var panel = document.getElementById("dubub-float-panel");
-  var closeBtn = document.getElementById("dubub-float-close");
-  var label = document.getElementById("dubub-float-label");
-  var dismiss = document.getElementById("dubub-float-dismiss");
+  var bubble    = document.getElementById("dubub-float-bubble");
+  var btn       = document.getElementById("dubub-float-btn");
+  var panel     = document.getElementById("dubub-float-panel");
+  var closeBtn  = document.getElementById("dubub-float-close");
+  var label     = document.getElementById("dubub-float-label");
+  var dismiss   = document.getElementById("dubub-float-dismiss");
+  var tabletSlot = document.getElementById("dububTabletSlot");
+  var floatSlot  = document.getElementById("dubub-float-slot");
+  var chatIframe = document.getElementById("dububSharedChat");
+
+  // Shared iframe — move between tablet and float panel (no reload, conversation preserved)
+  chatIframe.style.cssText = "width:100%;height:100%;border:none;display:block;background:#040404;";
+
+  function moveIframeTo(container) {
+    if (chatIframe.parentNode !== container) {
+      container.appendChild(chatIframe);
+    }
+  }
+
+  // Start in tablet
+  moveIframeTo(tabletSlot);
 
   // Show bubble once user scrolls past the hero tablet
   var heroStage = document.getElementById("heroStage");
@@ -6184,7 +6204,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function checkVisibility() {
     var scrolled = window.scrollY || window.pageYOffset;
-    var threshold = heroStage ? (heroStage.offsetTop + heroStage.offsetHeight * 0.6) : 600;
+    var threshold = heroStage ? (heroStage.offsetTop + heroStage.offsetHeight * 0.55) : 500;
     if (scrolled > threshold) {
       bubble.style.display = "flex";
     } else {
@@ -6195,23 +6215,34 @@ document.addEventListener("DOMContentLoaded", function () {
   window.addEventListener("scroll", checkVisibility, { passive: true });
   checkVisibility();
 
-  btn.addEventListener("click", function() {
+  function openPanel() {
     label.style.display = "none";
+    moveIframeTo(floatSlot);
     panel.classList.add("open");
-  });
+  }
+
+  function closePanel() {
+    panel.classList.remove("open");
+    moveIframeTo(tabletSlot);
+  }
+
+  btn.addEventListener("click", openPanel);
 
   label.addEventListener("click", function(e) {
-    if (e.target === dismiss) {
-      label.style.display = "none";
-      return;
-    }
-    label.style.display = "none";
-    panel.classList.add("open");
+    if (e.target === dismiss) { label.style.display = "none"; return; }
+    openPanel();
   });
 
-  closeBtn.addEventListener("click", function() {
-    panel.classList.remove("open");
-  });
+  closeBtn.addEventListener("click", closePanel);
+
+  // When user scrolls back to tablet, close panel and return iframe
+  window.addEventListener("scroll", function() {
+    var scrolled = window.scrollY || window.pageYOffset;
+    var threshold = heroStage ? (heroStage.offsetTop + heroStage.offsetHeight * 0.55) : 500;
+    if (scrolled <= threshold && panel.classList.contains("open")) {
+      closePanel();
+    }
+  }, { passive: true });
 })();
 </script>
 
