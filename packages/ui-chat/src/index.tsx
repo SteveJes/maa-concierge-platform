@@ -434,6 +434,7 @@ export function ChatShell({
   pricingCtaEn = "→ Schedule a tour",
   pricingCtaMessageFr = "Je souhaite planifier une visite des installations.",
   pricingCtaMessageEn = "I'd like to schedule a tour of the facilities.",
+  injectMessage,
 }: {
   accentColor?: string;
   accentGradient?: string;
@@ -459,6 +460,7 @@ export function ChatShell({
   pricingCtaEn?: string;
   pricingCtaMessageFr?: string;
   pricingCtaMessageEn?: string;
+  injectMessage?: string;
 } = {}) {
 
   const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
@@ -616,6 +618,14 @@ export function ChatShell({
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isSending]);
+
+  useEffect(() => {
+    if (!injectMessage) return;
+    setInput(injectMessage);
+    setTimeout(() => {
+      document.querySelector<HTMLButtonElement>("[data-send-btn]")?.click();
+    }, 80);
+  }, [injectMessage]);
 
   async function sendMessage(): Promise<void> {
     const trimmed = input.trim();
