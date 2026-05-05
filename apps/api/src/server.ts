@@ -2,7 +2,6 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { resolveDirectCoreFactResponse } from "./core-facts.js";
-import { buildDububVapiSystemPrompt } from "./prompts/dubub-vapi-system.js";
 import { sendLeadNotificationEmail } from "./services/email-notifications.js";
 import { TENANT_REGISTRY, getTenant, addTenant, removeTenant, slugify } from "./admin/tenants.js";
 import { sendInvoiceEmail, createStripeCheckout, nextInvoiceNumber, buildInvoice } from "./admin/invoice.js";
@@ -1111,23 +1110,10 @@ export function createServer() {
         locale: handoff.locale,
       }, "VAPI assistant-request: matched inbound handoff");
 
-      const isDububHandoff = vapiTenantId === "dubub";
       return reply.code(200).send({
         assistantId,
         assistantOverrides: {
           firstMessage,
-          ...(isDububHandoff && {
-            model: {
-              messages: [{
-                role: "system",
-                content: buildDububVapiSystemPrompt({
-                  handoffSummary: handoff.handoffSummary,
-                  handoffLocale: handoff.locale,
-                  handoffLastUserMessage: handoff.lastUserMessage,
-                }),
-              }],
-            },
-          }),
           variableValues: {
             handoff_last_user_message: handoff.lastUserMessage,
             handoff_summary: handoff.handoffSummary,
@@ -1151,11 +1137,6 @@ export function createServer() {
       assistantId,
       assistantOverrides: {
         firstMessage: coldFirstMessage,
-        ...(vapiTenantId === "dubub" && {
-          model: {
-            messages: [{ role: "system", content: buildDububVapiSystemPrompt() }],
-          },
-        }),
         variableValues: {
           handoff_last_user_message: "",
           handoff_summary: "",
@@ -1242,6 +1223,13 @@ export function createServer() {
 
       if (isDryRunPersistence) {
         return getDryRunConversationHistory(conversationId);
+      }
+
+      // Always check in-memory buffer first — it's written synchronously and won't
+      // suffer the NocoDB async write race condition on rapid follow-up messages.
+      const memBuffer = getDryRunConversationHistory(conversationId) ?? [];
+      if (memBuffer.length > 0) {
+        return memBuffer;
       }
 
       if (!isChatPersistenceConfigured()) {
@@ -1676,6 +1664,11 @@ export function createServer() {
         conversationId = capturedConversationId;
         persistence.saved = true; // optimistic — errors logged only
         if (hasCallbackPayload) callbackPersistence.saved = true; // optimistic
+
+        // Write to in-memory buffer immediately so the next request has context
+        // before the async NocoDB write completes (bridges the race condition)
+        appendDryRunConversationMessage(capturedConversationId, "user", trimmedMessage);
+        appendDryRunConversationMessage(capturedConversationId, "assistant", responseAssistantMessage);
 
         setImmediate(() => {
           void (async () => {
@@ -2122,20 +2115,6 @@ export function createServer() {
             startSpeakingPlan: {
               waitSeconds: 0.1,
             },
-            ...(tenantId === "dubub" && {
-              model: {
-                messages: [
-                  {
-                    role: "system",
-                    content: buildDububVapiSystemPrompt({
-                      handoffSummary: cleanedSummary,
-                      handoffLocale: locale ?? undefined,
-                      handoffLastUserMessage: questionSummary ?? undefined,
-                    }),
-                  },
-                ],
-              },
-            }),
             variableValues: {
               customer_name: cleanCustomerName(name),
               customer_phone: normalizedPhone,

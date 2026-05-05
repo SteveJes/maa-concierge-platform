@@ -120,9 +120,9 @@ const KNOWN_CONFIGS: Record<string, DemoConfig> = {
     tenantId: "dubub", name: "DUBUB", websiteUrl: "https://dubub.ca/",
     conciergeName: "SophIA", clientName: "DUBUB",
     // Daphne's brand: bright lime on near-black — matches dubub.ca landing page exactly
-    accentColor: "#b8f04a", accentGradient: "linear-gradient(135deg, #c2f55a, #8abf2e)", accentRgb: "184,240,74",
+    accentColor: "#b4ca90", accentGradient: "linear-gradient(135deg, #f0fde4, #b4ca90)", accentRgb: "180,202,144",
     accentTextColor: "#0d1208", darkMode: true,
-    bubbleGradient: "linear-gradient(135deg, #c2f55a 0%, #8abf2e 100%)", bubbleGlow: "rgba(184,240,74,0.55)",
+    bubbleGradient: "linear-gradient(135deg, #f0fde4 0%, #b4ca90 100%)", bubbleGlow: "rgba(180,202,144,0.55)",
     logoUrl: null,
     nudgesFr: DUBUB_NUDGES_FR, nudgesEn: DUBUB_NUDGES_EN,
     suggestedQuestionsFr: DUBUB_SUGGESTED_FR, suggestedQuestionsEn: DUBUB_SUGGESTED_EN,

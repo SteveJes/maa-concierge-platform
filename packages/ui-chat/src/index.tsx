@@ -1212,7 +1212,7 @@ export function ChatShell({
                       </span>
                     </div>
                     {/* Card body */}
-                    <div style={{ padding: "10px 14px", color: "#3a3a4a", fontSize: 13, lineHeight: 1.55, fontStyle: "italic" }}>
+                    <div style={{ padding: "10px 14px", color: darkMode ? "#c8d8c0" : "#3a3a4a", fontSize: 13, lineHeight: 1.55, fontStyle: "italic" }}>
                       <RichMessageText text={message.text} />
                     </div>
                     {hasPricingSignal && (
@@ -2048,11 +2048,11 @@ export function ChatShell({
       </div>
 
       {/* ── Footer: lead capture link + DUBUB ─────────────────────────────── */}
-      <div style={{ padding: "6px 16px 8px", background: "#f7f8f9", borderTop: "1px solid #e8eaed", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ padding: "6px 16px 8px", background: darkMode ? "#0a0f0a" : "#f7f8f9", borderTop: darkMode ? "1px solid rgba(255,255,255,0.05)" : "1px solid #e8eaed", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <button
           type="button"
           onClick={() => { setShowLeadForm((v) => !v); setShowInlineCallForm(false); setShowPhoneFallback(false); }}
-          style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--accent)", fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textDecoration: "underline", textUnderlineOffset: 2 }}
+          style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: darkMode ? "rgba(255,255,255,0.55)" : "var(--accent)", fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textDecoration: "underline", textUnderlineOffset: 2 }}
         >
           {locale === "fr-CA" ? "Laisser mes coordonnées" : "Leave my contact info"}
         </button>
