@@ -3635,7 +3635,7 @@
       z-index: 2;
       height: 100%;
       border-radius: 26px;
-      padding: 22px;
+      padding: 0;
       background:
         radial-gradient(circle at 80% 6%, rgba(214,247,182,.12), transparent 13rem),
         radial-gradient(circle at 15% 100%, rgba(255,255,255,.035), transparent 11rem),
@@ -3728,7 +3728,36 @@
     .dubub-progress-line div { height: 100%; width: 0%; border-radius: inherit; background: linear-gradient(90deg, rgba(214,247,182,.55), var(--accent)); box-shadow: 0 0 22px rgba(214,247,182,.32); }
     .dubub-screen-bottom small { color: rgba(255,255,255,.52); font-size: 12px; }
 
-    .dubub-float-note {
+    .dubub-float-note { display: none !important; }
+
+    .dubub-screen-top { display: none !important; }
+    .dubub-screen-bottom { display: none !important; }
+
+    .dubub-screen-body {
+      position: absolute !important;
+      inset: 0 !important;
+      display: flex !important;
+      place-items: unset !important;
+    }
+
+    .dubub-chat-slot {
+      width: 100% !important;
+      min-height: unset !important;
+      height: 100% !important;
+      border-radius: 0 !important;
+      border: none !important;
+      background: none !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+    }
+
+    .chat-iframe-slot {
+      height: 100% !important;
+      min-height: unset !important;
+    }
+
+    /* keep the hidden-note rule from the old block */
+    .dubub-float-note-UNUSED {
       position: absolute;
       z-index: 5;
       pointer-events: none;
@@ -6148,14 +6177,14 @@ document.addEventListener("DOMContentLoaded", function () {
   var label = document.getElementById("dubub-float-label");
   var dismiss = document.getElementById("dubub-float-dismiss");
 
-  // Hide bubble while tablet is visible in viewport — show once user scrolls past it
+  // Show bubble once the tablet scrolls out of view
   var heroStage = document.getElementById("heroStage");
   bubble.style.display = "none";
 
   function checkVisibility() {
     if (!heroStage) { bubble.style.display = "flex"; return; }
     var rect = heroStage.getBoundingClientRect();
-    if (rect.bottom < 80) {
+    if (rect.top < -120 || rect.bottom < 0) {
       bubble.style.display = "flex";
     } else {
       if (!panel.classList.contains("open")) bubble.style.display = "none";
