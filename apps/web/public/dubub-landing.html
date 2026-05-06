@@ -6016,9 +6016,7 @@ document.addEventListener("DOMContentLoaded", function () {
 <div id="dubub-float-bubble" aria-label="Ouvrir SophIA — Concierge IA DUBUB">
   <div id="dubub-float-panel">
     <button id="dubub-float-close" aria-label="Fermer le chat">×</button>
-    <div id="dubub-float-slot">
-      <iframe id="dububBubbleChat" src="about:blank" title="SophIA — Concierge IA DUBUB" allow="microphone; clipboard-write" style="position:absolute;inset:0;width:100%;height:100%;border:none;display:block;background:#040404;"></iframe>
-    </div>
+    <div id="dubub-float-slot"></div>
   </div>
   <div id="dubub-float-label">💬 Parlez à SophIA <span id="dubub-float-dismiss">✕</span></div>
   <button id="dubub-float-btn" type="button" aria-label="Parler à SophIA">
@@ -6194,30 +6192,36 @@ document.addEventListener("DOMContentLoaded", function () {
 </style>
 <script>
 (function() {
-  var bubble       = document.getElementById("dubub-float-bubble");
-  var btn          = document.getElementById("dubub-float-btn");
-  var panel        = document.getElementById("dubub-float-panel");
-  var closeBtn     = document.getElementById("dubub-float-close");
-  var label        = document.getElementById("dubub-float-label");
-  var dismiss      = document.getElementById("dubub-float-dismiss");
-  var bubbleIframe = document.getElementById("dububBubbleChat");
-  var BUBBLE_URL   = "https://clients.dubub.com/chat/dubub";
-  var bubbleReady  = false;
-  var pendingMsg   = null;
+  var bubble     = document.getElementById("dubub-float-bubble");
+  var btn        = document.getElementById("dubub-float-btn");
+  var panel      = document.getElementById("dubub-float-panel");
+  var closeBtn   = document.getElementById("dubub-float-close");
+  var label      = document.getElementById("dubub-float-label");
+  var dismiss    = document.getElementById("dubub-float-dismiss");
+  var tabletSlot = document.getElementById("dububTabletSlot");
+  var floatSlot  = document.getElementById("dubub-float-slot");
+  var chatIframe = document.getElementById("dububSharedChat");
+  var movedToFloat = false;
 
-  function loadBubble(msg) {
-    if (msg) pendingMsg = msg;
-    if (bubbleReady) {
-      if (pendingMsg) { bubbleIframe.contentWindow.postMessage(pendingMsg, "*"); pendingMsg = null; }
-      return;
+  // Collapse the tablet's 3D compositing layer before moving the iframe.
+  // Chrome reloads iframes when they leave a GPU compositing layer — removing
+  // the 3D transform for two frames before the move prevents the reload.
+  function moveToFloat(callback) {
+    if (movedToFloat) { callback && callback(); return; }
+    var device = document.getElementById("dububTabletDevice");
+    if (device) {
+      device.style.transform = "none";
+      device.style.willChange = "auto";
     }
-    if (bubbleIframe.src.indexOf("chat/dubub") === -1) {
-      bubbleIframe.addEventListener("load", function() {
-        bubbleReady = true;
-        if (pendingMsg) { bubbleIframe.contentWindow.postMessage(pendingMsg, "*"); pendingMsg = null; }
-      }, { once: true });
-      bubbleIframe.src = BUBBLE_URL;
-    }
+    // Wait 2 frames for compositor to process the style change
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        floatSlot.appendChild(chatIframe);
+        movedToFloat = true;
+        tabletSlot.classList.add("chat-in-bubble");
+        callback && callback();
+      });
+    });
   }
 
   var heroStage = document.getElementById("heroStage");
@@ -6235,11 +6239,13 @@ document.addEventListener("DOMContentLoaded", function () {
   window.addEventListener("scroll", checkVisibility, { passive: true });
   checkVisibility();
 
-  function openPanel() {
+  function openPanel(afterMove) {
     label.style.display = "none";
     bubble.style.display = "flex";
-    loadBubble();
-    panel.classList.add("open");
+    moveToFloat(function() {
+      panel.classList.add("open");
+      afterMove && afterMove();
+    });
   }
   function minimizePanel() { panel.classList.remove("open"); }
 
@@ -6253,7 +6259,11 @@ document.addEventListener("DOMContentLoaded", function () {
   closeBtn.addEventListener("click", minimizePanel);
 
   window.dububOpenChat = openPanel;
-  window.dububSendToChat = function(msg) { loadBubble(msg); openPanel(); };
+  window.dububSendToChat = function(msg) {
+    openPanel(function() {
+      if (chatIframe && msg) chatIframe.contentWindow.postMessage(msg, "*");
+    });
+  };
 })();
 </script>
 
