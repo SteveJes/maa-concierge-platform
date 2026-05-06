@@ -5997,12 +5997,8 @@ document.addEventListener("DOMContentLoaded", function () {
         event.stopPropagation();
         const questionText = question ? question.textContent.trim() : "";
         orbs.forEach((item) => setOpen(item, false));
-        const chatIframe = document.getElementById("dububSharedChat");
-        if (chatIframe && questionText) {
-          chatIframe.contentWindow.postMessage({ type: "dubub-question", text: questionText }, "*");
-        }
-        if (typeof window.dububOpenChat === "function") {
-          window.dububOpenChat();
+        if (questionText && typeof window.dububSendToChat === "function") {
+          window.dububSendToChat({ type: "dubub-question", text: questionText });
         }
       });
     }
@@ -6020,7 +6016,9 @@ document.addEventListener("DOMContentLoaded", function () {
 <div id="dubub-float-bubble" aria-label="Ouvrir SophIA — Concierge IA DUBUB">
   <div id="dubub-float-panel">
     <button id="dubub-float-close" aria-label="Fermer le chat">×</button>
-    <div id="dubub-float-slot"></div>
+    <div id="dubub-float-slot">
+      <iframe id="dububBubbleChat" src="about:blank" title="SophIA — Concierge IA DUBUB" allow="microphone; clipboard-write" style="position:absolute;inset:0;width:100%;height:100%;border:none;display:block;background:#040404;"></iframe>
+    </div>
   </div>
   <div id="dubub-float-label">💬 Parlez à SophIA <span id="dubub-float-dismiss">✕</span></div>
   <button id="dubub-float-btn" type="button" aria-label="Parler à SophIA">
@@ -6196,36 +6194,32 @@ document.addEventListener("DOMContentLoaded", function () {
 </style>
 <script>
 (function() {
-  var bubble    = document.getElementById("dubub-float-bubble");
-  var btn       = document.getElementById("dubub-float-btn");
-  var panel     = document.getElementById("dubub-float-panel");
-  var closeBtn  = document.getElementById("dubub-float-close");
-  var label     = document.getElementById("dubub-float-label");
-  var dismiss   = document.getElementById("dubub-float-dismiss");
-  var tabletSlot = document.getElementById("dububTabletSlot");
-  var floatSlot  = document.getElementById("dubub-float-slot");
-  var chatIframe = document.getElementById("dububSharedChat");
+  var bubble       = document.getElementById("dubub-float-bubble");
+  var btn          = document.getElementById("dubub-float-btn");
+  var panel        = document.getElementById("dubub-float-panel");
+  var closeBtn     = document.getElementById("dubub-float-close");
+  var label        = document.getElementById("dubub-float-label");
+  var dismiss      = document.getElementById("dubub-float-dismiss");
+  var bubbleIframe = document.getElementById("dububBubbleChat");
+  var BUBBLE_URL   = "https://clients.dubub.com/chat/dubub";
+  var bubbleReady  = false;
+  var pendingMsg   = null;
 
-  // iframe starts inside #dububTabletSlot (in the HTML already)
-  // Apply inline style for absolute fill — works in both tablet and float panel
-  if (chatIframe) {
-    chatIframe.style.cssText = "position:absolute;inset:0;width:100%;height:100%;border:none;display:block;background:#040404;";
-  }
-
-  // ONE-WAY move: tablet → float panel. Never moved back automatically.
-  // This preserves the conversation without triggering iframe reload.
-  var movedToFloat = false;
-
-  function moveToFloat() {
-    if (!movedToFloat && chatIframe) {
-      floatSlot.appendChild(chatIframe);
-      void chatIframe.offsetHeight;
-      movedToFloat = true;
-      tabletSlot.classList.add("chat-in-bubble");
+  function loadBubble(msg) {
+    if (msg) pendingMsg = msg;
+    if (bubbleReady) {
+      if (pendingMsg) { bubbleIframe.contentWindow.postMessage(pendingMsg, "*"); pendingMsg = null; }
+      return;
+    }
+    if (bubbleIframe.src.indexOf("chat/dubub") === -1) {
+      bubbleIframe.addEventListener("load", function() {
+        bubbleReady = true;
+        if (pendingMsg) { bubbleIframe.contentWindow.postMessage(pendingMsg, "*"); pendingMsg = null; }
+      }, { once: true });
+      bubbleIframe.src = BUBBLE_URL;
     }
   }
 
-  // Show bubble once user scrolls past the hero tablet
   var heroStage = document.getElementById("heroStage");
   bubble.style.display = "none";
 
@@ -6238,36 +6232,28 @@ document.addEventListener("DOMContentLoaded", function () {
       if (!panel.classList.contains("open")) bubble.style.display = "none";
     }
   }
-
   window.addEventListener("scroll", checkVisibility, { passive: true });
   checkVisibility();
 
   function openPanel() {
     label.style.display = "none";
     bubble.style.display = "flex";
-    moveToFloat();
+    loadBubble();
     panel.classList.add("open");
   }
-  window.dububOpenChat = openPanel;
-
-  function minimizePanel() {
-    panel.classList.remove("open");
-  }
+  function minimizePanel() { panel.classList.remove("open"); }
 
   btn.addEventListener("click", function() {
-    if (panel.classList.contains("open")) {
-      minimizePanel();
-    } else {
-      openPanel();
-    }
+    if (panel.classList.contains("open")) minimizePanel(); else openPanel();
   });
-
   label.addEventListener("click", function(e) {
     if (e.target === dismiss) { label.style.display = "none"; return; }
     openPanel();
   });
-
   closeBtn.addEventListener("click", minimizePanel);
+
+  window.dububOpenChat = openPanel;
+  window.dububSendToChat = function(msg) { loadBubble(msg); openPanel(); };
 })();
 </script>
 
