@@ -6001,6 +6001,9 @@ document.addEventListener("DOMContentLoaded", function () {
         if (chatIframe && questionText) {
           chatIframe.contentWindow.postMessage({ type: "dubub-question", text: questionText }, "*");
         }
+        if (typeof window.dububOpenChat === "function") {
+          window.dububOpenChat();
+        }
       });
     }
   });
@@ -6241,9 +6244,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function openPanel() {
     label.style.display = "none";
+    bubble.style.display = "flex";
     moveToFloat();
     panel.classList.add("open");
   }
+  window.dububOpenChat = openPanel;
 
   function minimizePanel() {
     panel.classList.remove("open");
