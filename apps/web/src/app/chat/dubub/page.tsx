@@ -46,8 +46,8 @@ export default function DububChatPage() {
     <>
       <style>{`
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
-        #dubub-root { position: absolute; inset: 0; }
-        #dubub-root > section { position: absolute !important; inset: 0 !important; height: auto !important; border-radius: 0 !important; box-shadow: none !important; }
+        #dubub-root { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        #dubub-root > section { position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; border-radius: 0 !important; box-shadow: none !important; box-sizing: border-box !important; border: 1px solid rgba(214,247,182,.18) !important; }
       `}</style>
       <div id="dubub-root">
       <ChatShell
