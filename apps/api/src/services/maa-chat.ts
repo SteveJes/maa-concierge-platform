@@ -10,6 +10,8 @@ import {
 } from "../ingestion/nocodb.js";
 import { buildMaaChatSystemPrompt } from "../prompts/maa-chat-system.js";
 import { buildDububChatSystemPrompt } from "../prompts/dubub-chat-system.js";
+import { buildGenericTenantChatSystemPrompt } from "../prompts/generic-tenant-chat-system.js";
+import { getTenant } from "../admin/tenants.js";
 import {
   isPricingQuestion,
   tryAnswerPricingQuestion,
@@ -120,6 +122,57 @@ function normalizeConversationHistory(
 
 function isFrenchLocale(locale?: string): boolean {
   return typeof locale === "string" && locale.trim().toLowerCase().startsWith("fr");
+}
+
+/**
+ * Detects critical intent misrouting risks and returns an injected constraint
+ * string for the AI call. This prevents the model from defaulting to "calendly"
+ * for intents that must never trigger a "Planifier une visite" CTA.
+ */
+function buildIntentSafetyContext(userMessage: string): string | undefined {
+  const msg = userMessage.toLowerCase();
+
+  const isCancellation = /\b(annuler|annulation|cancel|cancell|résili(er|ation)|résil(er|iation))\b/i.test(userMessage);
+  const isGuarantee = /\b(garantir|garantie|guarantee|guaranteed|assure me|assure that|confirm.*(?:place|spot|rendez-vous|appointment)|guaranty)\b/i.test(userMessage);
+  const isReservationProblem =
+    /\b(problème|probl[eè]me|problem|issue|trouble)\b/i.test(userMessage) &&
+    /\b(r[eé]servation|reservation|booking|rendez-vous)\b/i.test(userMessage);
+  const isReserveNow =
+    /\b(r[eé]server|reserve|book)\b/i.test(userMessage) &&
+    /\b(maintenant|now|imm[eé]diatement|tout de suite|right now|right away)\b/i.test(userMessage);
+  const isExecutiveContact =
+    /\b(propri[eé]taire|directeur|directrice|pr[eé]sident|owner|director|executive|DG|CEO|patron)\b/i.test(userMessage) &&
+    /\b(num[eé]ro|number|email|courriel|extension|poste|contact|direct|join|joindre|t[eé]l[eé]phone|phone)\b/i.test(userMessage);
+
+  if (isCancellation) {
+    return "CRITICAL INTENT: This is a CANCELLATION request. You MUST NOT set followUpMode to 'calendly'. You MUST NOT suggest scheduling a visit. Ask what type of cancellation (membership, appointment, reservation, visit), and set followUpMode to 'callback' to refer them to the human team.";
+  }
+  if (isGuarantee) {
+    return "CRITICAL INTENT: This is a GUARANTEE/ASSURANCE request. You MUST NOT guarantee a place, spot, appointment, or availability. You MUST NOT set followUpMode to 'calendly'. Explain that confirmation must come from the team or official system. Use followUpMode: 'callback'.";
+  }
+  if (isReservationProblem) {
+    return "CRITICAL INTENT: This user has a problem with an EXISTING reservation. You MUST NOT suggest 'Planifier une visite'. You MUST NOT set followUpMode to 'calendly'. Ask what type of reservation is affected and refer them to the team. Use followUpMode: 'callback'.";
+  }
+  if (isReserveNow) {
+    return "CRITICAL INTENT: This user wants to book/reserve RIGHT NOW. You MUST clarify that you cannot confirm a reservation — that requires an official system or human team. You MUST NOT claim the reservation is done. Do NOT set followUpMode to 'calendly'. Use followUpMode: 'callback'.";
+  }
+  if (isExecutiveContact) {
+    return "CRITICAL INTENT: This user is asking for direct EXECUTIVE/OWNER contact details. You MUST NOT disclose a direct phone extension, number, or email for any owner, president, or director. Redirect to reception at (514) 845-2233 and offer a callback. Use followUpMode: 'callback'.";
+  }
+
+  const isHolidayHours =
+    /(f[eé]ri[eé]s?|holiday|statutory|cong[eé])/i.test(userMessage) &&
+    /(heure|horaire|ouvert|open|schedule|hours|ferm[eé])/i.test(userMessage);
+  if (isHolidayHours) {
+    return "CRITICAL: This is a HOLIDAY HOURS question. Do NOT answer with regular hours for a single zone only. Explain that hours vary by date and zone. Ask which zone/service they need (gym, pool, spa, classes, etc.) and recommend calling (514) 845-2233, ext. 234 to confirm. Use followUpMode: 'clarify'.";
+  }
+
+  const isPrivacyQuestion = /\b(priv[eé]|confidential|donn[eé]es personnelles|informations personnelles|privacy|personal data|personal information)\b/i.test(userMessage);
+  if (isPrivacyQuestion) {
+    return "PRIVACY QUESTION: Answer cautiously. Do NOT make absolute guarantees about data security. Explicitly tell the user not to share sensitive information in chat — examples: banking details (données bancaires), passwords (mots de passe), personal documents. Use followUpMode: 'done'.";
+  }
+
+  return undefined;
 }
 
 function buildFallbackResponse(
@@ -430,6 +483,33 @@ function stripCitationMarkersFromAssistantMessage(message: string): string {
     .trim();
 }
 
+/**
+ * Returns the correct system prompt for a given tenant.
+ * - "maa"   → custom hand-crafted MAA prompt
+ * - "dubub" → custom DUBUB sales/demo prompt
+ * - anything else → generic tenant prompt built from TenantConfig
+ *   (always includes buildSharedSafetyRules automatically)
+ *
+ * To add a custom prompt for a new tenant, add a case here and create
+ * the corresponding apps/api/src/prompts/{id}-chat-system.ts file.
+ */
+function resolveTenantSystemPrompt(tenantCode: string | undefined, locale: string | undefined): string {
+  switch (tenantCode) {
+    case "maa":
+      return buildMaaChatSystemPrompt(locale);
+    case "dubub":
+      return buildDububChatSystemPrompt(locale);
+    default: {
+      const config = tenantCode ? getTenant(tenantCode) : undefined;
+      if (config) {
+        return buildGenericTenantChatSystemPrompt(config, locale);
+      }
+      // Absolute fallback — unknown tenant, no config. Use MAA prompt as safe base.
+      return buildMaaChatSystemPrompt(locale);
+    }
+  }
+}
+
 async function callOpenAiForAnswer(
   originalUserMessage: string,
   resolvedUserMessage: string,
@@ -493,9 +573,7 @@ async function callOpenAiForAnswer(
       messages: [
         {
           role: "system",
-          content: tenantCode === "dubub"
-            ? buildDububChatSystemPrompt(locale)
-            : buildMaaChatSystemPrompt(locale),
+          content: resolveTenantSystemPrompt(tenantCode, locale),
         },
         {
           role: "user",
@@ -594,6 +672,10 @@ export async function answerMaaChat(
           "Use followUpMode: 'clarify' for all remaining messages."
       : undefined;
 
+    // Apply shared intent safety guard for DUBUB too — merge with post-capture context.
+    const dububIntentSafety = buildIntentSafetyContext(request.userMessage);
+    const dububExtraContext = [postCaptureContext, dububIntentSafety].filter(Boolean).join("\n\n") || undefined;
+
     const openAiResult = await callOpenAiForAnswer(
       resolvedUserMessage,
       resolvedUserMessage,
@@ -602,7 +684,7 @@ export async function answerMaaChat(
       conversationHistory,
       request.userName,
       request.tenantCode,
-      postCaptureContext,
+      dububExtraContext,
     );
     return {
       assistantMessage: openAiResult.assistantMessage,
@@ -653,7 +735,13 @@ export async function answerMaaChat(
     return buildFallbackResponse(request.userMessage, request.locale);
   }
 
-  const pricingAnswer = !isDubub && tryAnswerPricingQuestion(
+  // Detect critical intents early — skip deterministic handlers if a safety guard applies.
+  // This prevents the pricing/schedule/policy handlers from intercepting cancellation,
+  // guarantee, reservation-problem, or reserve-now messages.
+  const intentSafetyContextEarly = buildIntentSafetyContext(request.userMessage);
+  const skipDeterministicHandlers = intentSafetyContextEarly !== undefined;
+
+  const pricingAnswer = !isDubub && !skipDeterministicHandlers && tryAnswerPricingQuestion(
     resolvedUserMessage,
     searchResults,
     request.locale,
@@ -683,7 +771,7 @@ export async function answerMaaChat(
     };
   }
 
-  const scheduleAnswer = !isDubub && tryAnswerScheduleQuestion(
+  const scheduleAnswer = !isDubub && !skipDeterministicHandlers && tryAnswerScheduleQuestion(
     resolvedUserMessage,
     searchResults,
   );
@@ -712,7 +800,7 @@ export async function answerMaaChat(
     };
   }
 
-  const policyAnswer = !isDubub && tryAnswerPolicyQuestion(
+  const policyAnswer = !isDubub && !skipDeterministicHandlers && tryAnswerPolicyQuestion(
     resolvedUserMessage,
     searchResults,
   );
@@ -749,6 +837,7 @@ export async function answerMaaChat(
     conversationHistory,
     request.userName,
     request.tenantCode,
+    intentSafetyContextEarly,
   );
 
   const cleanedAssistantMessage = stripCitationMarkersFromAssistantMessage(

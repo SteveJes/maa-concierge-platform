@@ -21,6 +21,28 @@ export interface TenantConfig {
   contactEmail: string | null;
   website: string | null;
   notes: string | null;
+
+  // ── Prompt configuration — used by the generic system prompt builder ──────
+  /** Name of the AI concierge (e.g. "SophIA", "Maxime"). Defaults to "Concierge IA". */
+  conciergeName?: string;
+  /** Short description of the business (1-2 sentences for the AI's self-introduction). */
+  description?: string;
+  /** Business sector / industry (e.g. "fitness", "hospitality", "retail"). */
+  industry?: string;
+  /** Primary public contact phone number displayed to users. */
+  primaryContactPhone?: string;
+  /** Primary public contact email displayed to users. */
+  primaryContactEmail?: string;
+  /** Primary booking/demo CTA label in French. Injected into the anti-tunnel rule. */
+  tunnelCtaFr?: string;
+  /** Primary booking/demo CTA label in English. Injected into the anti-tunnel rule. */
+  tunnelCtaEn?: string;
+  /**
+   * Default response language.
+   * "fr" = French only, "en" = English only, "bilingual" = detect from user input.
+   * Defaults to "bilingual".
+   */
+  defaultLanguage?: "fr" | "en" | "bilingual";
 }
 
 export const TENANT_REGISTRY: TenantConfig[] = [

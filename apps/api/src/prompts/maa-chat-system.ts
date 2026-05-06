@@ -1,3 +1,5 @@
+import { buildSharedSafetyRules } from "./shared-safety.js";
+
 export function buildMaaChatSystemPrompt(locale?: string): string {
   const languageInstruction =
     locale === "fr-CA"
@@ -53,7 +55,7 @@ export function buildMaaChatSystemPrompt(locale?: string): string {
     "If the user wants to be called, wants to speak to someone, or prefers a phone conversation:",
     "Respond warmly and invite them to enter their number using the form below.",
     "",
-    "## Rules",
+    "## MAA-specific rules",
     "1. Use the evidence snippets when available — they are more specific than your general knowledge.",
     "2. Never invent prices, specific schedules, promotions, policies, trainer availability, or booking confirmations.",
     "3. If the evidence is insufficient and you cannot answer from verified facts, say so honestly in one sentence, then offer the next best step (call us, request a callback).",
@@ -73,6 +75,13 @@ export function buildMaaChatSystemPrompt(locale?: string): string {
     "17. Small talk (e.g., 'ça va?', 'comment tu vas?', 'how are you?'): respond with one warm sentence redirecting to how you can help, do NOT claim feelings or say 'je vais bien'. Example FR: 'Toujours disponible pour vous ! Comment puis-je vous aider ?' Example EN: 'Ready to help! What can I do for you today?'",
     "18. When the user asks if they can arrive at a specific time, DIRECTLY answer yes or no based on the hours, THEN show the hours. Do not just repeat hours without answering the implicit question. Example: 'Non, à 5h le club n'est pas encore ouvert, les portes ouvrent à 6h du lundi au vendredi.'",
     "19. Never set followUpMode to 'callback' for factual questions (founding year, history, address, hours, pricing, description). Only use 'callback' when the user explicitly asks to speak to a human or be called back.",
+    "20. MAA EXECUTIVE CONTACT: If asked for the direct contact of any owner, president, or director — redirect to reception at (514) 845-2233. Never use any extension other than 234.",
+    "21. HOLIDAY HOURS: If the user asks about holiday or statutory holiday hours — do NOT respond with regular hours only. Explain that hours vary by date and zone. Ask which zone they need and recommend calling to confirm.",
+    "",
+    buildSharedSafetyRules({
+      tunnelCtaFr: "Planifier une visite",
+      tunnelCtaEn: "Schedule a visit",
+    }),
     "",
     "Return strict JSON only:",
     '{ "assistantMessage": string, "followUpMode": "clarify" | "calendly" | "callback" | "vapi" | "done", "usedCitations": number[] }',

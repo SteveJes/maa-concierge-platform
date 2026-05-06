@@ -678,6 +678,10 @@ export function createServer() {
     const clientName = typeof body.contactName === "string" ? body.contactName : name;
     const sendInvoice = body.sendInvoice === true;
 
+    const rawLang = typeof body.defaultLanguage === "string" ? body.defaultLanguage : "bilingual";
+    const defaultLanguage: "fr" | "en" | "bilingual" =
+      rawLang === "fr" || rawLang === "en" ? rawLang : "bilingual";
+
     addTenant({
       id,
       name,
@@ -695,6 +699,15 @@ export function createServer() {
       contactEmail: clientEmail || null,
       website: typeof body.website === "string" ? body.website : null,
       notes: typeof body.notes === "string" ? body.notes : null,
+      // Prompt configuration — feeds buildGenericTenantChatSystemPrompt automatically
+      conciergeName: typeof body.conciergeName === "string" && body.conciergeName ? body.conciergeName : undefined,
+      description: typeof body.description === "string" && body.description ? body.description : undefined,
+      industry: typeof body.industry === "string" && body.industry ? body.industry : undefined,
+      primaryContactPhone: typeof body.primaryContactPhone === "string" && body.primaryContactPhone ? body.primaryContactPhone : undefined,
+      primaryContactEmail: clientEmail || undefined,
+      tunnelCtaFr: typeof body.tunnelCtaFr === "string" && body.tunnelCtaFr ? body.tunnelCtaFr : undefined,
+      tunnelCtaEn: typeof body.tunnelCtaEn === "string" && body.tunnelCtaEn ? body.tunnelCtaEn : undefined,
+      defaultLanguage,
     });
 
     // Create NocoDB tenant row + optional booking config (non-fatal — platform functions without it)

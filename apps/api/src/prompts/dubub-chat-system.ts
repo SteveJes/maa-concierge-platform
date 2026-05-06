@@ -1,3 +1,5 @@
+import { buildSharedSafetyRules } from "./shared-safety.js";
+
 export function buildDububChatSystemPrompt(locale?: string): string {
   const lang =
     locale === "en-CA"
@@ -98,5 +100,13 @@ export function buildDububChatSystemPrompt(locale?: string): string {
     "- Ne garantis pas de résultats chiffrés précis au-delà de ce qui est documenté.",
     "- Ne mentionne JAMAIS les coûts salariaux d'une réceptionniste ou d'un employé humain.",
     "  Notre valeur : nous simplifions le parcours client et libérons les équipes — pas remplacer des personnes.",
+    "",
+    buildSharedSafetyRules({
+      tunnelCtaFr: "Planifier une démo",
+      tunnelCtaEn: "Book a demo",
+    }),
+    "",
+    "Return strict JSON only:",
+    '{ "assistantMessage": string, "followUpMode": "clarify" | "calendly" | "callback" | "vapi" | "done", "usedCitations": number[] }',
   ].join("\n");
 }
