@@ -1133,7 +1133,7 @@ export function createServer() {
       const hasTopic = topic.fr.length > 0;
 
       const agentName = vapiTenantId === "dubub" ? "SophIA" : "Sophie";
-      const orgName = vapiTenantId === "dubub" ? "DUBUB" : "Club MAA";
+      const orgName = vapiTenantId === "dubub" ? "DUBUB" : "Club M.A.A.";
 
       const interruptFr = vapiTenantId === "dubub"
         ? " J'ai tendance à être assez détaillée — n'hésitez surtout pas à m'interrompre à tout moment."
@@ -1190,7 +1190,7 @@ export function createServer() {
 
     // No match — cold greeting, tenant-aware
     const coldAgentName = vapiTenantId === "dubub" ? "SophIA" : "Sophie";
-    const coldOrgName = vapiTenantId === "dubub" ? "DUBUB" : "Club MAA";
+    const coldOrgName = vapiTenantId === "dubub" ? "DUBUB" : "Club M.A.A.";
     const coldInterrupt = vapiTenantId === "dubub"
       ? " J'ai tendance à être assez détaillée — n'hésitez surtout pas à m'interrompre à tout moment."
       : "";
@@ -2095,7 +2095,7 @@ export function createServer() {
     };
 
     const callNowAgentName = callNowTenant.id === "dubub" ? "SophIA" : "Sophie";
-    const callNowOrgName = callNowTenant.id === "dubub" ? "DUBUB" : "Club MAA";
+    const callNowOrgName = callNowTenant.id === "dubub" ? "DUBUB" : "Club M.A.A.";
 
     const buildOpeningLine = (): string => {
       const cleanedName = cleanCustomerName(name);
@@ -2500,7 +2500,7 @@ export function createServer() {
         const vapiToolTenantId = ((request.query as Record<string, string | undefined>).tenantId ?? "maa").toLowerCase();
         const vapiToolTenant = getTenant(vapiToolTenantId);
         const notifyEmail = vapiToolTenant?.notifyEmail || process.env.LEAD_NOTIFY_EMAIL || "steve@dubub.com";
-        const vapiToolTenantName = vapiToolTenant?.name ?? "Club MAA";
+        const vapiToolTenantName = vapiToolTenant?.name ?? "Club M.A.A.";
         const apiKey = process.env.BREVO_API_KEY ?? process.env.BREVO_SMTP_KEY;
         const isFr = !args.locale?.startsWith("en");
 
