@@ -98,6 +98,36 @@ const dryRunConversationHistory = new Map<string, ChatHistoryEntry[]>();
 const vapiHandoffStore = new Map<string, VapiHandoffRecord>();
 const pendingInboundHandoffStore = new Map<string, PendingInboundHandoff>();
 
+/**
+ * Build today's date / day-of-week template variables for the VAPI assistant.
+ * Without these, Sophie has no way to know what day it is and will guess wrong
+ * (e.g. saying "Friday" when it's Thursday). All values are computed in the
+ * America/Montreal timezone, regardless of where the API server runs.
+ */
+function buildTodayVariables(): {
+  today_date_fr: string;
+  today_date_en: string;
+  today_day_name_fr: string;
+  today_day_name_en: string;
+} {
+  const tz = "America/Montreal";
+  const now = new Date();
+  return {
+    today_date_fr: new Intl.DateTimeFormat("fr-CA", {
+      timeZone: tz, day: "numeric", month: "long", year: "numeric",
+    }).format(now),
+    today_date_en: new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz, day: "numeric", month: "long", year: "numeric",
+    }).format(now),
+    today_day_name_fr: new Intl.DateTimeFormat("fr-CA", {
+      timeZone: tz, weekday: "long",
+    }).format(now),
+    today_day_name_en: new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz, weekday: "long",
+    }).format(now),
+  };
+}
+
 function normalizePhoneE164(value: string | null): string | null {
   if (!value) return null;
   const digits = value.replace(/\D/g, "");
@@ -1103,7 +1133,7 @@ export function createServer() {
       const hasTopic = topic.fr.length > 0;
 
       const agentName = vapiTenantId === "dubub" ? "SophIA" : "Sophie";
-      const orgName = vapiTenantId === "dubub" ? "DUBUB" : "Club M.A.A.";
+      const orgName = vapiTenantId === "dubub" ? "DUBUB" : "Club MAA";
 
       const interruptFr = vapiTenantId === "dubub"
         ? " J'ai tendance à être assez détaillée — n'hésitez surtout pas à m'interrompre à tout moment."
@@ -1152,6 +1182,7 @@ export function createServer() {
             handoff_opening_line: firstMessage,
             caller_name: handoff.customerName ?? '',
             caller_phone: callerE164 ?? '',
+            ...buildTodayVariables(),
           },
         },
       });
@@ -1159,7 +1190,7 @@ export function createServer() {
 
     // No match — cold greeting, tenant-aware
     const coldAgentName = vapiTenantId === "dubub" ? "SophIA" : "Sophie";
-    const coldOrgName = vapiTenantId === "dubub" ? "DUBUB" : "Club M.A.A.";
+    const coldOrgName = vapiTenantId === "dubub" ? "DUBUB" : "Club MAA";
     const coldInterrupt = vapiTenantId === "dubub"
       ? " J'ai tendance à être assez détaillée — n'hésitez surtout pas à m'interrompre à tout moment."
       : "";
@@ -1178,6 +1209,7 @@ export function createServer() {
           handoff_opening_line: coldFirstMessage,
           caller_name: "",
           caller_phone: callerE164 ?? "",
+          ...buildTodayVariables(),
         },
       },
     });
@@ -2063,7 +2095,7 @@ export function createServer() {
     };
 
     const callNowAgentName = callNowTenant.id === "dubub" ? "SophIA" : "Sophie";
-    const callNowOrgName = callNowTenant.id === "dubub" ? "DUBUB" : "Club M.A.A.";
+    const callNowOrgName = callNowTenant.id === "dubub" ? "DUBUB" : "Club MAA";
 
     const buildOpeningLine = (): string => {
       const cleanedName = cleanCustomerName(name);
@@ -2468,7 +2500,7 @@ export function createServer() {
         const vapiToolTenantId = ((request.query as Record<string, string | undefined>).tenantId ?? "maa").toLowerCase();
         const vapiToolTenant = getTenant(vapiToolTenantId);
         const notifyEmail = vapiToolTenant?.notifyEmail || process.env.LEAD_NOTIFY_EMAIL || "steve@dubub.com";
-        const vapiToolTenantName = vapiToolTenant?.name ?? "Club M.A.A.";
+        const vapiToolTenantName = vapiToolTenant?.name ?? "Club MAA";
         const apiKey = process.env.BREVO_API_KEY ?? process.env.BREVO_SMTP_KEY;
         const isFr = !args.locale?.startsWith("en");
 
