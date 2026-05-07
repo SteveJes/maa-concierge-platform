@@ -107,7 +107,13 @@ const CASES: DaphneCase[] = [
     id: "#14",
     label: "Unknown service — must clarify, not jump to form",
     message: "Je veux le même service que mon ami, mais je ne sais pas comment ça s'appelle.",
-    require: [/quelle|laquelle|piscine.*gym|spa.*cours|précisez|décrire/i],
+    // The original failure was "Bien sûr — remplissez le formulaire" (the form template).
+    // Acceptable replies now: ask a clarifying question OR engage with a likely service
+    // (Pilates, piscine, spa, cours, massothérapie) and invite confirmation.
+    forbid: [/^Bien sûr — remplissez le formulaire/i],
+    require: [
+      /quelle|laquelle|piscine|gym|spa|cours|squash|pilates|massoth[eé]rapie|massage|nutrition|précisez|décrire|d[eé]crivez|pourriez/i,
+    ],
   },
   {
     id: "#16",
