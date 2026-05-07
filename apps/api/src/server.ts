@@ -14,6 +14,10 @@ import {
   type MaaChatResponse,
 } from "./services/maa-chat.js";
 import {
+  TenantChatRouteBodySchema,
+  OnboardingBodySchema,
+} from "@platform/schemas";
+import {
   createCallbackRequest,
   createBookingConfig,
   createConversation,
@@ -1181,44 +1185,22 @@ export function createServer() {
 
   app.post("/v1/tenants/:tenantId/chat", async (request, reply) => {
     const { tenantId } = request.params as TenantRouteParams;
-    const body = (request.body ?? {}) as Partial<ChatRouteBody>;
 
-    if (!body.message || typeof body.message !== "string" || !body.message.trim()) {
+    const parsed = TenantChatRouteBodySchema.safeParse(request.body ?? {});
+    if (!parsed.success) {
       return reply.code(400).send({
         error: "invalid_request",
-        message: "Body.message is required.",
+        message: parsed.error.issues
+          .map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`)
+          .join("; "),
+        issues: parsed.error.issues,
       });
     }
 
-    const hasCallbackPayload = typeof body.callback !== "undefined";
+    const body = parsed.data;
+    const hasCallbackPayload = body.callback !== undefined;
     const isDryRunPersistence = body.dryRunPersistence === true;
-
-    if (
-      hasCallbackPayload &&
-      (!body.callback || typeof body.callback !== "object" || Array.isArray(body.callback))
-    ) {
-      return reply.code(400).send({
-        error: "invalid_request",
-        message: "Body.callback must be an object when provided.",
-      });
-    }
-
-    const callbackPhone = toNullableTrimmedString(body.callback?.phone);
-
-    if (hasCallbackPayload && !callbackPhone) {
-      return reply.code(400).send({
-        error: "invalid_request",
-        message: "Body.callback.phone is required when callback is provided.",
-      });
-    }
-
-    if (hasCallbackPayload && body.callback?.consentToContact !== true) {
-      return reply.code(400).send({
-        error: "invalid_request",
-        message: "Body.callback.consentToContact must be true when callback is provided.",
-      });
-    }
-
+    const callbackPhone = body.callback?.phone ?? null;
     const trimmedMessage = body.message.trim();
     const locale = toNullableTrimmedString(body.locale);
     const now = new Date().toISOString();

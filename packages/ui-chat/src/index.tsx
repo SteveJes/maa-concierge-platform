@@ -511,6 +511,23 @@ export function ChatShell({
       });
   }, [locale, tenantId, suggestedQuestionsFr, suggestedQuestionsEn, apiBaseUrl]);
 
+  // PostHog tracking — uses window.posthog if the host page initialized it.
+  // No-op when PostHog is not loaded (CI, embeds without analytics).
+  function track(event: string, properties?: Record<string, unknown>): void {
+    try {
+      const ph = (window as unknown as { posthog?: { capture: (e: string, p?: object) => void } }).posthog;
+      ph?.capture(event, { tenantId, ...properties });
+    } catch {
+      /* analytics never break product */
+    }
+  }
+
+  // Fire once per widget mount.
+  useEffect(() => {
+    track("concierge_chat_opened", { locale });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Name capture state — persisted in localStorage per tenant
   const STORAGE_KEY = "maa_concierge_user";
 
@@ -637,6 +654,12 @@ export function ChatShell({
     setIsSending(true);
     setShowPhoneFallback(false);
     setPendingHandoffContext(null);
+
+    // Funnel: first user message in this widget session.
+    const priorUserMessageCount = messages.filter((m) => m.role === "user").length;
+    if (priorUserMessageCount === 0) {
+      track("concierge_first_message", { locale: requestLocale, length: trimmed.length });
+    }
 
     setMessages((current) => [
       ...current,
@@ -891,6 +914,16 @@ export function ChatShell({
         ...current,
         { id: newId(), role: "assistant", text: body.assistantMessage },
       ]);
+
+      // Funnel: lead capture confirmed.
+      if (body.callbackPersistence?.saved) {
+        track("concierge_lead_captured", {
+          locale,
+          hasEmail: callbackEmail.trim().length > 0,
+          hasPreferredTime: callbackPreferredTime.trim().length > 0,
+        });
+      }
+
       setCallbackName("");
       setCallbackPhone("");
       setCallbackEmail("");

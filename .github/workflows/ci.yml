@@ -5,15 +5,26 @@ on:
   pull_request:
 
 jobs:
-  checks:
+  typecheck-and-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
-      - run: pnpm test
+      # Vitest regression suite — skipped automatically when OPENAI_API_KEY is missing
+      # (PRs from forks). Add OPENAI_API_KEY to repo secrets to run live regression on every push.
+      - name: Regression tests
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          NOCO_DB_TOKEN: ${{ secrets.NOCO_DB_TOKEN }}
+          NOCO_BASE_ID: ${{ secrets.NOCO_BASE_ID }}
+          NOCO_BASE_URL: ${{ secrets.NOCO_BASE_URL }}
+          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+          LANGFUSE_BASE_URL: ${{ secrets.LANGFUSE_BASE_URL }}
+        run: pnpm test
