@@ -12,7 +12,9 @@
     "e2e": "playwright test",
     "e2e:daphne": "playwright test e2e/daphne-regression.spec.ts --project=\"Desktop Chrome\"",
     "e2e:daphne:prod": "PLAYWRIGHT_BASE_URL=https://clients.dubub.com/demo/maa playwright test e2e/daphne-regression.spec.ts --project=\"Desktop Chrome\"",
+    "e2e:daphne:mobile:prod": "PLAYWRIGHT_BASE_URL=https://clients.dubub.com/demo/maa playwright test e2e/daphne-regression.spec.ts --project=\"iPhone 14\" --project=\"iPhone SE\" --project=\"Pixel 7\" --project=\"Galaxy S23\"",
     "e2e:mobile": "playwright test e2e/mobile.spec.ts",
+    "e2e:mobile:prod": "PLAYWRIGHT_BASE_URL=https://clients.dubub.com playwright test e2e/mobile.spec.ts",
     "e2e:prod": "PLAYWRIGHT_BASE_URL=https://clients.dubub.com playwright test e2e/mobile.spec.ts --project=\"Pixel 7\" --project=\"Galaxy S23\"",
     "typecheck": "turbo typecheck"
   },

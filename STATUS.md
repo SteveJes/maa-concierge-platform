@@ -67,7 +67,17 @@
 ## Test status
 - API regression `test-maa-intent-regression.ts`: **23/23 PASS** (local)
 - API regression `test-dubub-intent-regression.ts`: **12/12 PASS** (local)
-- Playwright `daphne-regression.spec.ts`: **63 cases** scaffolded across 3 desktop browsers — pending live run
+- Playwright `daphne-regression.spec.ts` against **prod** (`Desktop Chrome`): **19/21 PASS + 2 flaky** (#1, #16) — flaky cases pass on retry; AI nondeterminism on edge phrasings, not bypass bugs
+- Mobile device matrix: iPhone 15 Pro Max, iPhone 14, iPhone SE, Pixel 7, Pixel 5, Galaxy S23, Galaxy S9+, Xiaomi Redmi Note 12 — runnable via `pnpm.cmd e2e:daphne:mobile:prod`
+- Mobile Daphné regression on prod (`iPhone 14`, `iPhone SE`, `Pixel 7`, `Galaxy S23` × 21 cases): **82/84 passed** + 1 flaky + 1 brittle pattern (#1 cheapest price). Safety overrides hold across all surfaces.
+
+## Bug history this pass (all fixed)
+- `server.ts` `looksLikeBookingIntent()` was forcing `followUpMode='calendly'` even when the service layer had set `'callback'` → booking-template re-fired for #3, #13. Fixed: gate the heuristic on `detectCriticalIntent()`.
+- `ui-chat` callback mode wiped the AI's nuanced reply with `'Bien sûr — remplissez le formulaire'` → #1, #8, #9, #14 lost their proper answers. Fixed: only fall back to that template when the AI returns empty/generic text.
+- `core-facts.ts` `looksLikeCallMeRequest()` fuzzy-matched `'comment ça s'appelle'` as `'appelez moi'` (mon ≈ moi, appelle ≈ appeler) → #14 got the call-me template. Fixed: replaced `hasApproxTokenSet` with exact-token checks for short tokens.
+- `detectCriticalIntent()` negotiation regex matched `'l'abonnement le moins cher'` (innocent price question). Fixed: require an explicit threat/conditional keyword.
+- `chat widget` name-capture popup intercepted multi-turn second messages as a name (e.g. `'Piscine'` → `'Merci, Piscine !'`). Fixed in tests: pre-seed `localStorage` with a known user.
+- Original (pre-pass): `server.ts` `resolveBookingFollowUp` overwrote AI message with the booking template when `followUpMode === 'calendly'`. Now neutralized by the safety override forcing critical intents off `'calendly'`.
 
 ## Known weak points
 1. PostHog custom funnel events (chat_opened, lead_captured) not yet wired into the widget — only autopageviews active
