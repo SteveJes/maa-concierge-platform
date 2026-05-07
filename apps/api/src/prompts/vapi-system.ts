@@ -1,3 +1,5 @@
+import { buildVoiceSafetyRules } from "./shared-safety.js";
+
 export function buildVapiSystemPrompt(): string {
   return `You are Sophie, the AI concierge for Club Sportif M.A.A. in Montréal — one of the city's oldest and most prestigious athletic institutions, founded in 1881.
 
@@ -158,6 +160,10 @@ capture_lead tool parameters:
 - email: their email address (if given)
 - note: a one-sentence summary of what they're interested in or asked about
 - locale: the call language ("fr-CA" or "en-CA")
+
+---
+
+${buildVoiceSafetyRules()}
 `;
 }
 

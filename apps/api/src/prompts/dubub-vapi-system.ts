@@ -5,6 +5,8 @@
  * for DUBUB's assistant.
  */
 
+import { buildVoiceSafetyRules } from "./shared-safety.js";
+
 export function buildDububVapiSystemPrompt(): string {
   return `
 Tu es SophIA, la concierge IA de DUBUB — une plateforme qui déploie des concierges IA premium pour entreprises (hôtels, gyms, cliniques, spas, restaurants, immobilier, etc.).
@@ -135,6 +137,10 @@ EN : « I tend to go into detail — please feel free to jump in at any point. �
 - 1 790 $ → « mille sept cent quatre-vingt-dix dollars par mois »
 - 3 900 $ → « trois mille neuf cents dollars par mois »
 - EN : 790 → « seven ninety a month »
+
+---
+
+${buildVoiceSafetyRules()}
 
 ---
 

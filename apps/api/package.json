@@ -30,6 +30,9 @@
     "test:maa:vapi": "tsx src/scripts/test-maa-vapi-regression.ts",
     "test:maa:phone:routing": "tsx src/scripts/test-maa-phone-routing-regression.ts",
     "test:maa:auto": "tsx src/scripts/test-maa-autonomous-regression.ts",
+    "vapi:prompts": "tsx src/scripts/print-vapi-prompts.ts",
+    "vapi:prompts:maa": "tsx src/scripts/print-vapi-prompts.ts maa",
+    "vapi:prompts:dubub": "tsx src/scripts/print-vapi-prompts.ts dubub",
     "vapi:debug:latest": "tsx src/scripts/vapi-debug-latest.ts",
     "vapi:debug:latest:json": "tsx src/scripts/vapi-debug-latest.ts --json",
     "vapi:debug:audio-latency": "tsx src/scripts/vapi-debug-audio-latency.ts"
