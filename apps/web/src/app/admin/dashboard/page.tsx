@@ -72,6 +72,40 @@ function StatCard({ label, value, sub, accent }: { label: string; value: string 
   );
 }
 
+function ObsLinkCard({ label, title, description, href, accent }: { label: string; title: string; description: string; href: string; accent: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      style={{
+        display: "block",
+        background: "rgba(255,255,255,0.03)",
+        border: `1px solid ${accent}33`,
+        borderRadius: 12,
+        padding: "16px 18px",
+        textDecoration: "none",
+        transition: "all 0.18s ease",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = `${accent}88`;
+        e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = `${accent}33`;
+        e.currentTarget.style.background = "rgba(255,255,255,0.03)";
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+        <span style={{ fontSize: 9, fontWeight: 800, color: accent, textTransform: "uppercase", letterSpacing: "0.14em" }}>{label}</span>
+        <span style={{ fontSize: 11, color: accent }}>↗</span>
+      </div>
+      <div style={{ fontSize: 14, fontWeight: 700, color: P.white, marginBottom: 4 }}>{title}</div>
+      <div style={{ fontSize: 11, color: P.muted, lineHeight: 1.5 }}>{description}</div>
+    </a>
+  );
+}
+
 function HealthBadge({ status }: { status: HealthLevel }) {
   const c = statusColor(status);
   return (
@@ -222,6 +256,41 @@ export default function AdminDashboard() {
                 <code style={{ fontSize: 12, color: P.dim, marginLeft: 10 }}>{tenant.vapiAssistantId}</code>
               </div>
             )}
+          </section>
+
+          {/* Observability & Quality — deep links to Langfuse, PostHog, CI */}
+          <section style={{ marginBottom: 28 }}>
+            <SectionTitle>Observabilité & Qualité</SectionTitle>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+              <ObsLinkCard
+                label="Langfuse"
+                title="Traces OpenAI"
+                description={`Voir chaque appel IA pour ${tenant.name} — entrée, sortie, latence, coût par token.`}
+                href={`https://us.cloud.langfuse.com/?tenantCode=${encodeURIComponent(tenant.id)}`}
+                accent={P.gold}
+              />
+              <ObsLinkCard
+                label="PostHog"
+                title="Funnel concierge"
+                description="Pageviews → chat ouvert → premier message → lead capturé. Conversion en temps réel."
+                href="https://us.posthog.com"
+                accent={P.blue}
+              />
+              <ObsLinkCard
+                label="GitHub"
+                title="CI / PR / CodeRabbit"
+                description="Statut des tests de régression, revues automatiques, couches de sécurité."
+                href="https://github.com/SteveJes/maa-concierge-platform/actions"
+                accent={P.green}
+              />
+              <ObsLinkCard
+                label="Safety"
+                title="11 intentions critiques"
+                description="annulation · garantie · réservation immédiate · contact direction · identité · injection · vie privée · jours fériés · humain · négociation · réservation problème"
+                href="https://github.com/SteveJes/maa-concierge-platform/blob/main/apps/api/src/services/maa-chat.ts"
+                accent={P.red}
+              />
+            </div>
           </section>
 
           {/* VAPI stats */}
