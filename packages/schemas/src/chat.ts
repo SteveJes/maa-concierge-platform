@@ -8,27 +8,33 @@ import { z } from "zod";
  * are optional. Errors come back as a structured ZodError list so the API
  * returns precise, field-level 400s.
  */
-export const ChatCallbackBodySchema = z.object({
-  name: z.string().trim().optional(),
-  phone: z.string().trim().min(1),
-  email: z.string().trim().email().optional(),
-  consentToContact: z.literal(true),
-  preferredTime: z.string().trim().optional(),
-  preferredTimeText: z.string().trim().optional(),
-  questionSummary: z.string().trim().optional(),
-});
+// .nullish() = optional + nullable. The chat widget sends `null` for unset fields,
+// not `undefined`, so we accept both. Empty strings are also tolerated.
+const optionalString = z.string().trim().nullish();
+
+export const ChatCallbackBodySchema = z
+  .object({
+    name: optionalString,
+    phone: z.string().trim().min(1),
+    email: z.string().trim().email().nullish(),
+    consentToContact: z.literal(true),
+    preferredTime: optionalString,
+    preferredTimeText: optionalString,
+    questionSummary: optionalString,
+  })
+  .passthrough();
 
 export const TenantChatRouteBodySchema = z
   .object({
     message: z.string().trim().min(1, "message is required"),
-    locale: z.string().trim().optional(),
-    maxResults: z.number().int().positive().max(20).optional(),
-    conversationId: z.string().trim().optional(),
-    callback: ChatCallbackBodySchema.optional(),
-    dryRunPersistence: z.boolean().optional(),
-    userName: z.string().trim().optional(),
+    locale: optionalString,
+    maxResults: z.number().int().positive().max(20).nullish(),
+    conversationId: optionalString,
+    callback: ChatCallbackBodySchema.nullish(),
+    dryRunPersistence: z.boolean().nullish(),
+    userName: optionalString,
   })
-  .strict();
+  .passthrough(); // Allow extra fields — widgets evolve faster than the API schema.
 
 export type TenantChatRouteBody = z.infer<typeof TenantChatRouteBodySchema>;
 export type ChatCallbackBody = z.infer<typeof ChatCallbackBodySchema>;

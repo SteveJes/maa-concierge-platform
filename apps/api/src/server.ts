@@ -1291,7 +1291,7 @@ export function createServer() {
     const chatRequest: MaaChatRequest = {
       userMessage: trimmedMessage,
       locale: locale ?? undefined,
-      maxResults: body.maxResults,
+      maxResults: body.maxResults ?? undefined,
       conversationHistory,
       userName: userName ?? undefined,
       tenantCode: tenantId,
