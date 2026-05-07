@@ -409,7 +409,16 @@ function looksLikeClubDescriptionQuestion(
 
 function looksLikeCallMeRequest(userMessage: string, locale: string | null): boolean {
   const normalized = normalizeIntentText(userMessage);
+  const tokens = tokenize(normalized);
+  const hasExactToken = (target: string) => tokens.includes(target);
+
   if (isFrenchLocale(locale)) {
+    // Guard: short clarifying questions about names/services must never trip
+    // the call-me detector. "comment ca s appelle" shouldn't fuzzy-match "appelez moi".
+    if (/\b(comment ca s appelle|comment ca s appellent|comment ca s appellera|qu est ce que c est)\b/.test(normalized)) {
+      return false;
+    }
+
     return (
       hasAnyPhrase(normalized, [
         "pouvez vous m appeler",
@@ -422,7 +431,6 @@ function looksLikeCallMeRequest(userMessage: string, locale: string | null): boo
         "pouvez vous rappeler",
         "voudrais etre rappele",
         "voudrais etre rappelle",
-        "rappel",
         "rappelez moi",
         "rappelez-moi",
         "je prefere un appel",
@@ -430,9 +438,11 @@ function looksLikeCallMeRequest(userMessage: string, locale: string | null): boo
         "parler a quelqu un",
         "parler a une personne",
       ]) ||
-      hasApproxTokenSet(normalized, ["appelez", "moi"]) ||
-      hasApproxTokenSet(normalized, ["rappel", "moi"]) ||
-      hasApproxTokenSet(normalized, ["appeler", "moi"])
+      // Exact-token requirements — fuzzy matching on short tokens like "moi" / "appelle"
+      // produced false positives ("mon ami" ≈ "moi", "ca s appelle" ≈ "appeler").
+      (hasExactToken("appelez") && hasExactToken("moi")) ||
+      (hasExactToken("rappelez") && hasExactToken("moi")) ||
+      (hasExactToken("rappel") && (hasExactToken("moi") || hasExactToken("me")))
     );
   }
   return (

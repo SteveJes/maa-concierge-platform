@@ -241,7 +241,27 @@ async function isBookingCtaVisible(page: Page): Promise<boolean> {
 
 // ── Tests ────────────────────────────────────────────────────────────────────
 
+// Pre-seed a "returning user" so the widget skips its name-capture prompt.
+// Without this, the second message in a multi-turn flow gets captured as a name
+// (e.g. "Piscine" → "Merci, Piscine !") and never reaches the chat API.
+async function seedKnownUser(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    try {
+      window.localStorage.setItem(
+        "maa_concierge_user",
+        JSON.stringify({ name: "TestUser", locale: "fr-CA" }),
+      );
+    } catch {
+      /* ignore */
+    }
+  });
+}
+
 test.describe("Daphné regression — Phase 1 critical safety", () => {
+  test.beforeEach(async ({ page }) => {
+    await seedKnownUser(page);
+  });
+
   for (const tc of CASES) {
     test(`${tc.id} ${tc.label}`, async ({ page }) => {
       await page.goto("/");
@@ -270,6 +290,10 @@ test.describe("Daphné regression — Phase 1 critical safety", () => {
 });
 
 test.describe("Daphné regression — multi-turn context", () => {
+  test.beforeEach(async ({ page }) => {
+    await seedKnownUser(page);
+  });
+
   test("#7 short follow-up 'Piscine' after holiday hours preserves context", async ({ page }) => {
     await page.goto("/");
     await page.waitForSelector("input[placeholder], textarea", { timeout: 15000 });
