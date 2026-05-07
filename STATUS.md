@@ -4,101 +4,89 @@
 - `feat/maa-web-ingestion-v3`
 
 ## Live production URLs
-- Web / demo: https://clients.dubub.com/demo
+- Web / demo: https://clients.dubub.com (and `/demo/maa`, `/demo/dubub`)
 - API: https://api.dubub.com
 - Server: DigitalOcean droplet `concierge-first` (165.227.40.198, 2vCPU/4GB, TOR1)
-- Deploy: `bash /var/www/concierge/deploy.sh`
+- Deploy: `ssh root@165.227.40.198 "bash /var/www/concierge/deploy.sh"`
 - PM2 processes: `api` (id:5), `web` (id:1)
+
+## Owners and tenants
+- DUBUB inc. owns the platform — Steve, Daphné, Claude.
+- Tenant 1: **MAA** (Club Sportif MAA, Montreal) — paying client.
+- Tenant 2: **DUBUB** itself — concierge "SophIA" runs the inbound sales funnel.
 
 ## What's live and working
 
+### Safety layer (shared across all tenants)
+- `apps/api/src/prompts/shared-safety.ts` — Daphné's 13 rules included by every tenant prompt
+- `apps/api/src/prompts/generic-tenant-chat-system.ts` — auto-generates prompt for new tenants from the wizard with shared-safety baked in
+- `apps/api/src/services/maa-chat.ts`:
+  - `detectCriticalIntent()` recognizes 11 intents: cancellation, guarantee, reservation_problem, reserve_now, executive_contact, holiday_hours, privacy, identity, prompt_injection, human_now, negotiation
+  - `safeFollowUpModeForIntent()` forces `followUpMode` away from `calendly` for those intents → `server.ts` booking-template override can no longer fire on protected intents
+  - `buildIntentSafetyContext()` injects per-intent guidance into the AI prompt (belt + suspenders)
+
+### LLM observability — Langfuse
+- Every OpenAI call (MAA + DUBUB + future tenants) traced with `tenantCode`, `locale`, input, output, token usage
+- Failures recorded with `level: "ERROR"` and the error message
+- Dashboard: `https://us.cloud.langfuse.com`
+- No-op when keys missing (CI, local dev without keys)
+
+### Product analytics — PostHog
+- Pageviews + page-leave automatic on every web route via `apps/web/src/components/PostHogProvider.tsx`
+- Custom events (chat_opened, chat_first_message, lead_captured) — TODO, hook up in widget
+- Dashboard: `https://us.posthog.com`
+
+### Automated UI regression — Playwright
+- `e2e/daphne-regression.spec.ts` — 21 cases from `daphne-second-run.md` running against the rendered chat
+- Both `forbid` and `require` regex patterns assert against the actual user-visible reply
+- Booking-CTA visibility checked separately (`forbidBookingCta`)
+- Run live: `pnpm.cmd e2e:daphne:prod`
+- Run local: `pnpm.cmd e2e:daphne` (web dev server must be up on :3000)
+
+### CodeRabbit
+- Installed via Steve's GitHub account — auto-reviews every PR
+
 ### Chat widget (packages/ui-chat)
 - Full bilingual chat (FR default, EN on detection)
-- Deterministic pricing, hours, address, phone, description responses
+- Deterministic pricing, hours, address, phone, description responses (skipped for critical intents)
 - AI fallback via OpenAI + NocoDB retrieval for complex questions
 - Lead form (name, phone, email, consent) → Brevo email to club
 - Dark premium UI: charcoal palette, gold gradient bubbles, MAA avatar
 - Mobile: `calc(100dvh - 40px)` layout, centered demo badge
-- Footer: DUBUB.ca link with AI orbital animation
 
 ### Phone (inbound Sophie call)
-- User types phone number in chat → context stored server-side (30 min TTL)
-- User calls Sophie's inbound number: **(438) 802-9845** — displayed formatted
-- VAPI fires `assistant-request` webhook to `https://api.dubub.com/v1/vapi/server`
-- Server matches caller by phone → builds topic-aware opening line
-  e.g. "Je vois que vous aviez une question sur nos tarifs d'abonnements"
-- Cold caller (no match): "Bonjour. Ici Sophie, du Club MAA. Comment puis-je vous aider ?"
-- Sophie collects lead via `capture_lead` tool → premium HTML email to `LEAD_NOTIFY_EMAIL`
-- All numbers spoken as phonetic French words ("deux cent vingt-cinq")
+- VAPI assistant Sophie, inbound `+14388029845`
+- `assistant-request` webhook routes to `https://api.dubub.com/v1/vapi/server`
+- Topic-aware opening line; `capture_lead` tool emails `LEAD_NOTIFY_EMAIL`
 
 ### Admin dashboard (/admin/dashboard)
-- Multi-tenant sidebar (all tenants from registry)
-- Per-tenant: health checks, VAPI call table, VAPI stats
-- **OpenAI cost section**: total cost, request count, token counts (per-tenant, per-model breakdown)
-- Usage tracked in memory since last server start (resets on restart — persistent DB planned)
+- Multi-tenant sidebar
+- Per-tenant: health checks, VAPI call table, OpenAI cost tracking
+- Onboarding wizard captures the 7 prompt-config fields → new tenants inherit shared safety automatically
 
-### Admin onboarding wizard (/admin/onboarding)
-- 6-step wizard: Company Info → Brand & Voice → Knowledge Sources → Voice & Phone → Plan & Billing → Review
-- Plans: Essentiel $599/mo, Croissance $1,290/mo, Prestige $2,590/mo, Autre custom
-- 12-month term automatically waives implementation fee
-- Stripe Checkout integration (payment link returned on success)
-- HTML invoice generation + Brevo email send (bilingual, QC taxes: TPS 5% + TVQ 9.975%)
-- Invoice numbering: `INV-YYMM-XXXX`
-
-## VAPI configuration (action required in VAPI dashboard)
-
-### Sophie's assistant
-- Server URL: `https://api.dubub.com/v1/vapi/server`
-- Inbound phone: `+14388029845` (already in .env.local as `VAPI_PHONE_NUMBER`)
-- System prompt: copy/paste from `apps/api/src/prompts/vapi-system.ts` → buildVapiSystemPrompt() output
-  **This is required for fast responses — without it VAPI makes a slow tool call on every turn**
-
-### capture_lead tool (add in VAPI dashboard)
-- Tool name: `capture_lead`
-- Server URL: `https://api.dubub.com/v1/vapi/tool`
-- Parameters:
-  - `name` (string) — caller's full name
-  - `phone` (string, optional) — phone number if given
-  - `email` (string, optional) — email if given
-  - `note` (string) — one-sentence summary of interest
-  - `locale` (string) — "fr-CA" or "en-CA"
-
-## Environment variables needed on droplet
-File: `/var/www/concierge/apps/api/.env.local`
-
-Already present:
-- `VAPI_API_KEY`, `VAPI_PHONE_NUMBER=+14388029845`
-- `BREVO_API_KEY` (must be `xkeysib-...` REST key, NOT SMTP key)
-- `OPENAI_API_KEY`, `NOCO_DB_TOKEN`, `ADMIN_TOKEN`
-
-Still needed (add if not present):
-- `STRIPE_SECRET_KEY=sk_live_...`
-- `TAX_GST_NUMBER=...` (TPS registration number)
-- `TAX_QST_NUMBER=...` (TVQ registration number)
-- `DUBUB_COMPANY_NAME=DUBUB inc.`
-- `DUBUB_ADDRESS=...`
-- `LEAD_NOTIFY_EMAIL=...` (where lead capture emails go)
-- `INVOICE_FROM_EMAIL=...` (Brevo verified sender)
+## Test status
+- API regression `test-maa-intent-regression.ts`: **23/23 PASS** (local)
+- API regression `test-dubub-intent-regression.ts`: **12/12 PASS** (local)
+- Playwright `daphne-regression.spec.ts`: **63 cases** scaffolded across 3 desktop browsers — pending live run
 
 ## Known weak points
-1. OpenAI usage resets on server restart — no persistent DB yet
-2. Stripe `automatic_tax` needs a Canadian address on the customer to work correctly — verify or switch to manual QC tax line items
-3. VAPI system prompt must be pasted manually into VAPI dashboard (see above)
-4. Knowledge gap logging (unanswered questions → NocoDB) not yet built
-5. Dashboard "Lacunes" tab not yet built
-6. CI Node.js 20 deprecation warnings (non-blocking)
+1. PostHog custom funnel events (chat_opened, lead_captured) not yet wired into the widget — only autopageviews active
+2. Vitest migration of regression scripts deferred (current tsx scripts work but don't integrate with CI's test runner)
+3. Zod validation at HTTP boundary not yet added — `/v1/chat`, `/admin/onboarding`, `/v1/vapi/*` accept loosely-typed bodies
+4. OpenAI usage resets on server restart (no persistent DB yet)
+5. Knowledge gap logging (unanswered questions → NocoDB) not built
+6. Dashboard "Lacunes" tab not built
 
-## Next priorities
-1. Deploy current batch, verify all flows on prod
-2. Add `capture_lead` tool in VAPI dashboard
-3. Paste Sophie system prompt into VAPI assistant
-4. Add missing env vars to droplet
-5. Knowledge gap logging → NocoDB `knowledge_gaps` table
-6. Dashboard "Lacunes" tab
-7. Persistent OpenAI usage tracking (replace in-memory Map with DB)
-8. Multi-tenant prep: second client onboarding
+## Next priorities (ranked)
+1. Run `pnpm.cmd e2e:daphne:prod` against the live deploy to validate the booking-template fix end-to-end
+2. Add Zod schemas at HTTP boundary
+3. Wire chat_opened / lead_captured events to PostHog
+4. Vitest migration of regression scripts + GitHub Actions workflow that runs them on every PR
+5. Move OpenAI usage tracking to NocoDB (persistent)
+6. Knowledge gap logging → NocoDB `knowledge_gaps` table
 
 ## Session start rule
 1. Read `CLAUDE.md` + `STATUS.md`
 2. Inspect `git status` and recent commits
-3. Continue from highest-value remaining issue
+3. Check Langfuse dashboard if a recent regression is reported
+4. Continue from highest-value remaining issue

@@ -19,8 +19,11 @@ After each meaningful pass:
 
 ## Project identity
 - Project: MAA Concierge Platform
-- First tenant: Club Sportif MAA, Montreal
-- Goal: premium bilingual AI concierge for web chat and voice, with future multi-tenant expansion
+- Owners: Steve, Daphné, and Claude (DUBUB inc.)
+- First paying tenant: Club Sportif MAA, Montreal
+- Second tenant: DUBUB itself (concierge name "SophIA") — runs the sales funnel for new tenants
+- Goal: premium bilingual AI concierge for web chat and voice, sold as a multi-tenant SaaS by DUBUB
+- Strategic ambition: showcase Claude Code internationally — flagship product
 
 ## Language behavior
 - Default French (Quebec/Canada)
@@ -55,6 +58,8 @@ After each meaningful pass:
 - `pnpm.cmd --filter @platform/api dev`
 - `pnpm.cmd --filter @platform/api typecheck`
 - `pnpm.cmd --filter @platform/web typecheck`
+- API regression: `cd apps/api && npx tsx src/scripts/test-maa-intent-regression.ts` (23 cases) and `... test-dubub-intent-regression.ts` (12 cases)
+- Live-UI regression: `pnpm.cmd e2e:daphne` (local) / `pnpm.cmd e2e:daphne:prod` (live)
 
 ## Monorepo structure
 - `apps/api`
@@ -62,16 +67,37 @@ After each meaningful pass:
 - `packages/ui-chat`
 
 ## Important files
-- `apps/api/src/server.ts`
-- `apps/api/src/core-facts.ts`
-- `apps/api/src/prompts/maa-chat-system.ts`
-- `apps/api/src/services/maa-chat.ts`
+- `apps/api/src/server.ts` — HTTP layer; **booking-template override** lives in `resolveBookingFollowUp()` and is gated on `followUpMode === "calendly"`
+- `apps/api/src/services/maa-chat.ts` — `answerMaaChat()`, `detectCriticalIntent()`, `safeFollowUpModeForIntent()`, `buildIntentSafetyContext()`
+- `apps/api/src/prompts/shared-safety.ts` — `buildSharedSafetyRules()` — included by every tenant prompt
+- `apps/api/src/prompts/generic-tenant-chat-system.ts` — auto-generated prompt for new tenants from the wizard
+- `apps/api/src/prompts/maa-chat-system.ts` / `dubub-chat-system.ts`
+- `apps/api/src/lib/langfuse.ts` — LLM observability (no-op when keys missing)
 - `apps/api/src/services/maa-pricing.ts`
 - `apps/api/src/tenant-core-facts.json`
 - `packages/ui-chat/src/index.tsx`
+- `e2e/daphne-regression.spec.ts` — 21 cases run against the **live UI** (the layer Daphné sees)
+- `apps/web/src/components/PostHogProvider.tsx`
+
+## Architectural invariant — safety is structural, not optional
+Every tenant prompt builder MUST include `buildSharedSafetyRules({ tunnelCtaFr, tunnelCtaEn })`. The generic builder enforces this for new tenants automatically. `detectCriticalIntent()` runs in `answerMaaChat` and **forces `followUpMode` away from `calendly`** for: cancellation, guarantee, reservation_problem, reserve_now, executive_contact, holiday_hours, privacy, identity, prompt_injection, human_now, negotiation. This prevents the HTTP layer's booking-template override from firing on those intents. **Never delete this enforcement** without replacing it.
+
+## Test the layer the user sees
+Daphné's failures persisted because we only tested `answerMaaChat()` — but the user sees the HTTP+UI rendering. Always extend `e2e/daphne-regression.spec.ts` for new safety rules and run against the live URL: `pnpm.cmd e2e:daphne:prod`.
 
 ## Important environment note
-- Actual env file: `apps/api/.env.local`
+- API env file: `apps/api/.env.local` (must include `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_BASE_URL`)
+- Web env file: `apps/web/.env.local` (must include `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`)
+- On the droplet (`/var/www/concierge/...`) the same env files are required before each deploy. Re-add new vars manually — they don't sync from local.
+
+## Deploy
+- `ssh root@165.227.40.198 "bash /var/www/concierge/deploy.sh"`
+- PM2 processes: `api` (id:5), `web` (id:1)
+
+## Observability and analytics
+- **Langfuse Cloud (US)** — every OpenAI call traced with `tenantCode`, `locale`, prompt input, output, and token usage. View at `https://us.cloud.langfuse.com`.
+- **PostHog** — pageviews and demo funnel. Key in `apps/web/.env.local`.
+- **CodeRabbit** — installed on GitHub repo, reviews every PR.
 
 ## Current working state (latest tested pass)
 - Top-right phone transfer flow now prefers a context-carrying outbound AI call instead of raw `tel:` as the primary path

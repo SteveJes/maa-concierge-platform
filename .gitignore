@@ -9,3 +9,17 @@ dist
 .DS_Store
 
 .claude/
+
+# Next.js / Turbo / build artifacts
+.next/
+.turbo/
+*.tsbuildinfo
+
+# Playwright artifacts
+test-results/
+playwright-report/
+e2e/screenshot-*.png
+e2e/report-*.json
+
+# Local regression output
+apps/api/regression-report.json

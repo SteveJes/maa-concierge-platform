@@ -16,6 +16,7 @@
     "@platform/schemas": "workspace:*",
     "@platform/ui-chat": "workspace:*",
     "next": "^15.3.0",
+    "posthog-js": "^1.372.9",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
