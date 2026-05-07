@@ -180,11 +180,15 @@ const CASES: DaphneCase[] = [
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 async function sendMessage(page: Page, message: string): Promise<void> {
+  const beforeCount = await page.evaluate(
+    () => document.querySelectorAll("[data-role='assistant']").length,
+  );
+
   const input = page.locator("input[placeholder], textarea").first();
   await input.fill(message);
   await input.press("Enter");
 
-  // Wait for input to clear, then for the send button to re-enable.
+  // Wait for input to clear (request submitted).
   await page
     .waitForFunction(
       () => {
@@ -195,34 +199,39 @@ async function sendMessage(page: Page, message: string): Promise<void> {
     )
     .catch(() => null);
 
+  // Wait for a NEW assistant bubble to be rendered (count increased).
+  await page.waitForFunction(
+    (prev) => document.querySelectorAll("[data-role='assistant']").length > prev,
+    beforeCount,
+    { timeout: 45_000 },
+  );
+
+  // Wait for the send button to be re-enabled (final response committed).
   await page.waitForFunction(
     () => {
       const btn = document.querySelector<HTMLButtonElement>("[data-send-btn]");
       return !btn || !btn.disabled;
     },
-    { timeout: 45000 },
+    { timeout: 45_000 },
   );
 
-  // Give the assistant message a beat to render.
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(150);
 }
 
 async function getLastAssistantText(page: Page): Promise<string> {
-  // The chat widget renders assistant messages as siblings — last one is the latest reply.
-  // We grab everything that is NOT the user's just-sent text by reading the full chat region.
-  const text = await page.evaluate(() => {
-    const messages = Array.from(document.querySelectorAll("[data-role='assistant'], .assistant, [class*='assistant']"));
-    if (messages.length > 0) return messages[messages.length - 1]?.textContent ?? "";
+  // Wait for at least one assistant message to be present, then read the most recent.
+  // The widget tags each rendered assistant bubble with data-role="assistant" and
+  // data-message-text containing the raw model text.
+  await page.waitForSelector("[data-role='assistant']", { timeout: 30_000 });
 
-    // Fallback: read the last visible chat bubble that isn't the input.
-    const allBubbles = Array.from(document.querySelectorAll("div, p, span"))
-      .filter((el) => {
-        const text = el.textContent ?? "";
-        return text.length > 30 && text.length < 2000;
-      });
-    return allBubbles[allBubbles.length - 1]?.textContent ?? "";
+  return await page.evaluate(() => {
+    const nodes = Array.from(
+      document.querySelectorAll<HTMLElement>("[data-role='assistant']"),
+    );
+    const last = nodes[nodes.length - 1];
+    if (!last) return "";
+    return last.getAttribute("data-message-text") ?? last.textContent ?? "";
   });
-  return text;
 }
 
 async function isBookingCtaVisible(page: Page): Promise<boolean> {

@@ -1297,7 +1297,7 @@ export function ChatShell({
             // Nudge = distinct info card, visually separate from AI conversation
             if (isNudge) {
               return (
-                <div key={message.id} style={{ marginBottom: 10, animation: "maa-msg-in 0.3s ease" }}>
+                <div key={message.id} data-role="assistant" data-message-text={message.text} style={{ marginBottom: 10, animation: "maa-msg-in 0.3s ease" }}>
                   <div style={{
                     borderRadius: 14,
                     background: `linear-gradient(135deg, rgba(var(--accent-rgb),0.07) 0%, rgba(var(--accent-rgb),0.03) 100%)`,
@@ -1358,7 +1358,7 @@ export function ChatShell({
 
             // Regular AI message
             return (
-              <div key={message.id}>
+              <div key={message.id} data-role="assistant" data-message-text={message.text}>
                 <div
                   style={{
                     display: "flex",
