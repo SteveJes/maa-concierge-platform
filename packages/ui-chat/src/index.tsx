@@ -663,8 +663,16 @@ export function ChatShell({
 
       const body = (await response.json()) as ChatApiResponse;
 
+      // Only override the AI's reply with the generic callback-form template when the AI did
+      // not return a substantive message (empty, very short, or itself a generic acknowledgement).
+      // For critical intents (cancellation, guarantee, identity, executive contact, etc.) the AI
+      // returns a careful reply via the safety layer — keep it intact.
+      const aiMessage = body.assistantMessage?.trim() ?? "";
+      const isGenericCallbackAck =
+        aiMessage.length === 0 ||
+        /^(ok|d'accord|sure|bien s[uû]r\.?|okay|yes|noted)\.?$/i.test(aiMessage);
       const assistantText =
-        body.followUpMode === "callback" && !body.callbackPersistence.saved
+        body.followUpMode === "callback" && !body.callbackPersistence.saved && isGenericCallbackAck
           ? requestLocale === "fr-CA"
             ? `Bien sûr — remplissez le formulaire ci-dessous et un membre de l'équipe ${clientName} vous contactera.`
             : `Of course — fill in the form below and a ${clientName} team member will get back to you.`

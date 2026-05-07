@@ -9,6 +9,7 @@ import { buildTenantHealthReport } from "./admin/health.js";
 import { loadApprovedSourceRegistry } from "@platform/config";
 import {
   answerMaaChat,
+  detectCriticalIntent,
   type MaaChatRequest,
   type MaaChatResponse,
 } from "./services/maa-chat.js";
@@ -1286,10 +1287,14 @@ export function createServer() {
       }
     };
 
+    // Critical intents (cancel, guarantee, reserve_now, etc.) must NEVER be coerced to
+    // calendly/vapi by the booking/phone intent heuristics — those would bypass the
+    // service-layer safety override and re-trigger the booking template.
+    const criticalIntent = detectCriticalIntent(trimmedMessage);
     const hasExplicitBookingIntent =
-      !hasCallbackPayload && looksLikeBookingIntent(trimmedMessage, locale);
+      !hasCallbackPayload && !criticalIntent && looksLikeBookingIntent(trimmedMessage, locale);
     const hasExplicitPhoneIntent =
-      !hasCallbackPayload && looksLikePhoneIntent(trimmedMessage, locale);
+      !hasCallbackPayload && !criticalIntent && looksLikePhoneIntent(trimmedMessage, locale);
 
     const conversationHistory = await loadConversationHistory();
 

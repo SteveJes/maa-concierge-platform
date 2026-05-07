@@ -147,7 +147,7 @@ type CriticalIntent =
  * Detects which critical intent (if any) is present in the user message.
  * Used both for prompt-time AI guidance AND for hard post-processing safety overrides.
  */
-function detectCriticalIntent(userMessage: string): CriticalIntent | undefined {
+export function detectCriticalIntent(userMessage: string): CriticalIntent | undefined {
   const isCancellation = /\b(annuler|annulation|cancel|cancell|résili(er|ation)|résil(er|iation)|mettre fin|stopper mon abonnement)\b/i.test(userMessage);
   if (isCancellation) return "cancellation";
 
@@ -188,7 +188,12 @@ function detectCriticalIntent(userMessage: string): CriticalIntent | undefined {
     /\b(tout de suite|maintenant|right now|right away|imm[eé]diatement|now)\b/i.test(userMessage);
   if (isHumanNow) return "human_now";
 
-  const isNegotiation = /\b(menace|threat|aller ailleurs|go elsewhere|switch|moins cher|cheaper|n[eé]gocier|negotiate|rabais|discount|deal)\b/i.test(userMessage);
+  // Negotiation must signal an actual threat or bargaining attempt — not just contain "moins cher"
+  // (which appears innocently in "l'abonnement le moins cher").
+  const isNegotiation =
+    (/\b(menace|menacer|threat(en)?|aller ailleurs|go elsewhere|n[eé]gocier|negotiate)\b/i.test(userMessage)) ||
+    (/\b(rabais|discount|deal|moins cher|cheaper|baisser le prix|lower the price)\b/i.test(userMessage) &&
+      /\b(si|if|sinon|otherwise|menace|threat|partir|leave|quitter|switch)\b/i.test(userMessage));
   if (isNegotiation) return "negotiation";
 
   return undefined;
