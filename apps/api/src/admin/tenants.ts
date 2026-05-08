@@ -48,6 +48,35 @@ export interface TenantConfig {
    * Defaults to "bilingual".
    */
   defaultLanguage?: "fr" | "en" | "bilingual";
+
+  // ── VAPI Transfer-to-Human ──────────────────────────────────────────────────
+  /**
+   * Transfer-to-human is OPT-IN per tenant. When enabled, the VAPI assistant
+   * (Sophie / SophIA / etc.) can transfer a caller to this phone number — but
+   * ONLY when the caller explicitly asks AND confirms. The assistant never
+   * offers transfer proactively.
+   *
+   * Outside business hours, the request falls back to capturing a lead instead
+   * of attempting to transfer.
+   */
+  transferToHumanEnabled?: boolean;
+  /** E.164 phone number to dial when transferring (e.g. "+15148452233"). */
+  transferToHumanPhone?: string | null;
+  /**
+   * Business hours window during which transfers are allowed. Outside this
+   * window the assistant captures a lead and informs the caller the team will
+   * call back.
+   *
+   * `days` is a 7-element boolean array: [Sun, Mon, Tue, Wed, Thu, Fri, Sat].
+   * `startHour`/`endHour` are in 24h local time (timezone field). Both
+   * `endHour` exclusive — e.g. start 9, end 17 means 9:00am-4:59pm.
+   */
+  transferBusinessHours?: {
+    days: boolean[]; // length 7, Sun=0..Sat=6
+    startHour: number; // 0-23
+    endHour: number;   // 1-24, exclusive
+    timezone: string;  // IANA tz, e.g. "America/Montreal"
+  };
 }
 
 export const TENANT_REGISTRY: TenantConfig[] = [
@@ -71,6 +100,17 @@ export const TENANT_REGISTRY: TenantConfig[] = [
     contactEmail: "info@clubsportifmaa.com",
     website: "https://www.clubsportifmaa.com",
     notes: null,
+    // Transfer-to-human is OFF by default for MAA until the club provides a
+    // dedicated transfer-line phone number. Edit via dashboard Settings panel.
+    transferToHumanEnabled: false,
+    transferToHumanPhone: null,
+    transferBusinessHours: {
+      // Mon-Fri default. Sun + Sat off.
+      days: [false, true, true, true, true, true, false],
+      startHour: 9,
+      endHour: 17,
+      timezone: "America/Montreal",
+    },
   },
 ];
 

@@ -36,7 +36,17 @@ interface TenantSettings {
   tunnelCtaFr?: string;
   tunnelCtaEn?: string;
   defaultLanguage?: "fr" | "en" | "bilingual";
+  transferToHumanEnabled?: boolean;
+  transferToHumanPhone?: string | null;
+  transferBusinessHours?: {
+    days: boolean[];
+    startHour: number;
+    endHour: number;
+    timezone: string;
+  };
 }
+
+const DAY_LABELS_FR = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
 
 interface Props {
   tenantId: string;
@@ -194,6 +204,129 @@ export default function SettingsPanel({ tenantId, initial, token, onSaved }: Pro
           <Field label="VAPI Assistant ID" value={form.vapiAssistantId ?? ""} onChange={(v) => update("vapiAssistantId", v || null)} />
           <Field label="VAPI Phone Number ID" value={form.vapiPhoneNumberId ?? ""} onChange={(v) => update("vapiPhoneNumberId", v || null)} />
           <Field label="Numéro entrant" value={form.inboundPhoneNumber ?? ""} onChange={(v) => update("inboundPhoneNumber", v || null)} placeholder="+14385551234" />
+        </div>
+
+        {/* Transfer to human (VAPI only) */}
+        <div style={{ marginBottom: 24, padding: "16px 18px", background: "rgba(201,168,76,0.04)", borderRadius: 12, border: `1px solid ${P.gold}33` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+            <span style={{ fontSize: 18 }}>📞</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: P.white }}>Transfert vers humain (appels VAPI)</div>
+              <div style={{ fontSize: 11, color: P.muted, marginTop: 2 }}>
+                Le concierge IA transfère uniquement si l&apos;appelant le demande explicitement et confirme.
+                Hors heures, on capture un lead automatiquement.
+              </div>
+            </div>
+          </div>
+
+          <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", marginBottom: 14 }}>
+            <input
+              type="checkbox"
+              checked={form.transferToHumanEnabled ?? false}
+              onChange={(e) => update("transferToHumanEnabled", e.target.checked)}
+              style={{ width: 16, height: 16, accentColor: P.gold }}
+            />
+            <span style={{ fontSize: 12, color: P.dim, fontWeight: 600 }}>Activer le transfert vers humain</span>
+          </label>
+
+          {form.transferToHumanEnabled && (
+            <>
+              <div style={{ marginBottom: 14 }}>
+                <label style={labelStyle}>Numéro de téléphone du transfert</label>
+                <input
+                  type="tel"
+                  style={inputBase}
+                  value={form.transferToHumanPhone ?? ""}
+                  onChange={(e) => update("transferToHumanPhone", e.target.value || null)}
+                  placeholder="+15148452233"
+                />
+                <div style={{ fontSize: 10, color: P.muted, marginTop: 4 }}>Format E.164 (ex. +15148452233).</div>
+              </div>
+
+              <div style={{ marginBottom: 14 }}>
+                <label style={labelStyle}>Jours actifs</label>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {DAY_LABELS_FR.map((label, idx) => {
+                    const days = form.transferBusinessHours?.days ?? [false, true, true, true, true, true, false];
+                    const active = days[idx] ?? false;
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          const next = [...days];
+                          next[idx] = !active;
+                          update("transferBusinessHours", {
+                            days: next,
+                            startHour: form.transferBusinessHours?.startHour ?? 9,
+                            endHour: form.transferBusinessHours?.endHour ?? 17,
+                            timezone: form.transferBusinessHours?.timezone ?? "America/Montreal",
+                          });
+                        }}
+                        style={{
+                          padding: "6px 12px",
+                          borderRadius: 8,
+                          border: `1px solid ${active ? P.gold + "88" : P.border}`,
+                          background: active ? "rgba(201,168,76,0.15)" : "rgba(255,255,255,0.03)",
+                          color: active ? P.gold : P.muted,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          minWidth: 44,
+                        }}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                <Field
+                  label="Début (heure 0-23)"
+                  type="number"
+                  value={String(form.transferBusinessHours?.startHour ?? 9)}
+                  onChange={(v) => {
+                    const startHour = Math.max(0, Math.min(23, Number(v) || 0));
+                    update("transferBusinessHours", {
+                      days: form.transferBusinessHours?.days ?? [false, true, true, true, true, true, false],
+                      startHour,
+                      endHour: form.transferBusinessHours?.endHour ?? 17,
+                      timezone: form.transferBusinessHours?.timezone ?? "America/Montreal",
+                    });
+                  }}
+                />
+                <Field
+                  label="Fin (heure 1-24)"
+                  type="number"
+                  value={String(form.transferBusinessHours?.endHour ?? 17)}
+                  onChange={(v) => {
+                    const endHour = Math.max(1, Math.min(24, Number(v) || 0));
+                    update("transferBusinessHours", {
+                      days: form.transferBusinessHours?.days ?? [false, true, true, true, true, true, false],
+                      startHour: form.transferBusinessHours?.startHour ?? 9,
+                      endHour,
+                      timezone: form.transferBusinessHours?.timezone ?? "America/Montreal",
+                    });
+                  }}
+                />
+                <Field
+                  label="Fuseau horaire"
+                  value={form.transferBusinessHours?.timezone ?? "America/Montreal"}
+                  onChange={(v) => {
+                    update("transferBusinessHours", {
+                      days: form.transferBusinessHours?.days ?? [false, true, true, true, true, true, false],
+                      startHour: form.transferBusinessHours?.startHour ?? 9,
+                      endHour: form.transferBusinessHours?.endHour ?? 17,
+                      timezone: v || "America/Montreal",
+                    });
+                  }}
+                  placeholder="America/Montreal"
+                />
+              </div>
+            </>
+          )}
         </div>
 
         {/* Description / notes */}

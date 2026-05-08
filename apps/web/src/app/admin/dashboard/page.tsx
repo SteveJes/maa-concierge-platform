@@ -320,6 +320,9 @@ export default function AdminDashboard() {
               tunnelCtaFr: (tenant as { tunnelCtaFr?: string }).tunnelCtaFr,
               tunnelCtaEn: (tenant as { tunnelCtaEn?: string }).tunnelCtaEn,
               defaultLanguage: (tenant as { defaultLanguage?: "fr" | "en" | "bilingual" }).defaultLanguage,
+              transferToHumanEnabled: (tenant as { transferToHumanEnabled?: boolean }).transferToHumanEnabled,
+              transferToHumanPhone: (tenant as { transferToHumanPhone?: string | null }).transferToHumanPhone,
+              transferBusinessHours: (tenant as { transferBusinessHours?: { days: boolean[]; startHour: number; endHour: number; timezone: string } }).transferBusinessHours,
             }}
             token={token}
             onSaved={() => { if (selectedId && token) void fetchOverview(selectedId, token); }}

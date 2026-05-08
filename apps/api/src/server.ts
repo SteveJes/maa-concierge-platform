@@ -5,6 +5,8 @@ import { resolveDirectCoreFactResponse } from "./core-facts.js";
 import { sendLeadNotificationEmail } from "./services/email-notifications.js";
 import { TENANT_REGISTRY, getTenant, addTenant, removeTenant, slugify, type TenantConfig } from "./admin/tenants.js";
 import { saveTenantOverride } from "./admin/tenant-overrides.js";
+import { decideTransfer } from "./admin/transfer-hours.js";
+import { summarizeLeadConversation } from "./services/lead-summary.js";
 import { sendInvoiceEmail, createStripeCheckout, nextInvoiceNumber, buildInvoice } from "./admin/invoice.js";
 import { buildTenantHealthReport } from "./admin/health.js";
 import { loadApprovedSourceRegistry } from "@platform/config";
@@ -895,6 +897,7 @@ export function createServer() {
       "conciergeName", "description", "industry",
       "primaryContactPhone", "primaryContactEmail",
       "tunnelCtaFr", "tunnelCtaEn", "defaultLanguage",
+      "transferToHumanEnabled", "transferToHumanPhone", "transferBusinessHours",
     ];
 
     let changedCount = 0;
@@ -1734,18 +1737,31 @@ export function createServer() {
         const notifyEmailDry = tenantForEmail?.notifyEmail || process.env.LEAD_NOTIFY_EMAIL || "";
         const tenantDisplayName = tenantForEmail?.name ?? "Club Sportif MAA";
         if (notifyEmailDry) {
-          setImmediate(() => {
-            sendLeadNotificationEmail({
-              name: toNullableTrimmedString(body.callback?.name),
-              phone: callbackPhone!,
-              email: toNullableTrimmedString(body.callback?.email),
-              preferredTime: preferredTimeText,
-              locale: locale ?? "fr-CA",
-              questionSummary: toNullableTrimmedString(body.callback?.questionSummary) ?? trimmedMessage,
-              conversationId: conversationId ?? null,
-              tenantName: tenantDisplayName,
-              notifyEmail: notifyEmailDry,
-            }).catch((err) => request.log.error({ err }, "Lead email (dry-run) failed"));
+          const dryConversationForSummary = [
+            ...(conversationHistory ?? []),
+            { role: "user" as const, content: trimmedMessage },
+          ];
+          setImmediate(async () => {
+            const aiSummary = await summarizeLeadConversation(
+              dryConversationForSummary,
+              locale ?? "fr-CA",
+            ).catch(() => null);
+            try {
+              await sendLeadNotificationEmail({
+                name: toNullableTrimmedString(body.callback?.name),
+                phone: callbackPhone!,
+                email: toNullableTrimmedString(body.callback?.email),
+                preferredTime: preferredTimeText,
+                locale: locale ?? "fr-CA",
+                questionSummary: toNullableTrimmedString(body.callback?.questionSummary) ?? trimmedMessage,
+                aiSummary,
+                conversationId: conversationId ?? null,
+                tenantName: tenantDisplayName,
+                notifyEmail: notifyEmailDry,
+              });
+            } catch (err) {
+              request.log.error({ err }, "Lead email (dry-run) failed");
+            }
           });
         }
 
@@ -1798,18 +1814,33 @@ export function createServer() {
         const notifyEmail = tenantForLeadEmail?.notifyEmail || process.env.LEAD_NOTIFY_EMAIL || "";
         const leadTenantName = tenantForLeadEmail?.name ?? "Club Sportif MAA";
         if (notifyEmail) {
-          setImmediate(() => {
-            sendLeadNotificationEmail({
-              name: toNullableTrimmedString(body.callback?.name),
-              phone: callbackPhone!,
-              email: toNullableTrimmedString(body.callback?.email),
-              preferredTime: preferredTimeText,
-              locale: locale ?? "fr-CA",
-              questionSummary: toNullableTrimmedString(body.callback?.questionSummary) ?? trimmedMessage,
-              conversationId: conversationId ?? null,
-              tenantName: leadTenantName,
-              notifyEmail,
-            }).catch((err) => request.log.error({ err }, "Lead email failed"));
+          // Generate AI summary in the background, then send email. Both run
+          // off the request hot path so the user sees the success response now.
+          const conversationForSummary = [
+            ...(conversationHistory ?? []),
+            { role: "user" as const, content: trimmedMessage },
+          ];
+          setImmediate(async () => {
+            const aiSummary = await summarizeLeadConversation(
+              conversationForSummary,
+              locale ?? "fr-CA",
+            ).catch(() => null);
+            try {
+              await sendLeadNotificationEmail({
+                name: toNullableTrimmedString(body.callback?.name),
+                phone: callbackPhone!,
+                email: toNullableTrimmedString(body.callback?.email),
+                preferredTime: preferredTimeText,
+                locale: locale ?? "fr-CA",
+                questionSummary: toNullableTrimmedString(body.callback?.questionSummary) ?? trimmedMessage,
+                aiSummary,
+                conversationId: conversationId ?? null,
+                tenantName: leadTenantName,
+                notifyEmail,
+              });
+            } catch (err) {
+              request.log.error({ err }, "Lead email failed");
+            }
           });
         }
       } catch (error) {
@@ -2707,6 +2738,71 @@ export function createServer() {
           ? "Parfait. J'ai bien noté vos coordonnées et je les transmets à l'équipe du club. Quelqu'un vous contactera très prochainement."
           : "Perfect. I've noted your contact information and I'm passing it to the club team. Someone will reach out to you very soon.";
         results.push({ toolCallId: call.id, result: confirmation });
+        continue;
+      }
+
+      // request_transfer_to_human — Sophie calls this only AFTER the caller
+      // explicitly asked for a human AND confirmed. Server decides whether
+      // we're in business hours and returns a spoken instruction + a
+      // machine-readable hint for the VAPI dashboard transferCall flow.
+      if (call.function.name === "request_transfer_to_human") {
+        let args: { confirmation?: boolean; locale?: string } = {};
+        try {
+          args = typeof call.function.arguments === "string"
+            ? JSON.parse(call.function.arguments)
+            : (call.function.arguments as typeof args);
+        } catch { /* ok */ }
+
+        const transferTenantId = ((request.query as Record<string, string | undefined>).tenantId ?? "maa").toLowerCase();
+        const transferTenant = getTenant(transferTenantId);
+        const isFr = !args.locale?.startsWith("en");
+
+        if (!transferTenant) {
+          results.push({ toolCallId: call.id, result: isFr ? "Configuration de transfert indisponible — je note vos coordonnées plutôt." : "Transfer configuration unavailable — let me capture your details instead." });
+          continue;
+        }
+
+        if (args.confirmation !== true) {
+          // Defensive — Sophie's prompt requires confirmation before calling
+          // this tool. If she somehow invokes without it, ask her to confirm
+          // rather than acting.
+          results.push({
+            toolCallId: call.id,
+            result: isFr
+              ? "Pour confirmer : souhaitez-vous être transféré à un membre de notre équipe maintenant ?"
+              : "To confirm: would you like to be transferred to a member of our team right now?",
+          });
+          continue;
+        }
+
+        const decision = decideTransfer(transferTenant);
+
+        if (decision.action === "transfer") {
+          request.log.info({ tenantId: transferTenantId, destination: decision.destination }, "VAPI transfer approved");
+          results.push({
+            toolCallId: call.id,
+            // VAPI assistants can act on this via the transferCall built-in
+            // configured in the dashboard. The spoken text is a graceful bridge.
+            result: isFr
+              ? `Un instant, je vous transfère à un membre de notre équipe au ${decision.destination}.`
+              : `One moment, I'm transferring you to a member of our team at ${decision.destination}.`,
+          });
+          continue;
+        }
+
+        // capture_lead fallback
+        const reasonMsg = decision.reason === "outside_hours"
+          ? (isFr ? "Notre équipe n'est pas disponible en ce moment" : "Our team isn't available right now")
+          : decision.reason === "no_phone"
+            ? (isFr ? "Le transfert direct n'est pas configuré" : "Direct transfer isn't set up")
+            : (isFr ? "Je ne peux pas transférer cet appel" : "I can't transfer this call");
+
+        results.push({
+          toolCallId: call.id,
+          result: isFr
+            ? `${reasonMsg}. Avec votre permission, je vais prendre votre nom et votre numéro pour qu'on vous rappelle dès que possible.`
+            : `${reasonMsg}. With your permission, I'll take your name and number so we can call you back as soon as possible.`,
+        });
         continue;
       }
 
