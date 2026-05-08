@@ -164,6 +164,13 @@ type ChatMessage = {
   role: "user" | "assistant" | "system";
   text: string;
   kind?: "nudge";
+  /**
+   * When true, the post-pricing booking CTA below this message MUST stay hidden,
+   * regardless of whether the message text mentions "$" or "abonnement". Set from
+   * the API's suppressBookingCta flag for cancellation, policy, laundry, menu,
+   * spa-package, and other non-pricing replies. Daphné's third pass.
+   */
+  suppressBookingCta?: boolean;
 };
 
 type BookingPayload = {
@@ -206,6 +213,15 @@ type ChatApiResponse = {
   conversationId: string | null;
   assistantMessage: string;
   followUpMode: "clarify" | "calendly" | "callback" | "vapi" | "done";
+  /**
+   * Backend authority on whether to render the post-pricing booking CTA.
+   * When true, the widget MUST hide "Prochaine étape ? → Planifier une visite"
+   * even if the assistant message contains "$" or "abonnement". Set whenever
+   * a critical intent (cancellation, policy, etc.) was detected, when the
+   * follow-up mode is callback/vapi, or when the question targets a specific
+   * service rather than membership.
+   */
+  suppressBookingCta?: boolean;
   citations: number[];
   retrieval: {
     query: string;
@@ -707,7 +723,16 @@ export function ChatShell({
 
       setMessages((current) => [
         ...current,
-        { id: newId(), role: "assistant", text: assistantText },
+        {
+          id: newId(),
+          role: "assistant",
+          text: assistantText,
+          // Honor the backend's authority on the booking CTA. When true, the
+          // post-pricing "Prochaine étape ? → Planifier une visite" link below
+          // this assistant bubble stays hidden — even if the reply mentions $ /
+          // abonnement / membership in passing.
+          suppressBookingCta: body.suppressBookingCta === true,
+        },
       ]);
 
       // Sentiment routing: if user seems frustrated after 3+ turns, proactively offer callback
@@ -1330,10 +1355,15 @@ export function ChatShell({
 
           if (message.role === "assistant") {
             const isNudge = message.kind === "nudge";
+            // Detect price-flavored replies, then defer to the backend's
+            // suppressBookingCta flag if it's set. The backend knows about
+            // intent (cancellation, policy, laundry…) — the UI should not
+            // re-derive that from token spotting.
             const hasPricingSignal =
-              message.text.includes("$") ||
-              message.text.toLowerCase().includes("abonnement") ||
-              message.text.toLowerCase().includes("membership");
+              !message.suppressBookingCta &&
+              (message.text.includes("$") ||
+                message.text.toLowerCase().includes("abonnement") ||
+                message.text.toLowerCase().includes("membership"));
 
             // Nudge = distinct info card, visually separate from AI conversation
             if (isNudge) {

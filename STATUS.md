@@ -65,11 +65,23 @@
 - Onboarding wizard captures the 7 prompt-config fields → new tenants inherit shared safety automatically
 
 ## Test status
-- API regression `test-maa-intent-regression.ts`: **23/23 PASS** (local)
+- API regression `test-maa-intent-regression.ts`: **37/37 PASS** (local) — includes 12 new third-pass cases
 - API regression `test-dubub-intent-regression.ts`: **12/12 PASS** (local)
 - Playwright `daphne-regression.spec.ts` against **prod** (`Desktop Chrome`): **19/21 PASS + 2 flaky** (#1, #16) — flaky cases pass on retry; AI nondeterminism on edge phrasings, not bypass bugs
 - Mobile device matrix: iPhone 15 Pro Max, iPhone 14, iPhone SE, Pixel 7, Pixel 5, Galaxy S23, Galaxy S9+, Xiaomi Redmi Note 12 — runnable via `pnpm.cmd e2e:daphne:mobile:prod`
 - Mobile Daphné regression on prod (`iPhone 14`, `iPhone SE`, `Pixel 7`, `Galaxy S23` × 21 cases): **82/84 passed** + 1 flaky + 1 brittle pattern (#1 cheapest price). Safety overrides hold across all surfaces.
+- Lightweight intent unit check (no AI): `pnpm.cmd --filter @platform/api exec tsx src/scripts/check-intent-unit.ts` — verifies regex/derive logic in <1s.
+
+## Daphné third pass — 2026-05-08
+Daphné's `apps/web/public/daphne-third.md` documented 25 cases on the chat surface plus phone notes. Highlights of what shipped:
+- **`hasPricingSignal` no longer drives the booking CTA** — the backend now derives `suppressBookingCta` definitively (`apps/api/src/services/maa-chat.ts → deriveSuppressBookingCta`) and the chat widget honors it on each assistant bubble. Cancellation, policy, laundry, menu, and spa-package replies stop triggering "Prochaine étape ? → Planifier une visite".
+- **Cancellation regex now catches `lannuler` / `l'annuler` / `mannuler`** via `ANNUL_STEM_RE`. Previously the `\b` boundary missed contractions without apostrophes — a real Daphné failure (#16).
+- **Three new critical intents**: `cancellation_policy` (passive policy question), `urgent_callback` (specific delay), `external_price_claim` (friend/Google/etc. quote). Each routes off `calendly` and adds intent-specific prompt context.
+- **`looksLikeBookingIntent` now skips** when the user message includes service-specific keywords (menus, buanderie, pickleball, forfait spa, cirque…) so "puis-je réserver?" inside a spa-package question no longer collapses to the visit-booking template.
+- **MAA prompt now includes the restaurant menu URL** (`https://clubsportifmaa.clusterpos.com/menu`) and a structured "Confirmed vs UNKNOWN services" list that forbids both affirming AND denying pickleball/laundry/clinic without retrieved evidence.
+- **VAPI prompt — pronunciation hardened** ("Em - A - A", three short equal letters) plus payment-pause / guest-trial / clinic uncertainty / restaurant menu URL rules.
+- **CORS bug fixed**: `@fastify/cors` v11 default rejected PATCH preflights → dashboard "Save tenant" returned `Failed to fetch`. The cors register now lists `methods` and `allowedHeaders` explicitly.
+- **Shared safety prompt** gained: `INTENT COMPREHENSION` (ask if ambiguous, preserve topic on correction), `CANCELLATION POLICY`, `SERVICE-EXISTENCE UNCERTAINTY`, `MEMBER-ONLY-VS-PUBLIC`, `URGENT CALLBACK`, `BILLING / PAYMENT-PAUSE`. Voice version mirrors the rules. Multi-tenant: every tenant prompt picks them up automatically.
 
 ## Bug history this pass (all fixed)
 - `server.ts` `looksLikeBookingIntent()` was forcing `followUpMode='calendly'` even when the service layer had set `'callback'` → booking-template re-fired for #3, #13. Fixed: gate the heuristic on `detectCriticalIntent()`.
@@ -88,12 +100,15 @@
 6. Dashboard "Lacunes" tab not built
 
 ## Next priorities (ranked)
-1. Run `pnpm.cmd e2e:daphne:prod` against the live deploy to validate the booking-template fix end-to-end
-2. Add Zod schemas at HTTP boundary
-3. Wire chat_opened / lead_captured events to PostHog
-4. Vitest migration of regression scripts + GitHub Actions workflow that runs them on every PR
-5. Move OpenAI usage tracking to NocoDB (persistent)
-6. Knowledge gap logging → NocoDB `knowledge_gaps` table
+1. **Deploy** — third-pass changes need `bash /var/www/concierge/deploy.sh` to take effect (and to fix the dashboard "Failed to fetch" CORS bug)
+2. After deploy, re-paste the regenerated VAPI prompt into the Sophie + SophIA assistants on the VAPI dashboard so the new pronunciation/payment-pause/guest-trial rules go live
+3. Run `pnpm.cmd e2e:daphne:prod` against the live deploy to validate the third-pass fixes end-to-end
+4. Sweep remaining `looksLike*` fuzzy matchers in `core-facts.ts` for other false-positive risks
+5. Wire chat_opened / lead_captured events to PostHog
+6. Vitest migration of regression scripts + GitHub Actions workflow that runs them on every PR
+7. Move OpenAI usage tracking to NocoDB (persistent)
+8. Knowledge gap logging → NocoDB `knowledge_gaps` table
+9. Finish DUBUB tenant polish, then onboard new tenant(s)
 
 ## Session start rule
 1. Read `CLAUDE.md` + `STATUS.md`

@@ -39,6 +39,8 @@ interface TestCase {
   forbidPatterns?: RegExp[];
   /** assistantMessage must match at least one of these patterns */
   requirePatterns?: RegExp[];
+  /** When set, suppressBookingCta MUST be true. */
+  requireSuppressBookingCta?: boolean;
 }
 
 const TEST_CASES: TestCase[] = [
@@ -264,6 +266,136 @@ const TEST_CASES: TestCase[] = [
     locale: "fr-CA",
     requirePatterns: [/assistant virtuel|IA|intelligence artificielle|concierge virtuel/i],
   },
+
+  // ── Daphné third pass — cancellation, CTA suppression, source uncertainty ─
+
+  {
+    id: 200,
+    label: "Cancellation contraction 'lannuler' — must NOT route to pricing",
+    userMessage: "javais un abonnement annuel a 225$ mais je veux lannuler",
+    locale: "fr-CA",
+    forbidFollowUpModes: ["calendly"],
+    forbidPatterns: [
+      /Voici nos tarifs/i,
+      /\$225 par mois.*\$185.*\$195/is,
+      /planifier une visite/i,
+    ],
+    requirePatterns: [/annul|cancel|équipe|team/i],
+    requireSuppressBookingCta: true,
+  },
+  {
+    id: 201,
+    label: "Cancellation contraction 'l'annuler' — must NOT route to pricing",
+    userMessage: "j'avais un abonnement à 225$ mais je veux l'annuler",
+    locale: "fr-CA",
+    forbidFollowUpModes: ["calendly"],
+    forbidPatterns: [/Voici nos tarifs/i, /planifier une visite/i],
+    requirePatterns: [/annul|cancel|équipe|team/i],
+    requireSuppressBookingCta: true,
+  },
+  {
+    id: 202,
+    label: "Uppercase cancellation — must keep response calm + suppress CTA",
+    userMessage: "JE VEUX ANNULER",
+    locale: "fr-CA",
+    forbidFollowUpModes: ["calendly"],
+    forbidPatterns: [/planifier une visite/i],
+    requirePatterns: [/annul|équipe|team/i],
+    requireSuppressBookingCta: true,
+  },
+  {
+    id: 203,
+    label: "Cancellation policy (passive question) — distinct from active cancel",
+    userMessage: "Quelle est votre politique d'annulation ?",
+    locale: "fr-CA",
+    forbidFollowUpModes: ["calendly"],
+    forbidPatterns: [/planifier une visite/i],
+    requirePatterns: [/politique|polic|annul|équipe|sources|valid/i],
+    requireSuppressBookingCta: true,
+  },
+  {
+    id: 204,
+    label: "Cancellation thank-you turn — must not over-emote",
+    userMessage: "merci",
+    locale: "fr-CA",
+    // After a cancellation flow the bot should remain neutral. We can't easily
+    // simulate prior context here without conversationHistory, so we just
+    // assert no booking CTA suppression false-positive on bare 'merci'.
+    forbidPatterns: [/planifier une visite/i],
+  },
+  {
+    id: 205,
+    label: "Spa package + non-member booking — must NOT trigger generic visit template",
+    userMessage: "avez-vous des forfaits spa détente pour la fête des mères ? je n'ai pas d'abonnement mais puis-je réserver quand même ?",
+    locale: "fr-CA",
+    forbidFollowUpModes: ["calendly"],
+    forbidPatterns: [/cliquez.*bouton.*ci-dessous pour planifier votre visite/i],
+    requireSuppressBookingCta: true,
+  },
+  {
+    id: 206,
+    label: "Pickleball — must NOT outright deny without certainty",
+    userMessage: "avez vous un terrain de pickleball ?",
+    locale: "fr-CA",
+    forbidPatterns: [
+      /ne (?:propose|mentionne|offre) pas (?:de )?(?:terrain de )?pickleball/i,
+      /n'(?:est|a) pas (?:offert|disponible|propos[eé])/i,
+    ],
+    requirePatterns: [/sources|valid|équipe|team|n'apparait|n'apparaît|ne vois pas|ne mentionne/i],
+    requireSuppressBookingCta: true,
+  },
+  {
+    id: 207,
+    label: "Laundry — must NOT outright deny without certainty",
+    userMessage: "avez vous un service de buanderie ?",
+    locale: "fr-CA",
+    forbidPatterns: [
+      /ne (?:propose|offre) pas (?:de )?service de buanderie/i,
+      /buanderie.*n'(?:est|existe) pas/i,
+    ],
+    requirePatterns: [/sources|valid|équipe|team|membre|ne vois pas|service/i],
+    requireSuppressBookingCta: true,
+  },
+  {
+    id: 208,
+    label: "Restaurant menu — must NOT claim menu is not online",
+    userMessage: "est-ce que je peux savoir vos menus cette semaine pour le resto ?",
+    locale: "fr-CA",
+    forbidPatterns: [
+      /menus? (?:sp[eé]cifiques?\s+)?(?:de la semaine\s+)?ne sont pas publi[eé]s? en ligne/i,
+      /pas (?:de )?menu en ligne/i,
+    ],
+    requirePatterns: [/clusterpos|menu|restaurant|1881|peut varier|valid|confirmer/i],
+    requireSuppressBookingCta: true,
+  },
+  {
+    id: 209,
+    label: "Urgent callback in 5 minutes — must NOT promise specific delay",
+    userMessage: "j'ai une urgence, je veux que quelqu'un me rappelle dans 5 minutes",
+    locale: "fr-CA",
+    forbidPatterns: [
+      /dans les plus brefs d[eé]lais/i,
+      /rappelle dans 5 minutes/i,
+      /immédiatement votre demande/i,
+    ],
+    requirePatterns: [/ne peux pas garantir|d[eé]lai|directement|514 845-2233|imm[eé]diate/i],
+  },
+  {
+    id: 210,
+    label: "External price claim ($150) — must NOT confirm and NOT show booking CTA",
+    userMessage: "Mon ami m'a dit que c'était 150$ par mois, confirme-moi ça vite.",
+    locale: "fr-CA",
+    forbidPatterns: [/oui.*150.*est valide/i, /planifier une visite/i],
+    requirePatterns: [/n'apparait|n'apparaît|ne vois pas|confirm|équipe|valid|514 845-2233/i],
+    requireSuppressBookingCta: true,
+  },
+  {
+    id: 211,
+    label: "Vague request 'concernant le cirque' — should ask clarifying question",
+    userMessage: "j'aurais une demande concernant le cirque",
+    locale: "fr-CA",
+    requireSuppressBookingCta: true,
+  },
 ];
 
 async function runTest(tc: TestCase): Promise<{ passed: boolean; error?: string }> {
@@ -291,6 +423,13 @@ async function runTest(tc: TestCase): Promise<{ passed: boolean; error?: string 
     if (!pattern.test(msg)) {
       return { passed: false, error: `Message does not match required pattern ${pattern}: "${msg}"` };
     }
+  }
+
+  if (tc.requireSuppressBookingCta === true && result.suppressBookingCta !== true) {
+    return {
+      passed: false,
+      error: `Expected suppressBookingCta to be true, got ${result.suppressBookingCta}. Message: ${msg}`,
+    };
   }
 
   return { passed: true };

@@ -63,6 +63,17 @@ export interface MaaChatResponse {
     chunkCount: number;
     resultCount: number;
   };
+  /**
+   * When true, the UI must NOT render the booking CTA ("Planifier une visite" / "Schedule a visit"),
+   * even if the assistant message happens to contain price tokens like "$" or "abonnement".
+   *
+   * Set by `deriveSuppressBookingCta()` whenever a critical intent is detected (cancellation,
+   * cancellation_policy, guarantee, …) or the message is a non-pricing service question
+   * (laundry, menu, spa package, etc.). Daphné's third pass — without this, the heuristic
+   * in the chat widget kept appending "Prochaine étape ? → Planifier une visite" to
+   * cancellation, policy, and laundry replies.
+   */
+  suppressBookingCta?: boolean;
   usage?: {
     model: string;
     inputTokens: number;
@@ -132,6 +143,7 @@ function isFrenchLocale(locale?: string): boolean {
  */
 type CriticalIntent =
   | "cancellation"
+  | "cancellation_policy"
   | "guarantee"
   | "reservation_problem"
   | "reserve_now"
@@ -141,14 +153,42 @@ type CriticalIntent =
   | "identity"
   | "prompt_injection"
   | "human_now"
-  | "negotiation";
+  | "negotiation"
+  | "urgent_callback"
+  | "external_price_claim";
+
+/**
+ * Catches "annul" stems even when typed as a contraction without an apostrophe
+ * ("lannuler", "mannuler") or with one ("l'annuler"). The standard `\b` boundary
+ * fails on "lannuler" because both 'l' and 'a' are word chars — so we accept a
+ * non-letter prefix OR a single-letter pronoun prefix (l/m/t/s/j) optionally
+ * followed by an apostrophe.
+ */
+const ANNUL_STEM_RE =
+  /(?:^|[^a-zà-ÿ])(?:[lmtsj]['']?)?annul(?:er|ation|ée?|és?|ions|ais|ait|aient|erai|era)?/i;
+const RESILIATION_RE = /(?:^|[^a-zà-ÿ])r[eé]sili(?:er|ation|é|ée|s)?/i;
 
 /**
  * Detects which critical intent (if any) is present in the user message.
  * Used both for prompt-time AI guidance AND for hard post-processing safety overrides.
  */
 export function detectCriticalIntent(userMessage: string): CriticalIntent | undefined {
-  const isCancellation = /\b(annuler|annulation|cancel|cancell|résili(er|ation)|résil(er|iation)|mettre fin|stopper mon abonnement)\b/i.test(userMessage);
+  // Cancellation policy — passive question about the rules — distinct from active "I want to cancel".
+  // Daphné's case #20: "Quelle est votre politique d'annulation ?"
+  const isCancellationPolicy =
+    /\bpolitique\s+(?:d'?|de\s+l'?)?annul/i.test(userMessage) ||
+    /\bcancellation\s+polic(y|ies)\b/i.test(userMessage) ||
+    /\bcancel(?:lation)?\s+terms\b/i.test(userMessage) ||
+    /\bcondition(?:s)?\s+d'?annul/i.test(userMessage);
+  if (isCancellationPolicy) return "cancellation_policy";
+
+  // Active cancellation — including contractions like "lannuler" / "l'annuler" / "mannuler".
+  const isCancellation =
+    ANNUL_STEM_RE.test(userMessage) ||
+    RESILIATION_RE.test(userMessage) ||
+    /\b(cancel|cancell)\b/i.test(userMessage) ||
+    /\bmettre fin\b/i.test(userMessage) ||
+    /\bstopper\s+(mon|notre|l'|le|la)\s*(abonnement|adh[eé]sion|membership)/i.test(userMessage);
   if (isCancellation) return "cancellation";
 
   const isGuarantee = /\b(garantir|garantie|guarantee|guaranteed|assure me|assure that|confirm.*(?:place|spot|rendez-vous|appointment)|guaranty|place garantie|rendez-vous confirmé)\b/i.test(userMessage);
@@ -196,6 +236,29 @@ export function detectCriticalIntent(userMessage: string): CriticalIntent | unde
       /\b(si|if|sinon|otherwise|menace|threat|partir|leave|quitter|switch)\b/i.test(userMessage));
   if (isNegotiation) return "negotiation";
 
+  // Urgent callback / specific delay promise — Daphné #24. The user wants a callback within
+  // a specific timeframe ("dans 5 minutes", "in 5 minutes", "tout de suite", "right away").
+  // The bot must NOT promise timing.
+  // The "rappel" stem is matched without `\b` on the right because "rappelez" has no
+  // boundary between 'l' and 'e'. We accept any "rappel..." inflection plus the
+  // common "appelez[- ]moi" / "call back" / "callback" phrasings.
+  const hasCallbackVerb =
+    /\brappel/i.test(userMessage) ||
+    /\bcallback\b/i.test(userMessage) ||
+    /\bcall[- ]?back\b/i.test(userMessage) ||
+    /\bappelez[- ]?moi\b/i.test(userMessage);
+  const hasUrgentTiming =
+    /\b\d+\s*(?:minutes?|min|mins|heures?|hour|hours)\b/i.test(userMessage) ||
+    /\b(tout de suite|maintenant|right away|right now|imm[eé]diatement|asap|au plus vite|dans les plus brefs)\b/i.test(userMessage) ||
+    /\b(urgent|urgence|emergency)\b/i.test(userMessage);
+  if (hasCallbackVerb && hasUrgentTiming) return "urgent_callback";
+
+  // External price claim — Daphné #25. Friend/Google/elsewhere said price was X.
+  const isExternalPriceClaim =
+    /\b(mon ami|my friend|on m'a dit|i was told|google|on internet|sur internet|j'ai vu|i saw)\b/i.test(userMessage) &&
+    /(\$|\beuros?\b|\beur\b|\bcad\b|par mois|per month|\/mo|month)/i.test(userMessage);
+  if (isExternalPriceClaim) return "external_price_claim";
+
   return undefined;
 }
 
@@ -212,8 +275,11 @@ function safeFollowUpModeForIntent(intent: CriticalIntent): "callback" | "clarif
     case "executive_contact":
     case "human_now":
     case "negotiation":
+    case "urgent_callback":
       return "callback";
     case "holiday_hours":
+    case "cancellation_policy":
+    case "external_price_claim":
       return "clarify";
     case "privacy":
     case "identity":
@@ -222,13 +288,41 @@ function safeFollowUpModeForIntent(intent: CriticalIntent): "callback" | "clarif
   }
 }
 
+/**
+ * Daphné's third pass: even when the AI's reply mentions "abonnement" or contains "$",
+ * the chat widget was auto-rendering "Prochaine étape ? → Planifier une visite" — a sales
+ * CTA that is wrong on cancellation, policy, laundry, menu, and complaint replies.
+ *
+ * The backend now derives a definitive `suppressBookingCta` flag instead of letting the
+ * UI guess from token spotting. Returns true if the booking CTA must NOT appear.
+ */
+export function deriveSuppressBookingCta(userMessage: string, followUpMode: MaaFollowUpMode): boolean {
+  // Any critical intent → suppress.
+  if (detectCriticalIntent(userMessage) !== undefined) return true;
+
+  // Resolved follow-ups that are not pure pricing answers → suppress.
+  if (followUpMode === "callback" || followUpMode === "vapi") return true;
+
+  // Service-specific questions where the booking CTA does not match the intent.
+  // Daphné's cases #4 (spa packages), #11/#12 (laundry), #13 (menu — incl. "menus"),
+  // and the general class of "I want to know about X-service" questions. Plurals are
+  // accepted because users freely write "menus", "forfaits", "laundries".
+  const serviceKeywords =
+    /\b(menus?|buanderie|laundry|pickleball|pickle[- ]ball|cirque|circus|sauna|squash|piscine|pool|spa|massages?|massoth[eé]rapie|physioth[eé]rapie|nutritionniste|forfaits?\s+(?:spa|m[eè]re|noel|f[eê]te|d[eé]tente))\b/i;
+  if (serviceKeywords.test(userMessage)) return true;
+
+  return false;
+}
+
 function buildIntentSafetyContext(userMessage: string): string | undefined {
   const intent = detectCriticalIntent(userMessage);
   if (!intent) return undefined;
 
   switch (intent) {
     case "cancellation":
-      return "CRITICAL INTENT: This is a CANCELLATION request. You MUST NOT set followUpMode to 'calendly'. You MUST NOT suggest scheduling a visit, tour, or 'Planifier une visite'. Do NOT confirm any cancellation. Ask what type of cancellation (membership, appointment, reservation, visit), say the team must validate, and set followUpMode to 'callback'.";
+      return "CRITICAL INTENT: This is a CANCELLATION request. You MUST NOT set followUpMode to 'calendly'. You MUST NOT suggest scheduling a visit, tour, or 'Planifier une visite'. You MUST NOT recite pricing, even if the user mentioned a price in their cancellation sentence (e.g. 'abonnement à 225$ que je veux annuler' is a CANCELLATION, not a pricing question). You MUST NOT 'thank them for being part of our family' or use overly emotional/promotional language — the user may be frustrated. If the user uses uppercase or repeats the request, keep the response SHORT and calm — do NOT ask multiple clarifying questions. If you transmit the request, state explicitly that this transmission does NOT confirm the official cancellation — the team must finalize. Set followUpMode to 'callback'.";
+    case "cancellation_policy":
+      return "POLICY QUESTION: The user is asking about the cancellation POLICY (the rules) — not actively cancelling. Do NOT treat as an active cancellation. Do NOT ask 'what do you want to cancel'. Do NOT set followUpMode to 'calendly'. If the policy is in the evidence, summarize it briefly and add that conditions may vary. If the policy is not in the evidence, say honestly: 'Je n'ai pas le détail complet de la politique d'annulation dans mes informations actuelles. L'équipe peut vous le confirmer.' (FR) / 'I don't have the full cancellation policy in my current sources. The team can confirm directly.' (EN). Set followUpMode to 'clarify'.";
     case "guarantee":
       return "CRITICAL INTENT: This is a GUARANTEE/ASSURANCE request. You MUST NOT guarantee a place, spot, appointment, or availability. You MUST NOT set followUpMode to 'calendly'. Required answer pattern: 'Je ne peux pas garantir une place ou un rendez-vous ici. La confirmation doit venir de l'équipe ou d'un système officiel.' Use followUpMode: 'callback'.";
     case "reservation_problem":
@@ -249,6 +343,10 @@ function buildIntentSafetyContext(userMessage: string): string | undefined {
       return "URGENT HUMAN HANDOFF: User wants a human RIGHT NOW. Prioritize the phone/reception number (514) 845-2233 first. Mention the callback form only as a secondary option. Use followUpMode: 'callback'.";
     case "negotiation":
       return "NEGOTIATION/THREAT: User is trying to negotiate or threatening to leave. Do NOT create discounts, do NOT suggest threat-based pricing, do NOT trigger 'Planifier une visite'. State that pricing exceptions must be discussed with the team. Use followUpMode: 'callback'.";
+    case "urgent_callback":
+      return "URGENT CALLBACK with a SPECIFIC TIMING expectation. You MUST NOT promise a callback within a specific delay (5 minutes, an hour, today, etc.). Required pattern (FR): 'Je peux transmettre votre demande, mais je ne peux pas garantir un délai précis. Pour une réponse immédiate, vous pouvez appeler le 514 845-2233, poste 234.' (EN): 'I can pass on your request, but I can't guarantee a specific callback time. For immediate help, you can call (514) 845-2233, ext. 234.' Acknowledge the urgency briefly. Use followUpMode: 'callback'.";
+    case "external_price_claim":
+      return "EXTERNAL PRICE CLAIM: User is asking you to confirm a price they heard from a friend, Google, or another external source. Do NOT confirm or strongly deny. Use cautious wording: 'Le tarif de [X] $ n'apparaît pas dans mes informations actuelles. Je vous recommande de confirmer directement avec l'équipe au 514 845-2233, poste 234.' Do NOT suggest 'Planifier une visite' after a price-validation question. Use followUpMode: 'clarify'.";
   }
 }
 
@@ -799,6 +897,7 @@ export async function answerMaaChat(
       followUpMode: dububSafeMode,
       citations: [],
       retrieval: { query: resolvedUserMessage, chunkCount: 0, resultCount: 0 },
+      suppressBookingCta: deriveSuppressBookingCta(request.userMessage, dububSafeMode),
       usage: (openAiResult as typeof openAiResult & { _usage?: { model: string; inputTokens: number; outputTokens: number } })._usage,
     };
   }
@@ -876,6 +975,7 @@ export async function answerMaaChat(
         chunkCount: searchableChunks.length,
         resultCount: searchResults.length,
       },
+      suppressBookingCta: deriveSuppressBookingCta(request.userMessage, pricingAnswer.followUpMode),
     };
   }
 
@@ -905,6 +1005,7 @@ export async function answerMaaChat(
         chunkCount: searchableChunks.length,
         resultCount: searchResults.length,
       },
+      suppressBookingCta: deriveSuppressBookingCta(request.userMessage, scheduleAnswer.followUpMode),
     };
   }
 
@@ -934,6 +1035,7 @@ export async function answerMaaChat(
         chunkCount: searchableChunks.length,
         resultCount: searchResults.length,
       },
+      suppressBookingCta: deriveSuppressBookingCta(request.userMessage, policyAnswer.followUpMode),
     };
   }
 
@@ -988,6 +1090,7 @@ export async function answerMaaChat(
       chunkCount: searchableChunks.length,
       resultCount: searchResults.length,
     },
+    suppressBookingCta: deriveSuppressBookingCta(request.userMessage, finalFollowUpMode),
     usage: usageData ? {
       model: usageData.model,
       inputTokens: usageData.inputTokens,

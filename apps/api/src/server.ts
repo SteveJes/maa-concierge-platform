@@ -291,6 +291,17 @@ function looksLikeBookingIntent(userMessage: string, locale: string | null): boo
     return false;
   }
 
+  // Daphné's third pass: when the user mentions a specific, non-membership service
+  // (spa package, restaurant menu, laundry, pickleball, circus class, mother's day
+  // package), the word "réserver" / "book" / "schedule" inside that question must
+  // NOT collapse the answer into a generic visit-booking template. The AI needs to
+  // answer the actual service question first. Plurals accepted.
+  const serviceSpecific =
+    /\b(menus?|buanderie|laundry|pickleball|pickle[- ]ball|cirque|circus|sauna|forfaits?|massages?|massoth[eé]rapie|physioth[eé]rapie|nutritionniste|spa\s+(d[ée]tente|détente|forfait|forfaits|m[eè]re|f[eê]te|noel)|abonnement\s+(pour|spa))\b/i;
+  if (serviceSpecific.test(normalized)) {
+    return false;
+  }
+
   const frenchMatch =
     /(?:réserver|reserver|réservation|reservation|rendez-vous|planifier|visite|visiter|équipe des ventes|equipe des ventes|ventes|démo|demo|démonstration|demonstration|essai|présentation|presentation|rencontrer|m'adresser|me parler|contacter votre équipe|contacter l'équipe|prendre contact)/i.test(
       normalized,
@@ -597,8 +608,14 @@ function splitBuffer(buf: Buffer, sep: Buffer): Buffer[] {
 export function createServer() {
   const app = Fastify({ logger: true });
 
+  // Browser PATCH/DELETE preflights were being rejected because @fastify/cors v11
+  // restricts `methods` to GET/HEAD/POST by default. The dashboard's "Save tenant"
+  // button (PATCH /v1/admin/tenants/:id) showed "Erreur: Failed to fetch" because
+  // the OPTIONS preflight came back with `Access-Control-Allow-Methods: GET,HEAD,POST`.
   app.register(cors, {
     origin: true,
+    methods: ["GET", "HEAD", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-admin-token"],
   });
 
   app.get("/health", async () => ({ status: "ok" }));
@@ -1955,11 +1972,27 @@ export function createServer() {
       await persistCallbackRequest();
     }
 
+    // The chat widget used to spawn "Prochaine étape ? → Planifier une visite" any
+    // time an AI reply mentioned `$` / `abonnement` / `membership`. That heuristic
+    // was wrong on cancellation, policy, laundry, menu, and complaint replies. The
+    // backend now sends an explicit `suppressBookingCta` flag so the UI no longer
+    // has to guess from token spotting. The HTTP layer also forces it on whenever
+    // it has overwritten the AI's reply with a non-pricing template (callback
+    // success/failure, vapi handoff, callback form), since none of those should
+    // ever sit next to a "schedule a visit" link.
+    const suppressBookingCta =
+      (result.suppressBookingCta ?? false) ||
+      criticalIntent !== undefined ||
+      hasCallbackPayload ||
+      responseFollowUpMode === "callback" ||
+      responseFollowUpMode === "vapi";
+
     return {
       tenantId,
       conversationId,
       assistantMessage: responseAssistantMessage,
       followUpMode: responseFollowUpMode,
+      suppressBookingCta,
       citations: responseCitations,
       retrieval: result.retrieval,
       persistence,
