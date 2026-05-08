@@ -323,6 +323,18 @@ function looksLikeBookingIntent(userMessage: string, locale: string | null): boo
     return false;
   }
 
+  // Daphné fourth-pass live smoke: "j'aimerais réserver une table pour 4
+  // personnes au restaurant" still routed to the visit-booking template
+  // because "réserver" hit the heuristic. Restaurant-table reservations are
+  // a different flow entirely (LibroReserve / phone) — let the AI describe
+  // that flow instead of triggering the visit-booking template.
+  const isRestaurantTableReservation =
+    /\b(table|tables)\b/i.test(normalized) &&
+    /\b(restaurant|1881|le 1881)\b/i.test(normalized);
+  if (isRestaurantTableReservation) {
+    return false;
+  }
+
   const frenchMatch =
     /(?:réserver|reserver|réservation|reservation|rendez-vous|planifier|visite|visiter|équipe des ventes|equipe des ventes|ventes|démo|demo|démonstration|demonstration|essai|présentation|presentation|rencontrer|m'adresser|me parler|contacter votre équipe|contacter l'équipe|prendre contact)/i.test(
       normalized,

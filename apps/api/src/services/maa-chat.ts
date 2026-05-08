@@ -1121,7 +1121,7 @@ export async function answerMaaChat(
     isMultiIntentPricingPlusBooking;
 
   const multiIntentContext = isMultiIntentPricingPlusBooking
-    ? "MULTI-INTENT (pricing + booking): The user is asking BOTH pricing AND booking in one message. Answer BOTH parts in the user's language. First state the membership tariffs cautiously (with the call-to-confirm hedge). Then answer the booking question — explain how the chat or phone flow leads to scheduling a visit, and that final confirmation comes from the team. Do NOT collapse the reply to either intent alone."
+    ? "MULTI-INTENT (pricing + booking): The user is asking BOTH pricing AND booking in one message. Answer BOTH parts IN THE USER'S LANGUAGE. First state the membership tariffs cautiously (with the call-to-confirm hedge). Then answer the booking question briefly — explain that you can guide them through scheduling, and that final confirmation comes from the team or an official system. Do NOT collapse the reply to either intent alone. Set followUpMode: 'clarify' (do NOT pick 'vapi' or 'calendly' for this combo — the user wants the answer here, not a handoff)."
     : undefined;
 
   // Compose all available context fragments for the AI call. Multiple safety
