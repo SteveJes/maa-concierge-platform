@@ -52,7 +52,10 @@ export const TENANT_REGISTRY: TenantConfig[] = [
     plan: "professional",
     status: "active",
     since: "2025-01-01",
-    notifyEmail: "info@clubsportifmaa.com",
+    // While MAA is in pre-launch testing: lead notifications go to DUBUB owners only.
+    // To restore real club recipient: change to "info@clubsportifmaa.com" (or use the
+    // Settings panel in /admin/dashboard once that ships in this PR).
+    notifyEmail: "steve@dubub.com,daphne@dubub.com",
     vapiAssistantId: process.env.VAPI_ASSISTANT_ID ?? "ec272999-2782-4e57-9068-55a3bacd4915",
     vapiPhoneNumberId: process.env.VAPI_OUTBOUND_PHONE_NUMBER_ID ?? null,
     inboundPhoneNumber: process.env.VAPI_INBOUND_PHONE_NUMBER ?? process.env.VAPI_PHONE_NUMBER ?? null,

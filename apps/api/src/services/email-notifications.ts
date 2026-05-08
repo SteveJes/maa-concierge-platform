@@ -7,7 +7,23 @@ export interface LeadEmailPayload {
   questionSummary: string | null;
   conversationId: string | null;
   tenantName: string;
+  /**
+   * Where to send the lead. Supports a single email or a comma/semicolon-separated
+   * list ("steve@dubub.com,daphne@dubub.com"). All addresses are sent in one Brevo call.
+   */
   notifyEmail: string;
+}
+
+/**
+ * Split a notifyEmail string into a Brevo `to` array.
+ * Accepts comma OR semicolon as separators. Trims whitespace, drops empty/invalid entries.
+ */
+function parseRecipients(notifyEmail: string): Array<{ email: string }> {
+  return notifyEmail
+    .split(/[,;]/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0 && s.includes("@"))
+    .map((email) => ({ email }));
 }
 
 function buildLeadHtml(p: LeadEmailPayload): string {
@@ -94,7 +110,7 @@ export async function sendLeadNotificationEmail(p: LeadEmailPayload): Promise<bo
       },
       body: JSON.stringify({
         sender: { name: senderName, email: senderEmail },
-        to: [{ email: p.notifyEmail }],
+        to: parseRecipients(p.notifyEmail),
         subject,
         htmlContent: buildLeadHtml(p),
         textContent: [

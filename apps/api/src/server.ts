@@ -2571,7 +2571,11 @@ export function createServer() {
             headers: { "api-key": apiKey, "Content-Type": "application/json" },
             body: JSON.stringify({
               sender: { name: `SophIA — ${vapiToolTenantName}`, email: process.env.BREVO_SENDER_EMAIL ?? "noreply@dubub.com" },
-              to: [{ email: notifyEmail }],
+              to: notifyEmail
+                .split(/[,;]/)
+                .map((s) => s.trim())
+                .filter((s) => s.length > 0 && s.includes("@"))
+                .map((email) => ({ email })),
               subject: `🎯 Nouveau lead — ${args.name ?? args.phone ?? "Contact"} · ${vapiToolTenantName}`,
               htmlContent: html,
             }),
