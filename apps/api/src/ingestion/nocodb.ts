@@ -838,19 +838,26 @@ export async function listCallbackRequestsForTenant(
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
   // NocoDB filter syntax: (field,op,value)~and(field,op,value)
-  const where = `(tenant_uuid,eq,${tenantUuid})~and(created_at,gt,${since})`;
+  // Use the NocoDB-managed CreatedAt system column (capitalized) — the
+  // callback_requests table doesn't define a custom 'created_at' field.
+  const where = `(tenant_uuid,eq,${tenantUuid})~and(CreatedAt,gt,${since})`;
   const params = new URLSearchParams({
     limit: String(Math.min(limit, 1000)),
-    sort: "-created_at",
+    sort: "-CreatedAt",
     where,
   });
 
-  const data = await nocoRequest<{ list: CallbackRequestRow[] }>(
+  const data = await nocoRequest<{ list: Array<CallbackRequestRow & { CreatedAt?: string }> }>(
     `/api/v2/tables/${cfg.callbackRequestsTableId}/records?${params.toString()}`,
     { method: "GET" },
   );
 
-  return data?.list ?? [];
+  // Normalize: NocoDB returns the system field as `CreatedAt`, but the rest of
+  // the API surface (and the dashboard) expects `created_at`. Map it on the way out.
+  return (data?.list ?? []).map((row) => ({
+    ...row,
+    created_at: row.created_at ?? row.CreatedAt ?? "",
+  }));
 }
 
 export async function listAllTenants(): Promise<TenantRow[]> {
