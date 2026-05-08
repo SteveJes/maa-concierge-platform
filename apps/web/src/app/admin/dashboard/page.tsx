@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import AdminShell, { P, API, Card, SectionTitle } from "../_components/AdminShell";
+import SettingsPanel from "./SettingsPanel";
+import LeadsPanel from "./LeadsPanel";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -292,6 +294,39 @@ export default function AdminDashboard() {
               />
             </div>
           </section>
+
+          {/* Tenant Settings — editable config */}
+          <SettingsPanel
+            tenantId={tenant.id}
+            initial={{
+              id: tenant.id,
+              name: tenant.name,
+              plan: tenant.plan,
+              status: tenant.status,
+              notifyEmail: (tenant as { notifyEmail?: string }).notifyEmail ?? "",
+              vapiAssistantId: tenant.vapiAssistantId,
+              vapiPhoneNumberId: (tenant as { vapiPhoneNumberId?: string | null }).vapiPhoneNumberId ?? null,
+              inboundPhoneNumber: (tenant as { inboundPhoneNumber?: string | null }).inboundPhoneNumber ?? null,
+              openAiModel: tenant.openAiModel,
+              monthlyPriceCad: tenant.monthlyPriceCad,
+              contactName: tenant.contactName,
+              contactEmail: tenant.contactEmail,
+              website: tenant.website,
+              notes: tenant.notes,
+              conciergeName: (tenant as { conciergeName?: string }).conciergeName,
+              description: (tenant as { description?: string }).description,
+              primaryContactPhone: (tenant as { primaryContactPhone?: string }).primaryContactPhone,
+              primaryContactEmail: (tenant as { primaryContactEmail?: string }).primaryContactEmail,
+              tunnelCtaFr: (tenant as { tunnelCtaFr?: string }).tunnelCtaFr,
+              tunnelCtaEn: (tenant as { tunnelCtaEn?: string }).tunnelCtaEn,
+              defaultLanguage: (tenant as { defaultLanguage?: "fr" | "en" | "bilingual" }).defaultLanguage,
+            }}
+            token={token}
+            onSaved={() => { if (selectedId && token) void fetchOverview(selectedId, token); }}
+          />
+
+          {/* Leads list + CSV export */}
+          <LeadsPanel tenantId={tenant.id} tenantName={tenant.name} token={token} />
 
           {/* VAPI stats */}
           <section style={{ marginBottom: 28 }}>

@@ -3,7 +3,7 @@ import cors from "@fastify/cors";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { resolveDirectCoreFactResponse } from "./core-facts.js";
 import { sendLeadNotificationEmail } from "./services/email-notifications.js";
-import { TENANT_REGISTRY, getTenant, addTenant, removeTenant, slugify } from "./admin/tenants.js";
+import { TENANT_REGISTRY, getTenant, addTenant, removeTenant, slugify, type TenantConfig } from "./admin/tenants.js";
 import { sendInvoiceEmail, createStripeCheckout, nextInvoiceNumber, buildInvoice } from "./admin/invoice.js";
 import { buildTenantHealthReport } from "./admin/health.js";
 import { loadApprovedSourceRegistry } from "@platform/config";
@@ -28,6 +28,7 @@ import {
   isBookingConfigConfigured,
   isCallbackPersistenceConfigured,
   isChatPersistenceConfigured,
+  listCallbackRequestsForTenant,
   listConversationsForAnalytics,
   listMessagesByConversationUuid,
   listRecentUserMessagesForTenant,
@@ -862,6 +863,84 @@ export function createServer() {
     const removed = removeTenant(id);
     if (!removed) return reply.code(404).send({ error: "tenant_not_found" });
     return reply.send({ ok: true, removedId: id });
+  });
+
+  /**
+   * PATCH /v1/admin/tenants/:id — update tenant config in-place.
+   *
+   * NOTE: TENANT_REGISTRY is currently in-memory; updates persist until next
+   * server restart. The persistence-to-NocoDB migration is a separate piece
+   * of work. The dashboard Settings UI surfaces this caveat so users know
+   * to also update the source-of-truth (env or NocoDB) for permanence.
+   *
+   * Returns the updated tenant on success, 404 if no tenant matched.
+   */
+  app.patch("/v1/admin/tenants/:id", async (request, reply) => {
+    if (!adminAuth(request, reply)) return;
+    const { id } = request.params as { id: string };
+    const tenant = getTenant(id);
+    if (!tenant) return reply.code(404).send({ error: "tenant_not_found" });
+
+    const body = (request.body ?? {}) as Record<string, unknown>;
+
+    // Whitelist of fields that the dashboard Settings panel can edit.
+    // Anything not in this list is silently ignored — defends against
+    // accidental clobbering of `id`, `since`, or other immutable fields.
+    const editable: Array<keyof TenantConfig> = [
+      "name", "plan", "status", "notifyEmail",
+      "vapiAssistantId", "vapiPhoneNumberId", "inboundPhoneNumber",
+      "openAiModel", "monthlyPriceCad", "addons",
+      "contactName", "contactEmail", "website", "notes",
+      "conciergeName", "description", "industry",
+      "primaryContactPhone", "primaryContactEmail",
+      "tunnelCtaFr", "tunnelCtaEn", "defaultLanguage",
+    ];
+
+    let changedCount = 0;
+    for (const key of editable) {
+      if (key in body) {
+        const value = body[key];
+        // Allow setting to null (e.g. clearing a website), but reject undefined.
+        if (value !== undefined) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (tenant as any)[key] = value;
+          changedCount += 1;
+        }
+      }
+    }
+
+    request.log.info({ tenantId: id, fieldsChanged: changedCount }, "tenant config updated");
+    return reply.send({ ok: true, tenant, fieldsChanged: changedCount });
+  });
+
+  /**
+   * GET /v1/admin/tenants/:id/leads — recent callback requests for a tenant.
+   *
+   * Pulls from NocoDB callback_requests, filtered by tenant uuid, newest first.
+   * Returns up to 200 entries per call. Use `?days=30` to widen the window.
+   * Used by the Leads panel in the dashboard + CSV export.
+   */
+  app.get("/v1/admin/tenants/:id/leads", async (request, reply) => {
+    if (!adminAuth(request, reply)) return;
+    const { id } = request.params as { id: string };
+    const tenant = getTenant(id);
+    if (!tenant) return reply.code(404).send({ error: "tenant_not_found" });
+
+    if (!isCallbackPersistenceConfigured()) {
+      return reply.send({ tenantId: id, leads: [], note: "callback persistence not configured" });
+    }
+
+    const daysParam = (request.query as Record<string, string>).days;
+    const days = Math.min(Math.max(parseInt(daysParam ?? "30", 10) || 30, 1), 365);
+
+    try {
+      const tenantRow = await findTenantByCode(id);
+      const leads = await listCallbackRequestsForTenant(tenantRow.uuid, days, 200);
+      return reply.send({ tenantId: id, days, count: leads.length, leads });
+    } catch (error) {
+      request.log.error({ err: error, tenantId: id }, "Failed to list leads");
+      return reply.code(500).send({ error: "leads_fetch_failed" });
+    }
   });
 
   // GET /v1/demo-config/:slug — returns tenant config for demo pages

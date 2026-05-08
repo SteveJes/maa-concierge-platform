@@ -823,6 +823,36 @@ export async function createCallbackRequest(
   };
 }
 
+/**
+ * List callback requests for a tenant within the past N days, newest first.
+ *
+ * Used by the dashboard's Leads panel + CSV export. Returns up to `limit`
+ * entries (default 200). Filtered server-side by tenant_uuid + created_at.
+ */
+export async function listCallbackRequestsForTenant(
+  tenantUuid: string,
+  days: number,
+  limit = 200,
+): Promise<CallbackRequestRow[]> {
+  const cfg = assertCallbackPersistenceConfigPresent();
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+  // NocoDB filter syntax: (field,op,value)~and(field,op,value)
+  const where = `(tenant_uuid,eq,${tenantUuid})~and(created_at,gt,${since})`;
+  const params = new URLSearchParams({
+    limit: String(Math.min(limit, 1000)),
+    sort: "-created_at",
+    where,
+  });
+
+  const data = await nocoRequest<{ list: CallbackRequestRow[] }>(
+    `/api/v2/tables/${cfg.callbackRequestsTableId}/records?${params.toString()}`,
+    { method: "GET" },
+  );
+
+  return data?.list ?? [];
+}
+
 export async function listAllTenants(): Promise<TenantRow[]> {
   const cfg = assertNocoConfigPresent();
   const data = await nocoRequest<{ list: TenantRow[] }>(
