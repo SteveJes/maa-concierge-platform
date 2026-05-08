@@ -1468,6 +1468,21 @@ export function createServer() {
       responseFollowUpMode = "clarify";
     }
 
+    // Safety net for Daphné #5/#9 (pickleball, laundry): when the service layer
+    // says the booking CTA must be suppressed (critical intent OR service-specific
+    // question), the AI is sometimes still autonomously setting `followUpMode:
+    // 'calendly'`, which causes resolveBookingFollowUp() to overwrite the AI's
+    // careful answer with the generic "Cliquez sur le bouton ci-dessous pour
+    // planifier votre visite" template. Force calendly → clarify so the booking
+    // template stays on its leash.
+    if (
+      result.suppressBookingCta === true &&
+      responseFollowUpMode === "calendly" &&
+      !hasExplicitBookingIntent
+    ) {
+      responseFollowUpMode = "clarify";
+    }
+
     let responseCitations = result.citations;
 
     // DUBUB chat lead capture: when AI signals "done" (collected company + email), fire lead email
