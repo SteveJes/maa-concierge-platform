@@ -289,6 +289,61 @@ function safeFollowUpModeForIntent(intent: CriticalIntent): "callback" | "clarif
 }
 
 /**
+ * Services the AI is NOT allowed to affirm without retrieved evidence —
+ * Daphné's third pass found the model hallucinating a "yes, we have pickleball"
+ * answer with no supporting citation. Each entry maps a user-side keyword
+ * regex to the safe uncertainty wording that should replace any affirmation
+ * the AI emits when there is no evidence to back it up.
+ */
+interface UnknownServiceGuard {
+  pattern: RegExp;
+  labelFr: string;
+  labelEn: string;
+}
+
+const UNKNOWN_SERVICE_GUARDS: UnknownServiceGuard[] = [
+  { pattern: /\bpickleball|pickle[- ]ball\b/i, labelFr: "le pickleball", labelEn: "pickleball" },
+  { pattern: /\bbuanderie\b/i, labelFr: "le service de buanderie", labelEn: "laundry service" },
+  { pattern: /\blaundry\b/i, labelFr: "le service de buanderie", labelEn: "laundry service" },
+  { pattern: /\b(clinique sportive|sports clinic)\b/i, labelFr: "la clinique sportive", labelEn: "the sports clinic" },
+  { pattern: /\b(soins infirmiers|nursing)\b/i, labelFr: "les soins infirmiers", labelEn: "nursing services" },
+  { pattern: /\b(child care|garderie|service de garde)\b/i, labelFr: "le service de garde", labelEn: "child care" },
+  { pattern: /\b(towel service|service de serviettes)\b/i, labelFr: "le service de serviettes", labelEn: "towel service" },
+  { pattern: /\b(passe d'?invit[eé]|guest pass|day pass|essai gratuit|free trial)\b/i, labelFr: "les passes invités ou essais gratuits", labelEn: "guest passes or free trials" },
+];
+
+/**
+ * Returns the matched UnknownServiceGuard if the message asks about an UNKNOWN service,
+ * or undefined if the message is unrelated. Used by callers that want to verify
+ * whether the AI's answer was allowed to affirm or had to use uncertainty wording.
+ */
+function findUnknownServiceGuard(userMessage: string): UnknownServiceGuard | undefined {
+  return UNKNOWN_SERVICE_GUARDS.find((g) => g.pattern.test(userMessage));
+}
+
+/**
+ * The AI is at temperature 0.3 with a system prompt that tells it never to affirm
+ * unknown services — but at non-zero temp it will occasionally hallucinate an
+ * affirmation anyway. This regex catches the common affirmative patterns so we
+ * can override hallucinations deterministically before sending to the user.
+ */
+const AFFIRMATIVE_PATTERN = /\b(oui[, ]|nous (?:disposons|offrons|proposons|avons)|le club (?:dispose|offre|propose)|on (?:offre|propose)|parmi (?:nos|les) (?:installations|services|amenities)|we (?:have|offer|provide|do offer)|yes,? (?:we|the club))/i;
+
+/** Cautious-uncertainty markers the AI emits when it correctly applied the rule. Presence
+ *  means "no override needed". */
+const UNCERTAINTY_MARKERS = /\b(je ne vois pas|sources actuelles|valider avec l'équipe|n'apparait pas|n'apparaît pas|don'?t see|i don'?t have|recommend.*confirm|please (?:confirm|check)|veuillez (?:confirmer|valider))/i;
+
+/**
+ * Build the safe uncertainty wording in the right language for the matched service.
+ */
+function buildUnknownServiceFallback(guard: UnknownServiceGuard, locale?: string): string {
+  if (locale && locale.toLowerCase().startsWith("en")) {
+    return `I don't see ${guard.labelEn} in my current sources. I'd recommend confirming with the team at (514) 845-2233, ext. 234.`;
+  }
+  return `Je ne vois pas ${guard.labelFr} dans mes sources actuelles. Je vous recommande de valider avec l'équipe au 514 845-2233, poste 234.`;
+}
+
+/**
  * Daphné's third pass: even when the AI's reply mentions "abonnement" or contains "$",
  * the chat widget was auto-rendering "Prochaine étape ? → Planifier une visite" — a sales
  * CTA that is wrong on cancellation, policy, laundry, menu, and complaint replies.
@@ -1050,9 +1105,24 @@ export async function answerMaaChat(
     intentSafetyContextEarly,
   );
 
-  const cleanedAssistantMessage = stripCitationMarkersFromAssistantMessage(
+  let cleanedAssistantMessage = stripCitationMarkersFromAssistantMessage(
     modelResponse.assistantMessage,
   );
+
+  // Defensive override: when the user asked about an UNKNOWN service (pickleball,
+  // laundry, sports clinic, etc.) and the AI's reply affirms it without using the
+  // mandatory uncertainty wording, replace the message with the safe fallback.
+  // This covers AI hallucinations at temp 0.3 — Daphné #5 (pickleball) and #9
+  // (laundry) both showed the model affirming services that have no supporting
+  // evidence in the citations.
+  const unknownGuard = findUnknownServiceGuard(request.userMessage);
+  if (
+    unknownGuard &&
+    AFFIRMATIVE_PATTERN.test(cleanedAssistantMessage) &&
+    !UNCERTAINTY_MARKERS.test(cleanedAssistantMessage)
+  ) {
+    cleanedAssistantMessage = buildUnknownServiceFallback(unknownGuard, request.locale);
+  }
 
   const validCitationIndexes = (modelResponse.usedCitations ?? []).filter(
     (index) =>
