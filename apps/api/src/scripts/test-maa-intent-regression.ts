@@ -42,6 +42,29 @@ interface TestCase {
 }
 
 const TEST_CASES: TestCase[] = [
+  // ── Misclassification regressions — false positives that hit prod ──────────
+  {
+    id: 100,
+    label: "Dress code — must not return the address (fuzzy-match regression)",
+    userMessage: "vous avez un dress code?",
+    locale: "fr-CA",
+    forbidPatterns: [/2070.*Peel|rue Peel|H3A 1W6/i],
+    requirePatterns: [/tenue|dress code|code vestimentaire|sportif|s'?habiller|v[eê]tement|recommande/i],
+  },
+  {
+    id: 101,
+    label: "Comment ça s'appelle — must NOT trigger the call-me template",
+    userMessage: "je veux le service que mon ami utilise mais je ne sais pas comment ça s'appelle",
+    locale: "fr-CA",
+    // The actual bug is the deterministic call-me handler intercepting on a fuzzy
+    // match for "appelez moi". We assert ONLY that the call-me template never fires.
+    // What the AI says afterward varies — that's fine.
+    forbidPatterns: [
+      /Entrez votre num[eé]ro.*rappellera/i,
+      /Absolument\.\s*Entrez votre num/i,
+    ],
+  },
+
   // ── Phase 1 — Critical intent-routing ──────────────────────────────────────
 
   {

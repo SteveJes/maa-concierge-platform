@@ -173,6 +173,13 @@ function looksLikeLocationQuestion(
   const normalized = normalizeIntentText(userMessage);
 
   if (isFrenchLocale(locale)) {
+    // Guard: short messages mentioning clothing / dress code must never trip
+    // the address detector. "dress" Levenshtein-distance 2 from "adresse"
+    // was wrongly matching the fuzzy token check.
+    if (/\b(dress code|tenue|code vestimentaire|vetement|habill)\b/.test(normalized)) {
+      return false;
+    }
+
     return (
       hasAnyPhrase(normalized, [
         "ou etes vous",
@@ -182,7 +189,8 @@ function looksLikeLocationQuestion(
         "ou est le club",
       ]) ||
       hasApproxTokenSet(normalized, ["ou", "etes", "vous"]) ||
-      hasApproxToken(normalized, ["adresse"]) ||
+      // Drop the fuzzy single-token "adresse" match — too loose. The substring
+      // check above already covers exact + typo variants like "ladresse".
       normalized === "adresse"
     );
   }
