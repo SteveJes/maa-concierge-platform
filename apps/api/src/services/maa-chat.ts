@@ -1107,13 +1107,27 @@ export async function answerMaaChat(
     ? buildIncludedOrSpecificServiceContext(includedQuestion)
     : undefined;
 
+  // Daphné #6 multi-intent: when the message asks pricing AND booking together
+  // ("What are your prices and can I book in English?"), the deterministic
+  // pricing handler kept dumping the grid alone and dropping the booking part.
+  // Detect the combo and route to AI so both parts get answered.
+  const hasPricingAsk = /\b(price|prices|pricing|cost|costs|fee|fees|rate|rates|tarif|tarifs|prix|combien|frais|mensuel|annuel|monthly|annual|membership)\b/i.test(request.userMessage);
+  const hasBookingAsk = /\b(book|booking|reserve|r[eé]server|schedule|schedul|tour|visite|visiter|d[eé]mo|demo|rendez-vous|appointment)\b/i.test(request.userMessage);
+  const isMultiIntentPricingPlusBooking = hasPricingAsk && hasBookingAsk;
+
   const skipDeterministicHandlers =
-    intentSafetyContextEarly !== undefined || includedQuestion.match;
+    intentSafetyContextEarly !== undefined ||
+    includedQuestion.match ||
+    isMultiIntentPricingPlusBooking;
+
+  const multiIntentContext = isMultiIntentPricingPlusBooking
+    ? "MULTI-INTENT (pricing + booking): The user is asking BOTH pricing AND booking in one message. Answer BOTH parts in the user's language. First state the membership tariffs cautiously (with the call-to-confirm hedge). Then answer the booking question — explain how the chat or phone flow leads to scheduling a visit, and that final confirmation comes from the team. Do NOT collapse the reply to either intent alone."
+    : undefined;
 
   // Compose all available context fragments for the AI call. Multiple safety
   // contexts can apply at once (e.g. cancellation_policy + included-question
   // is rare but possible). Concatenate so the AI sees every relevant rule.
-  const composedExtraContext = [intentSafetyContextEarly, includedQuestionContext]
+  const composedExtraContext = [intentSafetyContextEarly, includedQuestionContext, multiIntentContext]
     .filter((s): s is string => typeof s === "string" && s.length > 0)
     .join("\n\n") || undefined;
 
