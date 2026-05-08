@@ -835,7 +835,13 @@ export async function listCallbackRequestsForTenant(
   limit = 200,
 ): Promise<CallbackRequestRow[]> {
   const cfg = assertCallbackPersistenceConfigPresent();
-  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+  // NocoDB rejects the JavaScript `toISOString()` format (`2026-04-08T18:41:10.404Z`)
+  // on date filters with HTTP 422 "<value> is not supported.". It accepts a
+  // YYYY-MM-DD date or "YYYY-MM-DD HH:mm:ss" datetime — no `T`, no `Z`, no
+  // milliseconds. Daphné caught this on the dashboard Leads panel.
+  const sinceMs = Date.now() - days * 24 * 60 * 60 * 1000;
+  const since = new Date(sinceMs).toISOString().replace("T", " ").replace(/\.\d{3}Z$/, "");
 
   // NocoDB filter syntax: (field,op,value)~and(field,op,value)
   // Use the NocoDB-managed CreatedAt system column (capitalized) — the

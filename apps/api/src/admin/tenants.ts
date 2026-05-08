@@ -77,6 +77,35 @@ export interface TenantConfig {
     endHour: number;   // 1-24, exclusive
     timezone: string;  // IANA tz, e.g. "America/Montreal"
   };
+
+  // ── Restaurant menu links (per tenant) ──────────────────────────────────────
+  /**
+   * When the tenant has a restaurant on-site, store the public PDF/web URLs here
+   * so the concierge can link to them with clean, named link text instead of
+   * pasting raw URLs. Daphné's fourth pass — MAA's restaurant Le 1881 has
+   * separate PDFs for the main menu, breakfast menu, and wine list.
+   *
+   * The chat widget renders these as markdown links ([Menu](...)). Voice agents
+   * use the labels (without the URL) and direct the caller to the website.
+   *
+   * Editable from the dashboard Settings panel so MAA staff can update the
+   * URLs whenever they refresh the PDFs.
+   */
+  restaurantMenuLinks?: {
+    menuUrl?: string | null;
+    breakfastMenuUrl?: string | null;
+    wineListUrl?: string | null;
+    /** Optional take-out / online ordering URL (e.g. clusterpos). */
+    orderingUrl?: string | null;
+    /** Online reservation widget for small parties (LibroReserve, OpenTable, etc.). */
+    reservationUrl?: string | null;
+    /** Maximum party size accepted via online reservation (the form blocks larger groups). */
+    reservationMaxPartySize?: number | null;
+    /** Phone number to call for group reservations / corporate events. */
+    groupReservationsPhone?: string | null;
+    /** Free-form note about the conference room / private dining capacity (e.g. "10 people"). */
+    groupReservationsCapacity?: string | null;
+  };
 }
 
 export const TENANT_REGISTRY: TenantConfig[] = [
@@ -110,6 +139,19 @@ export const TENANT_REGISTRY: TenantConfig[] = [
       startHour: 9,
       endHour: 17,
       timezone: "America/Montreal",
+    },
+    // Restaurant Le 1881 — current menu PDFs (October 2025 edition). Editable
+    // via dashboard Settings panel so MAA staff can rotate the PDFs without code
+    // changes. The concierge presents these as named markdown links.
+    restaurantMenuLinks: {
+      menuUrl: "https://www.clubsportifmaa.com/wp-content/uploads/2025/10/1881_Menu1_En_Oct2025.pdf",
+      breakfastMenuUrl: "https://www.clubsportifmaa.com/wp-content/uploads/2025/10/1881_Menu2_En_Oct25.pdf",
+      wineListUrl: "https://www.clubsportifmaa.com/wp-content/uploads/2023/09/1881_Menu_CarteDesVins.pdf",
+      orderingUrl: "https://clubsportifmaa.clusterpos.com/menu",
+      reservationUrl: "https://widgets.libroreserve.com/WEB/QC016934055076/book",
+      reservationMaxPartySize: 6,
+      groupReservationsPhone: "(514) 845-8002",
+      groupReservationsCapacity: "salle de conférence jusqu'à 10 personnes",
     },
   },
 ];

@@ -136,26 +136,110 @@ function RichMessageText({ text }: { text: string }) {
 }
 
 function renderInline(text: string): React.ReactNode[] {
+  // Scan once and match (in priority order) markdown links, bare URLs, then
+  // phone numbers. Anything not matched is plain text. Daphné's fourth pass:
+  // restaurant menu URLs need to be clickable, ideally with a friendly label
+  // ("Menu", "Petit-déjeuner", "Carte des vins") rather than the raw URL.
   const parts: React.ReactNode[] = [];
-  let last = 0;
-  let match: RegExpExecArray | null;
-  const re = new RegExp(PHONE_RE.source, "gi");
-  while ((match = re.exec(text)) !== null) {
-    if (match.index > last) parts.push(text.slice(last, match.index));
-    const raw = match[0]!;
-    const tel = raw.replace(/[^\d+]/g, "");
-    parts.push(
-      <a
-        key={match.index}
-        href={`tel:${tel}`}
-        style={{ color: "#1a6e3c", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(26,110,60,0.3)" }}
-      >
-        {raw}
-      </a>
-    );
-    last = match.index + raw.length;
+
+  // Markdown link: [label](url) — label can include spaces/accents/punct.
+  const MD_LINK_RE = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+  // Bare URL fallback for messages the AI emitted without markdown formatting.
+  const URL_RE = /https?:\/\/[^\s<>"]+/g;
+  // Reuse the existing phone regex but stripped of flags so we can rebuild it.
+  const PHONE_GLOBAL = new RegExp(PHONE_RE.source, "gi");
+
+  interface Span { start: number; end: number; node: React.ReactNode }
+  const spans: Span[] = [];
+
+  // 1. Markdown links (highest priority — they consume the URL inside).
+  for (let m: RegExpExecArray | null; (m = MD_LINK_RE.exec(text)); ) {
+    const [whole, label, url] = m as unknown as [string, string, string];
+    spans.push({
+      start: m.index,
+      end: m.index + whole.length,
+      node: (
+        <a
+          key={`md-${m.index}`}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: "var(--accent)", fontWeight: 600, textDecoration: "underline" }}
+        >
+          {label}
+        </a>
+      ),
+    });
   }
-  if (last < text.length) parts.push(text.slice(last));
+  const consumedByMd = (idx: number, end: number): boolean =>
+    spans.some((s) => idx >= s.start && end <= s.end);
+
+  // 2. Bare URLs that are NOT inside a markdown link span.
+  for (let m: RegExpExecArray | null; (m = URL_RE.exec(text)); ) {
+    const start = m.index;
+    const end = start + m[0].length;
+    if (consumedByMd(start, end)) continue;
+    // Trim trailing punctuation that's almost never part of a URL ( . , ! ? ) ).
+    let url = m[0];
+    let trailing = "";
+    while (url.length > 0 && /[.,!?)]/.test(url[url.length - 1]!)) {
+      trailing = url.slice(-1) + trailing;
+      url = url.slice(0, -1);
+    }
+    spans.push({
+      start,
+      end: start + url.length,
+      node: (
+        <a
+          key={`url-${start}`}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: "var(--accent)", fontWeight: 600, textDecoration: "underline", wordBreak: "break-all" }}
+        >
+          {url}
+        </a>
+      ),
+    });
+    if (trailing) {
+      // The trailing punctuation will be picked up by the plain-text emitter.
+    }
+  }
+
+  // 3. Phone numbers — last priority, only outside other spans.
+  for (let m: RegExpExecArray | null; (m = PHONE_GLOBAL.exec(text)); ) {
+    const start = m.index;
+    const end = start + m[0].length;
+    if (spans.some((s) => start < s.end && end > s.start)) continue;
+    const raw = m[0];
+    const tel = raw.replace(/[^\d+]/g, "");
+    spans.push({
+      start,
+      end,
+      node: (
+        <a
+          key={`tel-${start}`}
+          href={`tel:${tel}`}
+          style={{ color: "#1a6e3c", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(26,110,60,0.3)" }}
+        >
+          {raw}
+        </a>
+      ),
+    });
+  }
+
+  // 4. Stitch together: walk the text in order, emitting plain-text slices
+  //    between consumed spans and the matched nodes.
+  spans.sort((a, b) => a.start - b.start);
+  let cursor = 0;
+  for (const span of spans) {
+    if (span.start < cursor) continue; // skip overlapping (lower-priority) entries
+    if (span.start > cursor) parts.push(text.slice(cursor, span.start));
+    parts.push(span.node);
+    cursor = span.end;
+  }
+  if (cursor < text.length) parts.push(text.slice(cursor));
+
   return parts;
 }
 

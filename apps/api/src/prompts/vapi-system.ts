@@ -1,4 +1,42 @@
 import { buildVoiceSafetyRules } from "./shared-safety.js";
+import { getTenant } from "../admin/tenants.js";
+
+/**
+ * Voice-friendly description of the restaurant menu sources. Phone callers can't
+ * click links, so we tell the assistant to direct them to the website by name
+ * and offer to email or transfer if they want details. The dashboard editable
+ * URLs flow into the prompt at build time.
+ */
+function buildVoiceRestaurantMenuBlock(): string {
+  const maa = getTenant("maa");
+  const links = maa?.restaurantMenuLinks;
+  const lines: string[] = [];
+  lines.push("- Restaurant Le 1881 — comment répondre par téléphone :");
+
+  if (links?.menuUrl || links?.breakfastMenuUrl || links?.wineListUrl) {
+    lines.push("  • Si on demande le menu : dire que les menus officiels (menu principal, petit-déjeuner, carte des vins) sont publiés sur le site clubsportifmaa.com section restaurant. Le menu de la semaine peut varier — proposer d'envoyer un texto avec le lien si c'est utile, sinon recommander d'appeler le restaurant.");
+    lines.push("  • JAMAIS dire « le menu n'est pas publié en ligne » — il est en ligne.");
+  } else {
+    lines.push("  • Si on demande le menu : recommander d'appeler le restaurant ou de consulter le site clubsportifmaa.com.");
+  }
+
+  if (links?.reservationUrl) {
+    const cap = links.reservationMaxPartySize ?? 6;
+    lines.push(`  • Réservations en ligne (groupes de ${cap} personnes ou moins) : disponibles sur clubsportifmaa.com via le widget de réservation. Pour les plus grands groupes, donner le numéro du restaurant.`);
+  }
+
+  if (links?.orderingUrl) {
+    lines.push("  • Commandes pour emporter (take-out) : disponibles tous les jours via clubsportifmaa.com section restaurant.");
+  }
+
+  if (links?.groupReservationsPhone) {
+    const cap = links.groupReservationsCapacity ?? "événements de groupe et lunchs corporatifs";
+    lines.push(`  • Réservations de groupe / événements / lunchs corporatifs (${cap}) : appeler le ${links.groupReservationsPhone.replace(/\(/g, "").replace(/\)/g, "").trim()}.`);
+  }
+
+  lines.push("  • Téléphone direct du restaurant : cinq-un-quatre, huit-quatre-cinq, huit-zéro-zéro-deux.");
+  return lines.join("\n");
+}
 
 export function buildVapiSystemPrompt(): string {
   return `You are Sophie, the AI concierge for Club Sportif M.A.A. in Montréal — one of the city's oldest and most prestigious athletic institutions, founded in 1881.
@@ -88,11 +126,8 @@ CRITICAL PRONUNCIATION RULE: Every single number below is already written as ful
 - Frais d'inscription : présentement dispensés — zéro dollar (une valeur habituellement de plus de deux cents dollars)
 - Les tarifs et promotions peuvent changer — toujours confirmer en appelant le cinq-un-quatre, huit-quatre-cinq, deux-deux-trois-trois, poste deux-cent-trente-quatre
 
-### Restaurant Le 1881 — menu en ligne
-- Le menu du restaurant Le 1881 est publié en ligne à l'adresse clubsportifmaa.clusterpos.com slash menu (vous pouvez orienter l'appelant vers cette page).
-- Le menu de la semaine peut varier — recommander de confirmer directement avec le restaurant.
-- Téléphone direct du restaurant : cinq-un-quatre, huit-quatre-cinq, huit-zéro-zéro-deux.
-- Ne JAMAIS dire "le menu n'est pas publié en ligne" — c'est faux.
+### Restaurant Le 1881
+${buildVoiceRestaurantMenuBlock()}
 
 ### Services possiblement offerts mais non confirmés ici
 Pour les questions sur le pickleball, la buanderie pour membres, la clinique sportive / soins infirmiers (souvent via partenaire comme Mobile Mediq), le service de garde, les forfaits spa saisonniers (fête des Mères, Noël), les passes invités gratuites — NE JAMAIS dire "non, ce n'est pas offert". Dire plutôt : "Je n'ai pas cette information précise dans mes sources actuelles. Je vous recommande de valider avec l'équipe."

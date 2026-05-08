@@ -302,6 +302,27 @@ function looksLikeBookingIntent(userMessage: string, locale: string | null): boo
     return false;
   }
 
+  // Daphné's fourth pass: extended service keywords. When the user asks about
+  // Technogym, sauna, illimité courses, trainers, or weight loss programs, the
+  // booking template must not fire even if "réserver" / "book" appears in the
+  // sentence — the user wants the service answer, not a generic visit pitch.
+  const serviceSpecificFourthPass =
+    /\b(technogym|checkup|check[- ]?up|bilan|[eé]valuation|sauna|vapeur|hammam|steam\s*room|bain\s*(tourbillon|remous)|hot\s*tub|jacuzzi|cours\s*illimit|illimit[eé]s?|unlimited\s*classes|entra[iî]neur|trainer|coach|sp[eé]cialiste|kin[eé]siologue|perdre\s*du\s*poids|weight\s*loss|programme\s*(de\s*)?(remise|entra[iî]nement)|remise\s+en\s+forme)\b/i;
+  if (serviceSpecificFourthPass.test(normalized)) {
+    return false;
+  }
+
+  // Daphné #6: "What are your prices and can I book in English?" — the user is
+  // asking pricing AND booking simultaneously. Forcing 'calendly' would drop the
+  // pricing answer and emit the booking template. Let the AI handle the
+  // multi-intent answer instead, then the chat widget can still show a booking
+  // button later if the AI sets followUpMode='calendly' on its own.
+  const hasPricingTrigger =
+    /\b(price|prices|pricing|cost|costs|fee|fees|rate|rates|tarif|tarifs|prix|combien|abonnement|monthly|annual|membership)\b/i.test(normalized);
+  if (hasPricingTrigger) {
+    return false;
+  }
+
   const frenchMatch =
     /(?:réserver|reserver|réservation|reservation|rendez-vous|planifier|visite|visiter|équipe des ventes|equipe des ventes|ventes|démo|demo|démonstration|demonstration|essai|présentation|presentation|rencontrer|m'adresser|me parler|contacter votre équipe|contacter l'équipe|prendre contact)/i.test(
       normalized,
@@ -915,6 +936,7 @@ export function createServer() {
       "primaryContactPhone", "primaryContactEmail",
       "tunnelCtaFr", "tunnelCtaEn", "defaultLanguage",
       "transferToHumanEnabled", "transferToHumanPhone", "transferBusinessHours",
+      "restaurantMenuLinks",
     ];
 
     let changedCount = 0;

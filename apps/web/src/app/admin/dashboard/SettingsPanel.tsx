@@ -44,6 +44,16 @@ interface TenantSettings {
     endHour: number;
     timezone: string;
   };
+  restaurantMenuLinks?: {
+    menuUrl?: string | null;
+    breakfastMenuUrl?: string | null;
+    wineListUrl?: string | null;
+    orderingUrl?: string | null;
+    reservationUrl?: string | null;
+    reservationMaxPartySize?: number | null;
+    groupReservationsPhone?: string | null;
+    groupReservationsCapacity?: string | null;
+  };
 }
 
 const DAY_LABELS_FR = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
@@ -349,6 +359,138 @@ export default function SettingsPanel({ tenantId, initial, token, onSaved }: Pro
             onChange={(e) => update("notes", e.target.value || null)}
             placeholder="Visible seulement dans ce dashboard."
           />
+        </div>
+
+        {/* Restaurant menu links — used by the concierge to direct guests to the right PDF */}
+        <div style={{ marginBottom: 24, padding: 16, background: "rgba(255,255,255,0.02)", borderRadius: 10, border: `1px solid ${P.border}` }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: P.white, marginBottom: 4 }}>🍽 Restaurant — liens du menu</div>
+          <div style={{ fontSize: 11, color: P.muted, marginBottom: 14 }}>
+            Le concierge IA utilise ces URLs pour rediriger le visiteur vers le bon menu. Affichés sous forme de liens nommés (« Menu », « Petit-déjeuner », « Carte des vins ») et non en URL brute. Laisser vide si le tenant n&apos;a pas de restaurant.
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14 }}>
+            <div>
+              <label style={labelStyle}>Menu principal (URL PDF)</label>
+              <input
+                type="url"
+                style={inputBase}
+                value={form.restaurantMenuLinks?.menuUrl ?? ""}
+                onChange={(e) =>
+                  update("restaurantMenuLinks", {
+                    ...(form.restaurantMenuLinks ?? {}),
+                    menuUrl: e.target.value || null,
+                  })
+                }
+                placeholder="https://…/menu.pdf"
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Menu petit-déjeuner (URL PDF)</label>
+              <input
+                type="url"
+                style={inputBase}
+                value={form.restaurantMenuLinks?.breakfastMenuUrl ?? ""}
+                onChange={(e) =>
+                  update("restaurantMenuLinks", {
+                    ...(form.restaurantMenuLinks ?? {}),
+                    breakfastMenuUrl: e.target.value || null,
+                  })
+                }
+                placeholder="https://…/breakfast.pdf"
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Carte des vins (URL PDF)</label>
+              <input
+                type="url"
+                style={inputBase}
+                value={form.restaurantMenuLinks?.wineListUrl ?? ""}
+                onChange={(e) =>
+                  update("restaurantMenuLinks", {
+                    ...(form.restaurantMenuLinks ?? {}),
+                    wineListUrl: e.target.value || null,
+                  })
+                }
+                placeholder="https://…/wine-list.pdf"
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Commande en ligne / take-out (optionnel)</label>
+              <input
+                type="url"
+                style={inputBase}
+                value={form.restaurantMenuLinks?.orderingUrl ?? ""}
+                onChange={(e) =>
+                  update("restaurantMenuLinks", {
+                    ...(form.restaurantMenuLinks ?? {}),
+                    orderingUrl: e.target.value || null,
+                  })
+                }
+                placeholder="https://…/order"
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Réservation en ligne (URL widget)</label>
+              <input
+                type="url"
+                style={inputBase}
+                value={form.restaurantMenuLinks?.reservationUrl ?? ""}
+                onChange={(e) =>
+                  update("restaurantMenuLinks", {
+                    ...(form.restaurantMenuLinks ?? {}),
+                    reservationUrl: e.target.value || null,
+                  })
+                }
+                placeholder="https://widgets.libroreserve.com/…"
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Taille max — réservation en ligne</label>
+              <input
+                type="number"
+                min={1}
+                max={50}
+                style={inputBase}
+                value={form.restaurantMenuLinks?.reservationMaxPartySize ?? ""}
+                onChange={(e) =>
+                  update("restaurantMenuLinks", {
+                    ...(form.restaurantMenuLinks ?? {}),
+                    reservationMaxPartySize: e.target.value ? Number(e.target.value) : null,
+                  })
+                }
+                placeholder="6"
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Téléphone réservations de groupe</label>
+              <input
+                type="text"
+                style={inputBase}
+                value={form.restaurantMenuLinks?.groupReservationsPhone ?? ""}
+                onChange={(e) =>
+                  update("restaurantMenuLinks", {
+                    ...(form.restaurantMenuLinks ?? {}),
+                    groupReservationsPhone: e.target.value || null,
+                  })
+                }
+                placeholder="(514) 845-8002"
+              />
+            </div>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label style={labelStyle}>Capacité réservations de groupe</label>
+              <input
+                type="text"
+                style={inputBase}
+                value={form.restaurantMenuLinks?.groupReservationsCapacity ?? ""}
+                onChange={(e) =>
+                  update("restaurantMenuLinks", {
+                    ...(form.restaurantMenuLinks ?? {}),
+                    groupReservationsCapacity: e.target.value || null,
+                  })
+                }
+                placeholder="ex. salle de conférence jusqu'à 10 personnes"
+              />
+            </div>
+          </div>
         </div>
 
         {/* Action row */}

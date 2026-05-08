@@ -65,12 +65,23 @@
 - Onboarding wizard captures the 7 prompt-config fields → new tenants inherit shared safety automatically
 
 ## Test status
-- API regression `test-maa-intent-regression.ts`: **37/37 PASS** (local) — includes 12 new third-pass cases
+- API regression `test-maa-intent-regression.ts`: **47/47 PASS** (local) — includes 12 third-pass + 10 fourth-pass cases
 - API regression `test-dubub-intent-regression.ts`: **12/12 PASS** (local)
 - Playwright `daphne-regression.spec.ts` against **prod** (`Desktop Chrome`): **19/21 PASS + 2 flaky** (#1, #16) — flaky cases pass on retry; AI nondeterminism on edge phrasings, not bypass bugs
 - Mobile device matrix: iPhone 15 Pro Max, iPhone 14, iPhone SE, Pixel 7, Pixel 5, Galaxy S23, Galaxy S9+, Xiaomi Redmi Note 12 — runnable via `pnpm.cmd e2e:daphne:mobile:prod`
 - Mobile Daphné regression on prod (`iPhone 14`, `iPhone SE`, `Pixel 7`, `Galaxy S23` × 21 cases): **82/84 passed** + 1 flaky + 1 brittle pattern (#1 cheapest price). Safety overrides hold across all surfaces.
 - Lightweight intent unit check (no AI): `pnpm.cmd --filter @platform/api exec tsx src/scripts/check-intent-unit.ts` — verifies regex/derive logic in <1s.
+
+## Daphné fourth pass — 2026-05-08
+Daphné's `apps/web/public/daphne-fourth.md` showed the deterministic pricing handler hijacking specific-service questions. Highlights of what shipped:
+- **New gate `detectIncludedOrSpecificServiceQuestion`** in `apps/api/src/services/maa-chat.ts` — recognizes "Est-ce que X est inclus?", "ça donne accès à X", or any specific-service keyword (Technogym, sauna, vapeur, bain tourbillon, illimité courses, entraîneur, spécialiste, programme remise en forme). When matched, deterministic handlers are skipped, the AI gets a "answer ONLY about X, NEVER recite the price grid" prompt fragment, and `suppressBookingCta` is forced true.
+- **English multi-intent fix** (Daphné #6) — `looksLikeBookingIntent` now bails when the message also has pricing trigger words. "What are your prices and can I book in English?" now stays in the AI flow and gets BOTH parts answered in English instead of being collapsed to the booking template.
+- **Per-tenant `restaurantMenuLinks`** — new `TenantConfig.restaurantMenuLinks` shape with menu PDFs, take-out, LibroReserve reservation URL + party-size cap, and group-reservations phone. Editable from the dashboard Settings panel. Multi-tenant by design — future tenants populate the same shape. The chat prompt picks them up via `buildRestaurantMenuBlock()` and emits `[Menu](url)` markdown links. Voice prompt picks them up via `buildVoiceRestaurantMenuBlock()` and references the website by name.
+- **Chat widget renders markdown links + bare URLs** — `renderInline()` now handles `[label](url)` (priority), bare https URLs, then phones. Daphné #13 (link not clickable) is fixed.
+- **Shared safety prompt gained**: `IS-X-INCLUDED RULE` (answer X only, never the price grid), `CLASS RESERVATION ≠ VISIT BOOKING`, `TRAINER / SPECIALIST APPOINTMENT ≠ VISIT BOOKING`, `MULTI-INTENT RULE` (price + booking), `LINK FORMATTING RULE` (markdown links), `CHANNEL CONSISTENCY` (chat = phone). Voice mirror added too.
+- **MAA prompt** — explicit "Is X included?" handling block; Technogym moved to UNKNOWN list (never affirm, never deny); spa amenities, class reservation, trainer appointment guidance.
+- **VAPI prompt** — restaurant block rebuilt to cover menu PDFs + LibroReserve reservation widget + take-out + group reservations + restaurant direct phone.
+- **LEADS HTTP 500 fixed** — NocoDB rejected `2026-04-08T18:41:10.404Z` ISO format with HTTP 422. Now formatted as `2026-04-08 18:41:10` (no T, no ms, no Z) which NocoDB accepts.
 
 ## Daphné third pass — 2026-05-08
 Daphné's `apps/web/public/daphne-third.md` documented 25 cases on the chat surface plus phone notes. Highlights of what shipped:

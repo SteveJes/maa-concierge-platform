@@ -1,4 +1,48 @@
 import { buildSharedSafetyRules } from "./shared-safety.js";
+import { getTenant } from "../admin/tenants.js";
+
+/**
+ * Compose the line(s) the AI uses to direct the user to the restaurant menu.
+ * Reads the per-tenant `restaurantMenuLinks` so the dashboard can rotate the
+ * URLs without touching the prompt code.
+ */
+function buildRestaurantMenuBlock(): string {
+  const maa = getTenant("maa");
+  const links = maa?.restaurantMenuLinks;
+  if (!links || (!links.menuUrl && !links.breakfastMenuUrl && !links.wineListUrl && !links.orderingUrl && !links.reservationUrl)) {
+    return "- Restaurant menu: I don't have a current menu URL on file. Direct guests to call the restaurant to confirm.";
+  }
+
+  const lines: string[] = [];
+  lines.push("- Restaurant Le 1881 (on-site, named after the club's founding year). When a user asks about menus, reservations, take-out, or events, ALWAYS use named markdown links — never paste raw URLs as the link text. If multiple links apply, list each on its own line.");
+
+  if (links.menuUrl || links.breakfastMenuUrl || links.wineListUrl) {
+    lines.push("  ◦ Menus officiels (PDF):");
+    if (links.menuUrl) lines.push(`    - Menu principal → [Menu](${links.menuUrl})`);
+    if (links.breakfastMenuUrl) lines.push(`    - Petit-déjeuner → [Petit-déjeuner](${links.breakfastMenuUrl})`);
+    if (links.wineListUrl) lines.push(`    - Carte des vins → [Carte des vins](${links.wineListUrl})`);
+    lines.push("    The weekly menu can vary, so add that guests may confirm directly with the restaurant.");
+    lines.push("    NEVER claim 'le menu n'est pas publié en ligne' — these PDFs are the official menus.");
+  }
+
+  if (links.reservationUrl) {
+    const cap = links.reservationMaxPartySize ?? 6;
+    lines.push(`  ◦ Réservations en ligne (parties de ${cap} personnes ou moins) → [Réserver](${links.reservationUrl})`);
+    lines.push(`    For larger parties, route to the group-reservations phone below.`);
+  }
+
+  if (links.orderingUrl) {
+    lines.push(`  ◦ Commandes pour emporter (take-out, tous les jours) → [Commander en ligne](${links.orderingUrl})`);
+  }
+
+  if (links.groupReservationsPhone) {
+    const cap = links.groupReservationsCapacity ?? "événements de groupe et lunchs corporatifs";
+    lines.push(`  ◦ Réservations de groupe / événements / lunchs corporatifs (${cap}): téléphoner au ${links.groupReservationsPhone}.`);
+  }
+
+  lines.push("  ◦ Restaurant phone: (514) 845-8002.");
+  return lines.join("\n");
+}
 
 export function buildMaaChatSystemPrompt(locale?: string): string {
   const languageInstruction =
@@ -41,19 +85,29 @@ export function buildMaaChatSystemPrompt(locale?: string): string {
     "- The extension is always 234. Never use any other extension.",
     "- Founded: 1881. Club Sportif MAA is one of Montreal's oldest and most storied sports institutions. The restaurant on-site, Le 1881, is named after the club's founding year. When asked about heritage or founding year, answer proudly and warmly.",
     "- Description: Club Sportif MAA is a full-service premium sports club in downtown Montreal, with over 140 years of history. It offers fitness training, a 25m indoor pool and aquatic programs, group classes (yoga, pilates, aqua, cycling, and more), squash courts, a spa, massage therapy, physiotherapy, nutrition services, a triathlon club, aerial circus, and the restaurant Le 1881.",
-    "- Restaurant menu (Le 1881): the live menu is published at https://clubsportifmaa.clusterpos.com/menu — when a user asks for the menu, point them to this URL and add that the weekly menu can vary, so they may want to confirm current items with the restaurant directly. Restaurant phone: (514) 845-8002. NEVER claim 'le menu n'est pas publié en ligne'.",
+    buildRestaurantMenuBlock(),
     "- Hours: Hours vary by area and service. The club does not publish a single universal schedule. Always encourage the user to call (514) 845-2233, ext. 234 to confirm current hours for the specific area they want.",
     "- Pricing: Membership pricing starts around $225/month for an annual plan. Rates vary by term, age (senior 70+, student 25 and under), and promotional periods. There is currently no initiation fee. Always confirm current pricing by phone.",
     "",
     "## Confirmed vs UNKNOWN services — never invent existence in either direction",
     "These services ARE confirmed in Club Sportif MAA's offering: pool (25m indoor), squash, spa, sauna, massage therapy, physiotherapy, nutrition consults, group classes (yoga, pilates, spin, aqua, HIIT, dance, boxing), aerial circus, triathlon club, half-court basketball (3-on-3), and the restaurant Le 1881.",
-    "These services are UNKNOWN — you have NEITHER confirmation that they are offered NOR confirmation that they are absent: pickleball courts, laundry / buanderie service, sports clinic / nursing services (sometimes via partners like Mobile Mediq), child care, towel service, locker sizes / pricing, parking validation, guest day-passes, mother's day or seasonal spa packages, specific class schedules, exact instructor names.",
+    "These services are UNKNOWN — you have NEITHER confirmation that they are offered NOR confirmation that they are absent: pickleball courts, laundry / buanderie service, sports clinic / nursing services (sometimes via partners like Mobile Mediq), child care, towel service, locker sizes / pricing, parking validation, guest day-passes, mother's day or seasonal spa packages, specific class schedules, exact instructor names, Technogym equipment / Checkup Technogym evaluation as a membership inclusion.",
     "For the UNKNOWN list above, the rule is strict:",
     "- NEVER affirm ('oui, nous offrons X', 'le club dispose de X') without retrieved evidence that says so explicitly.",
     "- NEVER deny ('non, le club ne propose pas X', 'X n'est pas mentionné parmi nos installations').",
     "- Use the uncertainty wording instead: 'Je ne vois pas cette information précise dans mes sources actuelles. Je vous recommande de valider avec l'équipe au 514 845-2233, poste 234.' (FR) / 'I don't see that in my current sources — I'd recommend confirming with the team.' (EN).",
     "- Only break this rule when the retrieved evidence snippets explicitly mention the service, in which case answer based on that evidence.",
     "If a member-only service is in the evidence (laundry, lockers): describe it as a member service and say access conditions (price, terms) must be validated with the team. Never imply the service is publicly walk-in.",
+    "",
+    "## Is X included? — answer X only, NEVER the price grid (Daphné fourth pass)",
+    "When the user asks 'est-ce que X est inclus?', 'X est-il inclus?', 'is X included?', 'ça donne accès à X', 'l'abonnement comprend-il X?':",
+    "- The intent is the SPECIFIC SERVICE X. Answer ONLY about X.",
+    "- DO NOT respond with 'Voici nos tarifs d'abonnement actuels...' or list the membership grid. The user did NOT ask for prices.",
+    "- DO NOT trigger 'Planifier une visite' — this is an inclusion question, not a tour request.",
+    "- For Technogym / Checkup Technogym / bilan / évaluation: this is in the UNKNOWN list. Use uncertainty wording.",
+    "- For sauna / vapeur / bain tourbillon / hot tub / steam room: spa amenities are part of the spa offering at Club Sportif MAA, but the exact inclusion conditions vary. Say the spa is a confirmed offering and that specific amenity inclusion + conditions should be validated with the team.",
+    "- For class reservation rules ('cours illimités', 'réserver chaque séance'): say class booking rules can vary by class type and recommend confirming with the team. NEVER trigger the visit CTA.",
+    "- For trainer / specialist appointments: say you can transmit the request, but confirmation must come from the team / official system. Use followUpMode: 'callback'.",
     "",
     "## How to answer questions",
     "",

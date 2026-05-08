@@ -327,7 +327,8 @@ function findUnknownServiceGuard(userMessage: string): UnknownServiceGuard | und
  * affirmation anyway. This regex catches the common affirmative patterns so we
  * can override hallucinations deterministically before sending to the user.
  */
-const AFFIRMATIVE_PATTERN = /\b(oui[, ]|nous (?:disposons|offrons|proposons|avons)|le club (?:dispose|offre|propose)|on (?:offre|propose)|parmi (?:nos|les) (?:installations|services|amenities)|we (?:have|offer|provide|do offer)|yes,? (?:we|the club))/i;
+const AFFIRMATIVE_PATTERN =
+  /\b(oui[, ]|nous (?:disposons|offrons|proposons|avons)|le club\b[^.!?]*\b(?:dispose|offre|propose|propose|offre|a)\b|on (?:offre|propose)|parmi (?:nos|les) (?:installations|services|amenities)|we (?:have|offer|provide|do offer)|yes,? (?:we|the club)|votre club|the club\b[^.!?]*\b(?:offers|provides|has))/i;
 
 /** Cautious-uncertainty markers the AI emits when it correctly applied the rule. Presence
  *  means "no override needed". */
@@ -344,6 +345,98 @@ function buildUnknownServiceFallback(guard: UnknownServiceGuard, locale?: string
 }
 
 /**
+ * Daphné's fourth pass found that questions like "Est-ce que Technogym est inclus
+ * avec l'abonnement ?" were being hijacked by the deterministic pricing handler
+ * because the message contains "abonnement". The bot dumped the full tariff grid
+ * instead of answering whether Technogym is included. This detector identifies
+ * "is X included?", "ça donne accès à X", or any specific-service question that
+ * must never collapse to the price grid.
+ *
+ * When `match` is true, the caller MUST:
+ *   - skip the deterministic pricing/schedule/policy handlers,
+ *   - inject the "answer only about [serviceLabel]" prompt context,
+ *   - force `suppressBookingCta` true.
+ */
+export interface IncludedOrServiceQuestion {
+  match: boolean;
+  /** Human-readable label of the service the user asked about, when extractable. */
+  serviceLabel?: string;
+}
+
+export function detectIncludedOrSpecificServiceQuestion(userMessage: string): IncludedOrServiceQuestion {
+  const text = userMessage.trim();
+  const lower = text.toLowerCase();
+
+  // 1. "Is X included?" framing patterns. We don't extract X — the AI does that
+  //    from the original user message; we only need to know that the user is
+  //    asking about inclusion/access rather than about prices.
+  const askedAboutInclusion =
+    /\b(est-ce que|est-il|est-elle|sont-ils|sont-elles)\b.*\b(inclus|incluse|incluses|inclu|comprend|fait partie)\b/i.test(text) ||
+    /\b(comprend|inclut|inclus|incluse|donne acc[eè]s)\b.*\b(abonnement|adh[eé]sion|membership)\b/i.test(text) ||
+    /\b(abonnement|adh[eé]sion|membership)\b.*\b(comprend|inclut|inclus|incluse|donne acc[eè]s)\b/i.test(text) ||
+    /\bis\s+\S+\s+included\b/i.test(text) ||
+    /\bdoes\s+(the\s+)?(?:membership|plan|club)\s+(?:include|cover)\b/i.test(text) ||
+    /\b(?:included|covered)\s+(?:in|with)\s+(?:the\s+)?(?:membership|plan)\b/i.test(text) ||
+    /\bça\s+donne\s+acc[eè]s\b/i.test(text);
+
+  // 2. Specific non-pricing service references. Even without an "is X included"
+  //    frame, these signal that the user is asking about a feature, not a price.
+  const technogym = /\btechnogym|checkup|check[- ]?up|bilan|[eé]valuation\b/i.test(text);
+  const spaAmenities = /\b(sauna|vapeur|hammam|steam\s*room|bain\s*(tourbillon|remous)|hot\s*tub|jacuzzi)\b/i.test(text);
+  const classRules = /\b(cours\s*illimit|illimit[eé]s?|unlimited\s*classes|r[eé]server\s*(chaque|une|la)\s*(s[eé]ance|cours|classe)|reservation.*(class|cours|s[eé]ance)|each\s*class|booking\s*(per|each|every)\s*class)\b/i.test(text);
+  const trainerOrSpecialist = /\b(entra[iî]neur|trainer|coach|sp[eé]cialiste|kin[eé]siologue|physioth[eé]rapeute|nutritionniste)\b/i.test(text);
+  const fitnessProgram = /\b(perdre\s*du\s*poids|weight\s*loss|programme\s*(de\s*)?(remise|entra[iî]nement)|fitness\s*program|fitness\s*plan|remise\s+en\s+forme)\b/i.test(text);
+  const otherKnownServices =
+    /\b(menus?|buanderie|laundry|pickleball|pickle[- ]ball|cirque|circus|squash|massages?|massoth[eé]rapie|forfaits?)\b/i.test(text);
+
+  const matchedSpecificService =
+    technogym || spaAmenities || classRules || trainerOrSpecialist || fitnessProgram || otherKnownServices;
+  const match = askedAboutInclusion || matchedSpecificService;
+  if (!match) return { match: false };
+
+  // Compose a short label so the AI prompt can name the focus topic.
+  const labelParts: string[] = [];
+  if (technogym) {
+    labelParts.push(
+      lower.includes("checkup") || lower.includes("évaluation") || lower.includes("evaluation") || lower.includes("bilan")
+        ? "l'évaluation Technogym"
+        : "Technogym",
+    );
+  }
+  if (spaAmenities) labelParts.push("les installations spa (sauna, vapeur, bain tourbillon, etc.)");
+  if (classRules) labelParts.push("les règles de cours / réservation par séance");
+  if (trainerOrSpecialist) labelParts.push("les rendez-vous avec un entraîneur ou spécialiste");
+  if (fitnessProgram) labelParts.push("les programmes de remise en forme");
+  if (otherKnownServices && labelParts.length === 0) labelParts.push("ce service spécifique");
+
+  return {
+    match: true,
+    serviceLabel: labelParts.length > 0 ? labelParts.join(", ") : undefined,
+  };
+}
+
+/**
+ * Build the prompt fragment that tells the AI to answer ONLY about the matched
+ * service, never to recite the price grid, and never to suggest a visit. Stays
+ * tenant-agnostic — works for MAA, DUBUB, and future tenants.
+ */
+function buildIncludedOrSpecificServiceContext(detection: IncludedOrServiceQuestion): string {
+  const focus = detection.serviceLabel ?? "le service spécifique demandé";
+  return [
+    "INCLUDED-OR-SPECIFIC-SERVICE QUESTION DETECTED.",
+    `The user asked specifically about: ${focus}.`,
+    "Answer ONLY about that topic.",
+    "DO NOT recite the membership tariff grid (\"Voici nos tarifs d'abonnement actuels…\") even if the message mentions 'abonnement' / 'membership'.",
+    "DO NOT set followUpMode to 'calendly'. DO NOT suggest 'Planifier une visite' / 'Schedule a visit'.",
+    "If the evidence confirms inclusion, state it cautiously (conditions may vary).",
+    "If the evidence does not confirm it, say honestly: \"Je ne vois pas cette information précise dans mes sources actuelles. Je vous recommande de valider avec l'équipe au 514 845-2233, poste 234.\" (FR) / \"I don't see that in my current sources — I'd recommend confirming with the team at (514) 845-2233, ext. 234.\" (EN).",
+    "For class-reservation questions: a class reservation is NOT a club visit. Never trigger the visit booking CTA.",
+    "For trainer/specialist appointment questions: explain how to request the appointment, mention that the team / official system finalizes it. Never trigger the visit booking CTA.",
+    "Use followUpMode: 'clarify' so the chat widget stays in conversation mode.",
+  ].join("\n");
+}
+
+/**
  * Daphné's third pass: even when the AI's reply mentions "abonnement" or contains "$",
  * the chat widget was auto-rendering "Prochaine étape ? → Planifier une visite" — a sales
  * CTA that is wrong on cancellation, policy, laundry, menu, and complaint replies.
@@ -354,6 +447,9 @@ function buildUnknownServiceFallback(guard: UnknownServiceGuard, locale?: string
 export function deriveSuppressBookingCta(userMessage: string, followUpMode: MaaFollowUpMode): boolean {
   // Any critical intent → suppress.
   if (detectCriticalIntent(userMessage) !== undefined) return true;
+
+  // Daphné fourth pass: included / specific-service questions → suppress.
+  if (detectIncludedOrSpecificServiceQuestion(userMessage).match) return true;
 
   // Resolved follow-ups that are not pure pricing answers → suppress.
   if (followUpMode === "callback" || followUpMode === "vapi") return true;
@@ -1001,7 +1097,25 @@ export async function answerMaaChat(
   // This prevents the pricing/schedule/policy handlers from intercepting cancellation,
   // guarantee, reservation-problem, or reserve-now messages.
   const intentSafetyContextEarly = buildIntentSafetyContext(request.userMessage);
-  const skipDeterministicHandlers = intentSafetyContextEarly !== undefined;
+
+  // Daphné fourth pass: "is X included?" / specific-service questions must also bypass
+  // deterministic handlers, because the pricing handler kept hijacking them and
+  // dumping the full tariff grid even though the user wanted to know whether X
+  // (Technogym, sauna, illimité courses, trainer appointment, etc.) is included.
+  const includedQuestion = detectIncludedOrSpecificServiceQuestion(request.userMessage);
+  const includedQuestionContext = includedQuestion.match
+    ? buildIncludedOrSpecificServiceContext(includedQuestion)
+    : undefined;
+
+  const skipDeterministicHandlers =
+    intentSafetyContextEarly !== undefined || includedQuestion.match;
+
+  // Compose all available context fragments for the AI call. Multiple safety
+  // contexts can apply at once (e.g. cancellation_policy + included-question
+  // is rare but possible). Concatenate so the AI sees every relevant rule.
+  const composedExtraContext = [intentSafetyContextEarly, includedQuestionContext]
+    .filter((s): s is string => typeof s === "string" && s.length > 0)
+    .join("\n\n") || undefined;
 
   const pricingAnswer = !isDubub && !skipDeterministicHandlers && tryAnswerPricingQuestion(
     resolvedUserMessage,
@@ -1102,7 +1216,7 @@ export async function answerMaaChat(
     conversationHistory,
     request.userName,
     request.tenantCode,
-    intentSafetyContextEarly,
+    composedExtraContext,
   );
 
   let cleanedAssistantMessage = stripCitationMarkersFromAssistantMessage(

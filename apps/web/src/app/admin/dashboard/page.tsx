@@ -323,6 +323,7 @@ export default function AdminDashboard() {
               transferToHumanEnabled: (tenant as { transferToHumanEnabled?: boolean }).transferToHumanEnabled,
               transferToHumanPhone: (tenant as { transferToHumanPhone?: string | null }).transferToHumanPhone,
               transferBusinessHours: (tenant as { transferBusinessHours?: { days: boolean[]; startHour: number; endHour: number; timezone: string } }).transferBusinessHours,
+              restaurantMenuLinks: (tenant as { restaurantMenuLinks?: { menuUrl?: string | null; breakfastMenuUrl?: string | null; wineListUrl?: string | null; orderingUrl?: string | null; reservationUrl?: string | null; reservationMaxPartySize?: number | null; groupReservationsPhone?: string | null; groupReservationsCapacity?: string | null } }).restaurantMenuLinks,
             }}
             token={token}
             onSaved={() => { if (selectedId && token) void fetchOverview(selectedId, token); }}
