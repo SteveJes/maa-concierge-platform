@@ -1885,8 +1885,10 @@ export function ChatShell({
         </div>
       ) : null}
 
-      {/* Phone fallback */}
-      {showPhoneFallback ? (
+      {/* Phone fallback — outbound AI calls have been removed from product.
+          The only callback path is the lead form below. If a direct number is
+          available we surface it as a simple tel: link. */}
+      {showPhoneFallback && lastResponse?.vapi?.phoneNumber ? (
         <div
           style={{
             margin: "0 16px 12px",
@@ -1897,79 +1899,15 @@ export function ChatShell({
             boxShadow: "0 1px 6px rgba(0,0,0,0.06)",
           }}
         >
-          {pendingHandoffContext ? (
-            <>
-              <div style={{ color: "#1a1a1a", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
-                {"📞 " + (locale === "fr-CA" ? "Laissez l'IA vous appeler" : "Let the AI call you")}
-              </div>
-              <div style={{ display: "grid", gap: 8 }}>
-                <input
-                  value={callbackPhone}
-                  onChange={(e) => setCallbackPhone(e.target.value)}
-                  placeholder={locale === "fr-CA" ? "Votre numéro de téléphone *" : "Your phone number *"}
-                  type="tel"
-                  style={pillInput()}
-                />
-                <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: "#8a8aa0", cursor: "pointer" }}>
-                  <input
-                    type="checkbox"
-                    checked={callbackConsent}
-                    onChange={(e) => setCallbackConsent(e.target.checked)}
-                  />
-                  <span>
-                    {locale === "fr-CA"
-                      ? `J'accepte d'être contacté par l'équipe ${clientName}.`
-                      : `I agree to be contacted by the ${clientName} team.`}
-                  </span>
-                </label>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <button
-                    type="button"
-                    onClick={() => void submitTransferCallNow()}
-                    disabled={isTransferCalling || !callbackPhone.trim() || !callbackConsent}
-                    style={{
-                      padding: "10px 18px",
-                      borderRadius: 20,
-                      border: "none",
-                      background: "var(--accent-gradient)",
-                      color: "#111116",
-                      fontWeight: 700,
-                      fontSize: 13,
-                      cursor: isTransferCalling || !callbackPhone.trim() || !callbackConsent ? "default" : "pointer",
-                      opacity: isTransferCalling || !callbackPhone.trim() || !callbackConsent ? 0.6 : 1,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {isTransferCalling
-                      ? (locale === "fr-CA" ? "Appel en cours..." : "Calling now...")
-                      : (locale === "fr-CA" ? "Appelez-moi maintenant" : "Call me now")}
-                  </button>
-                  {lastResponse?.vapi?.phoneNumber ? (
-                    <a
-                      href={`tel:${lastResponse.vapi.phoneNumber}`}
-                      style={{ fontSize: 12, color: "#5a5a70" }}
-                    >
-                      {locale === "fr-CA" ? "Ou composer directement" : "Or dial directly"}
-                    </a>
-                  ) : null}
-                </div>
-              </div>
-            </>
-          ) : (
-            <div style={{ color: "#e87a6b", fontSize: 13 }}>
-              {locale === "fr-CA"
-                ? "Le contexte du transfert est manquant."
-                : "Transfer context is unavailable."}
-              {lastResponse?.vapi?.phoneNumber ? (
-                <>
-                  {" "}
-                  <a href={`tel:${lastResponse.vapi.phoneNumber}`} style={{ color: "#e87a6b" }}>
-                    {locale === "fr-CA" ? "Composer directement" : "Dial directly"}
-                  </a>
-                </>
-              ) : null}
-            </div>
-          )}
+          <div style={{ color: "#1a1a1a", fontSize: 13 }}>
+            {locale === "fr-CA"
+              ? "Pour parler à un membre de l'équipe directement :"
+              : "To speak with a team member directly:"}
+            {" "}
+            <a href={`tel:${lastResponse.vapi.phoneNumber}`} style={{ color: "var(--accent)", fontWeight: 700 }}>
+              {lastResponse.vapi.phoneNumber}
+            </a>
+          </div>
         </div>
       ) : null}
 
@@ -2039,8 +1977,9 @@ export function ChatShell({
                   padding: "10px 18px",
                   borderRadius: 20,
                   border: "none",
-                  background: "linear-gradient(135deg, #2a2a38, #3a3a4a)",
-                  color: "white",
+                  background: "var(--accent-gradient)",
+                  color: "var(--accent-text)",
+                  textShadow: accentTextColor === "#fff" ? "0 1px 3px rgba(0,0,0,0.35)" : "none",
                   fontWeight: 700,
                   fontSize: 13,
                   cursor: isSubmittingCallback || !callbackPhone.trim() || !callbackConsent ? "default" : "pointer",
@@ -2051,28 +1990,6 @@ export function ChatShell({
                 {isSubmittingCallback
                   ? (locale === "fr-CA" ? "Envoi..." : "Submitting...")
                   : (locale === "fr-CA" ? "Envoyer la demande" : "Send request")}
-              </button>
-              <button
-                type="button"
-                onClick={() => void submitCallNowRequest()}
-                disabled={isCallingNow || !callbackPhone.trim() || !callbackConsent}
-                style={{
-                  padding: "10px 18px",
-                  borderRadius: 20,
-                  border: "none",
-                  background: "var(--accent-gradient)",
-                  color: "var(--accent-text)",
-                  textShadow: accentTextColor === "#fff" ? "0 1px 3px rgba(0,0,0,0.35)" : "none",
-                  fontWeight: 700,
-                  fontSize: 13,
-                  cursor: isCallingNow || !callbackPhone.trim() || !callbackConsent ? "default" : "pointer",
-                  opacity: isCallingNow || !callbackPhone.trim() || !callbackConsent ? 0.6 : 1,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {isCallingNow
-                  ? (locale === "fr-CA" ? "Appel en cours..." : "Calling now...")
-                  : (locale === "fr-CA" ? "Appelez-moi maintenant" : "Call me now")}
               </button>
             </div>
           </div>

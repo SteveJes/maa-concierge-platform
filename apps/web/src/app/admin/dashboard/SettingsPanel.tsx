@@ -113,8 +113,9 @@ export default function SettingsPanel({ tenantId, initial, token, onSaved }: Pro
       <SectionTitle>Paramètres du client</SectionTitle>
       <Card>
         <div style={{ fontSize: 11, color: P.muted, marginBottom: 16, lineHeight: 1.5 }}>
-          Modifications appliquées immédiatement sur le serveur en cours d&apos;exécution.
-          Pour les rendre permanentes, mettez aussi à jour la source (NocoDB ou code).
+          Les modifications sont sauvegardées sur le serveur et survivent aux redémarrages.
+          Le fichier JSON local (apps/api/data/tenants-overrides.json) est l&apos;autorité —
+          la migration vers NocoDB est planifiée comme étape distincte.
         </div>
 
         {/* Lead notification — the highlight field */}

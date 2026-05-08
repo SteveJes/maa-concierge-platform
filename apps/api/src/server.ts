@@ -4,6 +4,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { resolveDirectCoreFactResponse } from "./core-facts.js";
 import { sendLeadNotificationEmail } from "./services/email-notifications.js";
 import { TENANT_REGISTRY, getTenant, addTenant, removeTenant, slugify, type TenantConfig } from "./admin/tenants.js";
+import { saveTenantOverride } from "./admin/tenant-overrides.js";
 import { sendInvoiceEmail, createStripeCheckout, nextInvoiceNumber, buildInvoice } from "./admin/invoice.js";
 import { buildTenantHealthReport } from "./admin/health.js";
 import { loadApprovedSourceRegistry } from "@platform/config";
@@ -897,6 +898,7 @@ export function createServer() {
     ];
 
     let changedCount = 0;
+    const persistedDelta: Partial<TenantConfig> = {};
     for (const key of editable) {
       if (key in body) {
         const value = body[key];
@@ -904,8 +906,21 @@ export function createServer() {
         if (value !== undefined) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (tenant as any)[key] = value;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (persistedDelta as any)[key] = value;
           changedCount += 1;
         }
+      }
+    }
+
+    // Persist to disk so the change survives a server restart. The file is
+    // hydrated back into TENANT_REGISTRY on boot via applyOverridesToRegistry.
+    if (changedCount > 0) {
+      try {
+        saveTenantOverride(id, persistedDelta);
+      } catch (err) {
+        // The in-memory update already succeeded; just log persistence failure.
+        request.log.error({ err, tenantId: id }, "tenant override save failed (in-memory update kept)");
       }
     }
 

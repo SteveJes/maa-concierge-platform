@@ -1,7 +1,12 @@
 /**
  * Tenant registry for the DUBUB admin dashboard.
  * Add a new entry here whenever a new client is onboarded.
+ *
+ * Persistence: edits made via /admin/dashboard PATCH /v1/admin/tenants/:id
+ * are persisted to apps/api/data/tenants-overrides.json and merged on top
+ * of the hardcoded defaults below at process boot. See tenant-overrides.ts.
  */
+import { applyOverridesToRegistry } from "./tenant-overrides.js";
 
 export interface TenantConfig {
   id: string;
@@ -68,6 +73,10 @@ export const TENANT_REGISTRY: TenantConfig[] = [
     notes: null,
   },
 ];
+
+// Hydrate dashboard-driven overrides on top of the hardcoded defaults at boot.
+// Subsequent reads via getTenant / TENANT_REGISTRY see the merged view.
+applyOverridesToRegistry(TENANT_REGISTRY);
 
 export function getTenant(id: string): TenantConfig | undefined {
   return TENANT_REGISTRY.find((t) => t.id === id);
