@@ -156,7 +156,9 @@ type CriticalIntent =
   | "negotiation"
   | "urgent_callback"
   | "external_price_claim"
-  | "membership_downgrade";
+  | "price_contradiction"
+  | "membership_downgrade"
+  | "clinical_pain";
 
 /**
  * Catches "annul" stems even when typed as a contraction without an apostrophe
@@ -254,11 +256,37 @@ export function detectCriticalIntent(userMessage: string): CriticalIntent | unde
     /\b(urgent|urgence|emergency)\b/i.test(userMessage);
   if (hasCallbackVerb && hasUrgentTiming) return "urgent_callback";
 
+  // Price contradiction (Daphné sixth-pass #2): user is calling out a
+  // discrepancy between two prices — one from us ("tu m'as dit / you said"),
+  // one from their source ("j'ai vu / sur votre site"). Must be detected
+  // BEFORE external_price_claim because both can match. Daphné's correct
+  // pattern: state current source price exactly, acknowledge discrepancy,
+  // forbid "autour de" / "around", recommend official confirmation.
+  const priceTokens = userMessage.match(/\d{2,4}\s*\$/g) ?? [];
+  const hasTwoPrices = priceTokens.length >= 2;
+  const hasContradictionConnective =
+    /\b(mais|but|cependant|toutefois|however|lequel\s+est\s+(?:le\s+)?bon|which\s+(?:one\s+)?is\s+(?:the\s+)?(?:right|correct|good)|why does|pourquoi (?:tu|vous|le site)|why is)\b/i.test(userMessage);
+  const referencesBotEarlierPrice =
+    /\b(tu\s+m['']?as\s+dit|vous\s+m['']?avez\s+dit|you\s+(told|said)|you\s+just\s+(said|told))\b/i.test(userMessage);
+  if ((hasTwoPrices && hasContradictionConnective) || referencesBotEarlierPrice) {
+    return "price_contradiction";
+  }
+
   // External price claim — Daphné #25. Friend/Google/elsewhere said price was X.
   const isExternalPriceClaim =
     /\b(mon ami|my friend|on m'a dit|i was told|google|on internet|sur internet|j'ai vu|i saw)\b/i.test(userMessage) &&
     /(\$|\beuros?\b|\beur\b|\bcad\b|par mois|per month|\/mo|month)/i.test(userMessage);
   if (isExternalPriceClaim) return "external_price_claim";
+
+  // Clinical pain / injury / medical-orientation question (Daphné sixth-pass #5).
+  // The bot was naming diagnoses (arthrite, syndrome patello-fémoral). Routing as
+  // a critical intent locks the response to cautious orientation language.
+  const isClinicalPain =
+    /\b(mal\s+(?:au|à\s+la|aux)|douleur|blessure|blessé|injury|injured|pain|ache|sore)\b/i.test(userMessage) &&
+    /\b(genou|knee|dos|back|épaule|shoulder|hanche|hip|cheville|ankle|coude|elbow|poignet|wrist|pied|foot|cuisse|thigh|mollet|calf|cou|neck|jambe|leg|bras|arm|hernie|tendon|ligament|muscle|articulation|joint|cartilage|m[eé]nisque|patella|rotule)\b/i.test(userMessage) ||
+    (/\b(physio|physiothérapie|physiotherapy|thérapie\s+sportive|sports\s+therapy)\b/i.test(userMessage) &&
+      /\b(devrais?|should|voir|see|consult|recommand|recommend|orient)\b/i.test(userMessage));
+  if (isClinicalPain) return "clinical_pain";
 
   // Membership downgrade / modification (Daphné fifth-pass #7). User wants to
   // change to a cheaper plan / downgrade / modify their current membership.
@@ -267,7 +295,7 @@ export function detectCriticalIntent(userMessage: string): CriticalIntent | unde
   // hijack with no acknowledgement of how administrative this request really
   // is. The team has to validate against the contract and account.
   const isMembershipDowngrade =
-    /\b(chang|baisser|réduire|reduire|modifier|switch|downgrade|lower|cheaper|passer\s+(?:à|au|a))\b/i.test(userMessage) &&
+    /\b(chang\w*|baiss\w*|r[eé]duir\w*|diminu\w*|modifi\w*|switch|downgrade|lower|cheaper|passer\s+(?:à|au|a))\b/i.test(userMessage) &&
     /\b(abonnement|adh[eé]sion|membership|plan|forfait|prix|price|tier|cat[eé]gorie)\b/i.test(userMessage);
   if (isMembershipDowngrade) return "membership_downgrade";
 
@@ -293,6 +321,8 @@ function safeFollowUpModeForIntent(intent: CriticalIntent): "callback" | "clarif
     case "holiday_hours":
     case "cancellation_policy":
     case "external_price_claim":
+    case "price_contradiction":
+    case "clinical_pain":
       return "clarify";
     case "privacy":
     case "identity":
@@ -378,6 +408,122 @@ const AFFIRMATIVE_PATTERN =
 /** Cautious-uncertainty markers the AI emits when it correctly applied the rule. Presence
  *  means "no override needed". */
 const UNCERTAINTY_MARKERS = /\b(je ne vois pas|sources actuelles|valider avec l'équipe|n'apparait pas|n'apparaît pas|don'?t see|i don'?t have|recommend.*confirm|please (?:confirm|check)|veuillez (?:confirmer|valider))/i;
+
+/**
+ * Sixth-pass post-process guards. Each rule below catches a known
+ * hallucination pattern AFTER the AI has answered, so even if the model
+ * ignores the prompt instructions the user never sees the bad output.
+ *
+ * Tenant-agnostic — the only conditional logic is per-intent (clinical_pain,
+ * price_contradiction). Course-count source lock always applies. New tenants
+ * inherit the same guards by default.
+ */
+const CLINICAL_DIAGNOSIS_PATTERN =
+  /\b(arthrite|arthritis|patello[- ]?f[eé]moral|tendinite|tendinitis|tendinopathie|bursite|bursitis|m[eé]nisque\s+d[eé]chir|torn\s+meniscus|ligament\s+crois[eé]|\bACL\b|\bMCL\b|\bLCL\b|hernie\s+discale|herniated\s+disc|sciatique\b|sciatica\b|fascia\s+plantaire|plantar\s+fasciitis|capsulite|capsulitis|chondromalacie|chondromalacia)\b/i;
+
+const APPROX_PRICE_HEDGES_RE =
+  /\b(autour\s+de|à\s+peu\s+pr[eè]s|approximativement|environ|around|approximately|approx\.?|roughly|about)\s+/gi;
+
+/**
+ * Daphné sixth-pass #15: when listing what's included in the membership, the
+ * AI kept appending "et le restaurant Le 1881" to the inclusion clause. The
+ * restaurant is on-site / paid separately, NOT a membership inclusion.
+ *
+ * We surgically remove restaurant references from any sentence containing
+ * "inclut" / "includes" / "comprend" / "donne accès". The restaurant then
+ * gets a separate trailing sentence noting it is on-site (paid separately).
+ *
+ * Tenant-agnostic — only fires when the message actually contains both an
+ * inclusion verb AND a restaurant reference in the same sentence.
+ */
+function stripRestaurantFromInclusionList(message: string): string {
+  const sentences = message.split(/(?<=[.!?])\s+/);
+  let restaurantWasInInclusion = false;
+
+  const cleaned = sentences.map((sentence) => {
+    const hasInclusionVerb = /\b(inclut|inclus|comprend|includes?|donnent?\s+acc[eè]s|y\s+compris)\b/i.test(sentence);
+    const hasRestaurantMention = /\b(?:le\s+|the\s+)?restaurant(?:\s+le\s+1881)?\b|\ble\s+1881\b/i.test(sentence);
+    if (!hasInclusionVerb || !hasRestaurantMention) return sentence;
+
+    restaurantWasInInclusion = true;
+    // Strip any "(,)?\s+(et|and|ainsi que|y compris)?\s*(le|the)?\s*restaurant( Le 1881)?"
+    // wherever it appears inside an inclusion sentence. Also strip a standalone
+    // "Le 1881" reference inside the same sentence.
+    return sentence
+      .replace(/[,;]?\s*(?:et\s+|and\s+|ainsi\s+que\s+|y\s+compris\s+)?(?:le\s+|the\s+)?restaurant(?:\s+le\s+1881)?/gi, "")
+      .replace(/[,;]?\s*(?:et\s+|and\s+|ainsi\s+que\s+)?le\s+1881\b/gi, "")
+      .replace(/,\s*,/g, ",")
+      .replace(/\s{2,}/g, " ")
+      .replace(/\s+([.!?])/g, "$1")
+      .replace(/,\s*([.!?])/g, "$1");
+  });
+
+  let out = cleaned.join(" ").trim();
+  if (restaurantWasInInclusion) {
+    out += " Le restaurant Le 1881 est disponible sur place, payé séparément.";
+  }
+  return out;
+}
+
+/**
+ * Daphné sixth-pass #13/#14: pure fitness/weight-loss queries should not lead
+ * with (or even include) massage / physiotherapy. The shared-safety rule
+ * tells the AI this, but at temperature 0.3 the model still slips. The guard
+ * surgically removes massage/physio fragments from inclusion lists when the
+ * user message has no pain/injury context.
+ */
+function stripMassageFromFitnessAnswer(userMessage: string, message: string): string {
+  const isFitnessProgram =
+    /\b(perdre\s+du\s+poids|weight\s+loss|remise\s+en\s+forme|fitness\s+program|programme\s+(?:de\s+)?(?:remise|entra[iî]nement|fitness))\b/i.test(userMessage);
+  const mentionsPain =
+    /\b(mal|douleur|blessure|blessé|injury|injured|pain|ache|sore|hernie|tendon|ligament)\b/i.test(userMessage);
+  if (!isFitnessProgram || mentionsPain) return message;
+
+  return message
+    .replace(/[,;]?\s*(?:ainsi\s+que\s+|et\s+|and\s+|y\s+compris\s+|including\s+)?(?:la\s+|the\s+)?massoth[eé]rapie/gi, "")
+    .replace(/[,;]?\s*(?:ainsi\s+que\s+|et\s+|and\s+|y\s+compris\s+|including\s+)?(?:la\s+|the\s+)?(?:physioth[eé]rapie|physiotherapy)/gi, "")
+    .replace(/[,;]?\s*(?:ainsi\s+que\s+|et\s+|and\s+)?(?:un\s+|a\s+)?(?:massage\s+therapist|masseur(?:\s+sportif)?)/gi, "")
+    .replace(/,\s*,/g, ",")
+    .replace(/,\s*([.!?])/g, "$1")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function applyPostProcessGuards(
+  message: string,
+  intent: CriticalIntent | undefined,
+  locale: string | undefined,
+): string {
+  let out = message;
+  const fr = isFrenchLocale(locale);
+
+  // 1. Course-count source lock (Daphné sixth-pass #3). Until MAA confirms
+  //    "175 classes/week", the authoritative figure is "plus de 75 cours
+  //    par semaine". Catches "175 cours", "175 classes", "175 séances", and
+  //    "près de 175 / environ 175 / plus de 175" prefixed variants.
+  out = out.replace(
+    /\b(?:plus\s+de\s+|pr[eè]s\s+de\s+|environ\s+|around\s+|over\s+|more\s+than\s+)?175\s+(cours|classes|s[eé]ances)\b/gi,
+    fr ? "plus de 75 cours par semaine" : "more than 75 classes per week",
+  );
+
+  // 2. Price-contradiction wording (Daphné sixth-pass #2). Strip approximation
+  //    hedges so the bot states the source price exactly.
+  if (intent === "price_contradiction") {
+    out = out.replace(APPROX_PRICE_HEDGES_RE, "");
+  }
+
+  // 3. Clinical-pain diagnosis names (Daphné sixth-pass #5). If a forbidden
+  //    medical term leaked through despite the prompt rules, replace the
+  //    whole message with the canonical orientation pattern. Surgical edits
+  //    can leave dangling fragments; full replacement is safer.
+  if (intent === "clinical_pain" && CLINICAL_DIAGNOSIS_PATTERN.test(out)) {
+    out = fr
+      ? "Je ne peux pas poser de diagnostic. Pour une douleur ou une blessure, l'équipe clinique du Club — physiothérapie ou thérapie sportive — peut être un bon point de départ pour vous orienter. Un entraîneur peut ensuite vous accompagner pour la prévention et l'exercice. L'équipe confirmera le service le plus approprié selon votre situation. Souhaitez-vous que je transmette votre demande ?"
+      : "I can't make a diagnosis. For pain or injury, the Club's clinical team — physiotherapy or sports therapy — can be a good starting point. A trainer can then support you on prevention and exercise. The team will confirm the most appropriate service for your situation. Would you like me to pass on your request?";
+  }
+
+  return out;
+}
 
 /**
  * Build the safe uncertainty wording in the right language for the matched service.
@@ -549,6 +695,10 @@ function buildIntentSafetyContext(userMessage: string): string | undefined {
       return "URGENT CALLBACK with a SPECIFIC TIMING expectation. You MUST NOT promise a callback within a specific delay (5 minutes, an hour, today, etc.). Required pattern (FR): 'Je peux transmettre votre demande, mais je ne peux pas garantir un délai précis. Pour une réponse immédiate, vous pouvez appeler le 514 845-2233, poste 234.' (EN): 'I can pass on your request, but I can't guarantee a specific callback time. For immediate help, you can call (514) 845-2233, ext. 234.' Acknowledge the urgency briefly. Use followUpMode: 'callback'.";
     case "external_price_claim":
       return "EXTERNAL PRICE CLAIM: User is asking you to confirm a price they heard from a friend, Google, or another external source. Do NOT confirm or strongly deny. Use cautious wording: 'Le tarif de [X] $ n'apparaît pas dans mes informations actuelles. Je vous recommande de confirmer directement avec l'équipe au 514 845-2233, poste 234.' Do NOT suggest 'Planifier une visite' after a price-validation question. Use followUpMode: 'clarify'.";
+    case "price_contradiction":
+      return "PRICE CONTRADICTION: User has flagged a discrepancy between a price they saw (on the website, on social media, etc.) and a price you mentioned earlier (or your current source). You MUST: (1) state YOUR CURRENT SOURCE PRICE EXACTLY, not approximately — e.g., 'Ma source actuelle indique 225 $/mois pour l'abonnement annuel.' / 'My current source shows $225/month for the annual plan.' (2) Acknowledge the discrepancy clearly: 'Si vous voyez 215 $, il peut s'agir d'une promotion ou d'une information à valider.' / 'If you see $215, that might be a promotion or info to confirm.' (3) Recommend confirmation with the team: '514 845-2233, poste 234' / '(514) 845-2233, ext. 234'. FORBIDDEN: 'autour de', 'around', 'approximately', 'environ', minimizing the gap, guessing which is correct, suggesting 'Planifier une visite'. Use followUpMode: 'clarify'.";
+    case "clinical_pain":
+      return "CLINICAL PAIN / INJURY ORIENTATION: User is describing a pain, injury, or asking who to consult (physio, trainer, etc.). You MUST NOT diagnose. You MUST NOT name any medical condition or diagnosis — FORBIDDEN words include: arthrite, arthritis, syndrome (patello-fémoral, patellofemoral, etc.), tendinite, tendinitis, tendinopathie, bursite, bursitis, ménisque déchiré, torn meniscus, ligament croisé, ACL/MCL/LCL, hernie, herniated, sciatique, sciatica, fascia plantaire, plantar fasciitis. You MUST NOT strongly recommend one provider over another. Required pattern (FR): 'Je ne peux pas poser de diagnostic. Pour une douleur ou une blessure, l'équipe clinique du Club — en physiothérapie ou en thérapie sportive — peut être un bon point de départ pour vous orienter. Un entraîneur peut aussi vous accompagner pour la prévention et l'exercice une fois la situation clarifiée. L'équipe pourra confirmer le service le plus approprié selon votre situation.' (EN): 'I can't make a diagnosis. For pain or injury, the Club's clinical team — physiotherapy or sports therapy — can be a good starting point. A trainer can support you on prevention and exercise once the situation is clearer. The team will confirm the most appropriate service for your situation.' Use followUpMode: 'clarify'.";
     case "membership_downgrade":
       return "MEMBERSHIP DOWNGRADE / MODIFICATION REQUEST: User wants to change, lower, downgrade, or modify their current membership / plan. This is an administrative request the chat cannot resolve. You MUST NOT respond with 'Bien sûr' as if you can change it, and you MUST NOT route the user to the phone-continuation template. Say warmly that the memberships team needs to validate the change based on the file, contract type, and applicable conditions, and offer to transmit the request via callback. Required pattern (FR): 'Je comprends. Une modification d'abonnement doit être validée par l'équipe des adhésions selon votre dossier et les conditions de votre contrat. Je peux transmettre votre demande pour qu'un membre de l'équipe vous rappelle.' (EN): 'Understood. A membership change has to be validated by the memberships team based on your file and contract conditions. I can pass on your request so a team member calls you back.' Use followUpMode: 'callback'.";
   }
@@ -1112,8 +1262,14 @@ export async function answerMaaChat(
       ? safeFollowUpModeForIntent(dububIntent)
       : openAiResult.followUpMode;
 
+    const dububGuardedMessage = applyPostProcessGuards(
+      openAiResult.assistantMessage,
+      dububIntent,
+      request.locale,
+    );
+
     return {
-      assistantMessage: openAiResult.assistantMessage,
+      assistantMessage: dububGuardedMessage,
       followUpMode: dububSafeMode,
       citations: [],
       retrieval: { query: resolvedUserMessage, chunkCount: 0, resultCount: 0 },
@@ -1184,19 +1340,51 @@ export async function answerMaaChat(
   const hasBookingAsk = /\b(book|booking|reserve|r[eé]server|schedule|schedul|tour|visite|visiter|d[eé]mo|demo|rendez-vous|appointment)\b/i.test(request.userMessage);
   const isMultiIntentPricingPlusBooking = hasPricingAsk && hasBookingAsk;
 
+  // Daphné sixth-pass #8: multi-category discount question (student / corporate /
+  // family) routed to the deterministic pricing handler, which dumped the full
+  // tariff grid and ignored corporate + family. Detect and bypass.
+  // NOTE: trailing \w* on each French stem — "corporatifs" has no \b between 'i'
+  // and 'f', so /\bcorporati\b/ fails to match it.
+  const isMultiCategoryDiscount =
+    /\b(rabais|r[eé]duction|discount|reduced|rate)\b/i.test(request.userMessage) &&
+    (/\b(corporati\w*|entreprise\w*|famili\w*|family|corporate)\b/i.test(request.userMessage) ||
+      ((request.userMessage.match(/\b(étudiant\w*|etudiant\w*|student|senior|a[iî]n[eé]\w*|family|famili\w*|corporati\w*|entreprise\w*|corporate)\b/gi) ?? []).length >= 2));
+
+  // Daphné sixth-pass #7: when the user explicitly refuses a form / wants quick
+  // info, we must not re-offer a callback. Force followUpMode → clarify and
+  // inject a context that tells the AI to answer from prior history instead.
+  const isQuickInfoNoForm =
+    /\b(juste\s+savoir\s+(?:vite|rapidement)|pas\s+(?:remplir|de\s+formulaire)|sans\s+formulaire|no\s+form|quick\s+(?:answer|question)|just\s+(?:want\s+to\s+know|a\s+quick))\b/i.test(request.userMessage);
+
   const skipDeterministicHandlers =
     intentSafetyContextEarly !== undefined ||
     includedQuestion.match ||
-    isMultiIntentPricingPlusBooking;
+    isMultiIntentPricingPlusBooking ||
+    isMultiCategoryDiscount ||
+    isQuickInfoNoForm;
 
   const multiIntentContext = isMultiIntentPricingPlusBooking
     ? "MULTI-INTENT (pricing + booking): The user is asking BOTH pricing AND booking in one message. Answer BOTH parts IN THE USER'S LANGUAGE. First state the membership tariffs cautiously (with the call-to-confirm hedge). Then answer the booking question briefly — explain that you can guide them through scheduling, and that final confirmation comes from the team or an official system. Do NOT collapse the reply to either intent alone. Set followUpMode: 'clarify' (do NOT pick 'vapi' or 'calendly' for this combo — the user wants the answer here, not a handoff)."
     : undefined;
 
+  const multiCategoryDiscountContext = isMultiCategoryDiscount
+    ? "MULTI-CATEGORY DISCOUNT QUESTION DETECTED. The user is asking about discounts across multiple categories (student, senior, corporate, family) IN ONE MESSAGE. You MUST answer EACH category the user mentioned separately, one short sentence each. Confirmed (use the source figures): student 25 and under is around 185 $/mois; senior 70+ is around 185 $/mois. NOT confirmed in current sources: corporate, family. For those say: 'Je ne vois pas de rabais corporatif/familial confirmé dans mes informations actuelles; l'équipe peut le préciser au 514 845-2233, poste 234.' / 'I don't see a corporate/family discount confirmed in current sources; the team can clarify at (514) 845-2233, ext. 234.' Do NOT dump the full pricing grid. Do NOT skip any category the user asked about. Set followUpMode: 'clarify'."
+    : undefined;
+
+  const quickInfoNoFormContext = isQuickInfoNoForm
+    ? "QUICK-INFO / NO-FORM PREFERENCE DETECTED. The user does NOT want to fill a form or be transferred to a callback. You MUST: (1) answer directly using context from the PRIOR conversation turns if available; (2) NEVER offer to 'transmettre votre demande à l'équipe' / 'pass on your request' in this turn — that is a form/callback in disguise; (3) NEVER show the visit CTA; (4) if the prior context is unclear, ask ONE concise clarifying question — at most. Set followUpMode: 'clarify'."
+    : undefined;
+
   // Compose all available context fragments for the AI call. Multiple safety
   // contexts can apply at once (e.g. cancellation_policy + included-question
   // is rare but possible). Concatenate so the AI sees every relevant rule.
-  const composedExtraContext = [intentSafetyContextEarly, includedQuestionContext, multiIntentContext]
+  const composedExtraContext = [
+    intentSafetyContextEarly,
+    includedQuestionContext,
+    multiIntentContext,
+    multiCategoryDiscountContext,
+    quickInfoNoFormContext,
+  ]
     .filter((s): s is string => typeof s === "string" && s.length > 0)
     .join("\n\n") || undefined;
 
@@ -1351,9 +1539,34 @@ export async function answerMaaChat(
   // Hard safety override: if a critical intent was detected, force followUpMode
   // off 'calendly' so server.ts cannot overwrite the AI message with the booking template.
   const detectedIntent = detectCriticalIntent(request.userMessage);
-  const finalFollowUpMode = detectedIntent
+  let finalFollowUpMode = detectedIntent
     ? safeFollowUpModeForIntent(detectedIntent)
     : modelResponse.followUpMode;
+
+  // Sixth-pass overrides for non-critical-intent flows that still need
+  // structural mode control:
+  //  - quick-info / no-form: the user explicitly refused a callback or form;
+  //  - multi-category discount: the answer must live in chat.
+  if (
+    (isQuickInfoNoForm || isMultiCategoryDiscount) &&
+    (finalFollowUpMode === "callback" || finalFollowUpMode === "calendly")
+  ) {
+    finalFollowUpMode = "clarify";
+  }
+
+  // Sixth-pass guards: course-count lock + price-contradiction "around" strip +
+  // clinical-diagnosis safety net + membership-inclusion restaurant separation.
+  // These run AFTER the AI so a temperature-0.3 slip-up never reaches the user.
+  cleanedAssistantMessage = applyPostProcessGuards(
+    cleanedAssistantMessage,
+    detectedIntent,
+    request.locale,
+  );
+  cleanedAssistantMessage = stripRestaurantFromInclusionList(cleanedAssistantMessage);
+  cleanedAssistantMessage = stripMassageFromFitnessAnswer(
+    request.userMessage,
+    cleanedAssistantMessage,
+  );
 
   return {
     assistantMessage: cleanedAssistantMessage,

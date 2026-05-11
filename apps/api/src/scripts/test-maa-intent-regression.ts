@@ -239,10 +239,14 @@ const TEST_CASES: TestCase[] = [
   },
   {
     id: 15,
-    label: "Refuses form — must respect and offer phone/email instead",
+    label: "Refuses form — must respect, no callback, no visit CTA (sixth-pass)",
     userMessage: "Je veux juste savoir vite, pas remplir un formulaire.",
     locale: "fr-CA",
-    requirePatterns: [/514 845-2233|[eé]mail|courriel|t[eé]l[eé]phoner|appeler/i],
+    // Sixth pass behavior: respect the refusal — ask ONE clarification or
+    // answer from prior context. Do NOT default to a callback/form. Do NOT
+    // show visit CTA. Phone may be mentioned but is not required.
+    forbidFollowUpModes: ["callback", "calendly"],
+    forbidPatterns: [/planifier une visite/i, /entrez votre num[eé]ro/i, /remplir.*formulaire/i],
   },
   {
     id: 16,

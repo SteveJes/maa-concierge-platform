@@ -296,8 +296,12 @@ function looksLikeBookingIntent(userMessage: string, locale: string | null): boo
   // package), the word "réserver" / "book" / "schedule" inside that question must
   // NOT collapse the answer into a generic visit-booking template. The AI needs to
   // answer the actual service question first. Plurals accepted.
+  // Sixth pass: pickleball typo variants (pickball, pickelball, pickle ball)
+  // were leaking through. Daphné's #1: "booker un terrain de pickelball pour
+  // demain soir" was still routing to visit-booking. Buanderie typo variant
+  // (buandrie) added alongside.
   const serviceSpecific =
-    /\b(menus?|buanderie|laundry|pickleball|pickle[- ]ball|cirque|circus|sauna|forfaits?|massages?|massoth[eé]rapie|physioth[eé]rapie|nutritionniste|spa\s+(d[ée]tente|détente|forfait|forfaits|m[eè]re|f[eê]te|noel)|abonnement\s+(pour|spa))\b/i;
+    /\b(menus?|buanderie|buandrie|laundry|lavage|pickleball|pickelball|pickball|pickle[- ]?ball|cirque|circus|sauna|forfaits?|massages?|massoth[eé]rapie|physioth[eé]rapie|nutritionniste|spa\s+(d[ée]tente|détente|forfait|forfaits|m[eè]re|f[eê]te|noel)|abonnement\s+(pour|spa))\b/i;
   if (serviceSpecific.test(normalized)) {
     return false;
   }
@@ -1529,10 +1533,15 @@ export function createServer() {
     // careful answer with the generic "Cliquez sur le bouton ci-dessous pour
     // planifier votre visite" template. Force calendly → clarify so the booking
     // template stays on its leash.
+    //
+    // Sixth pass: `suppressBookingCta` is now AUTHORITATIVE. Previously this
+    // override required `!hasExplicitBookingIntent`, meaning Daphné's
+    // "booker un terrain de pickelball" case (where the typo bypassed
+    // serviceSpecific and `hasExplicitBookingIntent` became true) could still
+    // collapse into the visit template. The backend-derived flag must win.
     if (
       result.suppressBookingCta === true &&
-      responseFollowUpMode === "calendly" &&
-      !hasExplicitBookingIntent
+      responseFollowUpMode === "calendly"
     ) {
       responseFollowUpMode = "clarify";
     }

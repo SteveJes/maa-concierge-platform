@@ -65,12 +65,31 @@
 - Onboarding wizard captures the 7 prompt-config fields → new tenants inherit shared safety automatically
 
 ## Test status
-- API regression `test-maa-intent-regression.ts`: **57/57 PASS** (local) — includes 12 third-pass + 10 fourth-pass + 10 fifth-pass cases
+- API regression `test-maa-intent-regression.ts`: **57/57 PASS** (local) — includes 12 third-pass + 10 fourth-pass + 10 fifth-pass cases (sixth-pass case #15 updated for new no-form behavior)
 - API regression `test-dubub-intent-regression.ts`: **12/12 PASS** (local)
+- **Scenario harness `test-scenarios.ts`** (NEW sixth pass): **39/39 PASS** in-process — 35 MAA + 4 DUBUB. Runner asserts on structured fields (intent, followUpMode, suppressBookingCta) + regex + optional LLM judge + multi-turn `history`. Catches things regex-only tests miss (price contradictions saying "around", inclusion-list having restaurant in same sentence, callback-default when user said "no form"). Run: `pnpm.cmd --filter @platform/api test:scenarios`.
 - Playwright `daphne-regression.spec.ts` against **prod** (`Desktop Chrome`): **19/21 PASS + 2 flaky** (#1, #16) — flaky cases pass on retry; AI nondeterminism on edge phrasings, not bypass bugs
 - Mobile device matrix: iPhone 15 Pro Max, iPhone 14, iPhone SE, Pixel 7, Pixel 5, Galaxy S23, Galaxy S9+, Xiaomi Redmi Note 12 — runnable via `pnpm.cmd e2e:daphne:mobile:prod`
 - Mobile Daphné regression on prod (`iPhone 14`, `iPhone SE`, `Pixel 7`, `Galaxy S23` × 21 cases): **82/84 passed** + 1 flaky + 1 brittle pattern (#1 cheapest price). Safety overrides hold across all surfaces.
 - Lightweight intent unit check (no AI): `pnpm.cmd --filter @platform/api exec tsx src/scripts/check-intent-unit.ts` — verifies regex/derive logic in <1s.
+
+## Daphné sixth pass — 2026-05-11 (pre-demo final)
+Daphné's `apps/web/public/daphne-sixth.md` was the final ChatGPT-assisted review before manual conversational QA. The biggest remaining demo blocker was pickleball booking ("booker un terrain de pickelball pour demain soir") still collapsing into the visit-template. Highlights of what shipped:
+
+- **Pickleball typo coverage** in `server.ts` `looksLikeBookingIntent` — `pickelball|pickball|pickle[- ]?ball` now match the serviceSpecific exclusion. The leak was that maa-chat.ts had these typos but server.ts didn't, so `hasExplicitBookingIntent` came back true and overrode the AI's careful answer.
+- **`suppressBookingCta` is now AUTHORITATIVE** in `server.ts` — the safety net that flips `calendly → clarify` no longer requires `!hasExplicitBookingIntent`. Backend-derived flag wins. This is the structural invariant for the booking-CTA gating.
+- **New `price_contradiction` critical intent** (Daphné #2) — detects "j'ai vu 215 $ mais tu m'as dit 225 $", routes to `clarify`, gives an intent context demanding exact source price + acknowledged discrepancy. Post-process guard strips "autour de"/"around"/"environ"/"approximately" so the bot states exact values.
+- **New `clinical_pain` critical intent** (Daphné #5) — detects pain/injury queries (mal au genou, douleur dos, etc.) AND physio/trainer triage questions. Intent context FORBIDS named diagnoses. Post-process guard hard-replaces the message if any of these slip through: arthrite, syndrome patello-fémoral, tendinite, hernie discale, sciatique, capsulite, chondromalacie, ACL/MCL/LCL, ménisque déchiré, etc.
+- **`membership_downgrade` regex bug fix** — `/\bchang\b/` failed to match "changer" because `\b` doesn't sit between 'g' and 'e'. Now `chang\w*|baiss\w*|r[eé]duir\w*|diminu\w*|modifi\w*`. Same trap on `\bcorporati\b` (didn't match "corporatifs") — fixed.
+- **Course count source lock** (Daphné #3) — MAA prompt now states "more than 75 classes per week" as authoritative. Post-process guard rewrites any AI-emitted `175 cours|classes|séances` to `plus de 75 cours par semaine` automatically (works across all tenants).
+- **Multi-category discount bypass** (Daphné #8) — when the user asks about discounts across multiple categories in one message (rabais étudiants/corporatifs/familiaux), the deterministic pricing handler is bypassed and the AI gets a context that demands each category get its own sentence — confirmed (student/senior) and not-confirmed-in-source (corporate/family).
+- **Quick-info / no-form bypass** (Daphné #7) — `juste savoir vite|pas remplir un formulaire|no form|quick (answer|question)|just want to know` skips deterministic handlers + hard-overrides any callback/calendly mode back to clarify. The user's preference is respected.
+- **Restaurant inclusion distinction** (Daphné #15) — MAA prompt now explicitly states the restaurant Le 1881 is on-site (paid separately), NEVER in the inclusion list. Post-process guard `stripRestaurantFromInclusionList` surgically removes restaurant fragments from any sentence containing `inclut|comprend|includes|donne accès|y compris` AND adds a separate sentence "Le restaurant Le 1881 est disponible sur place, payé séparément."
+- **Yoga à-la-carte tightened** (Daphné #4) — MAA prompt now states group classes REQUIRE membership; source does NOT confirm à-la-carte access. Forbidden phrasings: "il semble que ce soit possible", "you might be able to drop in", etc.
+- **Fitness-program massage filter** (Daphné #13) — pure weight-loss queries (no pain context) get massothérapie/physiothérapie surgically stripped from the answer so trainer/nutrition/classes lead.
+- **`stripRestaurantFromInclusionList` + `stripMassageFromFitnessAnswer` + `applyPostProcessGuards`** form a 3-step guard chain run after EVERY AI response, for BOTH MAA and DUBUB tenants. Tenant-agnostic invariant: a temperature-0.3 slip-up never reaches the user.
+- **Shared safety + voice rules mirrored** for every sixth-pass rule (PICKLEBALL RESERVATION ≠ VISIT BOOKING, PRICE CONTRADICTION, CLINICAL PAIN, COURSE-COUNT SOURCE LOCK, MULTI-CATEGORY DISCOUNT, FITNESS PROGRAM PRIORITY, RESTAURANT INCLUSION DISTINCTION, QUICK-INFO / NO-FORM, GYM ACCESS MEMBERSHIP UNKNOWN).
+- **NEW: bullet-proof scenario harness** (`apps/api/src/scenarios/` + `apps/api/src/scripts/test-scenarios.ts`) — 39 scenarios with structured assertions (intent, followUpMode, suppressBookingCta, forbid/require regex, language, optional LLM-as-judge). Multi-turn `history` support. Tenant-isolated. Run: `pnpm.cmd --filter @platform/api test:scenarios`.
 
 ## Daphné fifth pass — 2026-05-11
 Daphné's `apps/web/public/daphne-fifth.md` flagged the third-pass guard over-firing: it was rewriting the AI's correct retrieved-evidence answers for buanderie/pickleball back to "Je ne vois pas...". Highlights of what shipped:
@@ -123,15 +142,16 @@ Daphné's `apps/web/public/daphne-third.md` documented 25 cases on the chat surf
 6. Dashboard "Lacunes" tab not built
 
 ## Next priorities (ranked)
-1. **Deploy** — third-pass changes need `bash /var/www/concierge/deploy.sh` to take effect (and to fix the dashboard "Failed to fetch" CORS bug)
-2. After deploy, re-paste the regenerated VAPI prompt into the Sophie + SophIA assistants on the VAPI dashboard so the new pronunciation/payment-pause/guest-trial rules go live
-3. Run `pnpm.cmd e2e:daphne:prod` against the live deploy to validate the third-pass fixes end-to-end
-4. Sweep remaining `looksLike*` fuzzy matchers in `core-facts.ts` for other false-positive risks
-5. Wire chat_opened / lead_captured events to PostHog
-6. Vitest migration of regression scripts + GitHub Actions workflow that runs them on every PR
-7. Move OpenAI usage tracking to NocoDB (persistent)
-8. Knowledge gap logging → NocoDB `knowledge_gaps` table
-9. Finish DUBUB tenant polish, then onboard new tenant(s)
+1. **Deploy sixth-pass changes** — `ssh root@165.227.40.198 "bash /var/www/concierge/deploy.sh"` so the new intents (price_contradiction, clinical_pain), the post-process guards, the multi-category discount and quick-info bypasses, and the scenario harness all reach prod.
+2. **Re-paste VAPI prompts** — `_vapi-prompts/sophie-maa.txt` (25,847 chars) and `_vapi-prompts/sophia-dubub.txt` (16,229 chars) into the VAPI dashboard so the voice safety rules match the chat rules.
+3. Run `pnpm.cmd --filter @platform/api test:scenarios:live` against the live deploy to validate every sixth-pass case end-to-end.
+4. Run `pnpm.cmd --filter @platform/api test:scenarios:judge` for the LLM-rubric semantic checks on the price/clinical/yoga/restaurant scenarios.
+5. Run `pnpm.cmd e2e:daphne:prod` for the UI rendering layer (markdown links, callback form behavior).
+6. Wire chat_opened / lead_captured events to PostHog
+7. Vitest migration of regression scripts + GitHub Actions workflow that runs `test:scenarios` on every PR (CI gate against regression).
+8. Move OpenAI usage tracking to NocoDB (persistent)
+9. Knowledge gap logging → NocoDB `knowledge_gaps` table
+10. Finish DUBUB tenant polish, then onboard new tenant(s)
 
 ## Session start rule
 1. Read `CLAUDE.md` + `STATUS.md`
