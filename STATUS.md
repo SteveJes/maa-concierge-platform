@@ -65,12 +65,24 @@
 - Onboarding wizard captures the 7 prompt-config fields → new tenants inherit shared safety automatically
 
 ## Test status
-- API regression `test-maa-intent-regression.ts`: **47/47 PASS** (local) — includes 12 third-pass + 10 fourth-pass cases
+- API regression `test-maa-intent-regression.ts`: **57/57 PASS** (local) — includes 12 third-pass + 10 fourth-pass + 10 fifth-pass cases
 - API regression `test-dubub-intent-regression.ts`: **12/12 PASS** (local)
 - Playwright `daphne-regression.spec.ts` against **prod** (`Desktop Chrome`): **19/21 PASS + 2 flaky** (#1, #16) — flaky cases pass on retry; AI nondeterminism on edge phrasings, not bypass bugs
 - Mobile device matrix: iPhone 15 Pro Max, iPhone 14, iPhone SE, Pixel 7, Pixel 5, Galaxy S23, Galaxy S9+, Xiaomi Redmi Note 12 — runnable via `pnpm.cmd e2e:daphne:mobile:prod`
 - Mobile Daphné regression on prod (`iPhone 14`, `iPhone SE`, `Pixel 7`, `Galaxy S23` × 21 cases): **82/84 passed** + 1 flaky + 1 brittle pattern (#1 cheapest price). Safety overrides hold across all surfaces.
 - Lightweight intent unit check (no AI): `pnpm.cmd --filter @platform/api exec tsx src/scripts/check-intent-unit.ts` — verifies regex/derive logic in <1s.
+
+## Daphné fifth pass — 2026-05-11
+Daphné's `apps/web/public/daphne-fifth.md` flagged the third-pass guard over-firing: it was rewriting the AI's correct retrieved-evidence answers for buanderie/pickleball back to "Je ne vois pas...". Highlights of what shipped:
+- **Evidence-aware override**: `findUnknownServiceGuard` now checks `searchResults` chunk content before rewriting. If the retrieved evidence mentions the service, the AI's affirmation flows through. Buanderie + pickleball were also REMOVED from the UNKNOWN_SERVICE_GUARDS list entirely — they are now TIER 2 (known but conditions vary).
+- **Three-tier service model** in the MAA prompt: TIER 1 = confirmed, TIER 2 = exists but exact conditions to validate (laundry, pickleball, Technogym Checkup, guest passes, mother's day packages, à la carte drop-in), TIER 3 = truly unknown (sports clinic, child care, towel service, locker sizes). TIER 2 uses the new cautious wording: "Ce service est bien offert au Club, mais les conditions exactes (horaire, prix, accès) doivent être confirmées avec l'équipe."
+- **Typo tolerance** across the included/specific-service detector, `serviceKeywords`, and `looksLikeBookingIntent` exclusions: `buandrie`, `pickball`, `pickelball`, `pickle ball`, `lavage`, `salles d'entraînement`, `créneau`, `booker`.
+- **New `membership_downgrade` critical intent** (Daphné #7) — routes to `callback` with explicit "memberships team validates from your file + contract" wording. Stops the bot from blurting "Bien sûr. Utilisez le bouton ci-dessous pour continuer par téléphone."
+- **`looksLikeBookingIntent` exclusions** extended (Daphné #6, #23): gym-access / créneau questions and explicit no-visit preferences ("pas faire une visite", "je veux juste m'entraîner") no longer collapse to the booking template.
+- **`resolveShortAffirmativeFollowUp` clinical branch** (Daphné #8, #9): when the prior assistant message offered to transmit a clinical request, "oui" is resolved as "yes, proceed — what info do you need?" so the AI captures contact details instead of repeating the physio/sports-therapy triage paragraph.
+- **Shared safety prompt gained**: MEMBERSHIP DOWNGRADE, NO-VISIT PREFERENCE, CLINICAL CAUTION + "oui" advancement, PRICING UNITS preservation, LINKS-MUST-BE-REAL, KNOWN-SERVICE-WITH-UNCLEAR-DETAILS wording. Voice version mirrors them.
+- **Spa amenities detector** also accepts plain "spa" (not just sauna/vapeur/bain tourbillon), fixing Daphné #1 where "je veux aller au spa avec ma mère, sans abonnement" was still falling into the pricing handler.
+- **À-la-carte / non-member access** explicit caution: never affirm drop-in access without source confirmation. Use the cautious "L'abonnement semble inclure X; pour l'option à la carte ou non-membre, confirmer avec l'équipe" wording (Daphné #13).
 
 ## Daphné fourth pass — 2026-05-08
 Daphné's `apps/web/public/daphne-fourth.md` showed the deterministic pricing handler hijacking specific-service questions. Highlights of what shipped:

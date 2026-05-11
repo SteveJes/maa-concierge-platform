@@ -155,7 +155,8 @@ type CriticalIntent =
   | "human_now"
   | "negotiation"
   | "urgent_callback"
-  | "external_price_claim";
+  | "external_price_claim"
+  | "membership_downgrade";
 
 /**
  * Catches "annul" stems even when typed as a contraction without an apostrophe
@@ -259,6 +260,17 @@ export function detectCriticalIntent(userMessage: string): CriticalIntent | unde
     /(\$|\beuros?\b|\beur\b|\bcad\b|par mois|per month|\/mo|month)/i.test(userMessage);
   if (isExternalPriceClaim) return "external_price_claim";
 
+  // Membership downgrade / modification (Daphné fifth-pass #7). User wants to
+  // change to a cheaper plan / downgrade / modify their current membership.
+  // Without this gate, the model and HTTP heuristics kept replying "Bien sûr.
+  // Utilisez le bouton ci-dessous pour continuer par téléphone." — a vapi
+  // hijack with no acknowledgement of how administrative this request really
+  // is. The team has to validate against the contract and account.
+  const isMembershipDowngrade =
+    /\b(chang|baisser|réduire|reduire|modifier|switch|downgrade|lower|cheaper|passer\s+(?:à|au|a))\b/i.test(userMessage) &&
+    /\b(abonnement|adh[eé]sion|membership|plan|forfait|prix|price|tier|cat[eé]gorie)\b/i.test(userMessage);
+  if (isMembershipDowngrade) return "membership_downgrade";
+
   return undefined;
 }
 
@@ -276,6 +288,7 @@ function safeFollowUpModeForIntent(intent: CriticalIntent): "callback" | "clarif
     case "human_now":
     case "negotiation":
     case "urgent_callback":
+    case "membership_downgrade":
       return "callback";
     case "holiday_hours":
     case "cancellation_policy":
@@ -301,14 +314,26 @@ interface UnknownServiceGuard {
   labelEn: string;
 }
 
+/**
+ * TIER 3 (truly unknown) services only. Pickleball and buanderie used to be in
+ * this list, but Daphné's fifth pass confirmed they exist in the MAA sources —
+ * they are now TIER 2 in the prompt (known service, exact conditions vary) and
+ * intentionally absent from this guard so the AI's affirmation flows through.
+ *
+ * For each entry here: when the user message asks about the service AND the AI
+ * affirms without uncertainty wording AND no retrieved chunk mentions the
+ * service, the override below replaces the message with the safe fallback.
+ */
 const UNKNOWN_SERVICE_GUARDS: UnknownServiceGuard[] = [
-  { pattern: /\bpickleball|pickle[- ]ball\b/i, labelFr: "le pickleball", labelEn: "pickleball" },
-  { pattern: /\bbuanderie\b/i, labelFr: "le service de buanderie", labelEn: "laundry service" },
-  { pattern: /\blaundry\b/i, labelFr: "le service de buanderie", labelEn: "laundry service" },
+  // Sports clinic / nursing services / Mobile Mediq partner — TIER 3.
   { pattern: /\b(clinique sportive|sports clinic)\b/i, labelFr: "la clinique sportive", labelEn: "the sports clinic" },
-  { pattern: /\b(soins infirmiers|nursing)\b/i, labelFr: "les soins infirmiers", labelEn: "nursing services" },
+  { pattern: /\b(soins infirmiers|nursing|nurse)\b/i, labelFr: "les soins infirmiers", labelEn: "nursing services" },
+  // Child care / garderie / service de garde — TIER 3.
   { pattern: /\b(child care|garderie|service de garde)\b/i, labelFr: "le service de garde", labelEn: "child care" },
+  // Towel service / service de serviettes — TIER 3.
   { pattern: /\b(towel service|service de serviettes)\b/i, labelFr: "le service de serviettes", labelEn: "towel service" },
+  // Guest day-pass / free trial — TIER 3 (conditions vary; never confirm without
+  // explicit source).
   { pattern: /\b(passe d'?invit[eé]|guest pass|day pass|essai gratuit|free trial)\b/i, labelFr: "les passes invités ou essais gratuits", labelEn: "guest passes or free trials" },
 ];
 
@@ -319,6 +344,26 @@ const UNKNOWN_SERVICE_GUARDS: UnknownServiceGuard[] = [
  */
 function findUnknownServiceGuard(userMessage: string): UnknownServiceGuard | undefined {
   return UNKNOWN_SERVICE_GUARDS.find((g) => g.pattern.test(userMessage));
+}
+
+/**
+ * Daphné's fifth pass: my third-pass guard was overriding the AI's correct
+ * retrieved-evidence answer for buanderie/pickleball whenever the AI didn't
+ * include a "verify with the team" hedge. The fix: before overriding, check
+ * whether the retrieved chunks actually mention the service. If they do, the
+ * AI's affirmation is legitimate — keep it. Only override when there's truly
+ * no evidence supporting the affirmation.
+ *
+ * Searches both the chunk content and the document title. Case-insensitive.
+ */
+function isServiceConfirmedByEvidence(
+  guard: UnknownServiceGuard,
+  searchResults: ReadonlyArray<{ content: string; sourceTitle?: string }>,
+): boolean {
+  return searchResults.some((r) => {
+    const hay = `${r.content ?? ""}\n${r.sourceTitle ?? ""}`;
+    return guard.pattern.test(hay);
+  });
 }
 
 /**
@@ -382,12 +427,16 @@ export function detectIncludedOrSpecificServiceQuestion(userMessage: string): In
   // 2. Specific non-pricing service references. Even without an "is X included"
   //    frame, these signal that the user is asking about a feature, not a price.
   const technogym = /\btechnogym|checkup|check[- ]?up|bilan|[eé]valuation\b/i.test(text);
-  const spaAmenities = /\b(sauna|vapeur|hammam|steam\s*room|bain\s*(tourbillon|remous)|hot\s*tub|jacuzzi)\b/i.test(text);
+  const spaAmenities = /\b(spas?|sauna|vapeur|hammam|steam\s*room|bain\s*(tourbillon|remous)|hot\s*tub|jacuzzi)\b/i.test(text);
   const classRules = /\b(cours\s*illimit|illimit[eé]s?|unlimited\s*classes|r[eé]server\s*(chaque|une|la)\s*(s[eé]ance|cours|classe)|reservation.*(class|cours|s[eé]ance)|each\s*class|booking\s*(per|each|every)\s*class)\b/i.test(text);
   const trainerOrSpecialist = /\b(entra[iî]neur|trainer|coach|sp[eé]cialiste|kin[eé]siologue|physioth[eé]rapeute|nutritionniste)\b/i.test(text);
   const fitnessProgram = /\b(perdre\s*du\s*poids|weight\s*loss|programme\s*(de\s*)?(remise|entra[iî]nement)|fitness\s*program|fitness\s*plan|remise\s+en\s+forme)\b/i.test(text);
+  // Daphné fifth pass — accept common typos for buanderie / pickleball so the
+  // gate fires the same way it does on the correct spelling. Also include the
+  // gym-access / no-booking-slot phrasings that were getting routed to the
+  // booking template in case #6.
   const otherKnownServices =
-    /\b(menus?|buanderie|laundry|pickleball|pickle[- ]ball|cirque|circus|squash|massages?|massoth[eé]rapie|forfaits?)\b/i.test(text);
+    /\b(menus?|buanderie|buandrie|laundry|lavage|pickleball|pickle[- ]?ball|pickball|pickelball|cirque|circus|squash|massages?|massoth[eé]rapie|forfaits?|salles?\s+d['e]?entra[iî]nement|gym\b)\b/i.test(text);
 
   const matchedSpecificService =
     technogym || spaAmenities || classRules || trainerOrSpecialist || fitnessProgram || otherKnownServices;
@@ -457,9 +506,11 @@ export function deriveSuppressBookingCta(userMessage: string, followUpMode: MaaF
   // Service-specific questions where the booking CTA does not match the intent.
   // Daphné's cases #4 (spa packages), #11/#12 (laundry), #13 (menu — incl. "menus"),
   // and the general class of "I want to know about X-service" questions. Plurals are
-  // accepted because users freely write "menus", "forfaits", "laundries".
+  // accepted because users freely write "menus", "forfaits", "laundries". The
+  // fifth-pass additions: typo variants ("buandrie", "pickball", "pickelball")
+  // and gym-access phrasings ("salles d'entraînement", "créneau", "booker").
   const serviceKeywords =
-    /\b(menus?|buanderie|laundry|pickleball|pickle[- ]ball|cirque|circus|sauna|squash|piscine|pool|spa|massages?|massoth[eé]rapie|physioth[eé]rapie|nutritionniste|forfaits?\s+(?:spa|m[eè]re|noel|f[eê]te|d[eé]tente))\b/i;
+    /\b(menus?|buanderie|buandrie|laundry|lavage|pickleball|pickle[- ]?ball|pickball|pickelball|cirque|circus|sauna|squash|piscine|pool|spa|massages?|massoth[eé]rapie|physioth[eé]rapie|nutritionniste|forfaits?\s+(?:spa|m[eè]re|noel|f[eê]te|d[eé]tente)|salles?\s+d['e]?entra[iî]nement|cr[eé]neau|booker)\b/i;
   if (serviceKeywords.test(userMessage)) return true;
 
   return false;
@@ -498,6 +549,8 @@ function buildIntentSafetyContext(userMessage: string): string | undefined {
       return "URGENT CALLBACK with a SPECIFIC TIMING expectation. You MUST NOT promise a callback within a specific delay (5 minutes, an hour, today, etc.). Required pattern (FR): 'Je peux transmettre votre demande, mais je ne peux pas garantir un délai précis. Pour une réponse immédiate, vous pouvez appeler le 514 845-2233, poste 234.' (EN): 'I can pass on your request, but I can't guarantee a specific callback time. For immediate help, you can call (514) 845-2233, ext. 234.' Acknowledge the urgency briefly. Use followUpMode: 'callback'.";
     case "external_price_claim":
       return "EXTERNAL PRICE CLAIM: User is asking you to confirm a price they heard from a friend, Google, or another external source. Do NOT confirm or strongly deny. Use cautious wording: 'Le tarif de [X] $ n'apparaît pas dans mes informations actuelles. Je vous recommande de confirmer directement avec l'équipe au 514 845-2233, poste 234.' Do NOT suggest 'Planifier une visite' after a price-validation question. Use followUpMode: 'clarify'.";
+    case "membership_downgrade":
+      return "MEMBERSHIP DOWNGRADE / MODIFICATION REQUEST: User wants to change, lower, downgrade, or modify their current membership / plan. This is an administrative request the chat cannot resolve. You MUST NOT respond with 'Bien sûr' as if you can change it, and you MUST NOT route the user to the phone-continuation template. Say warmly that the memberships team needs to validate the change based on the file, contract type, and applicable conditions, and offer to transmit the request via callback. Required pattern (FR): 'Je comprends. Une modification d'abonnement doit être validée par l'équipe des adhésions selon votre dossier et les conditions de votre contrat. Je peux transmettre votre demande pour qu'un membre de l'équipe vous rappelle.' (EN): 'Understood. A membership change has to be validated by the memberships team based on your file and contract conditions. I can pass on your request so a team member calls you back.' Use followUpMode: 'callback'.";
   }
 }
 
@@ -632,6 +685,22 @@ function resolveShortAffirmativeFollowUp(
 
   const ctx = lastAssistant.content.toLowerCase();
   const fr = isFrenchLocale(locale);
+
+  // Daphné fifth-pass #8/#9: if the previous assistant message offered to
+  // transmit the request / set up a clinical appointment / route to a
+  // specialist, "oui" must MOVE FORWARD — not loop back to the same triage
+  // explanation. Reframe the user's "oui" as "yes, please proceed and ask me
+  // for the details you need" so the AI captures contact info or names the
+  // next step instead of re-describing physio vs sports therapy.
+  const clinicalHandoffOffer =
+    /(transmettre|transmets|transmit|forward|relay).*(demande|rendez-vous|appointment|request)/i.test(ctx) ||
+    /\b(rendez-vous|appointment).*(physio|th[eé]rapeute|entra[iî]neur|sp[eé]cialiste|clinique sportive|specialist|trainer)\b/i.test(ctx) ||
+    /\b(physio|physioth[eé]rapie|th[eé]rapie sportive|kin[eé]siologue)\b/i.test(ctx);
+  if (clinicalHandoffOffer) {
+    return fr
+      ? "Oui, allez-y, transmettez ma demande. Quelles informations vous faut-il (nom, téléphone, courriel) ? Je sais que l'équipe clinique confirmera ensuite."
+      : "Yes, please go ahead and transmit my request. What do you need from me (name, phone, email)? I understand the clinical team will confirm afterward.";
+  }
 
   if (/piscine|pool|swim|natation/.test(ctx))
     return fr ? "Parlez-moi de la piscine et des services inclus dans l'abonnement." : "Tell me about the pool and what's included in the membership.";
@@ -1237,15 +1306,22 @@ export async function answerMaaChat(
     modelResponse.assistantMessage,
   );
 
-  // Defensive override: when the user asked about an UNKNOWN service (pickleball,
-  // laundry, sports clinic, etc.) and the AI's reply affirms it without using the
-  // mandatory uncertainty wording, replace the message with the safe fallback.
-  // This covers AI hallucinations at temp 0.3 — Daphné #5 (pickleball) and #9
-  // (laundry) both showed the model affirming services that have no supporting
-  // evidence in the citations.
+  // Defensive override: when the user asked about a service that requires
+  // evidence-backed verification (pickleball, laundry, sports clinic, etc.)
+  // AND the AI affirms without uncertainty wording AND the retrieved evidence
+  // does NOT mention the service, replace the message with the safe fallback.
+  //
+  // Daphné fifth pass found this guard was over-firing: it rewrote the AI's
+  // correct retrieved-evidence answer for buanderie/pickleball with "Je ne vois
+  // pas..." even when the KB chunks confirmed those services. The new
+  // `isServiceConfirmedByEvidence` check trusts the AI when evidence backs it.
   const unknownGuard = findUnknownServiceGuard(request.userMessage);
+  const evidenceConfirmsService = unknownGuard
+    ? isServiceConfirmedByEvidence(unknownGuard, searchResults)
+    : false;
   if (
     unknownGuard &&
+    !evidenceConfirmsService &&
     AFFIRMATIVE_PATTERN.test(cleanedAssistantMessage) &&
     !UNCERTAINTY_MARKERS.test(cleanedAssistantMessage)
   ) {

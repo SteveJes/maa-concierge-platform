@@ -335,6 +335,26 @@ function looksLikeBookingIntent(userMessage: string, locale: string | null): boo
     return false;
   }
 
+  // Daphné fifth-pass #6: "Est-ce que les salles d'entraînement sont
+  // accessibles sans réservation ou je dois booker un créneau ?" was
+  // matching "réservation" / "booker" and routing to the booking template.
+  // That's a gym-access modality question, not a visit-booking request.
+  const isGymAccessQuery =
+    /\b(salles?\s+d['e]?entra[iî]nement|gym|salle de sport|fitness room|workout room)\b/i.test(normalized) ||
+    /\b(cr[eé]neau|creneau|time slot|slot)\b/i.test(normalized);
+  if (isGymAccessQuery) {
+    return false;
+  }
+
+  // Daphné fifth-pass #23: when the user explicitly says they DO NOT want a
+  // visit ("pas faire une visite", "no visit", "I just want to train"), the
+  // booking heuristic must stay off the trigger.
+  const isExplicitNoVisit =
+    /\b(pas\s+faire\s+une\s+visite|pas\s+de\s+visite|sans\s+visite|no\s+visit|don'?t\s+want\s+(a\s+)?(?:visit|tour)|juste\s+m['e]?entra[iî]ner|just\s+(?:want\s+to\s+)?train)\b/i.test(normalized);
+  if (isExplicitNoVisit) {
+    return false;
+  }
+
   const frenchMatch =
     /(?:réserver|reserver|réservation|reservation|rendez-vous|planifier|visite|visiter|équipe des ventes|equipe des ventes|ventes|démo|demo|démonstration|demonstration|essai|présentation|presentation|rencontrer|m'adresser|me parler|contacter votre équipe|contacter l'équipe|prendre contact)/i.test(
       normalized,
