@@ -59,7 +59,9 @@ function parseCli(argv: string[]): CliArgs {
   const args: CliArgs = {
     judge: false,
     live: false,
-    liveUrl: "https://maa-concierge.app/api/maa/chat",
+    // Default to the prod API base URL. The runner appends
+    // /v1/tenants/{tenantCode}/chat per scenario. Override via --url.
+    liveUrl: "https://api.dubub.com",
     bail: false,
   };
   for (let i = 0; i < argv.length; i++) {
@@ -117,12 +119,22 @@ interface ChatResponseShape {
   suppressBookingCta?: boolean;
 }
 
-async function callLive(url: string, scenario: Scenario): Promise<ChatResponseShape> {
+async function callLive(baseUrl: string, scenario: Scenario): Promise<ChatResponseShape> {
+  // Live endpoint convention is /v1/tenants/{tenantCode}/chat. If the caller
+  // passed a full path with {tenantCode} placeholder, honor it; otherwise
+  // append the standard path to the base URL.
+  const url = baseUrl.includes("{tenantCode}")
+    ? baseUrl.replace("{tenantCode}", scenario.tenantCode)
+    : `${baseUrl.replace(/\/$/, "")}/v1/tenants/${scenario.tenantCode}/chat`;
+
+  // Live-mode caveat: the HTTP endpoint loads conversation history from its
+  // own store keyed by conversationId, so multi-turn `history` scenarios
+  // can't be replayed faithfully against prod. Single-turn scenarios still
+  // work, and the harness already skips the in-process intent assertion in
+  // live mode.
   const body = {
     message: scenario.userMessage,
     locale: scenario.locale,
-    conversationHistory: scenario.history ?? [],
-    tenantCode: scenario.tenantCode,
   };
   const res = await fetch(url, {
     method: "POST",
