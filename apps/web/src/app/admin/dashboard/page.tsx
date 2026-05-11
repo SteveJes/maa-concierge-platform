@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import AdminShell, { P, API, Card, SectionTitle } from "../_components/AdminShell";
 import SettingsPanel from "./SettingsPanel";
 import LeadsPanel from "./LeadsPanel";
+import SentinelPanel from "./SentinelPanel";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -328,6 +329,9 @@ export default function AdminDashboard() {
             token={token}
             onSaved={() => { if (selectedId && token) void fetchOverview(selectedId, token); }}
           />
+
+          {/* Sentinel — AI-quality watchdog (included by default for every tenant) */}
+          <SentinelPanel tenantId={tenant.id} tenantName={tenant.name} token={token} />
 
           {/* Leads list + CSV export */}
           <LeadsPanel tenantId={tenant.id} tenantName={tenant.name} token={token} />

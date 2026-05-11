@@ -1443,8 +1443,23 @@ export function ChatShell({
             // suppressBookingCta flag if it's set. The backend knows about
             // intent (cancellation, policy, laundry…) — the UI should not
             // re-derive that from token spotting.
+            //
+            // Daphné seventh-pass #7: when the widget is locale=fr-CA but the
+            // bot's reply is in English (because the user wrote in English),
+            // the CTA "Prochaine étape ? → Planifier une visite" was leaking
+            // a French CTA into an English reply. Detect per-message language
+            // and suppress the CTA on a locale mismatch — premium concierge
+            // never mixes languages in the final turn.
+            const messageLooksEnglish =
+              !/[àâçéèêëîïôûùüÿœ]/i.test(message.text) &&
+              !/\b(le|la|les|une?|des|nos|notre|votre|équipe|abonnement|piscine|cours|c'est|est-ce|n'est)\b/i.test(message.text) &&
+              /\b(the|and|with|for|membership|monthly|annual|please|team|club)\b/i.test(message.text);
+            const localeIsFrench = locale === "fr-CA";
+            const ctaLocaleMismatch = localeIsFrench && messageLooksEnglish;
+
             const hasPricingSignal =
               !message.suppressBookingCta &&
+              !ctaLocaleMismatch &&
               (message.text.includes("$") ||
                 message.text.toLowerCase().includes("abonnement") ||
                 message.text.toLowerCase().includes("membership"));

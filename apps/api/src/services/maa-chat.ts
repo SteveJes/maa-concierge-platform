@@ -436,6 +436,71 @@ const APPROX_PRICE_HEDGES_RE =
  * Tenant-agnostic — only fires when the message actually contains both an
  * inclusion verb AND a restaurant reference in the same sentence.
  */
+/**
+ * Daphné seventh-pass #8: the bot wrote "Daphné est bien situé sur place..."
+ * — confusing the user's first name with the restaurant subject. The cause
+ * is the AI starting a sentence with the addressed user's name and an
+ * inanimate-object verb. We detect "<userName> est <adj-for-things>" /
+ * "<userName> is <adj-for-things>" and rewrite the broken opener.
+ *
+ * Tenant-agnostic. The guard only fires when a userName is present AND the
+ * sentence pattern matches.
+ */
+function fixBrokenGrammarSubject(message: string, userName: string | undefined): string {
+  if (!userName) return message;
+  const escaped = userName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // FR: "Daphné est (bien )?situé/disponible/inclus/offert/payé/réservé..."
+  const frPattern = new RegExp(
+    `^${escaped}\\s+est\\s+(bien\\s+)?(situ[eé]|disponible|inclus|inclus[ée]|offert|offerte|pay[eé]e?|r[eé]serv[eé]e?|propos[eé]e?|destin[eé]e?|d[eé]di[eé]e?|comprise?)\\b`,
+    "i",
+  );
+  const enPattern = new RegExp(
+    `^${escaped}\\s+(is|are)\\s+(located|available|included|offered|paid|reserved|dedicated)\\b`,
+    "i",
+  );
+
+  if (frPattern.test(message) || enPattern.test(message)) {
+    // Drop the broken opener up to the first comma/semicolon/period; keep the
+    // rest. The next sentence already states the real subject in most cases.
+    const drop = message.match(/^[^.;,]*[.;,]\s*/);
+    if (drop) {
+      return message.slice(drop[0].length).replace(/^[a-zà-ÿ]/, (c) => c.toUpperCase());
+    }
+  }
+  return message;
+}
+
+/**
+ * Daphné seventh-pass #8: the restaurant separation post-process sometimes
+ * appended "Le restaurant Le 1881 est disponible sur place, payé séparément."
+ * when the AI's reply already said it. Strip the duplicate.
+ */
+function stripDuplicateRestaurantSeparation(message: string): string {
+  const sep = "Le restaurant Le 1881 est disponible sur place, payé séparément.";
+  const occurrences = message.split(sep).length - 1;
+  if (occurrences <= 1) return message;
+  // Keep the first, remove all others.
+  const first = message.indexOf(sep);
+  const head = message.slice(0, first + sep.length);
+  const tail = message.slice(first + sep.length).split(sep).join("");
+  return (head + tail).replace(/\s{2,}/g, " ").trim();
+}
+
+/**
+ * Daphné seventh-pass Rule 5: replace robotic uncertainty wording with
+ * warmer phrasings. Applied gently — only the most common templates the
+ * model overuses get rewritten. Tenant-agnostic.
+ */
+function softenUncertaintyWording(message: string): string {
+  return message
+    .replace(/Je\s+ne\s+vois\s+pas\s+d['']?(\w+)\s+confirm[eé]e?\s+dans\s+(?:mes|nos)\s+(?:sources?|informations?)\s+actuelles?/gi,
+      (_m, what) => `Pour cette option précise, l'équipe pourra confirmer (${what} non confirmé pour l'instant dans mes informations)`)
+    .replace(/Je\s+ne\s+vois\s+pas\s+d['']?information\s+pr[eé]cise\s+dans\s+(?:mes|nos)\s+(?:sources?|informations?)\s+actuelles?/gi,
+      "Je n'ai pas cette précision sous la main")
+    .replace(/dans\s+(?:mes|nos)\s+sources\s+actuelles/gi, "dans mes informations")
+    .replace(/n['']?apparaît\s+pas\s+dans\s+(?:mes|nos)\s+(?:sources?|informations?)\s+actuelles?/gi, "n'apparaît pas dans mes informations");
+}
+
 function stripRestaurantFromInclusionList(message: string): string {
   const sentences = message.split(/(?<=[.!?])\s+/);
   let restaurantWasInInclusion = false;
@@ -648,6 +713,47 @@ export function deriveSuppressBookingCta(userMessage: string, followUpMode: MaaF
 
   // Resolved follow-ups that are not pure pricing answers → suppress.
   if (followUpMode === "callback" || followUpMode === "vapi") return true;
+
+  // Daphné seventh-pass #6 / #5: multi-category discount and yoga-à-la-carte
+  // were leaking the visit CTA in the chat widget even after the backend set
+  // the right mode, because the widget falls back to "hasPricingSignal" when
+  // `suppressBookingCta` is false. Suppress here too.
+  const isMultiCategoryDiscount =
+    /\b(rabais|r[eé]duction|discount|reduced|rate)\b/i.test(userMessage) &&
+    (/\b(corporati\w*|entreprise\w*|famili\w*|family|corporate)\b/i.test(userMessage) ||
+      ((userMessage.match(/\b(étudiant\w*|etudiant\w*|student|senior|a[iî]n[eé]\w*|family|famili\w*|corporati\w*|entreprise\w*|corporate)\b/gi) ?? []).length >= 2));
+  if (isMultiCategoryDiscount) return true;
+
+  const isQuickInfoNoForm =
+    /\b(juste\s+savoir\s+(?:vite|rapidement)|pas\s+(?:remplir|de\s+formulaire)|sans\s+formulaire|no\s+form|quick\s+(?:answer|question)|just\s+(?:want\s+to\s+know|a\s+quick))\b/i.test(userMessage);
+  if (isQuickInfoNoForm) return true;
+
+  // Daphné seventh-pass #4: pickleball schedule questions must never trigger
+  // the visit CTA.
+  const isPickleballScheduleQuestion =
+    /\b(pickleball|pickelball|pickball|pickle[- ]?ball|pickeball)\b/i.test(userMessage) &&
+    /\b(horaire|horaires|heure|heures|schedule|hours|when|quand|disponibilit|availability|combien.*(?:semaine|par jour)|cases?\s+horaires?)\b/i.test(userMessage);
+  if (isPickleballScheduleQuestion) return true;
+
+  // Daphné seventh-pass #5: à-la-carte / drop-in / sans-abonnement questions
+  // must never trigger the visit CTA. The user is asking specifically about
+  // single-class access — not a club tour.
+  const isALaCarteOrDropIn =
+    /\b(à\s+la\s+carte|à\s+la-carte|drop[- ]?in|sans\s+abonnement|sans\s+être\s+membre|without\s+(?:a\s+)?membership|non-?member\s+access|just\s+(?:want\s+to\s+)?(?:try|attend)\s+(?:one|a\s+single))\b/i.test(userMessage);
+  if (isALaCarteOrDropIn) return true;
+
+  // Daphné seventh-pass: yoga / pilates / spin / aqua / HIIT / dance /
+  // boxing / cirque are group classes the user might ask about specifically.
+  // These are TIER 1 services, not bookable visits — never show visit CTA.
+  const isGroupClassMention =
+    /\b(yoga|pilates|spin(?:ning)?|cycling|aqua(?:gym)?|HIIT|danse|dance|boxe|boxing|cirque|aerial\s*circus|triathlon)\b/i.test(userMessage);
+  if (isGroupClassMention) return true;
+
+  // Daphné seventh-pass #10: gym-access questions where membership is not
+  // confirmed must not trigger a visit CTA — they're already a non-visit ask.
+  const isGymAccessQuestion =
+    /\b(salles?\s+d['e]?entra[iî]nement|gym|salle de sport|fitness room|workout room|m['e]?entra[iî]ner|train(?:ing)?\b)\b/i.test(userMessage);
+  if (isGymAccessQuestion) return true;
 
   // Service-specific questions where the booking CTA does not match the intent.
   // Daphné's cases #4 (spa packages), #11/#12 (laundry), #13 (menu — incl. "menus"),
@@ -1084,7 +1190,7 @@ async function callOpenAiForAnswer(
   const isFollowUp = conversationHistory.length > 0;
 
   const userNameLine = userName
-    ? `The user's name is ${userName}. Address them by name naturally once in this response if appropriate${isFollowUp ? " — but do NOT greet them again (no Bonjour/Hello/Hi)" : ""}.`
+    ? `The user's name is ${userName}. If you use their name, use it as a DIRECT ADDRESS only — e.g. "${userName}, …" with a comma, NEVER as a grammatical subject of an inanimate-object verb. FORBIDDEN openers: "${userName} est situé", "${userName} est disponible", "${userName} est inclus", "${userName} est payé", "${userName} is located/available/included/offered". If you would otherwise start the sentence with the user's name plus "est ..." about a thing, drop the name and use the real subject ("Le restaurant Le 1881 est…", "L'abonnement comprend…"). Use the name at most once per response.${isFollowUp ? " Do NOT greet them again (no Bonjour/Hello/Hi)." : ""}`
     : isFollowUp
       ? "This is a follow-up message — do NOT use any greeting (no Bonjour, Hello, Hi, Salut). Answer directly."
       : "";
@@ -1262,11 +1368,13 @@ export async function answerMaaChat(
       ? safeFollowUpModeForIntent(dububIntent)
       : openAiResult.followUpMode;
 
-    const dububGuardedMessage = applyPostProcessGuards(
+    let dububGuardedMessage = applyPostProcessGuards(
       openAiResult.assistantMessage,
       dububIntent,
       request.locale,
     );
+    dububGuardedMessage = fixBrokenGrammarSubject(dububGuardedMessage, request.userName);
+    dububGuardedMessage = softenUncertaintyWording(dububGuardedMessage);
 
     return {
       assistantMessage: dububGuardedMessage,
@@ -1356,12 +1464,42 @@ export async function answerMaaChat(
   const isQuickInfoNoForm =
     /\b(juste\s+savoir\s+(?:vite|rapidement)|pas\s+(?:remplir|de\s+formulaire)|sans\s+formulaire|no\s+form|quick\s+(?:answer|question)|just\s+(?:want\s+to\s+know|a\s+quick))\b/i.test(request.userMessage);
 
+  // Daphné seventh-pass #4: pickleball schedule questions were routing to the
+  // deterministic hours handler, which dumped club / pool / spa hours. The
+  // user asked specifically about pickleball, so we bypass and let the AI
+  // answer from the now-authoritative pickleball schedule in the MAA prompt.
+  const mentionsPickleball =
+    /\b(pickleball|pickelball|pickball|pickle[- ]?ball|pickeball)\b/i.test(request.userMessage);
+  const asksAboutSchedule =
+    /\b(horaire|horaires|heure|heures|schedule|hours|when|quand|disponibilit|availability|combien.*(?:semaine|par jour)|cases?\s+horaires?)\b/i.test(request.userMessage);
+  const isPickleballScheduleQuestion = mentionsPickleball && asksAboutSchedule;
+
+  // Daphné seventh-pass #10: when the user asks about gym access and has NOT
+  // declared themselves a member, the bot must qualify the answer with
+  // "if you're a member" rather than affirming "you can access."
+  const mentionsGymAccess =
+    /\b(salles?\s+d['e]?entra[iî]nement|gym|salle de sport|fitness room|workout room)\b/i.test(request.userMessage) ||
+    /\b(?:m['e]?entra[iî]ner|train\b)/i.test(request.userMessage);
+  const userDeclaresMember =
+    /\b(je\s+suis\s+(?:déjà\s+)?membre|mon\s+abonnement|i'?m\s+a\s+member|my\s+membership|en\s+tant\s+que\s+membre)\b/i.test(request.userMessage);
+  const isGymAccessMembershipUnknown = mentionsGymAccess && !userDeclaresMember;
+
+  // Daphné seventh-pass #1: vague topic requests ("j'ai une demande concernant
+  // X") were answered with a generic fiche. We need to clarify first.
+  const isVagueTopicRequest =
+    /\b(?:j['']?aurai?(?:s|t)|j['']?ai|on a)\s+(?:une\s+)?(?:demande|question|interrogation|requ[eê]te|chose)\s+(?:à\s+propos\s+(?:du|de\s+la|des|de\s+l['']?)|concernant|au\s+sujet\s+(?:du|de\s+la|des|de\s+l['']?)|sur\s+(?:le|la|les|l['']?))/i.test(request.userMessage) ||
+    /\b(?:i['']?ve\s+got|i\s+have)\s+a\s+(?:question|request)\s+about\b/i.test(request.userMessage) ||
+    /\b(?:i\s+wanted\s+to\s+ask|tell\s+me\s+(?:more\s+)?about)\b/i.test(request.userMessage);
+
   const skipDeterministicHandlers =
     intentSafetyContextEarly !== undefined ||
     includedQuestion.match ||
     isMultiIntentPricingPlusBooking ||
     isMultiCategoryDiscount ||
-    isQuickInfoNoForm;
+    isQuickInfoNoForm ||
+    isPickleballScheduleQuestion ||
+    isVagueTopicRequest ||
+    isGymAccessMembershipUnknown;
 
   const multiIntentContext = isMultiIntentPricingPlusBooking
     ? "MULTI-INTENT (pricing + booking): The user is asking BOTH pricing AND booking in one message. Answer BOTH parts IN THE USER'S LANGUAGE. First state the membership tariffs cautiously (with the call-to-confirm hedge). Then answer the booking question briefly — explain that you can guide them through scheduling, and that final confirmation comes from the team or an official system. Do NOT collapse the reply to either intent alone. Set followUpMode: 'clarify' (do NOT pick 'vapi' or 'calendly' for this combo — the user wants the answer here, not a handoff)."
@@ -1372,7 +1510,19 @@ export async function answerMaaChat(
     : undefined;
 
   const quickInfoNoFormContext = isQuickInfoNoForm
-    ? "QUICK-INFO / NO-FORM PREFERENCE DETECTED. The user does NOT want to fill a form or be transferred to a callback. You MUST: (1) answer directly using context from the PRIOR conversation turns if available; (2) NEVER offer to 'transmettre votre demande à l'équipe' / 'pass on your request' in this turn — that is a form/callback in disguise; (3) NEVER show the visit CTA; (4) if the prior context is unclear, ask ONE concise clarifying question — at most. Set followUpMode: 'clarify'."
+    ? "QUICK-INFO / NO-FORM PREFERENCE DETECTED. The user does NOT want to fill a form or be transferred to a callback. You MUST: (1) answer directly using context from the PRIOR conversation turns if available; (2) NEVER invent a topic (do NOT default to 'pour réserver un créneau au gym...'); (3) NEVER offer to 'transmettre votre demande à l'équipe' / 'pass on your request' in this turn — that is a form/callback in disguise; (4) NEVER show the visit CTA; (5) if the prior context is unclear, ask ONE short clarifying question, max one sentence — 'Quelle information voulez-vous confirmer rapidement ?' / 'What would you like to confirm quickly?'. Set followUpMode: 'clarify'."
+    : undefined;
+
+  const pickleballScheduleContext = isPickleballScheduleQuestion
+    ? "PICKLEBALL SCHEDULE / AVAILABILITY QUESTION DETECTED. The user is asking about pickleball hours, schedule, or weekly availability. STRICT RULES: (1) Answer ONLY about pickleball — DO NOT recite club hours, pool hours, spa hours, or any other zone. (2) Use the CLUB-AUTHORITATIVE pickleball schedule from the system prompt (28 timeslots per week, members only, 2-4 players, day-by-day grid). (3) For availability count questions, the confirmed answer is 28 timeslots per week. (4) Present the schedule cleanly — a short summary or a compact list, not a wall of text. (5) Mention member-only access. (6) NEVER trigger the visit CTA. Set followUpMode: 'clarify'."
+    : undefined;
+
+  const vagueTopicContext = isVagueTopicRequest
+    ? "VAGUE TOPIC REQUEST DETECTED. The user said something like 'j'ai une demande concernant X' or 'tell me about X' WITHOUT specifying what aspect. You MUST clarify before answering. Ask ONE short question listing the most likely facets the user might want: 'Bien sûr. Votre demande concerne plutôt l'horaire, l'inscription, les niveaux, l'âge requis, la disponibilité ou autre chose ?' / 'Of course. Are you asking about schedule, registration, levels, age requirements, availability, or something else?'. DO NOT launch into a generic description of the service. DO NOT trigger the visit CTA. Set followUpMode: 'clarify'."
+    : undefined;
+
+  const gymAccessMembershipUnknownContext = isGymAccessMembershipUnknown
+    ? "GYM ACCESS — MEMBERSHIP STATUS UNKNOWN. The user is asking about access to the training rooms / gym BUT did NOT declare being a member. STRICT RULES: (1) DO NOT start with 'Vous pouvez accéder' / 'You can access' — that's a guarantee for someone whose status you don't know. (2) Lead with the qualified form: 'Si vous êtes membre, vous avez accès aux salles d'entraînement selon les conditions du Club. Pour un accès non-membre ou invité, l'équipe pourra confirmer les options.' / 'If you're a member, you have access according to the Club's conditions. For non-member or guest access, the team can confirm options.' (3) DO NOT recite club hours unless the user asked for hours. (4) NEVER trigger the visit CTA. Set followUpMode: 'clarify'."
     : undefined;
 
   // Compose all available context fragments for the AI call. Multiple safety
@@ -1384,6 +1534,9 @@ export async function answerMaaChat(
     multiIntentContext,
     multiCategoryDiscountContext,
     quickInfoNoFormContext,
+    pickleballScheduleContext,
+    vagueTopicContext,
+    gymAccessMembershipUnknownContext,
   ]
     .filter((s): s is string => typeof s === "string" && s.length > 0)
     .join("\n\n") || undefined;
@@ -1562,11 +1715,14 @@ export async function answerMaaChat(
     detectedIntent,
     request.locale,
   );
+  cleanedAssistantMessage = fixBrokenGrammarSubject(cleanedAssistantMessage, request.userName);
   cleanedAssistantMessage = stripRestaurantFromInclusionList(cleanedAssistantMessage);
+  cleanedAssistantMessage = stripDuplicateRestaurantSeparation(cleanedAssistantMessage);
   cleanedAssistantMessage = stripMassageFromFitnessAnswer(
     request.userMessage,
     cleanedAssistantMessage,
   );
+  cleanedAssistantMessage = softenUncertaintyWording(cleanedAssistantMessage);
 
   return {
     assistantMessage: cleanedAssistantMessage,

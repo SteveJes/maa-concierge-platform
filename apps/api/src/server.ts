@@ -769,6 +769,81 @@ export function createServer() {
     };
   });
 
+  // GET /v1/admin/sentinel/runs — Sentinel run history per tenant.
+  // Reads _sentinel-runs/ JSON files (latest first). Each file represents one
+  // test-scenarios run for one tenant. Tenant isolation is structural: files
+  // are filtered by `tenantCode` in their summary block.
+  app.get("/v1/admin/sentinel/runs", async (request, reply) => {
+    if (!adminAuth(request, reply)) return;
+    const query = request.query as { tenant?: string; limit?: string } | undefined;
+    const tenantFilter = query?.tenant;
+    const limit = Math.min(Math.max(Number(query?.limit ?? "20"), 1), 100);
+
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const url = await import("node:url");
+    const currentFile = url.fileURLToPath(import.meta.url);
+    const apiRoot = path.resolve(path.dirname(currentFile), "..");
+    const runsDir = path.join(apiRoot, "_sentinel-runs");
+
+    if (!fs.existsSync(runsDir)) {
+      return { runs: [], note: "No Sentinel runs yet. Run `pnpm.cmd --filter @platform/api test:scenarios` to generate one." };
+    }
+
+    const files = fs
+      .readdirSync(runsDir)
+      .filter((f) => f.endsWith(".json"))
+      .sort()
+      .reverse()
+      .slice(0, limit * 2); // headroom for tenant filtering
+
+    const runs: Array<Record<string, unknown>> = [];
+    for (const file of files) {
+      try {
+        const data = JSON.parse(fs.readFileSync(path.join(runsDir, file), "utf8")) as {
+          tenantCode?: string;
+          timestamp?: string;
+          mode?: string;
+          judge?: boolean;
+          total?: number;
+          passed?: number;
+          failed?: number;
+          passRate?: number;
+          results?: Array<{
+            id: string;
+            label: string;
+            passed: boolean;
+            failureReason?: string;
+            followUpMode?: string;
+            suppressBookingCta?: boolean;
+            durationMs?: number;
+          }>;
+        };
+        if (tenantFilter && data.tenantCode !== tenantFilter) continue;
+        runs.push({
+          file,
+          tenantCode: data.tenantCode,
+          timestamp: data.timestamp,
+          mode: data.mode,
+          judge: data.judge,
+          total: data.total,
+          passed: data.passed,
+          failed: data.failed,
+          passRate: data.passRate,
+          failures: (data.results ?? [])
+            .filter((r) => !r.passed)
+            .slice(0, 25)
+            .map((r) => ({ id: r.id, label: r.label, reason: r.failureReason })),
+        });
+        if (runs.length >= limit) break;
+      } catch {
+        // skip malformed file
+      }
+    }
+
+    return { runs };
+  });
+
   // POST /v1/admin/onboarding — create a new tenant + send invoice
   app.post("/v1/admin/onboarding", async (request, reply) => {
     if (!adminAuth(request, reply)) return;

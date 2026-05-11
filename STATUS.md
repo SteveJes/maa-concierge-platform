@@ -67,11 +67,35 @@
 ## Test status
 - API regression `test-maa-intent-regression.ts`: **57/57 PASS** (local) — includes 12 third-pass + 10 fourth-pass + 10 fifth-pass cases (sixth-pass case #15 updated for new no-form behavior)
 - API regression `test-dubub-intent-regression.ts`: **12/12 PASS** (local)
-- **Scenario harness `test-scenarios.ts`** (NEW sixth pass): **39/39 PASS** in-process — 35 MAA + 4 DUBUB. Runner asserts on structured fields (intent, followUpMode, suppressBookingCta) + regex + optional LLM judge + multi-turn `history`. Catches things regex-only tests miss (price contradictions saying "around", inclusion-list having restaurant in same sentence, callback-default when user said "no form"). Run: `pnpm.cmd --filter @platform/api test:scenarios`.
+- **Sentinel scenario harness** (sixth + seventh pass): **48/48 PASS** in-process with LLM judge enabled by default — 44 MAA + 4 DUBUB. Runner asserts on structured fields (intent, followUpMode, suppressBookingCta) + regex + LLM judge + multi-turn `history`. Persists every run per tenant to `_sentinel-runs/`. Catches semantic bugs regex misses (price contradictions saying "around", restaurant in inclusion sentence, callback-default after "no form", grammar-broken opener "Daphné est situé"). Run: `pnpm.cmd --filter @platform/api sentinel:run`.
 - Playwright `daphne-regression.spec.ts` against **prod** (`Desktop Chrome`): **19/21 PASS + 2 flaky** (#1, #16) — flaky cases pass on retry; AI nondeterminism on edge phrasings, not bypass bugs
 - Mobile device matrix: iPhone 15 Pro Max, iPhone 14, iPhone SE, Pixel 7, Pixel 5, Galaxy S23, Galaxy S9+, Xiaomi Redmi Note 12 — runnable via `pnpm.cmd e2e:daphne:mobile:prod`
 - Mobile Daphné regression on prod (`iPhone 14`, `iPhone SE`, `Pixel 7`, `Galaxy S23` × 21 cases): **82/84 passed** + 1 flaky + 1 brittle pattern (#1 cheapest price). Safety overrides hold across all surfaces.
 - Lightweight intent unit check (no AI): `pnpm.cmd --filter @platform/api exec tsx src/scripts/check-intent-unit.ts` — verifies regex/derive logic in <1s.
+
+## Daphné seventh pass — 2026-05-11 (polish + Sentinel product launch)
+Daphné's `apps/web/public/daphne-seventh.md` is the polish round before manual conversational QA. She's impressed with overall progress. Two tracks landed in one ship:
+
+**Track A — Conversational polish:**
+- **Pickleball schedule routing** (#4) — Daphné's screenshot of the actual schedule is now encoded in the MAA prompt as authoritative: 28 timeslots/week, member-only, 2-4 players, day-by-day grid, paddle rental at reception. `isPickleballScheduleQuestion` bypasses the deterministic hours handler so the bot no longer answers with club / pool / spa hours.
+- **Yoga / discount / pickleball / group-class CTA gating** (#5, #6) — `deriveSuppressBookingCta` extended: à-la-carte / drop-in / sans-abonnement / group-class names (yoga, pilates, spin, HIIT, etc.) / pickleball-schedule / gym-access / multi-category discount / quick-info-no-form all suppress the visit CTA.
+- **English CTA in fr-CA widget** (#7) — `packages/ui-chat` detects message-language mismatch and hides the CTA when the bot answers in English on a French-locale widget.
+- **Vague-topic clarification** (#1) — new detector `isVagueTopicRequest` fires for "j'ai une demande concernant X"; injects a context that demands one short clarification question, never a generic fiche.
+- **Broken-grammar guard** (#8) — bot used to start with "Daphné est bien situé sur place..." (user name as inanimate-object subject). userNameLine instruction strengthened + `fixBrokenGrammarSubject` post-process strips/rewrites the broken opener.
+- **Repetitive ending strip** — `stripDuplicateRestaurantSeparation` removes duplicate "Le restaurant Le 1881 est disponible sur place, payé séparément." appends.
+- **Natural uncertainty wording** (Rule 5) — `softenUncertaintyWording` replaces "Je ne vois pas d'X confirmé dans mes sources actuelles" with warmer phrasings.
+- **Gym access membership-unknown** (#10) — bot was leading with "Vous pouvez accéder" without qualifying. New `isGymAccessMembershipUnknown` detector + context: "Si vous êtes membre, vous avez accès... Pour un accès non-membre ou invité, l'équipe pourra confirmer."
+- **9 new seventh-pass scenarios** added — 48/48 scenarios pass.
+
+**Track B — Sentinel product launch:**
+- Premium AI-quality watchdog product, included by default for every tenant.
+- **LLM judge enabled by default** — opt out with `--no-judge` or `SENTINEL_JUDGE_DISABLED=true`. Auto-disabled when OPENAI_API_KEY missing.
+- **Auto-generator** (`apps/api/src/scripts/sentinel-generate.ts`) — OpenAI proposes N edge-case scenarios per tenant, anchored on existing scenarios + safety rules + recent failures. Outputs to `apps/api/src/scenarios/generated/{tenant}-{date}.ts` (gitignored, human review only).
+- **Run persistence** — every test-scenarios run writes one JSON file per tenant to `apps/api/_sentinel-runs/`.
+- **Admin API endpoint** — `GET /v1/admin/sentinel/runs?tenant=<code>&limit=N` returns run history with summary stats + failure list.
+- **Dashboard panel** — `SentinelPanel` in the admin dashboard. Per-tenant view: last run, pass rate, scenarios passed/total, failed, mode, judge state, run history with expandable failures.
+- **Tenant isolation** is structural: tenantCode on every scenario, every run file, every admin filter.
+- **French marketing copy** at `apps/web/public/sentinel-description-fr.md` for Daphné / sales conversations.
 
 ## Daphné sixth pass — 2026-05-11 (pre-demo final)
 Daphné's `apps/web/public/daphne-sixth.md` was the final ChatGPT-assisted review before manual conversational QA. The biggest remaining demo blocker was pickleball booking ("booker un terrain de pickelball pour demain soir") still collapsing into the visit-template. Highlights of what shipped:

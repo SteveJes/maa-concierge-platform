@@ -24,7 +24,7 @@
 
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { writeFileSync } from "node:fs";
+import { writeFileSync, mkdirSync, existsSync } from "node:fs";
 import dotenv from "dotenv";
 
 import {
@@ -56,8 +56,14 @@ interface CliArgs {
 }
 
 function parseCli(argv: string[]): CliArgs {
+  // Sentinel: the LLM judge is ENABLED BY DEFAULT for all tenants. Disable
+  // with --no-judge or SENTINEL_JUDGE_DISABLED=true if you need a cheaper
+  // / offline run. Disabled automatically when OPENAI_API_KEY is missing.
+  const judgeDisabledByEnv =
+    process.env.SENTINEL_JUDGE_DISABLED === "true" || !process.env.OPENAI_API_KEY;
+
   const args: CliArgs = {
-    judge: false,
+    judge: !judgeDisabledByEnv,
     live: false,
     // Default to the prod API base URL. The runner appends
     // /v1/tenants/{tenantCode}/chat per scenario. Override via --url.
@@ -76,6 +82,8 @@ function parseCli(argv: string[]): CliArgs {
       args.tenant = v;
     } else if (a === "--judge") {
       args.judge = true;
+    } else if (a === "--no-judge") {
+      args.judge = false;
     } else if (a === "--live") {
       args.live = true;
     } else if (a === "--url") {
@@ -336,7 +344,54 @@ async function main(): Promise<void> {
     console.log(`Report written to ${args.outFile}`);
   }
 
+  // Sentinel persistence: every run drops a timestamped report so the admin
+  // dashboard and downstream pipelines can read it. One file per (tenant,
+  // timestamp). Skipped if filtered to a single scenario or specific id.
+  if (!args.id) {
+    persistSentinelRun(results, args);
+  }
+
   if (fail > 0) process.exit(1);
+}
+
+function persistSentinelRun(results: ScenarioResult[], args: CliArgs): void {
+  const currentFile = fileURLToPath(import.meta.url);
+  const apiRoot = path.resolve(path.dirname(currentFile), "../..");
+  const runsDir = path.join(apiRoot, "_sentinel-runs");
+  if (!existsSync(runsDir)) mkdirSync(runsDir, { recursive: true });
+
+  // Group results by tenant so each tenant has its own file (clean isolation
+  // in the dashboard — MAA never sees DUBUB's results and vice versa).
+  const byTenant = new Map<TenantCode, ScenarioResult[]>();
+  for (const r of results) {
+    const arr = byTenant.get(r.tenantCode) ?? [];
+    arr.push(r);
+    byTenant.set(r.tenantCode, arr);
+  }
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  for (const [tenantCode, tenantResults] of byTenant) {
+    const total = tenantResults.length;
+    const passed = tenantResults.filter((r) => r.passed).length;
+    const summary = {
+      tenantCode,
+      timestamp: new Date().toISOString(),
+      mode: args.live ? "live" : "in-process",
+      judge: args.judge,
+      total,
+      passed,
+      failed: total - passed,
+      passRate: total > 0 ? Number(((passed / total) * 100).toFixed(1)) : 0,
+      filters: {
+        phase: args.phase,
+        tenant: args.tenant,
+      },
+      results: tenantResults,
+    };
+    const filePath = path.join(runsDir, `${tenantCode}-${timestamp}.json`);
+    writeFileSync(filePath, JSON.stringify(summary, null, 2));
+    console.log(`[sentinel] persisted ${tenantCode} run → ${path.basename(filePath)}`);
+  }
 }
 
 main().catch((err) => {
