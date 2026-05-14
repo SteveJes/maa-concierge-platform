@@ -85,6 +85,35 @@ Production runs API from `dist/`, but tsc doesn't copy JSON. Loader now strips `
 - End-to-end CTA flow verified: click "Horaire de pickleball" → bot replies with 28 timeslots / members-only / 2-4 players / via MAA FLiip app → lead-capture form appears at bottom
 - The bottom-right widget visible in screenshots is the MAA website's OWN chatbot, loaded inside our background iframe — not ours. We can't remove it (cross-origin iframe).
 
+## 2026-05-14 — Premium UI overhaul (matches Daphné's mockups)
+
+`ChatShell` floating mode rebuilt to match Daphné's mockup screenshots precisely:
+
+**Launcher (closed state):**
+- Peeking gold-bordered tab anchored to right edge, vertically centered
+- Inline SVG concierge bell with breathing animation (scale + rotate + gold drop-shadow)
+- Triple-layered shadow + gold inset highlight for dimensional luxury feel
+- Hover slides -6px left + intensifies glow
+- Typography: 10px tracked "CONCIERGE IA PAR DUBUB" / 15px italic serif "Sophie vous accueille" / 11px "Disponible maintenant" with green-pulse halo
+
+**Opened panel:**
+- Top: gold tracked brand line "CONCIERGE IA PAR DUBUB"
+- 64×64 circular Sophie avatar — gold ring, radial gold gradient, silhouette monogram
+- 20px italic serif "Sophie vous accueille"
+- "CONCIERGE IA · CLUB SPORTIF MAA" subtitle in tracked gold
+- Green-pulse "Disponible maintenant"
+- Hairline gold gradient divider
+- "Bonjour et bienvenue / Je suis Sophie, votre concierge IA…" welcome paragraph
+- "Comment puis-je vous aider aujourd'hui ?" heading
+- 5 CTA buttons with gold-tinted inline SVG icons: dumbbell (entraînement) / racket (pickleball) / calendar (visite) / credit card (abonnements) / lotus (spa). Each with chevron + hover slide.
+- Dark gradient messages area (replaces the light gray of inline mode)
+- Dark input bar with gold-tinted border, "Votre message..." placeholder
+- Premium footer: shield icon + "Service propulsé par l'IA DUBUB" / "Confidentiel et sécurisé" + compact gold-pill "Mes coordonnées"
+
+**Animation:** 5-layer cinematic open — backdrop blur (450ms cubic-bezier) → panel spring-slide with overshoot (650ms 0.22/1/0.36/1) → gold border glow pulse on arrival → diagonal light-sweep across the panel (1.5s) → CTAs stagger-fade-in 80ms apart.
+
+Verified visually via Playwright at https://clients.dubub.com/demo/club-sportif-maa — all premium elements render correctly.
+
 ### Two prod-deploy gotchas now patched (deploy.sh on droplet)
 1. The deploy script did NOT include `pnpm --filter @platform/ui-chat build` even though `@platform/ui-chat` has `"main": "dist/index.js"` — meaning Web was importing the OLD compiled widget. Patched.
 2. Next.js was serving cached chunks from `.next/` even after rebuild. Now `rm -rf apps/web/.next` runs before web build. Patched.
