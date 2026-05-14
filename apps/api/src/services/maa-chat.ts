@@ -1549,7 +1549,15 @@ export async function answerMaaChat(
     .filter((s): s is string => typeof s === "string" && s.length > 0)
     .join("\n\n") || undefined;
 
-  const pricingAnswer = !isDubub && !skipDeterministicHandlers && tryAnswerPricingQuestion(
+  // When v2 knowledge base is active for MAA, skip the deterministic pricing
+  // short-circuit so the LLM can compose the answer with v2's premium tone,
+  // 'actuellement' hedging, and soft CTAs from sources-vivantes.json + ctas.json.
+  // The hardcoded short-circuit is kept as the v1 fallback and emergency rollback.
+  const v2Enabled =
+    (process.env.KNOWLEDGE_VERSION ?? "v2") === "v2" &&
+    (request.tenantCode === "maa" || !request.tenantCode);
+
+  const pricingAnswer = !isDubub && !v2Enabled && !skipDeterministicHandlers && tryAnswerPricingQuestion(
     resolvedUserMessage,
     searchResults,
     request.locale,
@@ -1580,7 +1588,10 @@ export async function answerMaaChat(
     };
   }
 
-  const scheduleAnswer = !isDubub && !skipDeterministicHandlers && tryAnswerScheduleQuestion(
+  // Same v2-bypass rule as pricing: let the LLM compose schedule answers
+  // using v2's sources-vivantes.json (which flags the pool-hours contradiction
+  // between the site and the PDF) + soft CTAs.
+  const scheduleAnswer = !isDubub && !v2Enabled && !skipDeterministicHandlers && tryAnswerScheduleQuestion(
     resolvedUserMessage,
     searchResults,
   );
