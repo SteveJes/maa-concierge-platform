@@ -46,15 +46,19 @@ const GYM_SERVICES_EN = [
   "Restaurant Le 1881",
 ];
 
-function GymLoadingIndicator({ locale }: { locale: string }) {
+function GymLoadingIndicator({ locale, floating = false }: { locale: string; floating?: boolean }) {
   return (
     <div
       style={{
         padding: "12px 16px",
-        borderRadius: 14,
-        background: "#ffffff",
-        border: "1px solid #e8eaed",
-        boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+        borderRadius: floating ? "4px 20px 20px 20px" : 14,
+        background: floating
+          ? "linear-gradient(135deg, rgba(30,26,20,0.95), rgba(22,20,16,0.95))"
+          : "#ffffff",
+        border: floating ? "1px solid rgba(212,175,95,0.22)" : "1px solid #e8eaed",
+        boxShadow: floating
+          ? "0 2px 10px rgba(0,0,0,0.35)"
+          : "0 1px 4px rgba(0,0,0,0.06)",
         display: "flex",
         alignItems: "center",
         gap: 10,
@@ -70,13 +74,21 @@ function GymLoadingIndicator({ locale }: { locale: string }) {
               width: 7,
               height: 7,
               borderRadius: "50%",
-              background: "var(--accent-gradient)",
+              background: floating
+                ? "linear-gradient(135deg, #d4af5f, #8b6e3e)"
+                : "var(--accent-gradient)",
               animation: `maa-dot-bounce 1.2s ease-in-out ${i * 0.18}s infinite`,
+              boxShadow: floating ? "0 0 6px rgba(212,175,95,0.45)" : "none",
             }}
           />
         ))}
       </div>
-      <span style={{ fontSize: 12, color: "#9a9ab0", fontStyle: "italic", letterSpacing: "0.01em" }}>
+      <span style={{
+        fontSize: 12,
+        color: floating ? "#cfc8b3" : "#9a9ab0",
+        fontStyle: "italic",
+        letterSpacing: "0.01em",
+      }}>
         {locale === "fr-CA" ? "Un instant…" : "One moment…"}
       </span>
     </div>
@@ -486,6 +498,20 @@ const pillInput = (extra?: React.CSSProperties): React.CSSProperties => ({
   border: "1px solid #d0d5dd",
   background: "#ffffff",
   color: "#1a1a1a",
+  fontSize: 13,
+  outline: "none",
+  width: "100%",
+  boxSizing: "border-box",
+  ...extra,
+});
+
+/** Dark variant for floating-mode forms — matches the luxury panel theme. */
+const darkPillInput = (extra?: React.CSSProperties): React.CSSProperties => ({
+  padding: "10px 14px",
+  borderRadius: 20,
+  border: "1px solid rgba(212,175,95,0.3)",
+  background: "rgba(20,18,14,0.7)",
+  color: "#f0e8d2",
   fontSize: 13,
   outline: "none",
   width: "100%",
@@ -1600,8 +1626,14 @@ export function ChatShell({
           background: mode === "floating"
             ? "linear-gradient(180deg, #0e0e14 0%, #14141a 100%)"
             : (darkMode ? "#0a0f0a" : "#f7f8f9"),
-          padding: mode === "floating" ? "8px 0 16px" : 16,
-          flex: 1,
+          padding: mode === "floating"
+            ? (messages.length === 1 ? "0" : "8px 0 16px")
+            : 16,
+          // In floating-mode INITIAL state (no user input yet), don't flex-grow
+          // an empty messages container — let the welcome + CTAs flow naturally
+          // and fill the panel via their own margins. Once the conversation
+          // starts, the messages area takes full available height.
+          flex: mode === "floating" && messages.length === 1 ? "0 0 auto" : 1,
           minHeight: 0,
           overflowY: "auto",
           display: "flex",
@@ -1749,24 +1781,35 @@ export function ChatShell({
                     animation: "maa-msg-in 0.25s ease",
                   }}
                 >
-                  {/* Mini avatar */}
+                  {/* Mini avatar — in floating mode, dark gold-ring circle to match Sophie */}
                   <div
                     style={{
-                      width: 26,
-                      height: 26,
-                      borderRadius: 8,
-                      background: logoUrl ? "#ffffff" : "var(--accent-gradient)",
-                      border: "1px solid rgba(var(--accent-rgb),0.2)",
-                      boxShadow: "0 1px 4px rgba(var(--accent-rgb),0.15)",
+                      width: mode === "floating" ? 28 : 26,
+                      height: mode === "floating" ? 28 : 26,
+                      borderRadius: mode === "floating" ? "50%" : 8,
+                      background: mode === "floating"
+                        ? "radial-gradient(circle at 30% 30%, #c0a87a 0%, #8b6e3e 60%, #4a3a1f 100%)"
+                        : (logoUrl ? "#ffffff" : "var(--accent-gradient)"),
+                      border: mode === "floating"
+                        ? "1px solid rgba(212,175,95,0.65)"
+                        : "1px solid rgba(var(--accent-rgb),0.2)",
+                      boxShadow: mode === "floating"
+                        ? "0 0 12px rgba(212,175,95,0.3), inset 0 1px 2px rgba(255,255,255,0.18)"
+                        : "0 1px 4px rgba(var(--accent-rgb),0.15)",
                       flexShrink: 0,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       overflow: "hidden",
-                      padding: logoUrl ? 3 : 0,
+                      padding: mode === "floating" ? 0 : (logoUrl ? 3 : 0),
                     }}
                   >
-                    {logoUrl ? (
+                    {mode === "floating" ? (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M12 12.5c2.6 0 4.6-2.1 4.6-4.7S14.6 3 12 3 7.4 5.2 7.4 7.8 9.4 12.5 12 12.5z" fill="#1c1410"/>
+                        <path d="M4 21c0-3.9 3.6-7 8-7s8 3.1 8 7" stroke="#1c1410" strokeWidth="1.6" strokeLinecap="round" fill="#1c1410"/>
+                      </svg>
+                    ) : logoUrl ? (
                       <img src={logoUrl} alt={clientName} style={{ width: 20, height: 20, objectFit: "contain" }} />
                     ) : (
                       <span style={{ color: "var(--accent-text)", fontWeight: 800, fontSize: 11 }}>{clientName.charAt(0)}</span>
@@ -1775,14 +1818,22 @@ export function ChatShell({
                   <div
                     style={{
                       maxWidth: "80%",
-                      padding: "10px 14px",
+                      padding: mode === "floating" ? "12px 16px" : "10px 14px",
                       borderRadius: "4px 20px 20px 20px",
-                      background: darkMode ? "#141a14" : "#ffffff",
-                      border: darkMode ? "1px solid rgba(255,255,255,0.07)" : "1px solid #e8eaed",
-                      boxShadow: darkMode ? "none" : "0 1px 4px rgba(0,0,0,0.08)",
-                      color: darkMode ? "#d8e8d0" : "#1a1a1a",
+                      background: mode === "floating"
+                        ? "linear-gradient(135deg, rgba(30,26,20,0.95), rgba(22,20,16,0.95))"
+                        : (darkMode ? "#141a14" : "#ffffff"),
+                      border: mode === "floating"
+                        ? "1px solid rgba(212,175,95,0.22)"
+                        : (darkMode ? "1px solid rgba(255,255,255,0.07)" : "1px solid #e8eaed"),
+                      boxShadow: mode === "floating"
+                        ? "0 2px 10px rgba(0,0,0,0.35)"
+                        : (darkMode ? "none" : "0 1px 4px rgba(0,0,0,0.08)"),
+                      color: mode === "floating"
+                        ? "#f0e8d2"
+                        : (darkMode ? "#d8e8d0" : "#1a1a1a"),
                       fontSize: 14,
-                      lineHeight: 1.5,
+                      lineHeight: 1.55,
                     }}
                   >
                     <RichMessageText text={message.text} />
@@ -1851,20 +1902,34 @@ export function ChatShell({
         {showLoadingAnimation && (
           <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
             <div style={{
-              width: 26, height: 26, borderRadius: 8,
-              background: logoUrl ? "#ffffff" : "var(--accent-gradient)",
-              border: "1px solid rgba(var(--accent-rgb),0.2)",
-              boxShadow: "0 1px 4px rgba(var(--accent-rgb),0.15)",
+              width: mode === "floating" ? 28 : 26,
+              height: mode === "floating" ? 28 : 26,
+              borderRadius: mode === "floating" ? "50%" : 8,
+              background: mode === "floating"
+                ? "radial-gradient(circle at 30% 30%, #c0a87a 0%, #8b6e3e 60%, #4a3a1f 100%)"
+                : (logoUrl ? "#ffffff" : "var(--accent-gradient)"),
+              border: mode === "floating"
+                ? "1px solid rgba(212,175,95,0.65)"
+                : "1px solid rgba(var(--accent-rgb),0.2)",
+              boxShadow: mode === "floating"
+                ? "0 0 12px rgba(212,175,95,0.3), inset 0 1px 2px rgba(255,255,255,0.18)"
+                : "0 1px 4px rgba(var(--accent-rgb),0.15)",
               flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
-              overflow: "hidden", padding: logoUrl ? 3 : 0,
+              overflow: "hidden",
+              padding: mode === "floating" ? 0 : (logoUrl ? 3 : 0),
             }}>
-              {logoUrl ? (
+              {mode === "floating" ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M12 12.5c2.6 0 4.6-2.1 4.6-4.7S14.6 3 12 3 7.4 5.2 7.4 7.8 9.4 12.5 12 12.5z" fill="#1c1410"/>
+                  <path d="M4 21c0-3.9 3.6-7 8-7s8 3.1 8 7" stroke="#1c1410" strokeWidth="1.6" strokeLinecap="round" fill="#1c1410"/>
+                </svg>
+              ) : logoUrl ? (
                 <img src={logoUrl} alt={clientName} style={{ width: 20, height: 20, objectFit: "contain" }} />
               ) : (
                 <span style={{ color: "var(--accent-text)", fontWeight: 800, fontSize: 11 }}>{clientName.charAt(0)}</span>
               )}
             </div>
-            <GymLoadingIndicator locale={locale} />
+            <GymLoadingIndicator locale={locale} floating={mode === "floating"} />
           </div>
         )}
         <div ref={bottomRef} />
@@ -1972,6 +2037,14 @@ export function ChatShell({
           ))}
         </div>
       )}
+
+      {/* Flex spacer — in floating-initial state, pushes input + footer to the
+          bottom of the panel so the welcome + CTAs feel anchored to the top
+          without sticking to the input. The panel reads as 'a full experience'
+          rather than a cramped chat. */}
+      {mode === "floating" && messages.length === 1 ? (
+        <div style={{ flex: "1 1 auto", minHeight: 0 }} aria-hidden="true" />
+      ) : null}
 
       {/* ── Name capture card ──────────────────────────────────────────────── */}
       {showNameCapture && !userName ? (
@@ -2425,31 +2498,87 @@ export function ChatShell({
 
       {/* Persistent lead capture form */}
       {showLeadForm && !lastResponse?.callbackPersistence?.saved ? (
-        <div style={{ margin: "0 16px 12px", padding: 16, borderRadius: 16, background: "#ffffff", border: "1px solid rgba(201,168,76,0.35)", boxShadow: "0 1px 8px rgba(201,168,76,0.08)", animation: "maa-msg-in 0.25s ease" }}>
-          <div style={{ color: "var(--accent)", fontWeight: 700, fontSize: 14, marginBottom: 4 }}>
+        <div
+          style={{
+            margin: mode === "floating" ? "0 22px 14px" : "0 16px 12px",
+            padding: mode === "floating" ? 18 : 16,
+            borderRadius: mode === "floating" ? 14 : 16,
+            background: mode === "floating"
+              ? "linear-gradient(135deg, rgba(30,26,20,0.96), rgba(22,20,16,0.96))"
+              : "#ffffff",
+            border: mode === "floating"
+              ? "1px solid rgba(212,175,95,0.4)"
+              : "1px solid rgba(201,168,76,0.35)",
+            boxShadow: mode === "floating"
+              ? "0 4px 18px rgba(0,0,0,0.45), 0 0 24px rgba(212,175,95,0.12)"
+              : "0 1px 8px rgba(201,168,76,0.08)",
+            animation: "maa-msg-in 0.25s ease",
+          }}
+        >
+          <div style={{ color: mode === "floating" ? "#d4af5f" : "var(--accent)", fontWeight: 700, fontSize: 14, marginBottom: 4 }}>
             {locale === "fr-CA" ? "Laissez-nous vos coordonnées" : "Leave us your contact info"}
           </div>
-          <div style={{ color: "#6a6a80", fontSize: 11, marginBottom: 12 }}>
+          <div style={{ color: mode === "floating" ? "#a8a090" : "#6a6a80", fontSize: 11.5, marginBottom: 12, lineHeight: 1.5 }}>
             {locale === "fr-CA" ? `Un membre de l'équipe ${clientName} vous contactera sous peu.` : `A ${clientName} team member will reach out shortly.`}
           </div>
           <div style={{ display: "grid", gap: 8 }}>
-            <input value={callbackName} onChange={(e) => setCallbackName(e.target.value)} placeholder={locale === "fr-CA" ? "Votre nom (optionnel)" : "Your name (optional)"} style={pillInput()} />
-            <input value={callbackPhone} onChange={(e) => setCallbackPhone(e.target.value)} placeholder={locale === "fr-CA" ? "Téléphone *" : "Phone *"} type="tel" style={pillInput()} />
-            <input value={callbackEmail} onChange={(e) => setCallbackEmail(e.target.value)} placeholder={locale === "fr-CA" ? "Courriel (optionnel)" : "Email (optional)"} style={pillInput()} />
-            <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: "#8a8aa0", cursor: "pointer" }}>
-              <input type="checkbox" checked={callbackConsent} onChange={(e) => setCallbackConsent(e.target.checked)} />
+            <input
+              value={callbackName}
+              onChange={(e) => setCallbackName(e.target.value)}
+              placeholder={locale === "fr-CA" ? "Votre nom (optionnel)" : "Your name (optional)"}
+              style={mode === "floating" ? darkPillInput() : pillInput()}
+            />
+            <input
+              value={callbackPhone}
+              onChange={(e) => setCallbackPhone(e.target.value)}
+              placeholder={locale === "fr-CA" ? "Téléphone *" : "Phone *"}
+              type="tel"
+              style={mode === "floating" ? darkPillInput() : pillInput()}
+            />
+            <input
+              value={callbackEmail}
+              onChange={(e) => setCallbackEmail(e.target.value)}
+              placeholder={locale === "fr-CA" ? "Courriel (optionnel)" : "Email (optional)"}
+              style={mode === "floating" ? darkPillInput() : pillInput()}
+            />
+            <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: mode === "floating" ? "#a0998a" : "#8a8aa0", cursor: "pointer" }}>
+              <input type="checkbox" checked={callbackConsent} onChange={(e) => setCallbackConsent(e.target.checked)} style={{ accentColor: "#d4af5f" }} />
               <span>{locale === "fr-CA" ? `J'accepte d'être contacté par ${clientName}.` : `I agree to be contacted by ${clientName}.`}</span>
             </label>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
               <button
                 type="button"
                 onClick={() => void submitCallbackRequest()}
                 disabled={isSubmittingCallback || !callbackPhone.trim() || !callbackConsent}
-                style={{ padding: "10px 18px", borderRadius: 20, border: "none", background: "var(--accent-gradient)", color: "var(--accent-text)", textShadow: accentTextColor === "#fff" ? "0 1px 3px rgba(0,0,0,0.35)" : "none", fontWeight: 700, fontSize: 13, cursor: isSubmittingCallback || !callbackPhone.trim() || !callbackConsent ? "default" : "pointer", opacity: isSubmittingCallback || !callbackPhone.trim() || !callbackConsent ? 0.6 : 1 }}
+                style={{
+                  padding: "10px 20px",
+                  borderRadius: 20,
+                  border: mode === "floating" ? "1px solid rgba(212,175,95,0.6)" : "none",
+                  background: mode === "floating"
+                    ? "linear-gradient(135deg, #d4af5f 0%, #8b6e3e 100%)"
+                    : "var(--accent-gradient)",
+                  color: mode === "floating" ? "#1c1410" : "var(--accent-text)",
+                  textShadow: accentTextColor === "#fff" ? "0 1px 3px rgba(0,0,0,0.35)" : "none",
+                  fontWeight: 700,
+                  fontSize: 13,
+                  cursor: isSubmittingCallback || !callbackPhone.trim() || !callbackConsent ? "default" : "pointer",
+                  opacity: isSubmittingCallback || !callbackPhone.trim() || !callbackConsent ? 0.5 : 1,
+                  boxShadow: mode === "floating" ? "0 4px 14px rgba(212,175,95,0.35)" : "none",
+                }}
               >
                 {isSubmittingCallback ? (locale === "fr-CA" ? "Envoi..." : "Sending...") : (locale === "fr-CA" ? "Envoyer" : "Send")}
               </button>
-              <button type="button" onClick={() => setShowLeadForm(false)} style={{ background: "none", border: "none", color: "#5a5a70", fontSize: 12, cursor: "pointer" }}>
+              <button
+                type="button"
+                onClick={() => setShowLeadForm(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: mode === "floating" ? "#8a8270" : "#5a5a70",
+                  fontSize: 12,
+                  cursor: "pointer",
+                }}
+              >
                 {locale === "fr-CA" ? "Fermer" : "Close"}
               </button>
             </div>
@@ -2662,6 +2791,30 @@ export function ChatShell({
 
     return (
       <div>
+        {/* Panel sliver — a thin slice of the panel peeking from the right edge,
+            BEHIND the launcher tab. Suggests 'there's a full premium panel
+            hiding behind me, just pull me out.' Always visible (closed AND
+            open) so the launcher tab feels like a tab on a larger element. */}
+        {!isOpen && (
+          <div
+            aria-hidden="true"
+            style={{
+              position: "fixed",
+              top: 0,
+              right: 0,
+              bottom: 0,
+              width: 12,
+              background:
+                "linear-gradient(180deg, rgba(20,20,26,0.95) 0%, rgba(26,26,32,0.95) 50%, rgba(20,20,26,0.95) 100%)",
+              borderLeft: "1px solid rgba(212,175,95,0.32)",
+              boxShadow:
+                "inset 1px 0 0 rgba(212,175,95,0.18), -4px 0 16px rgba(0,0,0,0.35)",
+              zIndex: 9998,
+              pointerEvents: "none",
+            }}
+          />
+        )}
+
         {/* Premium peeking launcher — luxury watch-box feel, anchored to right edge mid-height */}
         {!isOpen && (
           <button
