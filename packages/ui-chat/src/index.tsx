@@ -2111,13 +2111,29 @@ export function ChatShell({
         </div>
       ) : null}
 
-      {/* Phone button (before inline form) */}
+      {/* Phone button (before inline form) — premium styling in floating mode */}
       {showPhoneButton && !showInlineCallForm ? (
-        <div style={{ margin: "0 16px 12px" }}>
+        <div style={{ margin: mode === "floating" ? "0 22px 14px" : "0 16px 12px" }}>
           <button
             type="button"
             onClick={() => { setShowInlineCallForm(true); setShowPhoneFallback(false); }}
-            style={{
+            style={mode === "floating" ? {
+              padding: "14px 18px",
+              borderRadius: 12,
+              background: "linear-gradient(135deg, rgba(50,42,28,0.95), rgba(38,32,22,0.95))",
+              border: "1px solid rgba(212,175,95,0.45)",
+              color: "#f8efdd",
+              fontWeight: 600,
+              fontSize: 14,
+              cursor: "pointer",
+              width: "100%",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.35), 0 0 16px rgba(212,175,95,0.18)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 10,
+              transition: "background 0.2s, border-color 0.2s, transform 0.15s",
+            } : {
               padding: 12,
               borderRadius: 12,
               background: "linear-gradient(135deg, #2a2a38, #3a3a4a)",
@@ -2128,9 +2144,28 @@ export function ChatShell({
               cursor: "pointer",
               width: "100%",
             }}
+            onMouseEnter={mode === "floating" ? (e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = "linear-gradient(135deg, rgba(64,54,36,0.98), rgba(48,40,28,0.98))";
+              (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(212,175,95,0.85)";
+              (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px)";
+            } : undefined}
+            onMouseLeave={mode === "floating" ? (e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = "linear-gradient(135deg, rgba(50,42,28,0.95), rgba(38,32,22,0.95))";
+              (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(212,175,95,0.45)";
+              (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
+            } : undefined}
           >
-            {lastResponse?.vapi?.buttonLabel ??
-              (locale === "fr-CA" ? "📞 Continuer par téléphone" : "📞 Continue by phone")}
+            {mode === "floating" ? (
+              <span aria-hidden="true" style={{ color: "#d4af5f", display: "flex", alignItems: "center", justifyContent: "center", width: 22, height: 22 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>
+                </svg>
+              </span>
+            ) : null}
+            <span>{lastResponse?.vapi?.buttonLabel ??
+              (locale === "fr-CA"
+                ? (mode === "floating" ? "Souhaitez-vous que l'IA vous appelle ?" : "📞 Continuer par téléphone")
+                : (mode === "floating" ? "Would you like the AI to call you?" : "📞 Continue by phone"))}</span>
           </button>
         </div>
       ) : null}
