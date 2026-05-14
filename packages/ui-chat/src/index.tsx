@@ -2,7 +2,7 @@
 "use client";
 
 import Vapi from "@vapi-ai/web";
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 // Rotating proactive nudge messages — fired every 35s during inactivity
 const PROACTIVE_NUDGES_FR = [
@@ -91,6 +91,82 @@ function getBulletIcon(index: number): string {
 }
 
 const PHONE_RE = /(\+?1?[\s.\-]?\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}(?:\s*(?:ext|poste|x)[\s.]?\d{1,4})?)/gi;
+
+/**
+ * Premium CTA icon picker — matches a quick-action question to a relevant
+ * inline SVG, gold-tinted. Keeps the chat panel's CTA buttons looking like
+ * Daphné's mockup. Falls back to a generic chevron-bell when no match.
+ */
+function iconForCta(text: string): React.ReactNode {
+  const t = text.toLowerCase();
+  const stroke = "currentColor";
+  const props = { width: 20, height: 20, viewBox: "0 0 24 24", fill: "none", stroke, strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+
+  // Private training / personal trainer / entraînement → dumbbell
+  if (/entra[îi]nement|personal|trainer|private session|fitness/.test(t)) {
+    return (
+      <svg {...props}>
+        <path d="M6 8v8M9 6v12M15 6v12M18 8v8M3 11h2M19 11h2M3 13h2M19 13h2"/>
+      </svg>
+    );
+  }
+  // Pickleball / racket → paddle
+  if (/pickleball|pickle|squash|tennis|racquet|racket/.test(t)) {
+    return (
+      <svg {...props}>
+        <circle cx="10" cy="10" r="6"/>
+        <path d="M14.2 14.2L21 21M10 6l-2 4M10 10l-3 1M11 13l-1-3"/>
+      </svg>
+    );
+  }
+  // Schedule visit / tour → calendar
+  if (/visit|tour|visite|club tour|d[ée]couverte/.test(t)) {
+    return (
+      <svg {...props}>
+        <rect x="3" y="5" width="18" height="16" rx="2"/>
+        <path d="M3 9h18M8 3v4M16 3v4"/>
+        <circle cx="8" cy="14" r="0.8" fill={stroke}/>
+        <circle cx="12" cy="14" r="0.8" fill={stroke}/>
+        <circle cx="16" cy="14" r="0.8" fill={stroke}/>
+      </svg>
+    );
+  }
+  // Compare memberships / pricing → credit card
+  if (/compar|abonnement|membership|tarif|pricing|prix/.test(t)) {
+    return (
+      <svg {...props}>
+        <rect x="2.5" y="5" width="19" height="14" rx="2"/>
+        <path d="M2.5 10h19M6 15h4"/>
+      </svg>
+    );
+  }
+  // Spa / wellness / detente → lotus
+  if (/spa|d[ée]tente|relax|massage|bien[- ]?[êe]tre/.test(t)) {
+    return (
+      <svg {...props}>
+        <path d="M12 3c2 3 2 6 0 9-2-3-2-6 0-9z"/>
+        <path d="M12 12c-3-1-5-3-6-6 3 0 5 2 6 5"/>
+        <path d="M12 12c3-1 5-3 6-6-3 0-5 2-6 5"/>
+        <path d="M6 14c0 3 3 6 6 7 3-1 6-4 6-7"/>
+      </svg>
+    );
+  }
+  // Call / phone
+  if (/call|appel|t[ée]l[ée]phone|phone/.test(t)) {
+    return (
+      <svg {...props}>
+        <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>
+      </svg>
+    );
+  }
+  // Default — concierge bell
+  return (
+    <svg {...props}>
+      <path d="M12 3a3 3 0 0 1 3 3v.6a6 6 0 0 1 4 5.6V15l1.4 2H3.6L5 15v-2.8a6 6 0 0 1 4-5.6V6a3 3 0 0 1 3-3z"/>
+      <path d="M10 19a2 2 0 0 0 4 0"/>
+    </svg>
+  );
+}
 
 // Render assistant message text with:
 // - bullet points (lines starting with •, -, *, or numbered) → gym icon + styled line
@@ -1289,7 +1365,132 @@ export function ChatShell({
         />
       )}
 
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      {/* ── PREMIUM HEADER (floating mode) — Sophie portrait + brand line ──── */}
+      {mode === "floating" ? (
+        <div
+          style={{
+            background:
+              "linear-gradient(180deg, #0f0f14 0%, #14141a 60%, #181820 100%)",
+            borderBottom: "1px solid rgba(201,168,76,0.18)",
+            padding: "22px 22px 20px",
+            position: "relative",
+            fontFamily: "Inter, system-ui, sans-serif",
+          }}
+        >
+          {/* Brand line at the very top */}
+          <div
+            style={{
+              fontSize: 10,
+              letterSpacing: "0.22em",
+              color: "#d4af5f",
+              fontWeight: 700,
+              marginBottom: 16,
+              paddingRight: 32,
+            }}
+          >
+            {locale === "en-CA" ? "AI CONCIERGE BY DUBUB" : "CONCIERGE IA PAR DUBUB"}
+          </div>
+
+          {/* Portrait + identity row */}
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            {/* Premium Sophie avatar — gold ring + soft inner glow + monogram */}
+            <div
+              style={{
+                width: 64,
+                height: 64,
+                flexShrink: 0,
+                borderRadius: "50%",
+                background:
+                  "radial-gradient(circle at 30% 30%, #c0a87a 0%, #8b6e3e 55%, #4a3a1f 100%)",
+                border: "2px solid #d4af5f",
+                boxShadow:
+                  "0 0 0 1px rgba(212,175,95,0.4), 0 0 18px rgba(212,175,95,0.32), inset 0 2px 4px rgba(255,255,255,0.18)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#1c1410",
+                fontWeight: 700,
+                fontSize: 26,
+                fontFamily: "Georgia, 'Times New Roman', serif",
+                fontStyle: "italic",
+                letterSpacing: "-0.02em",
+              }}
+              aria-hidden="true"
+            >
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+                <path d="M12 12.5c2.6 0 4.6-2.1 4.6-4.7S14.6 3 12 3 7.4 5.2 7.4 7.8 9.4 12.5 12 12.5z" fill="#1c1410"/>
+                <path d="M4 21c0-3.9 3.6-7 8-7s8 3.1 8 7" stroke="#1c1410" strokeWidth="1.6" strokeLinecap="round" fill="#1c1410"/>
+              </svg>
+            </div>
+
+            {/* Name + title + status */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div
+                style={{
+                  fontSize: 20,
+                  fontStyle: "italic",
+                  fontWeight: 600,
+                  color: "#f8efdd",
+                  lineHeight: 1.15,
+                  marginBottom: 4,
+                  fontFamily: "Georgia, 'Times New Roman', serif",
+                }}
+              >
+                {locale === "en-CA" ? "Sophie welcomes you" : "Sophie vous accueille"}
+              </div>
+              <div
+                style={{
+                  fontSize: 9.5,
+                  letterSpacing: "0.18em",
+                  color: "#d4af5f",
+                  fontWeight: 700,
+                  marginBottom: 6,
+                }}
+              >
+                {locale === "en-CA" ? "AI CONCIERGE" : "CONCIERGE IA"}
+                <span style={{ color: "#a0a090" }}> · </span>
+                {clientName.toUpperCase()}
+              </div>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "#a0a090",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 7,
+                  fontWeight: 500,
+                }}
+              >
+                <span
+                  style={{
+                    display: "inline-block",
+                    width: 7,
+                    height: 7,
+                    borderRadius: "50%",
+                    background: "#3dd17a",
+                    boxShadow: "0 0 8px rgba(61,209,122,0.7)",
+                    animation: "maa-pulse-green 2.2s ease-in-out infinite",
+                  }}
+                />
+                {locale === "en-CA" ? "Available now" : "Disponible maintenant"}
+              </div>
+            </div>
+          </div>
+
+          {/* Hairline divider */}
+          <div
+            style={{
+              marginTop: 18,
+              height: 1,
+              background:
+                "linear-gradient(90deg, transparent 0%, rgba(212,175,95,0.4) 50%, transparent 100%)",
+            }}
+          />
+        </div>
+      ) : null}
+
+      {/* ── Header (inline mode original) ──────────────────────────────────── */}
+      {mode !== "floating" ? (
       <div
         style={{
           background: "linear-gradient(135deg, #111116 0%, #1a1a22 100%)",
@@ -1372,8 +1573,10 @@ export function ChatShell({
           </button>
         ) : null}
       </div>
+      ) : null}
 
-      {/* ── Subtitle bar ───────────────────────────────────────────────────── */}
+      {/* ── Subtitle bar (hidden in floating mode — premium header carries the brand) */}
+      {mode !== "floating" ? (
       <div
         style={{
           padding: "5px 16px 5px",
@@ -1388,13 +1591,16 @@ export function ChatShell({
           ? "Votre concierge IA est disponible 24h/24, 7j/7."
           : "Your AI concierge is available 24/7."}
       </div>
+      ) : null}
 
       {/* ── Messages area ──────────────────────────────────────────────────── */}
       <div
         data-msg-count={messages.length}
         style={{
-          background: darkMode ? "#0a0f0a" : "#f7f8f9",
-          padding: 16,
+          background: mode === "floating"
+            ? "linear-gradient(180deg, #0e0e14 0%, #14141a 100%)"
+            : (darkMode ? "#0a0f0a" : "#f7f8f9"),
+          padding: mode === "floating" ? "8px 0 16px" : 16,
           flex: 1,
           minHeight: 0,
           overflowY: "auto",
@@ -1405,7 +1611,12 @@ export function ChatShell({
       >
         {/* Spacer: pushes messages toward the bottom when chat is sparse */}
         <div style={{ flex: 1 }} />
-        {messages.map((message) => {
+        {messages.map((message, idx) => {
+          // In floating mode, hide the initial AI greeting — the premium
+          // header + welcome paragraph above the CTAs replace it.
+          if (mode === "floating" && idx === 0 && message.role === "assistant" && messages.length === 1) {
+            return null;
+          }
           if (message.role === "user") {
             return (
               <div
@@ -1659,18 +1870,50 @@ export function ChatShell({
         <div ref={bottomRef} />
       </div>
 
+      {/* ── Welcome paragraph (floating mode only, before CTAs) ────────────── */}
+      {mode === "floating" && messages.length === 1 && (
+        <div
+          style={{
+            margin: "18px 22px 4px",
+            color: "#e8e3d0",
+            fontSize: 14,
+            lineHeight: 1.55,
+            fontFamily: "Inter, system-ui, sans-serif",
+            animation: "maa-msg-in 0.45s ease 0.2s both",
+          }}
+        >
+          <div style={{ color: "#d4af5f", fontWeight: 600, fontSize: 15, marginBottom: 6 }}>
+            {locale === "en-CA" ? "Hello and welcome" : "Bonjour et bienvenue"}
+          </div>
+          <div style={{ color: "#cfc8b3", fontSize: 13.5, lineHeight: 1.55 }}>
+            {locale === "en-CA"
+              ? `I'm Sophie, your AI concierge. I'm here to support you at ${clientName}.`
+              : `Je suis Sophie, votre concierge IA. Je suis là pour vous accompagner au ${clientName}.`}
+          </div>
+        </div>
+      )}
+
       {/* ── Suggested questions (shown only on first message) ─────────────── */}
       {messages.length === 1 && suggestedQuestions.length > 0 && (
         <div
           style={{
-            margin: "4px 16px 14px",
+            margin: mode === "floating" ? "18px 22px 14px" : "4px 16px 14px",
             display: "flex",
             flexDirection: "column",
-            gap: 10,
+            gap: mode === "floating" ? 12 : 10,
             animation: "maa-msg-in 0.4s ease",
           }}
         >
-          <div style={{ fontSize: 11, color: "#c9a84c", letterSpacing: "0.08em", fontWeight: 600, paddingLeft: 2, marginBottom: 4 }}>
+          <div
+            style={{
+              fontSize: mode === "floating" ? 13 : 11,
+              color: mode === "floating" ? "#d4af5f" : "#c9a84c",
+              letterSpacing: mode === "floating" ? "0.02em" : "0.08em",
+              fontWeight: 600,
+              paddingLeft: 2,
+              marginBottom: mode === "floating" ? 8 : 4,
+            }}
+          >
             {locale === "fr-CA" ? "Comment puis-je vous aider aujourd'hui ?" : "How can I help you today?"}
           </div>
           {suggestedQuestions.map((q, idx) => (
@@ -1691,10 +1934,10 @@ export function ChatShell({
                 color: "#f4eedd",
                 fontSize: 13,
                 fontWeight: 500,
-                padding: "13px 16px",
+                padding: mode === "floating" ? "14px 16px" : "13px 16px",
                 textAlign: "left",
                 cursor: "pointer",
-                transition: "border-color 0.2s, background 0.2s, transform 0.15s",
+                transition: "border-color 0.2s, background 0.2s, transform 0.15s, box-shadow 0.2s",
                 lineHeight: 1.35,
                 display: "flex",
                 alignItems: "center",
@@ -1704,18 +1947,25 @@ export function ChatShell({
                 animation: `maa-cta-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) ${0.55 + idx * 0.08}s both`,
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(201,168,76,0.85)";
-                (e.currentTarget as HTMLButtonElement).style.background = "linear-gradient(135deg, rgba(45,38,26,0.98), rgba(36,30,22,0.98))";
-                (e.currentTarget as HTMLButtonElement).style.transform = "translateX(-2px)";
+                (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(212,175,95,0.95)";
+                (e.currentTarget as HTMLButtonElement).style.background = "linear-gradient(135deg, rgba(48,40,28,0.98), rgba(38,32,22,0.98))";
+                (e.currentTarget as HTMLButtonElement).style.transform = "translateX(-3px)";
+                (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 16px rgba(0,0,0,0.4), 0 0 12px rgba(212,175,95,0.18)";
               }}
               onMouseLeave={(e) => {
                 (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(201,168,76,0.35)";
                 (e.currentTarget as HTMLButtonElement).style.background = "linear-gradient(135deg, rgba(35,30,22,0.95), rgba(28,24,18,0.95))";
                 (e.currentTarget as HTMLButtonElement).style.transform = "translateX(0)";
+                (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 2px 8px rgba(0,0,0,0.25)";
               }}
             >
+              {mode === "floating" ? (
+                <span style={{ flexShrink: 0, color: "#d4af5f", display: "flex", alignItems: "center", justifyContent: "center", width: 26, height: 26 }} aria-hidden="true">
+                  {iconForCta(q)}
+                </span>
+              ) : null}
               <span style={{ flex: 1 }}>{q}</span>
-              <span aria-hidden="true" style={{ color: "#c9a84c", fontSize: 18, fontWeight: 300, lineHeight: 1, opacity: 0.7 }}>
+              <span aria-hidden="true" style={{ color: "#d4af5f", fontSize: 20, fontWeight: 300, lineHeight: 1, opacity: 0.75 }}>
                 ›
               </span>
             </button>
@@ -2257,7 +2507,77 @@ export function ChatShell({
         </button>
       </div>
 
-      {/* ── Footer: lead capture link + DUBUB ─────────────────────────────── */}
+      {/* ── PREMIUM FOOTER (floating mode) — DUBUB shield + service note ──── */}
+      {mode === "floating" ? (
+        <div
+          style={{
+            padding: "14px 22px 16px",
+            background: "linear-gradient(180deg, #14141a 0%, #0e0e14 100%)",
+            borderTop: "1px solid rgba(201,168,76,0.18)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            fontFamily: "Inter, system-ui, sans-serif",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+            <span
+              aria-hidden="true"
+              style={{
+                width: 26,
+                height: 26,
+                flexShrink: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#d4af5f",
+              }}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2.5l8 3v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10v-6l8-3z" fill="currentColor" fillOpacity="0.15"/>
+                <path d="M12 2.5l8 3v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10v-6l8-3z"/>
+                <path d="M8.5 12l2.5 2.5L16 9.5"/>
+              </svg>
+            </span>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 11, color: "#e0d8c0", fontWeight: 600, lineHeight: 1.3 }}>
+                {locale === "en-CA" ? "Powered by DUBUB AI" : "Service propulsé par l'IA DUBUB"}
+              </div>
+              <div style={{ fontSize: 10, color: "#90867a", letterSpacing: "0.02em", lineHeight: 1.3 }}>
+                {locale === "en-CA" ? "Confidential and secure" : "Confidentiel et sécurisé"}
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => { setShowLeadForm((v) => !v); setShowInlineCallForm(false); setShowPhoneFallback(false); }}
+            style={{
+              flexShrink: 0,
+              background: "none",
+              border: "1px solid rgba(212,175,95,0.4)",
+              padding: "6px 12px",
+              borderRadius: 999,
+              cursor: "pointer",
+              color: "#d4af5f",
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+              transition: "border-color 0.2s, background 0.2s",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(212,175,95,0.85)";
+              (e.currentTarget as HTMLButtonElement).style.background = "rgba(212,175,95,0.08)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(212,175,95,0.4)";
+              (e.currentTarget as HTMLButtonElement).style.background = "none";
+            }}
+          >
+            {locale === "en-CA" ? "Leave my info" : "Mes coordonnées"}
+          </button>
+        </div>
+      ) : (
       <div style={{ padding: "6px 16px 8px", background: darkMode ? "#0a0f0a" : "#f7f8f9", borderTop: darkMode ? "1px solid rgba(255,255,255,0.05)" : "1px solid #e8eaed", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <button
           type="button"
@@ -2283,6 +2603,7 @@ export function ChatShell({
           <span style={{ color: "var(--accent)", fontWeight: 700 }}>.ca</span>
         </a>
       </div>
+      )}
     </section>
   );
 
@@ -2294,65 +2615,107 @@ export function ChatShell({
 
     return (
       <div>
-        {/* Premium peeking launcher — visible only when closed */}
+        {/* Premium peeking launcher — luxury watch-box feel, anchored to right edge mid-height */}
         {!isOpen && (
           <button
             type="button"
             aria-label={isFr ? "Ouvrir le concierge" : "Open the concierge"}
             onClick={() => setIsOpen(true)}
+            className="maa-launcher-tab"
             style={{
               position: "fixed",
               top: "50%",
               right: 0,
               transform: "translateY(-50%)",
-              width: 320,
-              padding: "16px 18px 16px 22px",
-              borderTopLeftRadius: 18,
-              borderBottomLeftRadius: 18,
-              borderTop: "1px solid rgba(201,168,76,0.55)",
-              borderLeft: "1px solid rgba(201,168,76,0.55)",
-              borderBottom: "1px solid rgba(201,168,76,0.55)",
+              width: 340,
+              padding: "20px 22px 20px 24px",
+              borderTopLeftRadius: 20,
+              borderBottomLeftRadius: 20,
+              border: "1px solid rgba(201,168,76,0.55)",
               borderRight: "none",
-              background: "linear-gradient(135deg, #1a1a1f 0%, #14141a 100%)",
-              boxShadow: "0 12px 40px rgba(0,0,0,0.55), 0 0 24px rgba(201,168,76,0.18)",
+              background:
+                "linear-gradient(135deg, #1c1c22 0%, #14141a 50%, #1a1a1f 100%)",
+              boxShadow:
+                "0 18px 50px rgba(0,0,0,0.6), 0 0 32px rgba(201,168,76,0.22), inset 0 1px 0 rgba(255,255,255,0.04), inset 1px 0 0 rgba(201,168,76,0.25)",
               zIndex: 9999,
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
-              gap: 14,
+              gap: 16,
               color: "#f4eedd",
               textAlign: "left",
-              transition: "transform 0.25s ease, box-shadow 0.25s ease",
+              transition:
+                "transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease",
+              fontFamily: "Inter, system-ui, sans-serif",
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-50%) translateX(-4px)";
-              (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 16px 50px rgba(0,0,0,0.6), 0 0 32px rgba(201,168,76,0.3)";
+              (e.currentTarget as HTMLButtonElement).style.transform =
+                "translateY(-50%) translateX(-6px)";
+              (e.currentTarget as HTMLButtonElement).style.boxShadow =
+                "0 22px 60px rgba(0,0,0,0.7), 0 0 44px rgba(201,168,76,0.38), inset 0 1px 0 rgba(255,255,255,0.06), inset 1px 0 0 rgba(201,168,76,0.5)";
             }}
             onMouseLeave={(e) => {
               (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-50%)";
-              (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 12px 40px rgba(0,0,0,0.55), 0 0 24px rgba(201,168,76,0.18)";
+              (e.currentTarget as HTMLButtonElement).style.boxShadow =
+                "0 18px 50px rgba(0,0,0,0.6), 0 0 32px rgba(201,168,76,0.22), inset 0 1px 0 rgba(255,255,255,0.04), inset 1px 0 0 rgba(201,168,76,0.25)";
             }}
           >
-            {/* Bell icon */}
+            {/* Concierge bell — inline SVG, premium gold */}
             <span
               aria-hidden="true"
               style={{
-                fontSize: 28,
-                lineHeight: 1,
-                color: "#c9a84c",
-                filter: "drop-shadow(0 0 6px rgba(201,168,76,0.5))",
+                flexShrink: 0,
+                width: 36,
+                height: 36,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#d4af5f",
+                filter: "drop-shadow(0 0 8px rgba(212,175,95,0.55))",
+                animation: "maa-launcher-bell-breathe 3.6s ease-in-out infinite",
               }}
             >
-              🛎
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 3a3 3 0 0 1 3 3v.6a6 6 0 0 1 4 5.6V15l1.4 2H3.6L5 15v-2.8a6 6 0 0 1 4-5.6V6a3 3 0 0 1 3-3z" fill="currentColor" fillOpacity="0.18"/>
+                <path d="M12 3a3 3 0 0 1 3 3v.6a6 6 0 0 1 4 5.6V15l1.4 2H3.6L5 15v-2.8a6 6 0 0 1 4-5.6V6a3 3 0 0 1 3-3z"/>
+                <path d="M10 19a2 2 0 0 0 4 0"/>
+              </svg>
             </span>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 10, letterSpacing: "0.14em", color: "#c9a84c", fontWeight: 700, marginBottom: 4 }}>
+              <div
+                style={{
+                  fontSize: 10,
+                  letterSpacing: "0.18em",
+                  color: "#d4af5f",
+                  fontWeight: 700,
+                  marginBottom: 6,
+                }}
+              >
                 {conciergeBrand}
               </div>
-              <div style={{ fontSize: 14, fontStyle: "italic", color: "#f4eedd", lineHeight: 1.25, marginBottom: 4 }}>
+              <div
+                style={{
+                  fontSize: 15,
+                  fontStyle: "italic",
+                  fontWeight: 500,
+                  color: "#f8efdd",
+                  lineHeight: 1.25,
+                  marginBottom: 6,
+                  fontFamily: "Georgia, 'Times New Roman', serif",
+                }}
+              >
                 {greetingTitle}
               </div>
-              <div style={{ fontSize: 11, color: "#a8a896", display: "flex", alignItems: "center", gap: 6 }}>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "#a0a090",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 7,
+                  fontWeight: 500,
+                }}
+              >
                 <span
                   style={{
                     display: "inline-block",
@@ -2360,13 +2723,23 @@ export function ChatShell({
                     height: 7,
                     borderRadius: "50%",
                     background: "#3dd17a",
-                    boxShadow: "0 0 6px rgba(61,209,122,0.6)",
+                    boxShadow: "0 0 8px rgba(61,209,122,0.7)",
+                    animation: "maa-pulse-green 2.2s ease-in-out infinite",
                   }}
                 />
                 {availableNow}
               </div>
             </div>
-            <span aria-hidden="true" style={{ color: "#c9a84c", fontSize: 22, fontWeight: 300, lineHeight: 1 }}>
+            <span
+              aria-hidden="true"
+              style={{
+                color: "#d4af5f",
+                fontSize: 24,
+                fontWeight: 300,
+                lineHeight: 1,
+                opacity: 0.85,
+              }}
+            >
               ›
             </span>
           </button>
@@ -2433,7 +2806,8 @@ export function ChatShell({
               boxShadow: "-30px 0 80px rgba(0,0,0,0.65), 0 0 0 1px rgba(201,168,76,0.25), inset 1px 0 0 rgba(201,168,76,0.18)",
               display: "flex",
               flexDirection: "column",
-              animation: "maa-panel-slide 0.65s cubic-bezier(0.22, 1, 0.36, 1) both, maa-panel-border-glow 1.4s ease-out 0.55s both",
+              animation: "maa-panel-slide 0.9s cubic-bezier(0.16, 1, 0.3, 1) both, maa-panel-border-glow 1.6s ease-out 0.7s both",
+              transformOrigin: "right center",
               willChange: "transform, opacity",
             }}
           >
@@ -2464,14 +2838,16 @@ export function ChatShell({
             to { opacity: 1; }
           }
           @keyframes maa-panel-slide {
-            0% { transform: translateX(100%) scale(0.985); opacity: 0; }
-            55% { transform: translateX(-8px) scale(1.005); opacity: 1; }
-            80% { transform: translateX(2px) scale(0.998); }
-            100% { transform: translateX(0) scale(1); opacity: 1; }
+            /* Luxury drawer pull — slower, weightier, with a brief settle */
+            0% { transform: translateX(110%) scaleX(0.96); opacity: 0; }
+            18% { opacity: 1; }
+            65% { transform: translateX(-10px) scaleX(1.008); }
+            82% { transform: translateX(3px) scaleX(0.998); }
+            100% { transform: translateX(0) scaleX(1); opacity: 1; }
           }
           @keyframes maa-panel-border-glow {
             0% { box-shadow: -30px 0 80px rgba(0,0,0,0.65), 0 0 0 1px rgba(201,168,76,0.25), inset 1px 0 0 rgba(201,168,76,0.18); }
-            45% { box-shadow: -30px 0 80px rgba(0,0,0,0.65), 0 0 0 1px rgba(201,168,76,0.95), 0 0 48px rgba(201,168,76,0.35), inset 1px 0 0 rgba(201,168,76,0.55); }
+            40% { box-shadow: -30px 0 80px rgba(0,0,0,0.65), 0 0 0 1px rgba(212,175,95,1), 0 0 60px rgba(212,175,95,0.45), inset 1px 0 0 rgba(212,175,95,0.7); }
             100% { box-shadow: -30px 0 80px rgba(0,0,0,0.65), 0 0 0 1px rgba(201,168,76,0.25), inset 1px 0 0 rgba(201,168,76,0.18); }
           }
           @keyframes maa-panel-sheen {
@@ -2482,6 +2858,14 @@ export function ChatShell({
           @keyframes maa-cta-in {
             0% { transform: translateY(14px) scale(0.97); opacity: 0; }
             100% { transform: translateY(0) scale(1); opacity: 1; }
+          }
+          @keyframes maa-launcher-bell-breathe {
+            0%, 100% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 8px rgba(212,175,95,0.55)); }
+            50% { transform: scale(1.08) rotate(-2deg); filter: drop-shadow(0 0 14px rgba(212,175,95,0.85)); }
+          }
+          @keyframes maa-pulse-green {
+            0%, 100% { box-shadow: 0 0 8px rgba(61,209,122,0.7), 0 0 0 0 rgba(61,209,122,0.5); }
+            50% { box-shadow: 0 0 12px rgba(61,209,122,0.9), 0 0 0 4px rgba(61,209,122,0); }
           }
         `}</style>
       </div>
