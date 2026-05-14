@@ -279,8 +279,16 @@ export interface MaaV2Knowledge {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// In production the API runs from dist/, but tsc doesn't copy JSON files. The
+// JSON ships in src/ (deployed via git pull). When __dirname contains a
+// `/dist/apps/api/` segment (the tsc output layout), redirect to the equivalent
+// `/apps/api/` path so prod reads the same JSON the source tree contains.
+const jsonDir = __dirname
+  .replace(/[\\\/]dist[\\\/]apps[\\\/]api[\\\/]/, `${path.sep}apps${path.sep}api${path.sep}`)
+  .replace(/[\\\/]dist[\\\/]/, `${path.sep}`);
+
 function readJson<T>(filename: string): T {
-  const filePath = path.join(__dirname, filename);
+  const filePath = path.join(jsonDir, filename);
   const raw = readFileSync(filePath, "utf8");
   return JSON.parse(raw) as T;
 }
