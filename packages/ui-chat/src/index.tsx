@@ -1368,17 +1368,23 @@ export function ChatShell({
         "--accent-rgb": accentRgb,
         "--accent-text": accentTextColor,
         position: "relative",
-        background: darkMode ? "#0a0f0a" : "#f7f8f9",
-        borderRadius: 20,
+        background: mode === "floating" ? "transparent" : (darkMode ? "#0a0f0a" : "#f7f8f9"),
+        borderRadius: mode === "floating" ? 0 : 20,
         overflow: "hidden",
         overflowX: "hidden",
         display: "flex",
         flexDirection: "column",
-        border: "1px solid #d0d5dd",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+        border: mode === "floating" ? "none" : "1px solid #d0d5dd",
+        boxShadow: mode === "floating" ? "none" : "0 8px 32px rgba(0,0,0,0.12)",
         width: "100%",
         maxWidth: "100%",
         boxSizing: "border-box",
+        // In floating mode the section must fill its parent panel container
+        // (which spans top:0 to bottom:0) so the flex spacer can push the
+        // input + footer to the very bottom of the screen.
+        height: mode === "floating" ? "100%" : undefined,
+        flex: mode === "floating" ? "1 1 auto" : undefined,
+        minHeight: mode === "floating" ? 0 : undefined,
       } as React.CSSProperties}
     >
       <style>{globalCss}</style>
