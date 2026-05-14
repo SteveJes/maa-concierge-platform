@@ -74,6 +74,27 @@ Production runs API from `dist/`, but tsc doesn't copy JSON. Loader now strips `
 - FR spa CTA → bain à remous on toit, terrasse, bain vapeur, sauna finlandais, premium tone ✅
 - FR memberships CTA → 225/185/195/295 with "actuellement" + inclusions ✅
 - EN "I need care" → Daphné's clarification in natural English ✅
+- FR affiliated clubs ("Je voyage à NY") → 100+ clubs network, names NYAC with address+phone, routes to reception ✅
+- FR history question → 1881 founding, 4 Stanley Cups, 1931 Coupe Grey, premium heritage tone ✅
+
+### Demo URL visually verified via Playwright (2026-05-14)
+- https://clients.dubub.com/demo/club-sportif-maa loads MAA's real site in the iframe background
+- Premium gold peeking tab anchored to the right edge: bell + "CONCIERGE IA PAR DUBUB" + "Sophie vous accueille" + green-pulse "Disponible maintenant" — exactly matches Daphné's mockup
+- Click → 5-layer cinematic open animation runs: backdrop blur fades in, panel slides from right with spring overshoot, gold border glow pulses on arrival, diagonal light-sweep crosses the panel, 5 CTAs stagger-fade-in
+- All 5 mockup CTAs present + clickable: Réserver un entraînement privé / Horaire de pickleball / Réserver une visite du club / Comparer les abonnements / Services du spa
+- End-to-end CTA flow verified: click "Horaire de pickleball" → bot replies with 28 timeslots / members-only / 2-4 players / via MAA FLiip app → lead-capture form appears at bottom
+- The bottom-right widget visible in screenshots is the MAA website's OWN chatbot, loaded inside our background iframe — not ours. We can't remove it (cross-origin iframe).
+
+### Two prod-deploy gotchas now patched (deploy.sh on droplet)
+1. The deploy script did NOT include `pnpm --filter @platform/ui-chat build` even though `@platform/ui-chat` has `"main": "dist/index.js"` — meaning Web was importing the OLD compiled widget. Patched.
+2. Next.js was serving cached chunks from `.next/` even after rebuild. Now `rm -rf apps/web/.next` runs before web build. Patched.
+
+### Demo-impact summary
+- v2 is DEFAULT for MAA on prod (`KNOWLEDGE_VERSION=v1` to roll back).
+- 12 v2 META JSON files + 11 operational sections live: abonnement, cours-en-groupe, cours-specialite, sports, restaurant (full menu), clinique-spa-detente, pool, visite-club, clinique-services, affiliated-clubs, club-identity.
+- Deterministic pricing + schedule short-circuits bypassed when v2 active so LLM composes with v2 tone + soft CTAs.
+- Bilingual independence: every visitor-facing field pre-translated FR + EN in JSON.
+- Lead capture: existing /v1/tenants/maa/callback flow routes notifications to `steve@dubub.com,daphne@dubub.com` (shadow mode) via Brevo.
 
 ## Live production URLs
 - Web / demo: https://clients.dubub.com (and `/demo/maa`, `/demo/dubub`)
