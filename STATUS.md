@@ -41,6 +41,40 @@ Pages 32-203 (~170 pages of operational content): clinique-spa-détente, restaur
 - VAPI parity: regenerate Sophie-MAA + SophIA voice prompts once v2 is stable; paste into VAPI dashboard
 - Retire v1 ingestion (`apps/api/src/ingestion/maa-pdf.ts` + `tenant-core-facts.json`) once v2 is fully live
 
+## 2026-05-14 — Demo-ready milestone (v2 LIVE on prod, premium UI shipped)
+
+`KNOWLEDGE_VERSION=v2` is now the default in `resolveTenantSystemPrompt` — MAA on production runs from the v2 brain. No env override needed; set `KNOWLEDGE_VERSION=v1` for emergency rollback.
+
+### Premium UI shipped (commits c6f6876, 088ea02, 82e83f3)
+
+`packages/ui-chat/src/index.tsx`:
+- **Peeking launcher tab** anchored to the right edge — gold-bordered card with bell icon, "CONCIERGE IA PAR DUBUB" brand line, "Sophie vous accueille" greeting, green-pulse "Disponible maintenant", chevron. Bilingual.
+- **5-layer "out of this world" open animation**: backdrop blur (450ms) → panel spring-slide with overshoot (650ms cubic-bezier) → gold border glow pulse on arrival (900ms) → diagonal gold light-sweep crosses panel once (1.5s) → 5 CTA buttons stagger-fade-in 80ms apart.
+- **Suggested-question CTAs restyled** as premium dark cards with gold borders + chevrons.
+- **MAA quick-action CTAs** match the mockup: Réserver un entraînement privé / Horaire de pickleball / Réserver une visite du club / Comparer les abonnements / Services du spa (FR + EN).
+
+### Sections encoded for demo (commits 6f08794, 0c0ee81, 82e83f3)
+
+`apps/api/src/knowledge/maa-v2/sections/`:
+- abonnement.json — membership rates + inclusions + extras + promotions
+- cours-en-groupe.json — group class families + 75+/week rule + class types
+- cours-specialite.json — Cirque, Fitness aérien, Natation adulte, PowerWatts with full pricing
+- sports.json — basketball schedule, pickleball 28 timeslots, run club, triathlon, personal training, aquatic, training rooms, squash, Pilates reformer
+- restaurant.json — full menu (entrées/salades/plats/desserts/brunch/extras/boissons), chef Gary Rizk, wine-list rule
+- clinique-spa-detente.json — 3 entities (clinic / Mobile Mediq / spa) with price-table-confusion warning
+- pool.json — Espace O Spring 2026 schedule with site/PDF hours contradiction made explicit
+- visite-club.json — booking-visit flow + sales angle
+- clinique-services.json — 8 sub-services with practitioners, prices, safety rules
+
+### Loader fix (commit 088ea02)
+Production runs API from `dist/`, but tsc doesn't copy JSON. Loader now strips `/dist/apps/api` from `__dirname` so prod reads JSON from the deployed `src/` tree.
+
+### Live-verified on https://api.dubub.com
+- FR pickleball CTA → 28 timeslots, Nathalie Lambert poste 231, soft CTA ✅
+- FR spa CTA → bain à remous on toit, terrasse, bain vapeur, sauna finlandais, premium tone ✅
+- FR memberships CTA → 225/185/195/295 with "actuellement" + inclusions ✅
+- EN "I need care" → Daphné's clarification in natural English ✅
+
 ## Live production URLs
 - Web / demo: https://clients.dubub.com (and `/demo/maa`, `/demo/dubub`)
 - API: https://api.dubub.com
