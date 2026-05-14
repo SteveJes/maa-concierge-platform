@@ -1,0 +1,189 @@
+{
+  "_source": "Daphné PDF p.6 — 'Zones de confusion par département'. EN translations added by DUBUB team.",
+  "_purpose": "Each entry maps a known ambiguity zone to a concierge rule + contact + confidence. When a question lands in one of these zones, follow the rule strictly.",
+  "_bilingual": "rule + note are bilingual.",
+
+  "zones": [
+    {
+      "department": { "fr": "Abonnements", "en": "Memberships" },
+      "confusion": {
+        "fr": "Ce qui est inclus vs suppléments; promotion; taxes; engagement; annulation; frais d'initiation.",
+        "en": "What's included vs add-ons; promotions; taxes; commitment; cancellation; initiation fees."
+      },
+      "rule": {
+        "fr": "Répondre avec le tarif repère et orienter vers Francis pour confirmation finale.",
+        "en": "Share the posted rate and route to Francis for final confirmation."
+      },
+      "primaryContact": "francis_bradette",
+      "secondaryContact": "reception_poste_0",
+      "confidence": "toValidate",
+      "note": {
+        "fr": "À valider pour conditions finales.",
+        "en": "Final conditions need validation."
+      }
+    },
+    {
+      "department": { "fr": "Cours en groupe", "en": "Group classes" },
+      "confusion": {
+        "fr": "Horaire daté vs horaire réel; MyWellness; places restantes; cours inclus vs spécialisé.",
+        "en": "Dated schedule vs live schedule; MyWellness; remaining spots; included class vs specialty."
+      },
+      "rule": {
+        "fr": "Clarifier objectif, orienter vers MyWellness pour disponibilité.",
+        "en": "Clarify the goal; route to MyWellness for availability."
+      },
+      "primaryContact": "reception_poste_0",
+      "secondaryContact": "nathalie_lambert",
+      "confidence": "dated",
+      "note": {
+        "fr": "Daté pour horaires de démo. Ne jamais confirmer une place.",
+        "en": "Dated for demo schedules. Never confirm a spot."
+      }
+    },
+    {
+      "department": { "fr": "Cours de spécialité", "en": "Specialty classes" },
+      "confusion": {
+        "fr": "Cirque, fitness aérien, PowerWatts, natation adulte et Pilates peuvent être en supplément.",
+        "en": "Aerial circus, aerial fitness, PowerWatts, adult swim, and Pilates may carry an extra fee."
+      },
+      "rule": {
+        "fr": "Ne pas présenter comme inclus dans l'abonnement annuel.",
+        "en": "Do not present as included in the annual membership."
+      },
+      "primaryContact": "nathalie_lambert",
+      "secondaryContact": "reception_poste_0",
+      "confidence": "dated",
+      "note": {
+        "fr": "Daté/à valider pour sessions.",
+        "en": "Sessions are dated and need validation."
+      }
+    },
+    {
+      "department": { "fr": "Sports", "en": "Sports" },
+      "confusion": {
+        "fr": "Membre vs non-membre; réservation via app; accès terrain; horaires réservés.",
+        "en": "Member vs non-member; reservation via app; court access; reserved hours."
+      },
+      "rule": {
+        "fr": "Vérifier statut membre et ne jamais promettre accès non-membre.",
+        "en": "Check member status and never promise non-member access."
+      },
+      "primaryContact": "nathalie_lambert",
+      "secondaryContact": "francis_bradette",
+      "confidence": "confirmed",
+      "note": {
+        "fr": "Confirmé + disponibilité à valider.",
+        "en": "Confirmed; live availability still needs validation."
+      }
+    },
+    {
+      "department": { "fr": "Piscine", "en": "Pool" },
+      "confusion": {
+        "fr": "Horaire piscine vs cours aquatiques vs club de natation vs détente/spa.",
+        "en": "Pool hours vs aquatic classes vs swim club vs relaxation/spa."
+      },
+      "rule": {
+        "fr": "Clarifier le besoin avant de répondre.",
+        "en": "Clarify the need before answering."
+      },
+      "primaryContact": "nathalie_lambert",
+      "secondaryContact": "reception_poste_0",
+      "confidence": "confirmed",
+      "note": {
+        "fr": "Confirmé pour horaire général. ATTENTION: horaire site (7h-20h/7h-17h) vs PDF Spring 2026 (6h30-20h30/7h-18h) contradictoires — orienter vers confirmation.",
+        "en": "Confirmed for general hours. NOTE: site hours (7am-8pm/7am-5pm) vs Spring 2026 PDF (6:30am-8:30pm/7am-6pm) are contradictory — route to confirmation."
+      }
+    },
+    {
+      "department": { "fr": "Clinique sportive", "en": "Sports clinic" },
+      "confusion": {
+        "fr": "Clinique standard vs soins infirmiers Mobile Mediq; massage vs physiothérapie; prix génériques.",
+        "en": "Standard clinic vs Mobile Mediq nursing care; massage vs physiotherapy; generic pricing."
+      },
+      "rule": {
+        "fr": "Clarifier le type de soin et ne jamais diagnostiquer.",
+        "en": "Clarify the type of care and never diagnose."
+      },
+      "primaryContact": "clinique_sportive",
+      "secondaryContact": "mobile_mediq",
+      "confidence": "toValidate",
+      "note": {
+        "fr": "À valider pour tarifs.",
+        "en": "Pricing needs validation."
+      }
+    },
+    {
+      "department": { "fr": "Spa / salle de détente", "en": "Spa / relaxation room" },
+      "confusion": {
+        "fr": "Relaxation, massage, accès inclus avec abonnement/rendez-vous; tableau qui peut être mélangé avec clinique.",
+        "en": "Relaxation, massage, access included with membership/appointment; pricing table may be mixed up with the clinic."
+      },
+      "rule": {
+        "fr": "Répondre prudemment et orienter poste 234.",
+        "en": "Answer cautiously and route to ext. 234."
+      },
+      "primaryContact": "clinique_sportive",
+      "secondaryContact": null,
+      "confidence": "toValidate",
+      "note": {
+        "fr": "Pages Salle de détente et Soins infirmiers peuvent être dupliquées sur le site — confirmer avec MAA.",
+        "en": "Relaxation Room and Nursing Care pages may be duplicated on the website — confirm with MAA."
+      }
+    },
+    {
+      "department": { "fr": "Restaurant", "en": "Restaurant" },
+      "confusion": {
+        "fr": "Réservation <6 personnes vs groupes; menu du jour; téléphone 514 845-8002 vs 514 845-0002 en capture.",
+        "en": "Reservations <6 vs groups; daily menu; phone 514 845-8002 vs 514 845-0002 spotted in a screenshot."
+      },
+      "rule": {
+        "fr": "Utiliser 514 845-8002 et info@resto1881.com; ne pas utiliser 514 845-0002 tant que non confirmé.",
+        "en": "Use 514 845-8002 and info@resto1881.com; do not use 514 845-0002 until it's confirmed."
+      },
+      "primaryContact": "restaurant_1881",
+      "secondaryContact": null,
+      "confidence": "toValidate",
+      "note": {
+        "fr": "Numéro 514 845-0002 à valider — apparaît dans une capture mais non confirmé.",
+        "en": "Number 514 845-0002 needs validation — seen in a screenshot but not confirmed."
+      }
+    },
+    {
+      "department": { "fr": "Clubs affiliés", "en": "Affiliated clubs" },
+      "confusion": {
+        "fr": "Accès à plus de 100 clubs, mais conditions variables selon club.",
+        "en": "Access to 100+ clubs, but conditions vary by club."
+      },
+      "rule": {
+        "fr": "Ne pas confirmer l'accès précis; diriger réception.",
+        "en": "Don't confirm specific access; route to reception."
+      },
+      "primaryContact": "reception_poste_0",
+      "secondaryContact": null,
+      "confidence": "toValidate",
+      "note": {
+        "fr": "À valider par club précis.",
+        "en": "Each specific club must be validated."
+      }
+    },
+    {
+      "department": { "fr": "Services soins infirmiers", "en": "Nursing services" },
+      "confusion": {
+        "fr": "Risque entre soins infirmiers, services médicaux, clinique sportive, massages et prises de sang/prélèvements. Lieu du rendez-vous variable (MAA, bureau, domicile).",
+        "en": "Risk of mix-up between nursing care, medical services, sports clinic, massages, and blood tests/sampling. Appointment location varies (MAA, office, home)."
+      },
+      "rule": {
+        "fr": "Ne jamais donner de conseil médical, interpréter des résultats, dire quel test choisir, confirmer une urgence ou garantir un délai. Ne jamais confirmer une disponibilité ou un tarif final hors de la grille affichée. Pour tout symptôme, question médicale, résultat de test ou choix de service clinique, référer à Mobile Mediq ou à un professionnel de santé.",
+        "en": "Never give medical advice, interpret results, recommend which test to take, confirm an emergency, or guarantee a turnaround time. Never confirm availability or final pricing outside the posted grid. For any symptom, medical question, test result, or clinical service choice, refer to Mobile Mediq or a health professional."
+      },
+      "primaryContact": "mobile_mediq",
+      "secondaryContact": "clinique_sportive",
+      "tertiaryContact": "reception_poste_0",
+      "confidence": "toValidate",
+      "note": {
+        "fr": "Toujours rappeler les téléphones exacts: Mobile Mediq 514 543-2121 / Clinique MAA 514 845-2233 poste 234 / Réception 514 845-2233 poste 0.",
+        "en": "Always state the exact phone numbers: Mobile Mediq 514 543-2121 / MAA Clinic 514 845-2233 ext. 234 / Reception 514 845-2233 ext. 0."
+      }
+    }
+  ]
+}

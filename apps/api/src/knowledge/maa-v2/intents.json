@@ -1,0 +1,272 @@
+{
+  "_source": "Daphné PDF p.4-5 — 'Table Intentions'. EN translations added by DUBUB team (Daphné did FR only).",
+  "_purpose": "When the visitor matches an intent, the concierge follows this exact flow: clarify → route → action → CTA → fallback.",
+  "_bilingual": "Every visitor-facing string has both .fr and .en. The loader picks per locale. examples list is bilingual since intent detection needs both languages.",
+
+  "intents": [
+    {
+      "id": "reserve",
+      "label": { "fr": "Réserver", "en": "Book / Reserve" },
+      "examples": [
+        "Je veux réserver",
+        "Est-ce que je peux réserver ?",
+        "I want to book",
+        "Can I make a reservation?"
+      ],
+      "clarificationQuestion": {
+        "fr": "Souhaitez-vous réserver une table, une visite du Club, un rendez-vous clinique, un cours, une activité sportive ou une salle ?",
+        "en": "Would you like to book a table, a club visit, a clinic appointment, a class, a sport, or a room?"
+      },
+      "departmentByAnswer": {
+        "table": "restaurant_1881",
+        "visit": "francis_bradette",
+        "clinic": "clinique_sportive",
+        "course": "nathalie_lambert",
+        "sport": "nathalie_lambert",
+        "room": "reception_poste_0"
+      },
+      "action": {
+        "fr": "Identifier le service exact puis donner la marche à suivre officielle.",
+        "en": "Identify the exact service then provide the official next step."
+      },
+      "ctaTemplate": {
+        "fr": "Une fois le bon service identifié, je pourrai vous diriger vers la marche à suivre la plus simple.",
+        "en": "Once we identify the right service, I can point you to the simplest next step."
+      },
+      "fallback": {
+        "fr": "Si ambigu malgré clarification : offrir réception poste 0 ou appel IA.",
+        "en": "If still ambiguous after clarification: offer reception ext. 0 or an AI call."
+      }
+    },
+    {
+      "id": "care",
+      "label": { "fr": "Soin", "en": "Care / Treatment" },
+      "examples": [
+        "Je veux un soin",
+        "J'ai mal",
+        "Je veux me faire traiter",
+        "Je veux voir quelqu'un",
+        "I need care",
+        "I'm in pain",
+        "I'd like a treatment"
+      ],
+      "clarificationQuestion": {
+        "fr": "Cherchez-vous plutôt un massage, de la physiothérapie, de l'ostéopathie, de la nutrition, une consultation médicale ou un soin infirmier ?",
+        "en": "Are you looking for a massage, physiotherapy, osteopathy, nutrition, a medical consultation, or nursing care?"
+      },
+      "departmentByAnswer": {
+        "massage": "clinique_sportive",
+        "physio": "clinique_sportive",
+        "osteo": "clinique_sportive",
+        "nutrition": "clinique_sportive",
+        "medical": "clinique_sportive",
+        "nursing": "mobile_mediq"
+      },
+      "action": {
+        "fr": "Clarifier type de besoin; ne pas diagnostiquer.",
+        "en": "Clarify the type of need; never diagnose."
+      },
+      "ctaTemplate": {
+        "fr": "Si vous me précisez le type de besoin, je pourrai vous orienter vers le bon service.",
+        "en": "If you let me know what kind of care you're looking for, I can point you to the right service."
+      },
+      "fallback": {
+        "fr": "Si médical/sensible : orienter vers professionnel (clinique poste 234 ou Mobile Mediq).",
+        "en": "If medical or sensitive: route to a professional (clinic ext. 234 or Mobile Mediq)."
+      }
+    },
+    {
+      "id": "activity",
+      "label": { "fr": "Activité", "en": "Activity" },
+      "examples": [
+        "Je veux faire une activité",
+        "Qu'est-ce que vous offrez ?",
+        "What activities do you offer?",
+        "I'd like to try something"
+      ],
+      "clarificationQuestion": {
+        "fr": "Souhaitez-vous un cours en groupe, un sport, une activité aquatique, du pickleball, du squash, du basketball ou un cours spécialisé ?",
+        "en": "Are you interested in a group class, a sport, an aquatic activity, pickleball, squash, basketball, or a specialty class?"
+      },
+      "departmentByAnswer": {
+        "group_class": "nathalie_lambert",
+        "sport": "nathalie_lambert",
+        "aquatic": "nathalie_lambert",
+        "specialty": "nathalie_lambert",
+        "non_member": "francis_bradette"
+      },
+      "action": {
+        "fr": "Clarifier activité et statut membre.",
+        "en": "Clarify the activity and member status."
+      },
+      "ctaTemplate": {
+        "fr": "Je peux vous proposer l'option la plus logique selon votre objectif.",
+        "en": "I can suggest the option that best fits your goal."
+      },
+      "fallback": {
+        "fr": "Si accès incertain : Francis ou réception.",
+        "en": "If access is uncertain: Francis or reception."
+      }
+    },
+    {
+      "id": "price",
+      "label": { "fr": "Tarif / prix", "en": "Pricing" },
+      "examples": [
+        "Combien ça coûte ?",
+        "C'est quoi vos prix ?",
+        "How much does it cost?",
+        "What are your rates?"
+      ],
+      "clarificationQuestion": {
+        "fr": "Pour vous orienter correctement, votre question concerne-t-elle un abonnement, un cours spécialisé, un massage, la clinique, un casier, la buanderie ou le restaurant ?",
+        "en": "To point you in the right direction, is your question about membership, a specialty class, a massage, the clinic, a locker, laundry, or the restaurant?"
+      },
+      "departmentByAnswer": {
+        "membership": "francis_bradette",
+        "specialty_course": "nathalie_lambert",
+        "massage": "clinique_sportive",
+        "clinic": "clinique_sportive",
+        "locker": "reception_poste_0",
+        "laundry": "reception_poste_0",
+        "restaurant": "restaurant_1881"
+      },
+      "action": {
+        "fr": "Utiliser source vivante; ne pas garantir taxes, conditions ou promotions.",
+        "en": "Use the live source; never guarantee taxes, conditions, or promotions."
+      },
+      "ctaTemplate": {
+        "fr": "Je peux vous donner le repère affiché et vous orienter vers la confirmation finale.",
+        "en": "I can share the current posted rate and point you to the team for final confirmation."
+      },
+      "fallback": {
+        "fr": "Si non confirmé : bon service + prise en note.",
+        "en": "If not confirmed: route to the right team + offer to take a note."
+      }
+    },
+    {
+      "id": "hours",
+      "label": { "fr": "Horaire", "en": "Hours" },
+      "examples": [
+        "Vous fermez quand ?",
+        "La piscine est ouverte ?",
+        "À quelle heure est le cours ?",
+        "When do you close?",
+        "Is the pool open?"
+      ],
+      "clarificationQuestion": {
+        "fr": "Pour quel service souhaitez-vous connaître l'horaire exactement ?",
+        "en": "Which service's hours would you like to know exactly?"
+      },
+      "departmentByAnswer": {
+        "club_general": "confirmed_data",
+        "pool": "confirmed_data",
+        "restaurant": "confirmed_data",
+        "course": "live_source_mywellness",
+        "spa": "to_validate"
+      },
+      "action": {
+        "fr": "Utiliser source vivante; ne jamais donner l'horaire général pour un service spécialisé.",
+        "en": "Use the live source; never give the general club hours for a specialty service."
+      },
+      "ctaTemplate": {
+        "fr": "Voulez-vous que je vous oriente vers l'horaire officiel du service concerné ?",
+        "en": "Would you like me to point you to the official schedule for that service?"
+      },
+      "fallback": {
+        "fr": "Si horaire daté : 'actuellement, l'horaire affiché est...' + proposer validation.",
+        "en": "If the schedule is dated: 'currently, the posted hours are...' + offer to validate."
+      }
+    },
+    {
+      "id": "restaurant",
+      "label": { "fr": "Restaurant", "en": "Restaurant" },
+      "examples": [
+        "Je veux réserver une table",
+        "Menu",
+        "Groupe",
+        "Brunch",
+        "I want to book a table",
+        "What's on the menu?"
+      ],
+      "clarificationQuestion": {
+        "fr": "Êtes-vous moins de 6 personnes, 6 personnes ou plus, ou cherchez-vous un événement/groupe ?",
+        "en": "Are you fewer than 6 people, 6 or more, or are you looking to book a group event?"
+      },
+      "departmentByAnswer": {
+        "small": "restaurant_libro_booking",
+        "large": "restaurant_phone",
+        "event": "restaurant_phone"
+      },
+      "action": {
+        "fr": "Diriger vers réservation en ligne ou téléphone selon groupe.",
+        "en": "Direct to online booking or phone depending on group size."
+      },
+      "ctaTemplate": {
+        "fr": "Souhaitez-vous que je vous aide à choisir la bonne façon de réserver ?",
+        "en": "Would you like me to help you choose the best way to book?"
+      },
+      "fallback": {
+        "fr": "Pour menu du jour : restaurant directement.",
+        "en": "For the daily menu: the restaurant directly."
+      }
+    },
+    {
+      "id": "affiliated_clubs",
+      "label": { "fr": "Clubs affiliés", "en": "Affiliated clubs" },
+      "examples": [
+        "Je voyage",
+        "Je veux aller dans un club partenaire",
+        "I'm travelling",
+        "Do you have partner clubs abroad?"
+      ],
+      "clarificationQuestion": {
+        "fr": "Cherchez-vous un club dans une ville ou un pays précis ?",
+        "en": "Are you looking for a club in a specific city or country?"
+      },
+      "departmentByAnswer": {
+        "specific_city": "reception_poste_0"
+      },
+      "action": {
+        "fr": "Mentionner réseau de plus de 100 clubs; confirmer conditions avec réception.",
+        "en": "Mention the network of 100+ clubs; confirm conditions with reception."
+      },
+      "ctaTemplate": {
+        "fr": "Donnez-moi la ville et je peux vous aider à préparer la demande à la réception.",
+        "en": "Tell me the city and I can help you prepare the request for reception."
+      },
+      "fallback": {
+        "fr": "Ne jamais confirmer accès à un club précis.",
+        "en": "Never confirm access to a specific club."
+      }
+    },
+    {
+      "id": "complaint",
+      "label": { "fr": "Plainte / problème", "en": "Complaint / issue" },
+      "examples": [
+        "J'ai un problème",
+        "Je veux parler à quelqu'un",
+        "I have a complaint",
+        "I'd like to speak to someone"
+      ],
+      "clarificationQuestion": {
+        "fr": "Pour que je puisse vous diriger vers la bonne personne ou la bonne information, votre demande concerne-t-elle un service précis, une réservation, un paiement, un membre de l'équipe ou une expérience au Club ?",
+        "en": "So I can route you to the right person or information, does your request concern a specific service, a reservation, a payment, a team member, or an experience at the club?"
+      },
+      "departmentByAnswer": {
+        "default": "reception_poste_0"
+      },
+      "action": {
+        "fr": "Accueillir, clarifier, orienter, proposer prise en note.",
+        "en": "Welcome, clarify, route, offer to take a note."
+      },
+      "ctaTemplate": {
+        "fr": "Je peux vous diriger vers le bon contact ou prendre les détails pour transmission.",
+        "en": "I can route you to the right contact or take down the details so they can follow up."
+      },
+      "fallback": {
+        "fr": "Si urgence : téléphone direct.",
+        "en": "If urgent: direct phone."
+      }
+    }
+  ]
+}

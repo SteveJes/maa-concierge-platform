@@ -1,0 +1,224 @@
+{
+  "_source": "Daphné PDF p.5 — 'Grande matrice de clarification des mots vagues'. EN translations added by DUBUB team.",
+  "_purpose": "When the visitor uses one of these vague words, the concierge MUST ask the clarification question before answering. Replaces the old single-shot detection.",
+  "_bilingual": "clarificationQuestion + prudenceRule are bilingual. aliases include both FR and EN triggers.",
+
+  "vagueWords": [
+    {
+      "word": "réserver",
+      "aliases": ["réservation", "book", "booking", "reserve", "make a reservation"],
+      "possibleMeanings": [
+        "Restaurant",
+        "Visite du Club",
+        "Clinique",
+        "Massage",
+        "Soin infirmier",
+        "Cours",
+        "Pickleball",
+        "Squash",
+        "Salle",
+        "Groupe/événement"
+      ],
+      "clarificationQuestion": {
+        "fr": "Bien sûr. Pour vous guider au bon endroit, que souhaitez-vous réserver exactement : une table au restaurant, une visite du Club, un service à la clinique, un cours, une activité sportive ou une salle ?",
+        "en": "Of course — to point you to the right place, what would you like to book exactly: a restaurant table, a club visit, a clinic appointment, a class, a sport, or a room?"
+      },
+      "prudenceRule": {
+        "fr": "Ne jamais envoyer directement vers un seul lien sans clarifier.",
+        "en": "Never send directly to a single link without clarifying."
+      }
+    },
+    {
+      "word": "soin",
+      "aliases": ["traitement", "care", "treatment", "session"],
+      "possibleMeanings": [
+        "Massage",
+        "Physio",
+        "Ostéo",
+        "Thérapie sportive",
+        "Nutrition",
+        "Service médical",
+        "Soins infirmiers",
+        "Détente/spa"
+      ],
+      "clarificationQuestion": {
+        "fr": "Pour bien vous orienter, quand vous parlez d'un soin, faites-vous référence à un massage, un soin clinique, un soin infirmier ou plutôt à un moment de détente ?",
+        "en": "To point you the right way: when you mention care, do you mean a massage, a clinical treatment, nursing care, or more of a relaxation moment?"
+      },
+      "prudenceRule": {
+        "fr": "Ne jamais donner d'avis médical.",
+        "en": "Never give medical advice."
+      }
+    },
+    {
+      "word": "cours",
+      "aliases": ["classe", "class", "course"],
+      "possibleMeanings": [
+        "Cours en groupe",
+        "Cours de spécialité",
+        "Pilates",
+        "Natation adulte",
+        "PowerWatts",
+        "Cours privé",
+        "Cours via MyWellness"
+      ],
+      "clarificationQuestion": {
+        "fr": "Est-ce que vous cherchez un cours inclus dans la programmation régulière, un cours spécialisé ou plutôt une séance privée ?",
+        "en": "Are you looking for a class included in the regular schedule, a specialty class, or a private session?"
+      },
+      "prudenceRule": {
+        "fr": "Ne pas dire qu'un cours spécialisé est inclus si supplément.",
+        "en": "Don't say a specialty class is included if there's an extra fee."
+      }
+    },
+    {
+      "word": "piscine",
+      "aliases": ["pool", "natation", "swim", "aquatic"],
+      "possibleMeanings": [
+        "Horaire piscine",
+        "Cours aquatique",
+        "Natation adulte",
+        "Club de natation",
+        "Triathlon",
+        "Accès détente"
+      ],
+      "clarificationQuestion": {
+        "fr": "Souhaitez-vous obtenir l'horaire de la piscine, des informations sur un cours aquatique ou les règles d'accès à l'espace aquatique ?",
+        "en": "Would you like the pool schedule, information about an aquatic class, or the access rules for the aquatic area?"
+      },
+      "prudenceRule": {
+        "fr": "Membre/non-membre important.",
+        "en": "Member vs non-member status matters here."
+      }
+    },
+    {
+      "word": "activité",
+      "aliases": ["activity", "activités", "activities"],
+      "possibleMeanings": [
+        "Cours",
+        "Sports",
+        "Piscine",
+        "Course",
+        "Triathlon",
+        "Pickleball",
+        "Squash",
+        "Basketball",
+        "Pilates",
+        "Cirque"
+      ],
+      "clarificationQuestion": {
+        "fr": "Pour mieux vous guider, recherchez-vous plutôt un cours, un sport, une activité aquatique ou un accompagnement personnalisé ?",
+        "en": "To guide you better: are you looking for a class, a sport, an aquatic activity, or one-on-one coaching?"
+      },
+      "prudenceRule": {
+        "fr": "Clarifier niveau et statut membre.",
+        "en": "Clarify level and member status."
+      }
+    },
+    {
+      "word": "prix",
+      "aliases": ["tarif", "coût", "price", "cost", "pricing", "rate", "rates"],
+      "possibleMeanings": [
+        "Abonnement",
+        "Casier",
+        "Buanderie",
+        "Clinique",
+        "Massage",
+        "Cours spécialisé",
+        "Restaurant",
+        "Pilates",
+        "Squash"
+      ],
+      "clarificationQuestion": {
+        "fr": "Bien sûr. Quel tarif souhaitez-vous connaître exactement : un abonnement, un service, un cours, une consultation à la clinique, un massage, le restaurant ou un autre service ?",
+        "en": "Of course — which rate would you like exactly: a membership, a service, a class, a clinic consultation, a massage, the restaurant, or something else?"
+      },
+      "prudenceRule": {
+        "fr": "Utiliser source vivante; promotions à valider.",
+        "en": "Use the live source; promotions must be validated."
+      }
+    },
+    {
+      "word": "horaire",
+      "aliases": ["heure", "heures", "schedule", "hours", "opening hours"],
+      "possibleMeanings": [
+        "Club général",
+        "Piscine",
+        "Cours",
+        "Restaurant",
+        "Clinique",
+        "Spa",
+        "Pickleball",
+        "Session spéciale"
+      ],
+      "clarificationQuestion": {
+        "fr": "Bien sûr. Pour quel service souhaitez-vous connaître l'horaire exactement ?",
+        "en": "Of course — which service's hours would you like exactly?"
+      },
+      "prudenceRule": {
+        "fr": "Ne jamais donner l'horaire général pour un service spécialisé.",
+        "en": "Never give the general club hours for a specialty service."
+      }
+    },
+    {
+      "word": "accès",
+      "aliases": ["access", "entrer", "entry", "admission"],
+      "possibleMeanings": [
+        "Membre",
+        "Non-membre",
+        "Invité",
+        "Club affilié",
+        "Restaurant ouvert au public",
+        "Clinique",
+        "Pilates"
+      ],
+      "clarificationQuestion": {
+        "fr": "Êtes-vous déjà membre du Club, ou souhaitez-vous plutôt connaître les options offertes aux visiteurs ou aux non-membres ?",
+        "en": "Are you already a member of the club, or would you like to know the options for visitors and non-members?"
+      },
+      "prudenceRule": {
+        "fr": "Ne jamais garantir l'accès non-membre.",
+        "en": "Never guarantee non-member access."
+      }
+    },
+    {
+      "word": "annulation",
+      "aliases": ["annuler", "cancel", "cancellation"],
+      "possibleMeanings": [
+        "Rendez-vous clinique",
+        "Massage",
+        "Réservation restaurant",
+        "Cours",
+        "Abonnement"
+      ],
+      "clarificationQuestion": {
+        "fr": "Quel type de réservation ou de service souhaitez-vous annuler exactement ?",
+        "en": "What kind of reservation or service would you like to cancel exactly?"
+      },
+      "prudenceRule": {
+        "fr": "Ne pas confirmer l'annulation; orienter.",
+        "en": "Don't confirm the cancellation; route to the team."
+      }
+    },
+    {
+      "word": "disponibilité",
+      "aliases": ["disponible", "availability", "available"],
+      "possibleMeanings": [
+        "Place en cours",
+        "Rendez-vous",
+        "Terrain",
+        "Table",
+        "Salle",
+        "Professionnel"
+      ],
+      "clarificationQuestion": {
+        "fr": "Pour quel service souhaitez-vous vérifier les disponibilités, et pour quel moment ?",
+        "en": "Which service would you like to check availability for, and for when?"
+      },
+      "prudenceRule": {
+        "fr": "Disponibilité réelle à vérifier dans système officiel ou par équipe.",
+        "en": "Actual availability must be checked through the official system or by the team."
+      }
+    }
+  ]
+}

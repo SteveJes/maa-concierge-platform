@@ -1,0 +1,260 @@
+{
+  "_source": "Daphné email (canonical, kept on the side because she said many URLs change/don't open) + PDF p.1 + p.198-201",
+  "_purpose": "Canonical URL directory. The concierge OFFERS to direct the visitor to the right link — never just dumps URLs blindly. Many of these are live-data sources (schedules, prices) so the concierge must say 'actuellement' and propose validation.",
+  "_principle": "Daphné: 'Changer les liens pour des boutons cliquables plus cutes.' In the UI, render these as polished concierge-controlled buttons, not raw URLs.",
+
+  "schedules": [
+    {
+      "id": "mywellness_real_time",
+      "label": "Horaire MyWellness — cours en temps réel",
+      "url": "https://widgets.mywellness.com/facility/ac1088953",
+      "intent": "réservation cours / horaire en direct",
+      "confidence": "confirmed-but-availability-changes",
+      "openLink": "blocked-in-chatgpt-fallback-printscreen-for-demo",
+      "note": "Lien non cliquable depuis certains environnements; Daphné a pris des printscreens pour la démo 18-21 mai 2026. Trouver une façon de l'ouvrir car les disponibilités changent."
+    },
+    {
+      "id": "group_classes_pdf",
+      "label": "Horaire des cours en groupe PDF",
+      "url": "https://www.clubsportifmaa.com/wp-content/uploads/2026/05/MAA_CoursEnGroupe_HoraireClassifications_2070Peel_May05-26.pdf",
+      "intent": "horaire cours groupe",
+      "confidence": "dated",
+      "note": "PDF daté mai 2026 — vérifier la mise à jour mensuellement."
+    },
+    {
+      "id": "pool_schedule_pdf",
+      "label": "Horaire piscine PDF",
+      "url": "https://www.clubsportifmaa.com/wp-content/uploads/2026/04/MAA_Piscine_Pool_Printemps2026_04-07-26.pdf",
+      "intent": "horaire piscine",
+      "confidence": "dated"
+    },
+    {
+      "id": "pool_program_pdf",
+      "label": "Programmation piscine / Espace O",
+      "url": "https://www.clubsportifmaa.com/wp-content/uploads/2026/03/MAA_Piscine_Programmme_Spring2026.pdf",
+      "intent": "programme aquatique",
+      "confidence": "dated"
+    },
+    {
+      "id": "swim_adult_page",
+      "label": "Natation adulte",
+      "url": "https://www.clubsportifmaa.com/fr/cours/cours-de-natation-pour-adultes/",
+      "intent": "natation cours adulte",
+      "confidence": "confirmed"
+    },
+    {
+      "id": "aerial_circus_pdf",
+      "label": "Cirque aérien — horaire printemps 2026",
+      "url": "https://www.clubsportifmaa.com/wp-content/uploads/2026/03/MAA_Aerial-Circus_Spring2026.pdf",
+      "intent": "cirque aérien horaire",
+      "confidence": "dated"
+    },
+    {
+      "id": "powerwatts_pdf",
+      "label": "PowerWatts — horaire",
+      "url": "https://www.clubsportifmaa.com/wp-content/uploads/2026/04/MAA_PowerWatts_Hiver-Spring2026.pdf",
+      "intent": "powerwatts horaire",
+      "confidence": "dated"
+    },
+    {
+      "id": "pilates_reformer_pdf",
+      "label": "Pilates Reformer — horaire",
+      "url": "https://www.clubsportifmaa.com/wp-content/uploads/2026/04/MAA_Pilates_Reformer_Horaire-Schedule_May4-26.pdf",
+      "intent": "pilates reformer horaire",
+      "confidence": "dated"
+    },
+    {
+      "id": "triathlon_pdf",
+      "label": "Programmation triathlon",
+      "url": "https://www.clubsportifmaa.com/wp-content/uploads/2026/01/MAA_ClubTriathlon_Programme-Offres-FR_Jan26.pdf",
+      "intent": "triathlon programme",
+      "confidence": "dated"
+    }
+  ],
+
+  "pricing": [
+    {
+      "id": "membership_page",
+      "label": "Abonnements MAA",
+      "url": "https://www.clubsportifmaa.com/fr/abonnement-gym-montreal/",
+      "intent": "tarif abonnement",
+      "confidence": "confirmed"
+    },
+    {
+      "id": "fliip_membership",
+      "label": "Inscription / achat abonnement FLiiP",
+      "url": "https://clubsportifmaa.fliipapp.com/user/register/buy_membership/1#8948",
+      "intent": "acheter abonnement en ligne",
+      "confidence": "confirmed"
+    },
+    {
+      "id": "clinic_fees_2026",
+      "label": "Grille tarifaire clinique / thérapie sportive / physiothérapie / massothérapie",
+      "url": "https://www.clubsportifmaa.com/wp-content/uploads/2026/04/MAA_Clinic_Fees_Border_Apr23-26_Fr.pdf",
+      "intent": "tarifs clinique",
+      "confidence": "dated",
+      "note": "Avril 2026."
+    },
+    {
+      "id": "clinic_fees_old",
+      "label": "Ancienne grille clinique (à valider si encore utilisée)",
+      "url": "https://www.clubsportifmaa.com/wp-content/uploads/2025/10/MAA_Clinic_Fees_Border_Nov1-25_Fr.pdf",
+      "intent": "tarifs clinique ancienne",
+      "confidence": "toValidate"
+    },
+    {
+      "id": "pilates_private_fees",
+      "label": "Pilates privé / grille tarifaire (à valider)",
+      "url": "https://www.clubsportifmaa.com/wp-content/uploads/2025/05/MAA_Clinic_Fees_Border_May26-25_Fr.pdf",
+      "intent": "tarif pilates privé",
+      "confidence": "toValidate"
+    },
+    {
+      "id": "pilates_reformer_flyer",
+      "label": "Pilates Reformer — informations et tarifs",
+      "url": "https://www.clubsportifmaa.com/wp-content/uploads/2026/04/MAA_Pilates_Reformer_Flyer_Jan9-26.pdf",
+      "intent": "pilates reformer info",
+      "confidence": "dated"
+    },
+    {
+      "id": "1881_menu_main",
+      "label": "Restaurant Le 1881 — menu principal",
+      "url": "https://www.clubsportifmaa.com/wp-content/uploads/2025/10/1881_Menu1_Fr_Oct2025.pdf",
+      "intent": "menu restaurant",
+      "confidence": "dated"
+    },
+    {
+      "id": "1881_menu_lunch",
+      "label": "Restaurant Le 1881 — menu déjeuner",
+      "url": "https://www.clubsportifmaa.com/wp-content/uploads/2025/10/1881_Menu2_Fr_Oct2025.pdf",
+      "intent": "menu déjeuner restaurant",
+      "confidence": "dated"
+    },
+    {
+      "id": "1881_wine_list",
+      "label": "Restaurant Le 1881 — carte des vins",
+      "url": "https://www.clubsportifmaa.com/wp-content/uploads/2023/09/1881_Menu_CarteDesVins.pdf",
+      "intent": "carte des vins",
+      "confidence": "dated"
+    },
+    {
+      "id": "1881_online_order",
+      "label": "Restaurant Le 1881 — menu / commande en ligne",
+      "url": "https://clubsportifmaa.clusterpos.com/menu",
+      "intent": "commander en ligne",
+      "confidence": "confirmed"
+    }
+  ],
+
+  "reservations": [
+    {
+      "id": "visit_club",
+      "label": "Planifier une visite du Club",
+      "url": "https://www.clubsportifmaa.com/fr/planifier-une-visite-gym-montreal/",
+      "intent": "planifier une visite / découvrir",
+      "confidence": "confirmed",
+      "isPrimaryCta": true
+    },
+    {
+      "id": "restaurant_libro",
+      "label": "Réservation Restaurant Le 1881 via Libro",
+      "url": "https://booking.libroreserve.com/2599e556a189b49/QC016934055076/seat",
+      "intent": "réserver table restaurant <6 personnes",
+      "confidence": "confirmed"
+    },
+    {
+      "id": "fliip_service",
+      "label": "Inscription / achat service FLiiP",
+      "url": "https://clubsportifmaa.fliipapp.com/user/register/buy_service/1",
+      "intent": "acheter service (massage, etc.)",
+      "confidence": "confirmed"
+    }
+  ],
+
+  "appointments": [
+    {
+      "id": "massage_purchase",
+      "label": "Massothérapie — achat ou prise de service",
+      "url": "https://clubsportifmaa.fliipapp.com/user/register/buy_service/1",
+      "intent": "réserver massothérapie",
+      "confidence": "confirmed"
+    },
+    {
+      "id": "mobile_mediq_form",
+      "label": "Soins infirmiers Mobile Mediq — demande de rendez-vous",
+      "url": "https://mmqclientweb.azurewebsites.net/form/maa?culture=fr-CA",
+      "intent": "rendez-vous soins infirmiers",
+      "confidence": "confirmed"
+    },
+    {
+      "id": "sport_therapy",
+      "label": "Thérapie sportive — page",
+      "url": "https://www.clubsportifmaa.com/fr/therapie-sportive/",
+      "intent": "thérapie sportive info",
+      "confidence": "confirmed"
+    },
+    {
+      "id": "massage_page",
+      "label": "Massothérapie — page",
+      "url": "https://www.clubsportifmaa.com/fr/massotherapie/",
+      "intent": "massothérapie info",
+      "confidence": "confirmed"
+    },
+    {
+      "id": "nutrition_page",
+      "label": "Nutrition — page",
+      "url": "https://www.clubsportifmaa.com/fr/nutrition/",
+      "intent": "nutrition info",
+      "confidence": "confirmed",
+      "note": "À valider: tarifs et horaires nutrition."
+    },
+    {
+      "id": "medical_services",
+      "label": "Services médicaux — page",
+      "url": "https://www.clubsportifmaa.com/fr/services-medicaux/",
+      "intent": "services médicaux info",
+      "confidence": "confirmed"
+    },
+    {
+      "id": "nursing_services",
+      "label": "Services de soins infirmiers — page",
+      "url": "https://www.clubsportifmaa.com/fr/service-soins-infirmiers/",
+      "intent": "soins infirmiers info",
+      "confidence": "confirmed"
+    }
+  ],
+
+  "bookingPlatforms": [
+    {
+      "platform": "GoRendezvous",
+      "note": "Mentionné dans la base — à clarifier quand utilisé vs MyWellness / FLiiP."
+    },
+    {
+      "platform": "MyWellness",
+      "url": "https://widgets.mywellness.com/facility/ac1088953",
+      "note": "Cours en temps réel."
+    },
+    {
+      "platform": "FLiiP",
+      "url": "https://clubsportifmaa.fliipapp.com",
+      "note": "Achat abonnement + services."
+    },
+    {
+      "platform": "Mobile Mediq web",
+      "url": "https://mmqclientweb.azurewebsites.net/form/maa?culture=fr-CA",
+      "note": "Soins infirmiers."
+    },
+    {
+      "platform": "Libro",
+      "url": "https://booking.libroreserve.com/2599e556a189b49/QC016934055076/seat",
+      "note": "Réservation restaurant."
+    },
+    {
+      "platform": "ClusterPos",
+      "url": "https://clubsportifmaa.clusterpos.com/menu",
+      "note": "Commande en ligne restaurant."
+    }
+  ],
+
+  "_uiContract": "When the concierge cites one of these links, the chat UI renders it as a polished button with the link's label. Never paste raw URLs in conversation."
+}

@@ -9,6 +9,7 @@ import {
   listDocuments,
 } from "../ingestion/nocodb.js";
 import { buildMaaChatSystemPrompt } from "../prompts/maa-chat-system.js";
+import { buildMaaChatSystemPromptV2 } from "../prompts/maa-chat-system-v2.js";
 import { buildDububChatSystemPrompt } from "../prompts/dubub-chat-system.js";
 import { buildGenericTenantChatSystemPrompt } from "../prompts/generic-tenant-chat-system.js";
 import { getTenant } from "../admin/tenants.js";
@@ -1145,9 +1146,12 @@ function stripCitationMarkersFromAssistantMessage(message: string): string {
  * the corresponding apps/api/src/prompts/{id}-chat-system.ts file.
  */
 function resolveTenantSystemPrompt(tenantCode: string | undefined, locale: string | undefined): string {
+  const knowledgeVersion = process.env.KNOWLEDGE_VERSION ?? "v1";
   switch (tenantCode) {
     case "maa":
-      return buildMaaChatSystemPrompt(locale);
+      return knowledgeVersion === "v2"
+        ? buildMaaChatSystemPromptV2(locale)
+        : buildMaaChatSystemPrompt(locale);
     case "dubub":
       return buildDububChatSystemPrompt(locale);
     default: {
@@ -1155,8 +1159,9 @@ function resolveTenantSystemPrompt(tenantCode: string | undefined, locale: strin
       if (config) {
         return buildGenericTenantChatSystemPrompt(config, locale);
       }
-      // Absolute fallback — unknown tenant, no config. Use MAA prompt as safe base.
-      return buildMaaChatSystemPrompt(locale);
+      return knowledgeVersion === "v2"
+        ? buildMaaChatSystemPromptV2(locale)
+        : buildMaaChatSystemPrompt(locale);
     }
   }
 }

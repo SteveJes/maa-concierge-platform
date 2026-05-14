@@ -1,0 +1,74 @@
+{
+  "_source": "Daphné PDF p.29-30 — 'Sous-catégories de cours en groupe'",
+  "_sectionId": "cours_en_groupe",
+  "_principle": "Plus de 75 cours en groupe par semaine. Présenter les FAMILLES, orienter vers MyWellness pour disponibilité réelle, aider à choisir selon l'objectif.",
+
+  "summary": {
+    "fr": "Plus de 75 cours en groupe par semaine, organisés en familles (Aérobie & Sculpt, Bootcamp & HIIT, Corps & Âme, Danse & Barre, Spinning, etc.). L'horaire vivant est sur MyWellness; pour la programmation hebdomadaire, voir le PDF horaire mensuel.",
+    "en": "More than 75 group classes per week, organized in families (Aerobics & Sculpt, Bootcamp & HIIT, Body & Soul, Dance & Barre, Spinning, etc.). Live schedule is on MyWellness; weekly programming is on the monthly PDF schedule."
+  },
+
+  "weeklyCount": {
+    "value": 75,
+    "phrasing": "plus de 75 cours par semaine",
+    "confidence": "confirmed",
+    "_note": "JAMAIS dire 175, 150, 200, ou autre. Le repère officiel est 'plus de 75'. Ne pas multiplier ni arrondir vers le haut."
+  },
+
+  "families": {
+    "aerobie_sculpt": {
+      "label": { "fr": "Aérobie & Sculpt", "en": "Aerobics & Sculpt" },
+      "details": "Sous-catégorie visible dans la navigation. Aucun détail exploitable trouvé sur le site.",
+      "responseRule": "Rester au niveau de la catégorie générale et proposer de consulter l'horaire ou de contacter la réception.",
+      "priority": "moyenne",
+      "risk": "inventer du contenu — éviter"
+    },
+    "bootcamp_hiit": {
+      "label": { "fr": "Bootcamp & HIIT", "en": "Bootcamp & HIIT" },
+      "details": "Cours comme Athletic Workout, Boxe-Fit, FORCE 50.",
+      "responseRule": "Orienter selon le niveau d'intensité et l'objectif (force, cardio, explosivité).",
+      "priority": "élevée",
+      "risk": "Confondre HIIT collectif et suivi individuel.",
+      "specialNote": "Si l'utilisateur mentionne une blessure ou une reprise, proposer la clinique ou un entraînement personnel."
+    },
+    "corps_ame": {
+      "label": { "fr": "Corps & Âme", "en": "Body & Soul" },
+      "details": "Cours comme Ballet, Cardio Danse, Danse-Fit, Latin Groove, Total Barre. Recoupe la famille 'Danse & Barre'.",
+      "responseRule": "Se concentrer sur l'expérience recherchée (souplesse, danse, barre) plutôt que sur une taxonomie stricte.",
+      "priority": "moyenne",
+      "risk": "Dupliquer les catégories."
+    },
+    "danse_barre": {
+      "label": { "fr": "Danse & Barre", "en": "Dance & Barre" },
+      "details": "Recoupe les mêmes cours que Corps & Âme.",
+      "responseRule": "Orienter selon le style (dansé, tonifiant, barre, plaisir).",
+      "priority": "moyenne",
+      "risk": "Doublon de taxonomie."
+    },
+    "spinning": {
+      "label": { "fr": "Spinning", "en": "Spinning" },
+      "details": "Cours comme Beat Ride, Endurance Ride.",
+      "responseRule": "Distinguer spinning loisir et programmes axés performance; pour la performance, proposer PowerWatts (cours de spécialité, payant).",
+      "priority": "moyenne-élevée",
+      "risk": "Confondre Spinning loisir (inclus dans abonnement) avec PowerWatts (cours de spécialité supplémentaire)."
+    }
+  },
+
+  "confirmedClassTypes": [
+    "yoga", "pilates", "spin / cycling", "aqua", "HIIT", "dance", "boxing",
+    "Athletic Workout", "Boxe-Fit", "FORCE 50", "Ballet", "Cardio Danse",
+    "Danse-Fit", "Latin Groove", "Total Barre", "Beat Ride", "Endurance Ride"
+  ],
+
+  "primaryContact": "reception_poste_0",
+  "secondaryContact": "nathalie_lambert",
+  "primaryLink": "group_classes_pdf",
+  "liveScheduleLink": "mywellness_real_time",
+
+  "memberAccessRule": "Les cours en groupe sont inclus avec l'abonnement. PAS d'accès à la carte (drop-in) confirmé pour les non-membres — la source ne mentionne pas cette option. Si le visiteur demande l'accès à la carte, expliquer que les cours sont inclus avec l'abonnement et orienter vers Francis Bradette pour explorer les options.",
+
+  "ctaForVisitors": {
+    "fr": "Voulez-vous que je vous aide à choisir un type de cours selon votre objectif : force, cardio, mobilité, yoga, spinning ou danse ?",
+    "en": "Would you like help choosing a class type based on your goal: strength, cardio, mobility, yoga, spin, or dance?"
+  }
+}

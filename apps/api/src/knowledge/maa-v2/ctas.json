@@ -1,0 +1,110 @@
+{
+  "_source": "Daphné PDF p.7 — 'CTA doux par service'. EN translations added by DUBUB team.",
+  "_purpose": "After answering a service-specific question, the concierge ends with the soft CTA that maps to the visitor's intent. Drives conversion without feeling pushy.",
+  "_principle": {
+    "fr": "Toujours terminer par un CTA logique avec l'intention. Faire avancer la conversation vers la conversion (visite, appel IA, courriel, prise de demande), pas vers la simple redirection.",
+    "en": "Always end with a CTA that fits the intent. Move the conversation toward conversion (visit, AI call, email, capture), not just redirection."
+  },
+
+  "ctasByService": [
+    {
+      "service": "abonnement",
+      "intent": "Prix, inclusions, comparaison, intérêt général",
+      "softConversion": "Planifier une visite / parler à Francis",
+      "cta": {
+        "fr": "Souhaitez-vous que je vous aide à planifier une visite du Club pour voir si l'abonnement vous convient ?",
+        "en": "Would you like me to help you schedule a visit so you can see if a membership is the right fit?"
+      }
+    },
+    {
+      "service": "visite",
+      "intent": "Découverte, hésitation, remise en forme",
+      "softConversion": "Réserver une visite",
+      "cta": {
+        "fr": "Je peux vous orienter vers la meilleure façon de planifier une visite selon vos objectifs.",
+        "en": "I can point you to the best way to plan a visit based on your goals."
+      }
+    },
+    {
+      "service": "cours_groupe",
+      "intent": "Choisir un cours, horaire, niveau",
+      "softConversion": "Objectif + MyWellness",
+      "cta": {
+        "fr": "Voulez-vous que je vous aide à choisir un type de cours selon votre objectif : force, cardio, mobilité, yoga, spinning ou danse ?",
+        "en": "Would you like help choosing a class type based on your goal: strength, cardio, mobility, yoga, spin, or dance?"
+      }
+    },
+    {
+      "service": "cours_specialise",
+      "intent": "Cirque, PowerWatts, natation adulte, Pilates",
+      "softConversion": "Clarifier niveau / session",
+      "cta": {
+        "fr": "Je peux vous aider à vérifier quel format correspond le mieux à votre niveau avant de vous diriger vers l'inscription.",
+        "en": "I can help you find the format that best matches your level before pointing you to registration."
+      }
+    },
+    {
+      "service": "sports",
+      "intent": "Pickleball, basketball, course, triathlon, squash",
+      "softConversion": "Vérifier membre/non-membre + contact",
+      "cta": {
+        "fr": "Êtes-vous déjà membre du Club ? Cela me permettra de vous orienter vers la bonne marche à suivre.",
+        "en": "Are you already a member? That'll let me point you to the right next step."
+      }
+    },
+    {
+      "service": "piscine",
+      "intent": "Horaire, cours aquatiques, natation adulte",
+      "softConversion": "Clarifier usage",
+      "cta": {
+        "fr": "Cherchez-vous l'horaire libre de la piscine ou un programme aquatique précis ?",
+        "en": "Are you after the open-swim pool schedule, or a specific aquatic program?"
+      }
+    },
+    {
+      "service": "clinique",
+      "intent": "Douleur, blessure, récupération",
+      "softConversion": "Identifier soin + poste 234",
+      "cta": {
+        "fr": "Si vous me décrivez brièvement le besoin, je pourrai vous orienter vers le bon service clinique.",
+        "en": "If you describe what you're dealing with, I can point you to the right clinic service."
+      }
+    },
+    {
+      "service": "soins_infirmiers",
+      "intent": "Prélèvements, injections, dépistage, perfusion",
+      "softConversion": "Mobile Mediq",
+      "cta": {
+        "fr": "Souhaitez-vous que je vous donne la marche à suivre pour joindre Mobile Mediq ?",
+        "en": "Would you like the steps to reach Mobile Mediq?"
+      }
+    },
+    {
+      "service": "restaurant",
+      "intent": "Réserver, menu, groupe, événement",
+      "softConversion": "Réservation / appel restaurant",
+      "cta": {
+        "fr": "Souhaitez-vous que je vous aide à choisir entre la réservation en ligne ou le contact direct avec le restaurant ?",
+        "en": "Would you like me to help you choose between online booking or calling the restaurant directly?"
+      }
+    },
+    {
+      "service": "clubs_affilies",
+      "intent": "Voyage, club partenaire",
+      "softConversion": "Ville/pays + réception",
+      "cta": {
+        "fr": "Donnez-moi la ville ou le pays visé et je peux vous aider à préparer la demande à la réception.",
+        "en": "Tell me the city or country you're heading to and I can help you prepare the request for reception."
+      }
+    }
+  ],
+
+  "_fallbackUniversalCta": {
+    "fr": "Souhaitez-vous que je vous dirige vers le bon contact selon votre demande ou que je la transmette moi-même ?",
+    "en": "Would you like me to route you to the right contact for your request, or to forward it myself?"
+  },
+  "_aiCallFallbackCta": {
+    "fr": "Souhaitez-vous que l'IA vous appelle pour discuter de votre demande de vive voix ?",
+    "en": "Would you like the AI to call you so we can discuss this over the phone?"
+  }
+}

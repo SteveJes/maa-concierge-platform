@@ -1,0 +1,236 @@
+{
+  "_source": "Daphné PDF p.3 — 'Données publiques - Sources vivantes : horaires et tarifs'",
+  "_purpose": "Hours, prices, promotions. These change. Always answer with 'actuellement' for non-Confirmed items and propose validation.",
+  "_rule": "Quand le niveau de confiance n'est pas 'Confirmé', le concierge doit répondre avec prudence, utiliser 'actuellement' et proposer une validation par le service concerné.",
+
+  "hours": [
+    {
+      "id": "training_floor",
+      "service": "Plateaux d'entraînement",
+      "schedule": {
+        "weekday": "6h à 22h",
+        "weekend": "7h à 19h"
+      },
+      "source": "Horaire général",
+      "confidence": "confirmed",
+      "responseRule": "Ne pas utiliser pour restaurant, clinique, spa, piscine, pickleball ou cours."
+    },
+    {
+      "id": "pool_public",
+      "service": "Piscine et terrasse — repère public/site",
+      "schedule": {
+        "weekday": "7h à 20h",
+        "weekend": "7h à 17h"
+      },
+      "source": "Horaire piscine (page publique)",
+      "confidence": "confirmed",
+      "responseRule": "Ne pas confirmer une disponibilité de corridor ou une inscription."
+    },
+    {
+      "id": "pool_pdf_spring_2026",
+      "service": "Piscine et terrasse — repère PDF Printemps 2026",
+      "schedule": {
+        "weekday": "6h30 à 20h30",
+        "weekend": "7h à 18h"
+      },
+      "source": "PDF MAA_Piscine_Pool_Printemps2026_04-07-26.pdf",
+      "confidence": "contradictory",
+      "responseRule": "Contradiction avec horaire public. Le concierge ne tranche pas seul — orienter vers confirmation avec Nathalie ou la réception."
+    },
+    {
+      "id": "restaurant",
+      "service": "Restaurant Le 1881",
+      "schedule": {
+        "weekdayMonFri": "7h à 22h",
+        "saturday": "8h à 22h",
+        "sunday": "8h à 16h"
+      },
+      "source": "Page restaurant / base",
+      "confidence": "confirmed",
+      "responseRule": "Pour groupe ou événement, orienter vers restaurant."
+    },
+    {
+      "id": "spa_detente",
+      "service": "Spa / salle de détente",
+      "schedule": {
+        "weekday": "9h à 19h",
+        "weekend": "11h à 15h"
+      },
+      "source": "Base salle de détente",
+      "confidence": "toValidate",
+      "responseRule": "La page semble parfois mélanger clinique et salle de détente. Orienter vers poste 234 pour confirmation."
+    },
+    {
+      "id": "courses_mywellness",
+      "service": "Horaire cours MyWellness",
+      "schedule": {
+        "example": "Exemples fournis du 18 mai 2026 au 21 mai 2026"
+      },
+      "source": "Printscreen / démo",
+      "confidence": "dated",
+      "responseRule": "Utilisable seulement pour la démo; ne jamais confirmer une place réelle. Orienter vers MyWellness pour disponibilité officielle."
+    },
+    {
+      "id": "pickleball",
+      "service": "Pickleball",
+      "schedule": {
+        "summary": "Créneaux hebdomadaires détaillés dans la base"
+      },
+      "source": "Page pickleball / base",
+      "confidence": "confirmed-schedule-not-availability",
+      "responseRule": "Confirmé pour l'horaire publié; disponibilité non confirmée. Réservation via application MAA; membre requis pour réserver."
+    }
+  ],
+
+  "pricing": [
+    {
+      "id": "membership_annual",
+      "item": "Abonnement annuel",
+      "price": "225 $/mois",
+      "source": "Abonnement",
+      "confidence": "confirmed",
+      "responseRule": "Dire 'actuellement' et orienter vers Francis pour conditions finales."
+    },
+    {
+      "id": "membership_senior",
+      "item": "Aînés annuel (70 ans et plus)",
+      "price": "185 $/mois",
+      "source": "Abonnement",
+      "confidence": "confirmed",
+      "responseRule": "Valider admissibilité et conditions."
+    },
+    {
+      "id": "membership_student",
+      "item": "Étudiants annuel (25 ans et moins)",
+      "price": "195 $/mois",
+      "source": "Abonnement",
+      "confidence": "confirmed",
+      "responseRule": "Valider admissibilité et conditions."
+    },
+    {
+      "id": "membership_monthly",
+      "item": "Abonnement mensuel",
+      "price": "295 $/mois",
+      "source": "Abonnement",
+      "confidence": "confirmed",
+      "responseRule": "Ne pas inventer durée, taxes ou conditions d'annulation."
+    },
+    {
+      "id": "initiation_fee",
+      "item": "Frais d'initiation",
+      "price": "Promo gratuit, valeur 250 $",
+      "source": "Promotion",
+      "confidence": "toValidate",
+      "responseRule": "Promotion évolutive; ne pas garantir."
+    },
+    {
+      "id": "technogym_checkup",
+      "item": "Technogym Checkup",
+      "price": "Évaluation complète valeur 180 $",
+      "source": "Promotion / abonnement",
+      "confidence": "toValidate",
+      "responseRule": "Présenter comme avantage actuellement affiché, confirmer avant inscription."
+    },
+    {
+      "id": "locker_full",
+      "item": "Casier pleine hauteur",
+      "price": "75 $/mois",
+      "source": "Abonnement",
+      "confidence": "confirmed",
+      "responseRule": "Supplément mensuel."
+    },
+    {
+      "id": "locker_half",
+      "item": "Demi-casier",
+      "price": "60 $/mois",
+      "source": "Abonnement",
+      "confidence": "confirmed",
+      "responseRule": "Supplément mensuel."
+    },
+    {
+      "id": "locker_third",
+      "item": "Casier 1/3",
+      "price": "35 $/mois (50 $ section exécutive)",
+      "source": "Abonnement",
+      "confidence": "confirmed",
+      "responseRule": "Supplément mensuel."
+    },
+    {
+      "id": "locker_quarter",
+      "item": "Casier 1/4",
+      "price": "25 $/mois",
+      "source": "Abonnement",
+      "confidence": "confirmed",
+      "responseRule": "Supplément mensuel."
+    },
+    {
+      "id": "laundry",
+      "item": "Buanderie",
+      "price": "25 $/mois",
+      "source": "Abonnement",
+      "confidence": "confirmed",
+      "responseRule": "Supplément mensuel."
+    },
+    {
+      "id": "massage_25",
+      "item": "Massage 25 min",
+      "price": "60 $ membre / 65 $ invité",
+      "source": "Salle de détente",
+      "confidence": "toValidate",
+      "responseRule": "Ne pas appliquer aux soins infirmiers."
+    },
+    {
+      "id": "massage_55",
+      "item": "Massage 55 min",
+      "price": "80 $ membre / 85 $ invité",
+      "source": "Salle de détente",
+      "confidence": "toValidate",
+      "responseRule": "Ne pas appliquer aux soins infirmiers."
+    },
+    {
+      "id": "massage_85",
+      "item": "Massage 85 min",
+      "price": "105 $ membre / 120 $ invité",
+      "source": "Salle de détente",
+      "confidence": "toValidate",
+      "responseRule": "Ne pas appliquer aux soins infirmiers."
+    },
+    {
+      "id": "cirque_aerien_90",
+      "item": "Cirque aérien 90 minutes",
+      "price": "220 $ membre / 330 $ non-membre par session; drop-in 40 $",
+      "source": "Programme cours spécialité",
+      "confidence": "dated",
+      "responseRule": "Session et politique de non-remboursement à confirmer auprès de Nathalie."
+    },
+    {
+      "id": "swim_adult",
+      "item": "Natation adultes",
+      "price": "165 $ 1x/semaine; 275 $ 2x/semaine; privés 50 $/30 min, 75 $/45 min, 90 $/60 min; à la carte 30 $ + taxes",
+      "source": "Programme piscine",
+      "confidence": "dated",
+      "responseRule": "Réservé aux membres; non-membres vers Francis."
+    },
+    {
+      "id": "powerwatts",
+      "item": "PowerWatts 8 semaines",
+      "price": "240 $ membre / 320 $ non-membre 1x/semaine; 400 $ / 560 $ 2x/semaine; drop-in 45 $ / 50 $; intro 65 $",
+      "source": "Programme PowerWatts",
+      "confidence": "dated",
+      "responseRule": "Chaussures Speedplay; min. 2 participants; non remboursable."
+    }
+  ],
+
+  "_pendingValidation": [
+    "Numéro de téléphone exacte du restaurant (514 845-8002 confirmé, 514 845-0002 à valider)",
+    "Horaire piscine: contradiction site public vs PDF printemps 2026",
+    "Tarifs services cliniques, soins infirmiers et entraînement personnel + durée des séances",
+    "Politique étudiants/seniors (preuve d'âge ou de statut)",
+    "Pilates sur appareils: plateforme MyWellness ou FLiiP?",
+    "Cours spécialisés: sessions 2026, drop-in, règles de remboursement",
+    "Squash: horaires, tarifs, réservation, cours privés, accès non-membres",
+    "Pickleball: horaire détaillé officiel, politique location de raquettes, nombre de terrains, règles de réservation",
+    "Définition précise membre vs non-membre vs drop-in par activité",
+    "Conditions de promotions (dates de fin, restrictions)"
+  ]
+}

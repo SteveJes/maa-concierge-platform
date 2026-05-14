@@ -3,6 +3,44 @@
 ## Current branch
 - `feat/maa-web-ingestion-v3`
 
+## 2026-05-14 — MAA Knowledge Base v2 rebuild (Daphné PDF source)
+
+**Major architectural shift.** v1 ingestion (crawler + `unpdf` flat text into `tenant-core-facts.json`) captured ~5% of MAA's actual website content. Daphné manually compiled the **full** website into a 203-page PDF + canonical-link email and dropped them at `apps/api/_inbox/daphne-maa-v1.pdf` (gitignored). We're rebuilding the MAA brain from her source as structured JSON.
+
+### Encoded so far (META layer + first batch of operational sheets)
+
+`apps/api/src/knowledge/maa-v2/`:
+- **META** — `rules.json` (4-tier confidence model + forbidden+replacement phrases + concierge identity + master 7-step conversation rule), `intents.json` (8 intents), `clarifications.json` (10 vague words), `confusion-zones.json` (10 ambiguities incl. pool-hours contradiction + restaurant-phone mismatch), `ctas.json` (10 soft CTAs), `contacts.json` (12 contacts), `staff.json` (shadow routing to stevejes@gmail.com), `sources-vivantes.json` (hours + 17 prices with confidence), `links.json` (canonical URLs), `voice-tone.json` (Daphné's full tone guide), `categories.json` (per-category playbook for 9 services)
+- **Sections** — `sections/abonnement.json`, `sections/cours-en-groupe.json`, `sections/cours-specialite.json` (Cirque/Fitness aérien/Natation adulte/PowerWatts full pricing), `sections/sports.json` (basketball schedule, pickleball 28 timeslots, run club, triathlon, personal training, aquatic programs, training rooms, squash, Pilates reformer)
+- **Bilingual independence**: every visitor-facing field is `{ fr, en }` BiString. Daphné is not sending an English version — we translated intelligently ourselves. `pickLocalized(b, locale)` in the loader picks per locale.
+
+### Consumption layer
+- `apps/api/src/knowledge/maa-v2/loader.ts` — typed reader + `resolveLeadRecipients` shadow router.
+- `apps/api/src/prompts/maa-chat-system-v2.ts` — full v2 prompt (58 KB) consuming everything above.
+- Feature flag in `apps/api/src/services/maa-chat.ts:resolveTenantSystemPrompt`: `KNOWLEDGE_VERSION=v2` switches MAA to v2. **Off by default** — v1 stays live until v2 is fully encoded.
+
+### Tooling
+- `apps/api/src/scripts/ingest-daphne-pdf.ts` — Phase A extractor: 203 pages, 387 hyperlinks, 48 pages auto-flagged as needing vision-based extraction.
+- `apps/api/src/scripts/inspect-daphne-pdf.ts` + `dump-daphne-pages.ts` — navigation helpers.
+- `apps/api/src/scripts/compare-v1-v2.ts` — side-by-side prompt comparison (FR + EN). Persisted: `_inbox/_extracted/v1-v2-comparison-2026-05-14.txt`.
+
+### Validation — v1 vs v2 comparison results
+- v2 demonstrably beats v1 on: vague-word handling ("Je veux réserver" → v2 asks Daphné's clarification question; v1 dumps assumptions), English bilingual ("I need care" → v2 asks "massage, physio, osteo, nutrition, medical, nursing?" in natural English; v1 dumps services), soft CTAs (proper end-of-reply by service).
+- v2 ties with v1 on cases that hit deterministic short-circuits — NOT v2 failures, just paths where v1 wins before the prompt fires:
+  - Pricing: `tryAnswerPricingQuestion()` in `apps/api/src/services/maa-pricing.ts` short-circuits the prompt. Future pass: point at v2/sources-vivantes.
+  - Pool hours (contradictory): RAG retrieval has the 7h-20h fact from old crawled data; LLM trusts evidence over v2's "this is contradictory" warning. Future pass: retire old hours retrieval; v2 META owns pool hours.
+
+### What's not yet encoded from the PDF
+Pages 32-203 (~170 pages of operational content): clinique-spa-détente, restaurant detail, demo schedule (May 18-21 2026), pool detail, more class details, pickleball detail page, Pilates Reformer, clinique services breakdown (thérapie sportive / massothérapie / ostéopathie / physiothérapie / nutrition / médical / nursing), community, history, boutique, media, affiliated clubs (~100 clubs worldwide), restaurant menus, suggested responses by intent, master link list.
+
+### What's not yet wired (next-session work)
+- Phase B vision-render for the 48 flagged table pages (schedule grids + price tables)
+- Point `maa-pricing.ts` short-circuit at v2 sources-vivantes
+- Retire old hours retrieval — v2 META takes over with contradiction handling
+- Lead-routing pipeline: visitor accepts soft CTA → capture name+email+question → email to stevejes@gmail.com (shadow recipient)
+- VAPI parity: regenerate Sophie-MAA + SophIA voice prompts once v2 is stable; paste into VAPI dashboard
+- Retire v1 ingestion (`apps/api/src/ingestion/maa-pdf.ts` + `tenant-core-facts.json`) once v2 is fully live
+
 ## Live production URLs
 - Web / demo: https://clients.dubub.com (and `/demo/maa`, `/demo/dubub`)
 - API: https://api.dubub.com

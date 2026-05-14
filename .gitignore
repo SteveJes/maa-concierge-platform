@@ -30,3 +30,6 @@ _vapi-prompts/
 # Sentinel — local run reports + auto-generated scenarios (regenerated on demand)
 apps/api/_sentinel-runs/
 apps/api/src/scenarios/generated/
+
+# Inbox — raw source documents from tenants (PDFs, emails, notes) before extraction
+apps/api/_inbox/

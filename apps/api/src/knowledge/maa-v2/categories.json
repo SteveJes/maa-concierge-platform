@@ -1,0 +1,142 @@
+{
+  "_source": "Daphné PDF p.24-27 — 'Règles par catégorie et instructions système'",
+  "_purpose": "For each service category, Daphné gives an exact playbook: typical intent → expected answer → resource → action → upsell → limit → type-sentence → instruction. The concierge follows this strictly when answering category-specific questions.",
+  "_consumption": "Each category becomes a compact reminder line in the v2 prompt. The detailed content stays here for retrieval-style lookup when an answer is being composed.",
+
+  "categories": [
+    {
+      "id": "abonnement",
+      "label": { "fr": "Abonnement", "en": "Membership" },
+      "typicalIntent": "Prix, inclusions, promotion, comparaison, visite.",
+      "expectedAnswer": "Indiquer le tarif annuel (225 $/mois), les inclusions (cours, piscine, sauna, bilan), les extras en supplément, et proposer de joindre Francis pour une visite ou un comparatif.",
+      "resource": "Page Abonnement, Francis Bradette.",
+      "primaryContact": "francis_bradette",
+      "recommendedAction": "Planifier une visite.",
+      "upsellOptions": ["Casier permanent", "Buanderie", "Bilan", "Entraînement personnel"],
+      "limit": "Ne pas citer un tarif provenant d'une page secondaire; ne pas affirmer qu'un cours spécialisé est inclus si la page Abonnement le classe en supplément.",
+      "typeSentence": null,
+      "extraInstruction": null
+    },
+    {
+      "id": "horaires",
+      "label": { "fr": "Horaires", "en": "Hours" },
+      "typicalIntent": "Heures d'ouverture, fermeture, accessibilité week-end.",
+      "expectedAnswer": "Horaire général ou horaire spécifique selon le service.",
+      "resource": "Page Contact ou page de service.",
+      "primaryContact": "reception_poste_0",
+      "recommendedAction": "Clarifier le service si besoin.",
+      "upsellOptions": ["Visite seulement si la personne découvre le club"],
+      "limit": "Ne pas donner l'horaire général à la place d'un horaire spécifique (restaurant, clinique, pickleball, etc.).",
+      "typeSentence": "Pour les plateaux d'entraînement, le site affiche 6 h à 22 h en semaine et 7 h à 19 h le week-end; la piscine est accessible de 7 h à 20 h en semaine et de 7 h à 17 h le week-end."
+    },
+    {
+      "id": "cours_en_groupe",
+      "label": { "fr": "Cours en groupe", "en": "Group classes" },
+      "typicalIntent": "Découvrir les types de cours, trouver un format, connaître l'horaire.",
+      "expectedAnswer": "Présenter les familles de cours (Aérobie & Sculpt, Bootcamp & HIIT, Corps & Âme, Danse & Barre, Spinning, etc.), renvoyer vers l'horaire MyWellness ou la réception, aider au choix en fonction de l'objectif.",
+      "resource": "Page Cours en groupe, réception.",
+      "primaryContact": "reception_poste_0",
+      "secondaryContact": "nathalie_lambert",
+      "recommendedAction": "Décrire l'objectif physique ou l'ambiance recherchée.",
+      "upsellOptions": ["Entraînement personnel", "Bilan de départ"],
+      "limit": "Ne pas citer des tarifs provenant de pages non officielles; ne pas confondre spinning loisir et PowerWatts.",
+      "extraInstruction": "Demander le type d'activité recherché (force, cardio, danse, yoga, spinning, etc.). Utiliser la base pour proposer un ou deux cours spécifiques et vérifier l'horaire PDF ou la page MyWellness pour les disponibilités. Encourager à explorer des cours complémentaires (ex. HIIT Circuit + Pilates) selon les objectifs de la personne."
+    },
+    {
+      "id": "cours_specialite",
+      "label": { "fr": "Cours de spécialité", "en": "Specialty classes" },
+      "typicalIntent": "Cirque, fitness aérien, natation pour adultes, PowerWatts.",
+      "expectedAnswer": "Expliquer que ces cours sont des activités supplémentaires payantes et détailler les tarifs et conditions lorsque disponibles (Cirque aérien 220 $ membre pour 90 min, PowerWatts 240 $ pour 1x/semaine).",
+      "resource": "Page du cours, Nathalie Lambert.",
+      "primaryContact": "nathalie_lambert",
+      "recommendedAction": "Qualifier le niveau (débutant/intermédiaire) et l'objectif.",
+      "upsellOptions": ["Bilan de départ", "Entraîneur personnel", "Visite"],
+      "limit": "Ne pas dire qu'ils sont inclus dans l'abonnement; ne pas inventer un horaire.",
+      "extraInstruction": "Vérifier si le visiteur est débutant ou intermédiaire pour Aerial Circus; expliquer la politique de non-remboursement et la nécessité de s'inscrire à une session. Pour PowerWatts, demander l'expérience en cyclisme et proposer d'autres cours cardio (ex. Spinning)."
+    },
+    {
+      "id": "sports",
+      "label": { "fr": "Sports", "en": "Sports" },
+      "typicalIntent": "Pickleball, basketball, course, triathlon, squash, piscine.",
+      "expectedAnswer": "Décrire les règles d'accès (adhésion obligatoire, nombre de joueurs, réservations via l'application), fournir l'horaire si publié (basketball lundi+vendredi 19h-21h; pickleball créneaux détaillés), et orienter vers Nathalie Lambert.",
+      "resource": "Pages sportives dédiées, Nathalie Lambert.",
+      "primaryContact": "nathalie_lambert",
+      "recommendedAction": "Vérifier le statut membre/non-membre; réserver via l'application pour les activités éligibles.",
+      "upsellOptions": ["Abonnement", "Entraîneur", "Clinique"],
+      "limit": "Ne pas promettre un accès non-membre sans preuve; ne pas confondre le sport avec la location de salle.",
+      "extraInstruction": "Toujours vérifier si la personne est membre (certains programmes requis). Pour chaque activité, présenter le résumé et proposer l'horaire ou la disponibilité. Pour les programmes de performance (triathlon, course, Masters Swim), questionner sur les objectifs sportifs.",
+      "nonMemberRule": "Lorsqu'un non-membre demande l'accès à une activité/service réservée aux membres, ne pas fermer la porte sèchement. Répondre avec tact, expliquer que l'activité semble rattachée à l'adhésion, puis orienter vers Francis Bradette."
+    },
+    {
+      "id": "clinique_sportive",
+      "label": { "fr": "Clinique sportive", "en": "Sports clinic" },
+      "typicalIntent": "Douleur, blessure, récupération, performance, nutrition, consultation médicale.",
+      "expectedAnswer": "Identifier le sous-service (thérapie sportive, physiothérapie, massothérapie, ostéopathie, nutrition, médecine), expliquer la prise de rendez-vous (formulaire ou poste 234), rappeler les limites (pas de diagnostic via l'IA).",
+      "resource": "Page Clinique sportive, poste 234.",
+      "primaryContact": "clinique_sportive",
+      "recommendedAction": "Décrire brièvement le besoin; proposer une prise de rendez-vous.",
+      "upsellOptions": ["Service clinique complémentaire (ex: massage après physiothérapie), jamais en pression"],
+      "limit": "Ne pas donner d'avis médical ni fixer un diagnostic.",
+      "typeSentence": "Si vous me dites s'il s'agit d'une douleur, d'une blessure, d'un besoin de massage, de nutrition ou d'une consultation médicale, je peux vous orienter vers le bon service clinique et vous expliquer comment prendre rendez-vous.",
+      "extraInstruction": "Confirmer le type de soin recherché (blessure sportive, physiothérapie, massage, nutrition, médecin, soins infirmiers). Vérifier la durée souhaitée et proposer le tarif correspondant. Obtenir des préférences (thérapeute homme/femme, technique). Orienter vers la réservation en ligne ou prendre le rendez-vous par téléphone.",
+      "commonPolicies": [
+        "Formulaire de santé obligatoire à la première visite",
+        "Arrivée 10 min avant",
+        "Reçu d'assurance disponible",
+        "Annulation gratuite avec préavis de 24h"
+      ]
+    },
+    {
+      "id": "soins_infirmiers",
+      "label": { "fr": "Soins infirmiers", "en": "Nursing care" },
+      "typicalIntent": "Prélèvements, perfusions, dépistage, injection.",
+      "expectedAnswer": "Expliquer le partenariat Mobile Mediq, indiquer que la prise de rendez-vous se fait en ligne ou au 514 543-2121, et rappeler que les tarifs ne sont pas publiés.",
+      "resource": "Page Soins infirmiers, Mobile Mediq.",
+      "primaryContact": "mobile_mediq",
+      "recommendedAction": "Remplir le formulaire en ligne ou appeler Mobile Mediq.",
+      "upsellOptions": [],
+      "limit": "Ne pas mélanger ces soins avec la clinique standard; ne pas utiliser le tableau de tarifs génériques pour ce service.",
+      "extraInstruction": "Toujours préciser que c'est un service partenaire externe (pas la clinique MAA standard)."
+    },
+    {
+      "id": "restaurant",
+      "label": { "fr": "Restaurant Le 1881", "en": "Le 1881 Restaurant" },
+      "typicalIntent": "Réserver une table, connaître les heures, organiser un groupe, consulter le menu.",
+      "expectedAnswer": "Réservation en ligne pour les groupes de moins de 6 personnes; téléphone pour 6 et plus; horaires (lundi-vendredi 7h-22h, samedi 8h-22h, dimanche 8h-16h); contact (514 845-8002 / poste 247); ne pas inventer le menu.",
+      "resource": "Page Restaurant.",
+      "primaryContact": "restaurant_1881",
+      "recommendedAction": "Réserver via le site ou appeler pour les groupes.",
+      "upsellOptions": ["Salle de conférence", "Visite si l'utilisateur est en train de découvrir le club"],
+      "limit": "Ne pas commenter sur le contenu du menu non publié.",
+      "extraInstruction": null,
+      "chef": {
+        "name": "Gary Rizk",
+        "role": "Chef exécutif"
+      }
+    },
+    {
+      "id": "clubs_affilies",
+      "label": { "fr": "Clubs affiliés", "en": "Affiliated clubs" },
+      "typicalIntent": "Réseau réciproque, accès à un club partenaire.",
+      "expectedAnswer": "Mentionner l'accès à plus de 100 clubs partenaires et recommander de vérifier les conditions exactes avec la réception.",
+      "resource": "Page Clubs affiliés, réception.",
+      "primaryContact": "reception_poste_0",
+      "recommendedAction": "Vérifier un club précis auprès de la réception.",
+      "upsellOptions": ["Mettre en avant la valeur de l'abonnement"],
+      "limit": "Ne pas confirmer l'accès à un club précis sans validation humaine.",
+      "typeSentence": "Le site indique un accès à plus de 100 clubs partenaires au Canada et à l'international; pour connaître la disponibilité d'un club précis, veuillez communiquer avec la réception."
+    }
+  ],
+
+  "siteStructure": {
+    "_source": "Daphné PDF p.27 — 'Synthèse exploitable'",
+    "topLevelSections": ["Abonnement", "Programmation", "Clinique sportive", "MAAgazine", "Le Club", "Restaurant"],
+    "programmationSubsections": ["Horaire", "Cours en groupe", "Experts", "Cours de spécialité", "Sports"],
+    "cliniqueSubsections": ["Thérapie sportive", "Physiothérapie", "Massothérapie", "Ostéopathie", "Nutrition", "Services médicaux", "Soins infirmiers"],
+    "referenceHierarchy": "Pages Contact et Abonnement, suivies des pages de service dédiées. Pages éditoriales et articles datent souvent — privilégier les pages les plus récentes et opérationnelles.",
+    "knownStaleSources": [
+      "Ancienne page d'horaire évoquait 'plus de 40 cours virtuels' — actuel: plus de 75 cours en groupe par semaine.",
+      "Anciennes pages tarifaires diffèrent de la page Abonnement actuelle."
+    ]
+  }
+}

@@ -1,0 +1,162 @@
+{
+  "_source": "Daphné PDF p.2 — 'Données publiques - Coordonnées générales et orientation du département'",
+  "_purpose": "Single authoritative contact directory. Replaces all scattered contacts. The concierge consults this first before mentioning any phone/email.",
+  "_rule": "Ne jamais inventer un poste, un nom ou un courriel. Si le bon poste est incertain, utiliser réception poste 0 + info@clubsportifmaa.com.",
+
+  "contacts": {
+    "club_general": {
+      "id": "club_general",
+      "department": "Contact général",
+      "name": "Club Sportif MAA",
+      "role": null,
+      "location": "2070, rue Peel, Montréal, QC H3A 1W6",
+      "phone": "514 845-2233",
+      "extension": null,
+      "email": "info@clubsportifmaa.com",
+      "recommendationLogic": "Station métro Peel à proximité. À utiliser pour orientation générale si aucun poste spécialisé n'est confirmé.",
+      "confidence": "confirmed"
+    },
+    "reception_poste_0": {
+      "id": "reception_poste_0",
+      "department": "Réception",
+      "name": "Réception Poste 0",
+      "role": null,
+      "location": "Club Sportif MAA",
+      "phone": "514 845-2233",
+      "extension": "0",
+      "email": "info@clubsportifmaa.com",
+      "recommendationLogic": "Questions générales, cours, réservations, informations, abonnements, clubs réciproques et orientation lorsqu'un poste spécialisé n'est pas confirmé.",
+      "confidence": "confirmed",
+      "isFallback": true
+    },
+    "francis_bradette": {
+      "id": "francis_bradette",
+      "department": "Abonnements / visites",
+      "name": "Francis Bradette",
+      "role": "Directeur des ventes et des opérations",
+      "location": "Club Sportif MAA",
+      "phone": "514 845-2233",
+      "extension": "239",
+      "email": "fbradette@clubsportifmaa.com",
+      "recommendationLogic": "Adhésion, options de fréquentation, visites, prospects non-membres et conversion vers une visite.",
+      "confidence": "confirmed"
+    },
+    "elisabeth_boutin": {
+      "id": "elisabeth_boutin",
+      "department": "Réception / service client",
+      "name": "Elisabeth Boutin",
+      "role": "Directrice de la réception et du service à la clientèle",
+      "location": "Club Sportif MAA",
+      "phone": "514 845-2233",
+      "extension": "235",
+      "email": "eboutin@clubsportifmaa.com",
+      "recommendationLogic": "Service client, réception et orientation selon la demande.",
+      "confidence": "confirmed"
+    },
+    "nathalie_lambert": {
+      "id": "nathalie_lambert",
+      "department": "Programmation sportive / sports / cours spécialisés",
+      "name": "Nathalie Lambert",
+      "role": "Directrice des programmes sportifs et des communications",
+      "location": "Club Sportif MAA",
+      "phone": "514 845-2233",
+      "extension": "231",
+      "email": "nlambert@clubsportifmaa.com",
+      "recommendationLogic": "Cours, sports, activités, cours spécialisés, piscine/programmes aquatiques, pickleball, basketball, clubs sportifs.",
+      "confidence": "confirmed"
+    },
+    "yvon_provencal": {
+      "id": "yvon_provencal",
+      "department": "Squash",
+      "name": "Yvon Provençal",
+      "role": "Directeur de squash et pro en chef",
+      "location": "Club Sportif MAA",
+      "phone": "514 845-2233",
+      "extension": "227",
+      "email": null,
+      "recommendationLogic": "Squash, ligues, cours ou information spécialisée squash.",
+      "confidence": "confirmed"
+    },
+    "clinique_sportive": {
+      "id": "clinique_sportive",
+      "department": "Clinique sportive / massages",
+      "name": "Clinique sportive MAA",
+      "role": null,
+      "location": "Club Sportif MAA",
+      "phone": "514 845-2233",
+      "extension": "234",
+      "email": "cliniquemaa@clubsportifmaa.com",
+      "recommendationLogic": "Clinique sportive, massothérapie, prise de rendez-vous. Ne jamais diagnostiquer ni confirmer une disponibilité.",
+      "confidence": "confirmed"
+    },
+    "mobile_mediq": {
+      "id": "mobile_mediq",
+      "department": "Soins infirmiers",
+      "name": "Partenaire Mobile Mediq",
+      "role": null,
+      "location": "Service partenaire (au MAA, au bureau ou à domicile selon le service)",
+      "phone": "514 543-2121",
+      "extension": null,
+      "email": null,
+      "recommendationLogic": "Soins infirmiers privés. Ne pas mélanger avec la clinique standard.",
+      "confidence": "confirmed"
+    },
+    "restaurant_1881": {
+      "id": "restaurant_1881",
+      "department": "Restaurant Le 1881",
+      "name": "Restaurant Le 1881",
+      "role": null,
+      "location": "2070, rue Peel, Montréal, QC H3A 1W6",
+      "phone": "514 845-8002",
+      "extension": "247",
+      "email": "info@resto1881.com",
+      "recommendationLogic": "Réservation, menu, groupes, salle de conférence, événements.",
+      "confidence": "confirmed",
+      "notes": [
+        "Un numéro 514 845-0002 apparaît dans une capture — à valider, ne pas utiliser tant que non confirmé."
+      ]
+    },
+    "pierre_blanchet": {
+      "id": "pierre_blanchet",
+      "department": "Autres postes publics",
+      "name": "Pierre Blanchet",
+      "role": "Rôle exact à valider avant automatisation",
+      "location": "Club Sportif MAA",
+      "phone": "514 845-2233",
+      "extension": "233",
+      "email": null,
+      "recommendationLogic": "Rôle exact à valider avant automatisation.",
+      "confidence": "toValidate"
+    },
+    "elizabeth_bitar": {
+      "id": "elizabeth_bitar",
+      "department": "Autres postes publics",
+      "name": "Elizabeth Bitar",
+      "role": "Rôle exact à valider avant automatisation",
+      "location": "Club Sportif MAA",
+      "phone": "514 845-2233",
+      "extension": "230",
+      "email": null,
+      "recommendationLogic": "Rôle exact à valider avant automatisation.",
+      "confidence": "toValidate"
+    },
+    "claude_belanger": {
+      "id": "claude_belanger",
+      "department": "Autres postes publics",
+      "name": "Claude Bélanger",
+      "role": "Rôle exact à valider avant automatisation",
+      "location": "Club Sportif MAA",
+      "phone": "514 845-2233",
+      "extension": "238",
+      "email": null,
+      "recommendationLogic": "Rôle exact à valider avant automatisation.",
+      "confidence": "toValidate"
+    }
+  },
+
+  "routingRules": {
+    "ifUncertain": "reception_poste_0",
+    "ifMedicalSensitive": "Always route via clinique_sportive or mobile_mediq, never give medical opinion.",
+    "ifAffiliatedClubAccess": "Never confirm access; route to reception_poste_0."
+  }
+}

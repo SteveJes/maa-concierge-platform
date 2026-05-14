@@ -1,0 +1,79 @@
+{
+  "tenantCode": "maa",
+  "version": "v2.0.0-meta",
+  "status": "meta-complete-operational-pending",
+  "source": {
+    "pdf": "../../../_inbox/daphne-maa-v1.pdf",
+    "pdfPages": 203,
+    "pdfBytes": 4281249,
+    "email": "../../../_inbox/daphne-maa-v1-email.md",
+    "compiledBy": "Daphné",
+    "receivedAt": "2026-05-14",
+    "metaExtractedAt": "2026-05-14"
+  },
+
+  "completion": {
+    "metaLayer": {
+      "status": "complete",
+      "sourcePages": "1-8",
+      "files": [
+        "rules.json",
+        "intents.json",
+        "clarifications.json",
+        "confusion-zones.json",
+        "ctas.json",
+        "contacts.json",
+        "staff.json",
+        "sources-vivantes.json",
+        "links.json"
+      ],
+      "summary": "Internal rules, intent table, vague-word clarification matrix, confusion zones, soft-CTA library, contacts directory, staff routing targets (shadow), hours+pricing with 4-tier confidence, canonical link directory."
+    },
+    "operationalSheets": {
+      "status": "pending",
+      "sourcePages": "9-200",
+      "plannedSections": [
+        "abonnements (membership details + inclusions)",
+        "restaurant (full)",
+        "cours-en-groupe (descriptions + instructors)",
+        "cours-specialite (cirque, fitness-aerien, natation-adulte, powerwatts, pilates-reformer)",
+        "sports (basketball, club-de-course, triathlon, pickleball, squash, salles-entrainement)",
+        "piscine (full)",
+        "clinique-sportive (therapie-sportive, massotherapie, osteopathie, physiotherapie, nutrition, services-medicaux)",
+        "soins-infirmiers",
+        "spa-salle-detente",
+        "boutique",
+        "maa-communaute",
+        "historique",
+        "medias",
+        "clubs-affilies",
+        "visite-du-club",
+        "magazine-articles",
+        "restaurant-menus (tables: main, déjeuner, vins)",
+        "suggested-responses-by-intent"
+      ]
+    },
+    "tablesViaVision": {
+      "status": "pending",
+      "flaggedPages": 48,
+      "summary": "48 pages flagged by Phase A heuristic as needing vision-based extraction (schedule grids + price tables). Phase B script will render only these to PNG and re-extract structurally."
+    }
+  },
+
+  "leadRouting": {
+    "mode": "shadow",
+    "shadowRecipients": ["stevejes@gmail.com"],
+    "note": "All staff emails in staff.json are routed to shadowRecipients until Daphné signs off. Flip to real recipients in one place by changing mode to 'live'."
+  },
+
+  "_consumptionContract": "The prompt builder (apps/api/src/prompts/maa-chat-system-v2.ts) reads from this folder. answerMaaChat() opts into v2 via env flag KNOWLEDGE_VERSION=v2. With the flag off, v1 stays live.",
+
+  "bilingualPolicy": {
+    "source": "Daphné's PDF is 95% French (only ~12 of 203 pages contain English snippets like 'see schedule on PDF'). She has not yet sent an English version of the structured rules.",
+    "behaviour": "The LLM translates Daphné's French clarification questions / soft CTAs / confusion-zone rules to natural Quebec-English on the fly. Explicit translation anchors are baked into the v2 prompt (bilingualBlock) so the LLM doesn't drift.",
+    "urlPolicy": "When the visitor is reading English and a link has a /fr/ path, the bot may swap to the /en/ counterpart ONLY when confident the page exists. PDFs are typically bilingual or French; never invent slug translations.",
+    "futureWork": "If Daphné produces an English-language version of the rules+intents+clarifications later, we add labelEn/clarificationQuestionEn/etc. fields to the JSON files and the loader exposes them per locale."
+  },
+
+  "notes": "Populated section-by-section as Claude reads Daphné's PDF. Meta layer is the highest-leverage payload — it alone makes the bot substantially smarter than v1. Operational sheets are encoded over subsequent passes."
+}

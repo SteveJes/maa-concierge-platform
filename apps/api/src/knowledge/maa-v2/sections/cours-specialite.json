@@ -1,0 +1,88 @@
+{
+  "_source": "Daphné PDF p.25 + p.30 — 'Cours de spécialité'",
+  "_sectionId": "cours_specialite",
+  "_principle": "Ces cours sont des activités supplémentaires payantes — JAMAIS inclus dans l'abonnement annuel. Détailler tarifs et conditions disponibles. Orienter vers Nathalie Lambert.",
+
+  "summary": {
+    "fr": "Les cours de spécialité au MAA sont des programmes payants en supplément de l'abonnement. Quatre cours principaux : Cirque aérien, Fitness aérien, Natation pour adultes, PowerWatts. Pour Pilates Reformer, voir la section dédiée.",
+    "en": "MAA specialty courses are paid programs on top of regular membership. Four main offerings: Aerial Circus, Aerial Fitness, Adult Swim, PowerWatts. For Pilates Reformer, see the dedicated section."
+  },
+
+  "courses": {
+    "cirque_aerien": {
+      "label": { "fr": "Cirque aérien", "en": "Aerial circus" },
+      "venue": "La Palestra (espace à hauts plafonds équipé de tissus, hamacs, trapèzes, sangles et cordes)",
+      "format": "4 sessions par an. Inscription par créneau spécifique pour suivre une progression. Deux niveaux: débutant et intermédiaire (intermédiaire nécessite expérience préalable).",
+      "pricing": [
+        { "label": "Session de 90 min — membre", "price": "220 $", "confidence": "dated" },
+        { "label": "Session de 90 min — non-membre", "price": "330 $", "confidence": "dated" },
+        { "label": "Drop-in", "price": "40 $", "confidence": "dated" }
+      ],
+      "policies": [
+        "Cours manqués peuvent être repris dans un autre créneau",
+        "Inscriptions ni remboursables ni transférables"
+      ],
+      "contact": "nathalie_lambert",
+      "link": "aerial_circus_pdf",
+      "extraInstruction": "Vérifier si le visiteur est débutant ou intermédiaire. Expliquer la politique de non-remboursement et la nécessité de s'inscrire à une session."
+    },
+    "fitness_aerien": {
+      "label": { "fr": "Fitness aérien", "en": "Aerial fitness" },
+      "venue": "Utilise un trapèze ajustable",
+      "format": "Exercices de conditionnement inspirés du cirque + transitions acrobatiques. Développe force fonctionnelle et souplesse.",
+      "pricing": [
+        { "label": "Tarification", "price": null, "confidence": "toValidate", "note": "Aucune tarification publiée sur la page accessible — service supplémentaire nécessitant réservation via Nathalie Lambert." }
+      ],
+      "policies": [],
+      "contact": "nathalie_lambert"
+    },
+    "natation_adulte": {
+      "label": { "fr": "Natation pour adultes", "en": "Adult swim" },
+      "audience": "Adultes qui n'ont jamais appris à nager ou qui ressentent une appréhension",
+      "memberRule": "Réservé aux membres. Non-membres invités à contacter Francis Bradette.",
+      "format": "Cours en groupe les mardis 17h30-18h30 et mercredis 18h30-19h30. Cours privés disponibles.",
+      "pricing": [
+        { "label": "1x/semaine", "price": "165 $", "confidence": "dated" },
+        { "label": "2x/semaine", "price": "275 $", "confidence": "dated" },
+        { "label": "Privé 30 min", "price": "50 $", "confidence": "dated" },
+        { "label": "Privé 45 min", "price": "75 $", "confidence": "dated" },
+        { "label": "Privé 60 min", "price": "90 $", "confidence": "dated" },
+        { "label": "À la carte", "price": "30 $ + taxes", "confidence": "dated" }
+      ],
+      "policies": [
+        "Cours ni remboursables ni transférables"
+      ],
+      "contact": "nathalie_lambert",
+      "link": "swim_adult_page",
+      "extraInstruction": "Demander si la personne veut apprendre à nager, améliorer sa technique, ou autre objectif. Vérifier statut membre."
+    },
+    "powerwatts": {
+      "label": { "fr": "PowerWatts", "en": "PowerWatts" },
+      "format": "Programme cycliste de groupe. Intensité prescrite selon le potentiel de chaque participant. Studio de 8 vélos. Session de printemps de 8 semaines.",
+      "pricing": [
+        { "label": "1 classe/semaine — membre", "price": "240 $", "confidence": "dated" },
+        { "label": "1 classe/semaine — non-membre", "price": "320 $", "confidence": "dated" },
+        { "label": "2 classes/semaine — membre", "price": "400 $", "confidence": "dated" },
+        { "label": "2 classes/semaine — non-membre", "price": "560 $", "confidence": "dated" },
+        { "label": "Drop-in — membre", "price": "45 $", "confidence": "dated" },
+        { "label": "Drop-in — non-membre", "price": "50 $", "confidence": "dated" },
+        { "label": "Séance d'introduction obligatoire", "price": "65 $", "confidence": "dated" }
+      ],
+      "policies": [
+        "Inscriptions non remboursables",
+        "Minimum de 2 participants requis",
+        "Chaussures de vélo avec cales Speedplay obligatoires"
+      ],
+      "contact": "nathalie_lambert",
+      "link": "powerwatts_pdf",
+      "extraInstruction": "Demander l'expérience en cyclisme. Si débutant, mentionner l'introduction obligatoire. Proposer Spinning loisir comme alternative cardio si la personne n'est pas prête pour PowerWatts."
+    }
+  },
+
+  "primaryContact": "nathalie_lambert",
+  "limit": "Ne jamais dire qu'un cours spécialisé est inclus dans l'abonnement annuel.",
+  "ctaForVisitors": {
+    "fr": "Je peux vous aider à vérifier quel format correspond le mieux à votre niveau avant de vous diriger vers l'inscription.",
+    "en": "I can help you find the format that best matches your level before pointing you to registration."
+  }
+}

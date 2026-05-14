@@ -1,0 +1,102 @@
+{
+  "_source": "Daphné PDF p.27-28 — 'Abonnements et tarifs' + 'Promotions disponibles' + 'Info général'",
+  "_sectionId": "abonnement",
+  "_consumption": "Detailed answer payload for any membership-related question. The compact reference goes into the v2 prompt; the rich content gets pulled in at answer-composition time via the retrieval layer (replacing old RAG for this topic).",
+
+  "summary": {
+    "fr": "La page Abonnement met de l'avant une offre 'la plus complète et innovante en ville', avec plus de 75 cours en groupe par semaine et l'accès à la piscine et à diverses activités. Tarif annuel actuel à 225 $/mois. Promotion en cours : aucun frais d'initiation (valeur 250 $) + Technogym Checkup gratuit (valeur 180 $).",
+    "en": "The Membership page positions the offer as 'the most complete and innovative in the city', with more than 75 group classes per week plus pool and activities access. Current annual rate is $225/month. Current promotion: no initiation fee (valued at $250) + free Technogym Checkup (valued at $180)."
+  },
+
+  "rates": {
+    "annual": {
+      "label": { "fr": "Abonnement annuel", "en": "Annual membership" },
+      "price": "225 $/mois",
+      "confidence": "confirmed"
+    },
+    "senior": {
+      "label": { "fr": "Aînés (70 ans et plus)", "en": "Seniors (70+)" },
+      "price": "185 $/mois",
+      "confidence": "confirmed",
+      "eligibility": "Preuve d'âge à valider"
+    },
+    "student": {
+      "label": { "fr": "Étudiants (25 ans et moins)", "en": "Students (25 and under)" },
+      "price": "195 $/mois",
+      "confidence": "confirmed",
+      "eligibility": "Preuve d'âge ou de statut étudiant à valider"
+    },
+    "monthly_no_commit": {
+      "label": { "fr": "Abonnement mensuel sans engagement", "en": "Month-to-month, no commitment" },
+      "price": "295 $/mois",
+      "confidence": "confirmed"
+    }
+  },
+
+  "included": [
+    "Centre de conditionnement de 50 000 pieds carrés",
+    "Plus de 75 cours en groupe par semaine",
+    "Appareils Technogym de dernière génération",
+    "Grande zone de poids libres et d'entraînement fonctionnel",
+    "Piscine intérieure de 25 m avec bain à remous et terrasse",
+    "Bilan d'initiation",
+    "Casiers de jour avec bain vapeur et sauna"
+  ],
+
+  "notIncluded_supplement": [
+    "Casier permanent",
+    "Buanderie",
+    "Entraînement personnel ou semi-privé",
+    "Clubs de course / vélo / triathlon / natation (programmes spéciaux)",
+    "Programmes de perte de poids et transformation",
+    "Clinique médicale sportive (physiothérapie, massothérapie, ostéopathie, nutrition, médecins)",
+    "Restaurant",
+    "Salle de détente",
+    "Cours de spécialité: PowerWatts, Pilates sur appareils, cirque aérien, fitness aérien, natation adulte",
+    "Squash"
+  ],
+
+  "extras": [
+    { "label": { "fr": "Casier pleine hauteur", "en": "Full-height locker" }, "price": "75 $/mois", "confidence": "confirmed" },
+    { "label": { "fr": "Demi-casier", "en": "Half-locker" }, "price": "60 $/mois", "confidence": "confirmed" },
+    { "label": { "fr": "Casier 1/3", "en": "Third-locker" }, "price": "35 $/mois (50 $ section exécutive)", "confidence": "confirmed" },
+    { "label": { "fr": "Casier 1/4", "en": "Quarter-locker" }, "price": "25 $/mois", "confidence": "confirmed" },
+    { "label": { "fr": "Buanderie", "en": "Laundry service" }, "price": "25 $/mois", "confidence": "confirmed" }
+  ],
+
+  "currentPromotions": [
+    {
+      "id": "no_initiation_fee",
+      "label": { "fr": "Aucun frais d'initiation", "en": "No initiation fee" },
+      "value": "250 $",
+      "endDate": null,
+      "confidence": "toValidate",
+      "note": "Aucune date de fin mentionnée. Promotion évolutive — ne pas garantir."
+    },
+    {
+      "id": "technogym_checkup",
+      "label": { "fr": "Technogym Checkup gratuit", "en": "Free Technogym Checkup" },
+      "value": "180 $",
+      "endDate": null,
+      "confidence": "toValidate",
+      "note": "Évaluation complète. Présenter comme avantage actuellement affiché; confirmer avant inscription."
+    },
+    {
+      "id": "annual_rate_225",
+      "label": { "fr": "Tarif spécial 225 $/mois (abonnement annuel)", "en": "Special rate $225/month (annual membership)" },
+      "value": null,
+      "endDate": null,
+      "confidence": "confirmed"
+    }
+  ],
+
+  "primaryContact": "francis_bradette",
+  "primaryLink": "membership_page",
+  "purchaseLink": "fliip_membership",
+  "visitLink": "visit_club",
+
+  "ctaForVisitors": {
+    "fr": "Souhaitez-vous que je vous aide à planifier une visite du Club pour voir si l'abonnement vous convient ?",
+    "en": "Would you like me to help you schedule a visit so you can see if a membership is the right fit?"
+  }
+}

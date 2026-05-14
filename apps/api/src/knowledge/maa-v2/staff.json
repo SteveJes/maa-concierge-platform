@@ -1,0 +1,166 @@
+{
+  "_source": "Daphné PDF p.2 (general directory) + scattered staff cards through operational sheets (p.12+)",
+  "_purpose": "Staff routing target. The concierge collects a visitor's contact info + question and routes a lead to the right person.",
+  "_routingNote": "Every email below is currently SHADOW-ROUTED to shadowRecipients. Real recipients are populated for traceability so we can flip routingMode to 'live' in one place once Daphné signs off.",
+
+  "routingMode": "shadow",
+  "shadowRecipients": ["stevejes@gmail.com"],
+
+  "staff": [
+    {
+      "id": "francis_bradette",
+      "name": "Francis Bradette",
+      "role": "Directeur des ventes et des opérations",
+      "department": "Abonnements / visites",
+      "phone": "514 845-2233",
+      "extension": "239",
+      "realEmail": "fbradette@clubsportifmaa.com",
+      "routingTriggers": [
+        "demande d'adhésion",
+        "options d'abonnement",
+        "planifier une visite",
+        "prospect non-membre",
+        "tarif abonnement à confirmer",
+        "promotion frais d'initiation",
+        "Technogym Checkup"
+      ],
+      "leadTemplate": {
+        "subject": "Nouvelle demande concierge: {topic}",
+        "summary": "Le visiteur souhaite: {intent}. Coordonnées: {visitorName} — {visitorEmail} / {visitorPhone}. Détails: {details}."
+      }
+    },
+    {
+      "id": "elisabeth_boutin",
+      "name": "Elisabeth Boutin",
+      "role": "Directrice de la réception et du service à la clientèle",
+      "department": "Réception / service client",
+      "phone": "514 845-2233",
+      "extension": "235",
+      "realEmail": "eboutin@clubsportifmaa.com",
+      "routingTriggers": [
+        "plainte service client",
+        "problème de réception",
+        "objet perdu",
+        "orientation générale"
+      ]
+    },
+    {
+      "id": "nathalie_lambert",
+      "name": "Nathalie Lambert",
+      "role": "Directrice des programmes sportifs et des communications",
+      "department": "Programmation sportive / cours / sports / cours spécialisés",
+      "phone": "514 845-2233",
+      "extension": "231",
+      "realEmail": "nlambert@clubsportifmaa.com",
+      "routingTriggers": [
+        "cours en groupe",
+        "cours de spécialité (cirque, fitness aérien, PowerWatts, natation adulte, Pilates)",
+        "pickleball",
+        "basketball",
+        "clubs sportifs (course, triathlon)",
+        "programmes aquatiques",
+        "piscine cours"
+      ]
+    },
+    {
+      "id": "yvon_provencal",
+      "name": "Yvon Provençal",
+      "role": "Directeur de squash et pro en chef",
+      "department": "Squash",
+      "phone": "514 845-2233",
+      "extension": "227",
+      "realEmail": null,
+      "_realEmailMissing": true,
+      "routingTriggers": [
+        "squash",
+        "ligues de squash",
+        "cours de squash",
+        "accès squash non-membre"
+      ],
+      "leadFallback": "reception_poste_0"
+    },
+    {
+      "id": "clinique_sportive",
+      "name": "Clinique sportive MAA",
+      "role": "Équipe clinique sportive",
+      "department": "Clinique / massothérapie / thérapie sportive / physiothérapie / ostéopathie / nutrition / médical",
+      "phone": "514 845-2233",
+      "extension": "234",
+      "realEmail": "cliniquemaa@clubsportifmaa.com",
+      "routingTriggers": [
+        "rendez-vous clinique",
+        "massothérapie",
+        "thérapie sportive",
+        "physiothérapie",
+        "ostéopathie",
+        "nutrition",
+        "services médicaux",
+        "douleur / blessure",
+        "récupération"
+      ],
+      "safetyRule": "Jamais de diagnostic. Jamais d'interprétation de résultats. Jamais de garantie de disponibilité."
+    },
+    {
+      "id": "mobile_mediq",
+      "name": "Mobile Mediq",
+      "role": "Partenaire externe — soins infirmiers privés",
+      "department": "Soins infirmiers",
+      "phone": "514 543-2121",
+      "extension": null,
+      "realEmail": null,
+      "_realEmailMissing": true,
+      "routingTriggers": [
+        "prélèvements",
+        "injections",
+        "perfusion",
+        "dépistage ITS",
+        "profils fertilité",
+        "test sanguin",
+        "soins infirmiers"
+      ],
+      "leadFallback": "reception_poste_0"
+    },
+    {
+      "id": "restaurant_1881",
+      "name": "Restaurant Le 1881",
+      "role": "Équipe restaurant",
+      "department": "Restaurant",
+      "phone": "514 845-8002",
+      "extension": "247",
+      "realEmail": "info@resto1881.com",
+      "routingTriggers": [
+        "réservation restaurant",
+        "groupe restaurant",
+        "événement privé",
+        "menu",
+        "carte des vins",
+        "salle de conférence"
+      ]
+    },
+    {
+      "id": "reception_poste_0",
+      "name": "Réception Poste 0",
+      "role": "Équipe de réception générale",
+      "department": "Réception",
+      "phone": "514 845-2233",
+      "extension": "0",
+      "realEmail": "info@clubsportifmaa.com",
+      "routingTriggers": [
+        "question générale",
+        "orientation",
+        "fallback quand poste spécialisé non confirmé",
+        "clubs affiliés",
+        "casiers / buanderie"
+      ],
+      "isFallback": true
+    }
+  ],
+
+  "missingContacts": [
+    {
+      "name": "Valérie Devigne",
+      "role": "Directrice boutique MAA",
+      "note": "Aucune coordonnée trouvée dans la base — à demander à MAA."
+    }
+  ]
+}

@@ -1,0 +1,125 @@
+{
+  "_source": "Daphné PDF p.31-32 — 'Sports et entraînement'",
+  "_sectionId": "sports",
+  "_principle": "Toujours vérifier le statut membre. Plusieurs sports sont membres-only avec réservation via l'application MAA.",
+
+  "summary": {
+    "fr": "Le MAA offre basketball, club de course, club de triathlon, entraînement personnel, pickleball, programmes aquatiques, salles d'entraînement, squash et Pilates sur appareils.",
+    "en": "MAA offers basketball, run club, triathlon club, personal training, pickleball, aquatic programs, training rooms, squash, and Pilates reformer."
+  },
+
+  "sports": {
+    "basketball": {
+      "label": { "fr": "Basketball", "en": "Basketball" },
+      "venue": "La Palestra — demi-terrain 3x3.",
+      "included": "Inclus dans l'abonnement.",
+      "reservation": "Via l'application interne MAA.",
+      "schedule": {
+        "monday": "19h00 - 21h00",
+        "friday": "19h00 - 21h00",
+        "saturday": "17h00 - 18h30",
+        "sunday": "15h00 - 18h30"
+      },
+      "scheduleNote": "L'activité est amicale et inclusive : les joueurs tournent si plus de six personnes se présentent.",
+      "contact": "nathalie_lambert",
+      "confidence": "confirmed"
+    },
+    "club_de_course": {
+      "label": { "fr": "Club de course", "en": "Run club" },
+      "details": "Ouvert à tous les niveaux. Sorties de groupe incluses dans l'abonnement. Plusieurs créneaux sur l'heure du dîner et en soirée.",
+      "coaches": ["Dorys Langlois", "Élisabeth Boutin", "Harry Jean-Charles"],
+      "memberRule": "Réservé aux membres. Non-membres : contacter Francis Bradette.",
+      "schedule": null,
+      "scheduleNote": "Horaires détaillés non publiés.",
+      "contact": "nathalie_lambert",
+      "confidence": "confirmed"
+    },
+    "club_de_triathlon": {
+      "label": { "fr": "Club de triathlon", "en": "Triathlon club" },
+      "details": "Préparation personnalisée pour toutes les distances (du triathlon sprint à l'Ironman). Séances de vélo en salle, sorties de course à pied, évaluations individuelles (puissance vélo, vitesse course).",
+      "coaches": ["Isabelle Pelland", "Pierre Thiffault"],
+      "memberRule": "Adhésion réservée aux membres. Natation s'ajoute au programme. Non-membres : contacter Francis Bradette.",
+      "schedule": null,
+      "scheduleNote": "Horaires détaillés non publiés.",
+      "contact": "nathalie_lambert",
+      "link": "triathlon_pdf",
+      "confidence": "confirmed"
+    },
+    "entrainement_personnel": {
+      "label": { "fr": "Entraînement personnel", "en": "Personal training" },
+      "details": "Formule sur mesure pour optimiser l'entraînement, sécuriser la technique et clarifier les objectifs (perte de poids, prise de masse, habitudes de vie).",
+      "trainers": ["Cornelia Dove", "Dorys Langlois", "Francis Bradette", "Jonathan Williams", "Larry Hunter"],
+      "pricing": null,
+      "pricingNote": "Tarifs non publiés. Pour une première séance, contacter un entraîneur ou la réception.",
+      "contact": "reception_poste_0",
+      "confidence": "toValidate"
+    },
+    "pickleball": {
+      "label": { "fr": "Pickleball", "en": "Pickleball" },
+      "details": "28 créneaux de réservation par semaine.",
+      "memberRule": "Membre requis pour réserver un terrain. Réservation pour 2 à 4 joueurs.",
+      "equipment": "Les joueurs apportent leurs propres raquettes et balles. Des raquettes peuvent être louées à la réception.",
+      "schedule": {
+        "monday": ["07h00 - 11h00", "14h00 - 17h00"],
+        "tuesday": ["07h00 - 12h00", "12h00 - 14h00", "14h00 - 17h00"],
+        "wednesday": ["07h00 - 11h00", "14h00 - 17h00", "20h00 - 21h00"],
+        "thursday": ["07h00 - 12h00", "12h00 - 14h00", "14h00 - 17h00", "20h00 - 21h00"],
+        "friday": ["07h00 - 11h00", "14h00 - 17h00", "17h00 - 19h00"],
+        "saturday": ["07h00 - 11h00", "11h00 - 14h00", "14h00 - 17h00"],
+        "sunday": ["07h00 - 11h00", "11h00 - 14h00", "14h00 - 15h00"]
+      },
+      "weeklyTotalSlots": 28,
+      "reservation": "Via l'application MAA.",
+      "contact": "nathalie_lambert",
+      "confidence": "confirmed"
+    },
+    "programmes_aquatiques": {
+      "label": { "fr": "Programmes aquatiques", "en": "Aquatic programs" },
+      "activities": ["Club de maîtres nageurs", "Aqua HIIT", "Club de triathlon", "Natation adulte"],
+      "memberRule": "Activités aquatiques réservées aux membres. Non-membres : contacter Francis Bradette.",
+      "venue": "Piscine sur le toit avec terrasse privée.",
+      "poolHours": {
+        "weekday": "07h00 - 20h00 (repère site public)",
+        "weekend": "07h00 - 17h00 (repère site public)",
+        "_note": "ATTENTION: le PDF Printemps 2026 indique 6h30-20h30 en semaine et 7h-18h le week-end. Contradictoire avec le site public — ne pas trancher seul, orienter vers confirmation."
+      },
+      "contact": "nathalie_lambert",
+      "confidence": "confirmed-but-contradictory-hours"
+    },
+    "salles_entrainement": {
+      "label": { "fr": "Salles d'entraînement", "en": "Training rooms" },
+      "details": "Zone cardio/musculation de plus de 5 000 pieds carrés et zone fonctionnelle avec gazon synthétique, racks et suspensions.",
+      "access": "Accessibles sans réservation et sans limite de temps pour les membres. Horaires suivent l'horaire général des plateaux (lundi-vendredi 6h-22h, samedi-dimanche 7h-19h).",
+      "equipment": "Appareils Technogym, dont certains Biostrength. Inventaire complet non publié.",
+      "contact": "reception_poste_0",
+      "confidence": "confirmed"
+    },
+    "squash": {
+      "label": { "fr": "Squash", "en": "Squash" },
+      "details": "Deux courts internationaux. Membres peuvent jouer librement, s'inscrire à des ligues ou prendre des cours.",
+      "instructor": "Yvon Provençal, pro et directeur du squash, reconnu comme entraîneur national.",
+      "included": "Classé parmi les activités supplémentaires non incluses dans l'abonnement.",
+      "contact": "yvon_provencal",
+      "confidence": "confirmed"
+    },
+    "pilates_reformer": {
+      "label": { "fr": "Pilates sur appareils", "en": "Pilates reformer" },
+      "venue": "Studio avec 4 reformers, chaises et tables trapézoïdales.",
+      "format": "Séances privées ou en petits groupes. 50 à 60 minutes. Ouvertes aux membres et non-membres.",
+      "objective": "Améliorer la force, la posture et la prévention des blessures.",
+      "pricing": null,
+      "pricingNote": "Tarifs non publiés.",
+      "contact": "elisabeth_boutin",
+      "secondaryContact": "reception_poste_0",
+      "link": "pilates_reformer_pdf",
+      "confidence": "confirmed"
+    }
+  },
+
+  "primaryContact": "nathalie_lambert",
+  "nonMemberRule": "Toujours vérifier le statut membre avant de répondre. Non-membres redirigés vers Francis Bradette pour explorer adhésion / visite / accès alternatif.",
+  "ctaForVisitors": {
+    "fr": "Êtes-vous déjà membre du Club ? Cela me permettra de vous orienter vers la bonne marche à suivre.",
+    "en": "Are you already a member? That'll let me point you to the right next step."
+  }
+}
