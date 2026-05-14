@@ -2440,9 +2440,13 @@ export function ChatShell({
       {/* ── Input area ─────────────────────────────────────────────────────── */}
       <div
         style={{
-          padding: "12px 16px",
-          background: darkMode ? "#0d120d" : "#ffffff",
-          borderTop: darkMode ? "1px solid rgba(255,255,255,0.06)" : "1px solid #e0e3e8",
+          padding: mode === "floating" ? "14px 22px" : "12px 16px",
+          background: mode === "floating"
+            ? "linear-gradient(180deg, #14141a 0%, #0e0e14 100%)"
+            : (darkMode ? "#0d120d" : "#ffffff"),
+          borderTop: mode === "floating"
+            ? "1px solid rgba(201,168,76,0.18)"
+            : (darkMode ? "1px solid rgba(255,255,255,0.06)" : "1px solid #e0e3e8"),
           display: "flex",
           gap: 8,
           alignItems: "center",
@@ -2468,11 +2472,17 @@ export function ChatShell({
           autoCapitalize="sentences"
           style={{
             flex: 1,
-            padding: "12px 18px",
+            padding: mode === "floating" ? "13px 20px" : "12px 18px",
             borderRadius: 24,
-            border: darkMode ? "1px solid rgba(255,255,255,0.1)" : "1px solid #e0e3e8",
-            background: darkMode ? "#1a221a" : "#ffffff",
-            color: darkMode ? "#e0eeda" : "#1a1a1a",
+            border: mode === "floating"
+              ? "1px solid rgba(201,168,76,0.32)"
+              : (darkMode ? "1px solid rgba(255,255,255,0.1)" : "1px solid #e0e3e8"),
+            background: mode === "floating"
+              ? "rgba(30,28,22,0.85)"
+              : (darkMode ? "#1a221a" : "#ffffff"),
+            color: mode === "floating"
+              ? "#f4eedd"
+              : (darkMode ? "#e0eeda" : "#1a1a1a"),
             fontSize: 16, // 16px prevents iOS auto-zoom, better Android too
             outline: "none",
             minWidth: 0,
