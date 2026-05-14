@@ -1,0 +1,35 @@
+{
+  "_source": "Daphné PDF p.187-190 — 'Planifier une visite' + 'Contactez-nous'",
+  "_sectionId": "visite_club",
+  "_principle": "La visite est le levier de conversion principal. Ne jamais confirmer un rendez-vous, un essai gratuit, ou un accès aux installations sans validation officielle. Toujours présenter la visite comme une étape rassurante d'orientation.",
+
+  "summary": {
+    "fr": "Visiter le Club est l'étape rassurante avant de s'abonner. Le visiteur peut découvrir les installations, l'ambiance, les cours, la piscine, la clinique et le restaurant. Prise de rendez-vous via la page officielle. Pour les détails (durée, accès aux équipements, essai gratuit), confirmer avec l'équipe.",
+    "en": "Visiting the Club is the reassuring step before joining. Visitors can discover the facilities, the atmosphere, the classes, the pool, the clinic, and the restaurant. Book via the official page. For specifics (duration, equipment access, free trial), confirm with the team."
+  },
+
+  "process": {
+    "fr": "Demander d'abord pourquoi la personne veut visiter : s'abonner, voir les installations, découvrir les cours, voir la piscine, poser des questions sur les tarifs, comparer avec un autre gym. Ensuite, orienter vers la prise de rendez-vous ou Francis Bradette.",
+    "en": "First ask why the person wants to visit: to join, see facilities, discover classes, see the pool, ask about pricing, or compare with another gym. Then route to the booking page or Francis Bradette."
+  },
+
+  "knownLimits": [
+    "Aucun règlement précis confirmé sur la durée de la visite, les pièces requises, l'accompagnateur, l'accès aux installations, l'essai gratuit, la tenue, le stationnement ou les conditions d'admissibilité.",
+    "Ne jamais confirmer un rendez-vous, une disponibilité, une visite sans rendez-vous, un essai gratuit ou un accès aux installations sans validation officielle.",
+    "Une mention historique (visites possibles dès le 1er septembre 2023, avec ou sans rendez-vous) figure dans le site mais doit être validée avant utilisation comme règle actuelle."
+  ],
+
+  "salesAngle": {
+    "fr": "Ne pas pousser directement l'abonnement si la personne hésite. Proposer la visite comme étape rassurante pour voir l'ambiance, les installations, les cours, la piscine, la clinique et l'expérience premium.",
+    "en": "Don't push the membership directly if the person is hesitant. Offer the visit as a reassuring step to see the atmosphere, facilities, classes, pool, clinic, and premium experience."
+  },
+
+  "primaryContact": "francis_bradette",
+  "secondaryContact": "reception_poste_0",
+  "primaryLink": "visit_club",
+
+  "ctaForVisitors": {
+    "fr": "Souhaitez-vous que je vous aide à planifier une visite du Club pour voir si l'abonnement correspond à vos besoins ?",
+    "en": "Would you like me to help you schedule a visit so you can see if a membership fits what you're looking for?"
+  }
+}

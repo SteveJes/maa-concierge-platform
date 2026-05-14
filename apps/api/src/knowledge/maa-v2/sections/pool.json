@@ -1,0 +1,76 @@
+{
+  "_source": "Daphné PDF p.52-59 + p.93-99 — Espace O / Piscine + programmes aquatiques",
+  "_sectionId": "pool",
+  "_principle": "Spring 2026 session schedule from Daphné's PDF starts 7 avril 2026. Hours per PDF (6h30-20h30 / 7h-18h) CONTRADICT the website (7h-20h / 7h-17h). Always disclose, never trance seul.",
+
+  "summary": {
+    "fr": "L'Espace O abrite la piscine intérieure 25 m sur le toit du Club, avec bain tourbillon et terrasse privée. Programmation aquatique: nage libre, Aqua-HIIT, natation adulte, natation maîtres, club de triathlon. Réservé aux membres pour les programmes; nage libre accessible selon l'horaire.",
+    "en": "Espace O is home to the 25 m indoor pool on the Club's rooftop, with whirlpool and private terrace. Aquatic programming: open swim, Aqua-HIIT, adult swim, masters swim, triathlon club. Programs are members-only; open swim follows the schedule."
+  },
+
+  "venue": {
+    "name": "L'Espace O",
+    "description": "Piscine intérieure 25 m, bain tourbillon, terrasse privée sur le toit.",
+    "address": "2070, rue Peel, Montréal, QC H3A 1W6"
+  },
+
+  "hours": {
+    "siteVersion": {
+      "weekday": "07h00 - 20h00",
+      "weekend": "07h00 - 17h00",
+      "source": "Page publique du site"
+    },
+    "pdfVersionSpring2026": {
+      "weekday": "06h30 - 20h30",
+      "weekend": "07h00 - 18h00",
+      "source": "PDF Printemps 2026 (en vigueur dès 7 avril 2026)"
+    },
+    "confidence": "contradictory",
+    "rule": "Mentionner les deux versions OU dire 'actuellement, l'horaire affiché est X — pour la version définitive, je vous invite à confirmer avec l'équipe'."
+  },
+
+  "weeklySchedule_spring2026": {
+    "_note": "Extrait du PDF Printemps 2026 daté. Pour la démo, utilisable; pour réponse réelle, valider.",
+    "monday": [
+      { "time": "06h30 - 17h25", "activity": "Nage libre", "note": "Piscine accessible" },
+      { "time": "17h30 - 18h25", "activity": "Aqua-HIIT", "instructor": "Jennifer", "note": "Pas d'accès à la piscine pendant cette case" },
+      { "time": "18h30 - 20h30", "activity": "Nage libre", "note": "Piscine accessible" }
+    ],
+    "tuesday": [
+      { "time": "06h30 - 06h55", "activity": "Nage libre" },
+      { "time": "07h00 - 08h00", "activity": "Natation maîtres", "instructor": "Isabelle", "note": "Pas d'accès pendant" },
+      { "time": "08h05 - 17h25", "activity": "Nage libre" },
+      { "time": "17h30 - 18h30", "activity": "Natation adulte", "instructor": "Élisabeth", "note": "Seulement un corridor disponible" },
+      { "time": "18h30 - 20h30", "activity": "Nage libre" }
+    ],
+    "wednesday": [
+      { "time": "06h30 - 17h25", "activity": "Nage libre" },
+      { "time": "17h30 - 18h30", "activity": "Natation maîtres", "instructor": "Pierre", "note": "Pas d'accès pendant" },
+      { "time": "18h30 - 19h30", "activity": "Natation adulte", "instructor": "Élisabeth", "note": "Seulement un corridor disponible" },
+      { "time": "19h35 - 20h30", "activity": "Nage libre" }
+    ],
+    "thursday": [
+      { "time": "06h30 - 06h55", "activity": "Nage libre" },
+      { "time": "07h00 - 08h00", "activity": "Natation maîtres", "instructor": "Isabelle", "note": "Pas d'accès pendant" },
+      { "time": "08h05 - 11h55", "activity": "Nage libre" },
+      { "time": "12h00 - 13h00", "activity": "Aqua-HIIT", "instructor": "Caroline", "note": "Pas d'accès pendant" }
+    ]
+  },
+
+  "activities": {
+    "nage_libre": { "label": { "fr": "Nage libre", "en": "Open swim" }, "memberRule": "Inclus dans l'abonnement, suit l'horaire piscine." },
+    "aqua_hiit": { "label": { "fr": "Aqua-HIIT", "en": "Aqua-HIIT" }, "memberRule": "Réservé aux membres, réservation via MyWellness." },
+    "natation_adulte": { "label": { "fr": "Natation adulte", "en": "Adult swim lessons" }, "memberRule": "Réservé aux membres. Voir section cours-specialite pour les tarifs (165 $ 1x/sem, 275 $ 2x/sem)." },
+    "natation_maitres": { "label": { "fr": "Natation maîtres", "en": "Masters swim" }, "memberRule": "Réservé aux membres expérimentés. Sessions matin." },
+    "club_triathlon": { "label": { "fr": "Club de triathlon", "en": "Triathlon club" }, "memberRule": "Voir section sports — Pierre Thiffault et Isabelle Pelland." }
+  },
+
+  "primaryContact": "nathalie_lambert",
+  "primaryLink": "pool_schedule_pdf",
+  "liveScheduleLink": "mywellness_real_time",
+
+  "ctaForVisitors": {
+    "fr": "Cherchez-vous l'horaire de nage libre, un programme aquatique précis ou un cours de natation adulte ?",
+    "en": "Are you after the open-swim schedule, a specific aquatic program, or adult swim lessons?"
+  }
+}

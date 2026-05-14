@@ -1,0 +1,124 @@
+{
+  "_source": "Daphné PDF p.122-160 — Clinique sportive services breakdown",
+  "_sectionId": "clinique_services",
+  "_principle": "Sept sous-services au sein de la Clinique sportive + un service partenaire (Mobile Mediq). Tous bookés au poste 234 sauf soins infirmiers (Mobile Mediq direct). JAMAIS de diagnostic, JAMAIS de promesse de couverture d'assurance, JAMAIS de garantie de disponibilité.",
+
+  "summary": {
+    "fr": "La Clinique sportive MAA offre thérapie sportive, physiothérapie, massothérapie, ostéopathie, nutrition, services médicaux et thérapie d'étirement des fascias. Soins infirmiers via le partenaire Mobile Mediq. Booking: poste 234 (sauf Mobile Mediq 514 543-2121). Politique 24h pour annulation. Reçus d'assurance disponibles.",
+    "en": "MAA Sports Clinic offers sports therapy, physiotherapy, massage therapy, osteopathy, nutrition, medical services, and fascia stretching therapy. Nursing care via partner Mobile Mediq. Booking: ext. 234 (or Mobile Mediq 514 543-2121). 24h cancellation policy. Insurance receipts available."
+  },
+
+  "services": {
+    "therapie_sportive": {
+      "label": { "fr": "Thérapie sportive", "en": "Sports therapy" },
+      "audience": "Douleur, blessure sportive, réadaptation, retour à l'entraînement.",
+      "practitioners": [
+        { "name": "Kevin Geyson", "credentials": "CAT(C), B.Sc. Kinésiologie, thérapeute sportif certifié et entraîneur personnel", "firstVisit": "130 $", "followUp": "115 $", "duration": "60 min" },
+        { "name": "Daniela Solis", "firstVisit": "130 $", "followUp": "115 $", "duration": "60 min" },
+        { "name": "Angie West", "credentials": "MA, CAT(C), ATC", "firstVisit": "140 $", "followUp": "125 $", "duration": "55 / 50 min" }
+      ],
+      "tax": "Taxes applicables.",
+      "confidence": "dated"
+    },
+    "physiotherapie": {
+      "label": { "fr": "Physiothérapie", "en": "Physiotherapy" },
+      "audience": "Évaluation et traitement d'une condition musculo-squelettique, post-chirurgie, rééducation.",
+      "practitioners": ["George Demirakos", "Isabelle Pelland"],
+      "tax": "PAS de taxes (physiothérapie exemptée).",
+      "_pricingNote": "Tarifs publiés dans la grille tarifaire — variables selon le praticien. Référer à la clinique pour les tarifs actuels.",
+      "confidence": "toValidate"
+    },
+    "massotherapie": {
+      "label": { "fr": "Massothérapie", "en": "Massage therapy" },
+      "audience": "Détente, tension musculaire, posture, prévention.",
+      "practitioners": ["Ghassen Abid (ostéopathe + massothérapeute)", "Jeimy", "Nicoline", "Julie", "Daniela", "Léa Daoura"],
+      "pricing": [
+        { "duration": "25 min", "memberPrice": "60 $", "guestPrice": "65 $" },
+        { "duration": "55 min", "memberPrice": "80 $", "guestPrice": "85 $" },
+        { "duration": "85 min", "memberPrice": "105 $", "guestPrice": "120 $" }
+      ],
+      "tax": "Taxes applicables.",
+      "_note": "Julie Dionne apparaît dans la liste des thérapeutes mais pas dans la grille tarifaire — ne pas lui associer ces tarifs sans validation.",
+      "confidence": "toValidate"
+    },
+    "osteopathie": {
+      "label": { "fr": "Ostéopathie", "en": "Osteopathy" },
+      "audience": "Approche globale et énergétique, douleur chronique, posture, équilibre.",
+      "practitioners": ["Ghassen Abid"],
+      "pricing": null,
+      "_pricingNote": "Tarifs dans la grille tarifaire — variables. Référer à la clinique.",
+      "confidence": "toValidate"
+    },
+    "nutrition": {
+      "label": { "fr": "Nutrition", "en": "Nutrition" },
+      "audience": "Perte de poids, prise de masse, performance sportive, habitudes alimentaires, conditions médicales (diabète, etc.).",
+      "practitioners": ["Léa Daoura"],
+      "pricing": null,
+      "_pricingNote": "Tarifs et horaires non publiés sur le site — à valider avec la clinique.",
+      "confidence": "toValidate"
+    },
+    "services_medicaux": {
+      "label": { "fr": "Services médicaux", "en": "Medical services" },
+      "audience": "Consultation médicale, médecine du sport, hormonothérapie bio-identique, médecine fonctionnelle.",
+      "practitioners": ["Dr Taniela Avedian (médecine fonctionnelle + hormonothérapie bio-identique / BHRT)"],
+      "pricing": null,
+      "_pricingNote": "Tarifs non publiés. Politique de confidentialité médicale stricte — ne jamais donner d'avis.",
+      "confidence": "toValidate"
+    },
+    "fascia_stretching": {
+      "label": { "fr": "Thérapie d'étirement des fascias", "en": "Fascia stretching therapy" },
+      "audience": "Mobilité, souplesse, limitations articulaires.",
+      "practitioners": [],
+      "pricing": null,
+      "_pricingNote": "À valider avec la clinique.",
+      "confidence": "toValidate"
+    },
+    "pilates_sur_appareils_prive": {
+      "label": { "fr": "Pilates sur appareils — séance privée", "en": "Pilates reformer — private session" },
+      "audience": "Force, posture, prévention des blessures.",
+      "practitioners": [],
+      "pricing": null,
+      "_pricingNote": "Disponible en séance privée via la Clinique. Voir aussi la section Pilates Reformer générale.",
+      "confidence": "toValidate"
+    }
+  },
+
+  "soins_infirmiers_mobile_mediq": {
+    "label": { "fr": "Soins infirmiers (Mobile Mediq)", "en": "Nursing care (Mobile Mediq)" },
+    "audience": "Prélèvements sanguins, perfusions IV, dépistages d'ITS, profils de fertilité, injections.",
+    "locations": "Au club, à domicile ou au bureau (rayon 200 km).",
+    "phone": "514 543-2121",
+    "pricingNote": "Tarifs non publiés. ATTENTION: ne pas appliquer la grille massothérapie (60/80/105) aux soins infirmiers — c'est une réutilisation de page web.",
+    "confidence": "toValidate"
+  },
+
+  "commonPolicies": [
+    "Formulaire de santé obligatoire à la première visite",
+    "Arrivée recommandée 10 min avant",
+    "Reçus d'assurance disponibles",
+    "Politique d'annulation: préavis de 24 h",
+    "Taxes applicables sauf pour la physiothérapie"
+  ],
+
+  "intakeQuestion": {
+    "fr": "Pour bien vous orienter, votre besoin concerne-t-il plutôt : une douleur ou blessure (thérapie sportive ou physiothérapie), une tension musculaire (massothérapie), une approche globale (ostéopathie), de la nutrition, une consultation médicale, ou un soin infirmier ?",
+    "en": "To point you the right way: is your need related to pain or an injury (sports therapy or physio), muscular tension (massage), a global approach (osteopathy), nutrition, a medical consultation, or nursing care?"
+  },
+
+  "safetyRules": [
+    "Jamais de diagnostic.",
+    "Jamais de promesse de guérison.",
+    "Jamais d'affirmation qu'un service est couvert par assurance.",
+    "Jamais de confirmation de disponibilité.",
+    "Pour toute blessure importante, douleur persistante ou question médicale, référer à la Clinique (poste 234) ou à un professionnel de santé."
+  ],
+
+  "primaryContact": "clinique_sportive",
+  "primaryLink": "clinic_fees_2026",
+  "bookingLink": "fliip_service",
+
+  "ctaForVisitors": {
+    "fr": "Souhaitez-vous que je vous aide à déterminer quel service correspond le mieux à votre besoin ?",
+    "en": "Would you like help figuring out which service best matches your need?"
+  }
+}
