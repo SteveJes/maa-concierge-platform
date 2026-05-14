@@ -366,78 +366,33 @@ export default function DemoSlugPage() {
 
       <div style={{ position: "fixed", inset: 0, zIndex: 1, pointerEvents: "none" }} />
 
-      {chatOpen ? (
-        <div className="chat-panel">
-          <button
-            type="button"
-            onClick={() => setChatOpen(false)}
-            style={{
-              position: "absolute", top: 12, right: 12, zIndex: 10,
-              width: 30, height: 30, borderRadius: "50%",
-              background: "rgba(255,255,255,0.18)", border: "none",
-              color: "#fff", fontSize: 17, cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1,
-              transition: "background 0.15s",
-            }}
-            aria-label="Réduire"
-          >
-            ×
-          </button>
-          <ChatShell
-            mode="inline"
-            tenantId={config.tenantId}
-            conciergeName={config.conciergeName}
-            clientName={config.clientName}
-            accentColor={config.accentColor}
-            accentGradient={config.accentGradient}
-            accentRgb={config.accentRgb}
-            accentTextColor={config.accentTextColor}
-            darkMode={config.darkMode}
-            logoUrl={config.logoUrl}
-            nudgesFr={config.nudgesFr}
-            nudgesEn={config.nudgesEn}
-            nudgeLabelFr={config.nudgeLabelFr}
-            nudgeLabelEn={config.nudgeLabelEn}
-            nudgeSubLabelFr={config.nudgeSubLabelFr}
-            nudgeSubLabelEn={config.nudgeSubLabelEn}
-            suggestedQuestionsFr={config.suggestedQuestionsFr}
-            suggestedQuestionsEn={config.suggestedQuestionsEn}
-            tenantPhone={config.tenantPhone}
-            pricingCtaFr={config.pricingCtaFr}
-            pricingCtaEn={config.pricingCtaEn}
-            pricingCtaMessageFr={config.pricingCtaMessageFr}
-            pricingCtaMessageEn={config.pricingCtaMessageEn}
-          />
-        </div>
-      ) : (
-        <div
-          style={{
-            position: "fixed", bottom: 24, right: 24, zIndex: 1000,
-            display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10,
-            transform: `translate(${bubbleOffset.x}px, ${bubbleOffset.y}px)`,
-            transition: "transform 0.25s cubic-bezier(0.34,1.56,0.64,1)",
-          }}
-        >
-          {!labelDismissed && (
-            <div className="bubble-label" onClick={() => { setChatOpen(true); setLabelDismissed(true); }}>
-              💬 Bonjour ! Je suis votre concierge {config.name}
-              <span onClick={(e) => { e.stopPropagation(); setLabelDismissed(true); }} style={{ marginLeft: 8, opacity: 0.4, cursor: "pointer", fontSize: 12 }}>✕</span>
-            </div>
-          )}
-          <button
-            className="bubble-btn"
-            style={{ background: config.bubbleGradient }}
-            onClick={() => { setChatOpen(true); setLabelDismissed(true); }}
-            aria-label={`Ouvrir le Concierge ${config.name}`}
-          >
-            <span className="bubble-ripple" style={{ border: `2px solid ${config.accentColor}55` }} />
-            <span className="bubble-ripple-2" style={{ border: `2px solid ${config.accentColor}55` }} />
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" style={{ position: "relative", zIndex: 1 }}>
-              <path d="M12 2C6.48 2 2 6.04 2 11c0 2.7 1.18 5.13 3.07 6.84L4 22l4.36-1.45C9.51 20.84 10.72 21 12 21c5.52 0 10-4.04 10-9s-4.48-9-10-9z" fill="white" />
-            </svg>
-          </button>
-        </div>
-      )}
+      {/* Premium ChatShell in floating mode — owns its own peeking launcher tab
+          + 5-layer slide-in animation + close button. Matches Daphné's mockup. */}
+      <ChatShell
+        mode="floating"
+        tenantId={config.tenantId}
+        conciergeName={config.conciergeName}
+        clientName={config.clientName}
+        accentColor={config.accentColor}
+        accentGradient={config.accentGradient}
+        accentRgb={config.accentRgb}
+        accentTextColor={config.accentTextColor}
+        darkMode={config.darkMode}
+        logoUrl={config.logoUrl}
+        nudgesFr={config.nudgesFr}
+        nudgesEn={config.nudgesEn}
+        nudgeLabelFr={config.nudgeLabelFr}
+        nudgeLabelEn={config.nudgeLabelEn}
+        nudgeSubLabelFr={config.nudgeSubLabelFr}
+        nudgeSubLabelEn={config.nudgeSubLabelEn}
+        suggestedQuestionsFr={config.suggestedQuestionsFr}
+        suggestedQuestionsEn={config.suggestedQuestionsEn}
+        tenantPhone={config.tenantPhone}
+        pricingCtaFr={config.pricingCtaFr}
+        pricingCtaEn={config.pricingCtaEn}
+        pricingCtaMessageFr={config.pricingCtaMessageFr}
+        pricingCtaMessageEn={config.pricingCtaMessageEn}
+      />
     </>
   );
 }
