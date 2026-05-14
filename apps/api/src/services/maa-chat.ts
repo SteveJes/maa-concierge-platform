@@ -1146,7 +1146,10 @@ function stripCitationMarkersFromAssistantMessage(message: string): string {
  * the corresponding apps/api/src/prompts/{id}-chat-system.ts file.
  */
 function resolveTenantSystemPrompt(tenantCode: string | undefined, locale: string | undefined): string {
-  const knowledgeVersion = process.env.KNOWLEDGE_VERSION ?? "v1";
+  // v2 is the default. Set KNOWLEDGE_VERSION=v1 to opt out (e.g. for emergency
+  // rollback). v2 sources MAA from apps/api/src/knowledge/maa-v2/ (Daphné's
+  // 203-page PDF, structured JSON). v1 reads the legacy tenant-core-facts.json.
+  const knowledgeVersion = process.env.KNOWLEDGE_VERSION ?? "v2";
   switch (tenantCode) {
     case "maa":
       return knowledgeVersion === "v2"

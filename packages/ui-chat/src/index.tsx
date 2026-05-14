@@ -1663,15 +1663,15 @@ export function ChatShell({
       {messages.length === 1 && suggestedQuestions.length > 0 && (
         <div
           style={{
-            margin: "0 16px 10px",
+            margin: "4px 16px 14px",
             display: "flex",
             flexDirection: "column",
-            gap: 6,
+            gap: 10,
             animation: "maa-msg-in 0.4s ease",
           }}
         >
-          <div style={{ fontSize: 10, color: "#8a90a0", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 600, paddingLeft: 2, marginBottom: 2 }}>
-            {locale === "fr-CA" ? "Questions fréquentes" : "Popular questions"}
+          <div style={{ fontSize: 11, color: "#c9a84c", letterSpacing: "0.08em", fontWeight: 600, paddingLeft: 2, marginBottom: 4 }}>
+            {locale === "fr-CA" ? "Comment puis-je vous aider aujourd'hui ?" : "How can I help you today?"}
           </div>
           {suggestedQuestions.map((q) => (
             <button
@@ -1679,34 +1679,44 @@ export function ChatShell({
               type="button"
               onClick={() => {
                 setInput(q);
-                // Let React update input state, then submit
                 setTimeout(() => {
                   const sendBtn = document.querySelector<HTMLButtonElement>("[data-send-btn]");
                   sendBtn?.click();
                 }, 30);
               }}
               style={{
-                background: "#f0f2f5",
-                border: "1px solid #e0e3e8",
-                borderRadius: 10,
-                color: "#1a1a1a",
-                fontSize: 12,
-                padding: "7px 12px",
+                background: "linear-gradient(135deg, rgba(35,30,22,0.95), rgba(28,24,18,0.95))",
+                border: "1px solid rgba(201,168,76,0.35)",
+                borderRadius: 12,
+                color: "#f4eedd",
+                fontSize: 13,
+                fontWeight: 500,
+                padding: "13px 16px",
                 textAlign: "left",
                 cursor: "pointer",
-                transition: "border-color 0.2s, background 0.2s",
-                lineHeight: 1.4,
+                transition: "border-color 0.2s, background 0.2s, transform 0.15s",
+                lineHeight: 1.35,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(201,168,76,0.5)";
-                (e.currentTarget as HTMLButtonElement).style.background = "#e8ebe0";
+                (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(201,168,76,0.85)";
+                (e.currentTarget as HTMLButtonElement).style.background = "linear-gradient(135deg, rgba(45,38,26,0.98), rgba(36,30,22,0.98))";
+                (e.currentTarget as HTMLButtonElement).style.transform = "translateX(-2px)";
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.borderColor = "#e0e3e8";
-                (e.currentTarget as HTMLButtonElement).style.background = "#f0f2f5";
+                (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(201,168,76,0.35)";
+                (e.currentTarget as HTMLButtonElement).style.background = "linear-gradient(135deg, rgba(35,30,22,0.95), rgba(28,24,18,0.95))";
+                (e.currentTarget as HTMLButtonElement).style.transform = "translateX(0)";
               }}
             >
-              {q}
+              <span style={{ flex: 1 }}>{q}</span>
+              <span aria-hidden="true" style={{ color: "#c9a84c", fontSize: 18, fontWeight: 300, lineHeight: 1, opacity: 0.7 }}>
+                ›
+              </span>
             </button>
           ))}
         </div>
@@ -2276,58 +2286,148 @@ export function ChatShell({
   );
 
   if (mode === "floating") {
+    const isFr = locale !== "en-CA";
+    const greetingTitle = isFr ? "Sophie vous accueille" : "Sophie welcomes you";
+    const conciergeBrand = isFr ? "CONCIERGE IA PAR DUBUB" : "AI CONCIERGE BY DUBUB";
+    const availableNow = isFr ? "Disponible maintenant" : "Available now";
+
     return (
       <div>
-        {/* Launcher button */}
-        <button
-          type="button"
-          aria-label={isOpen ? "Fermer le concierge" : "Ouvrir le concierge"}
-          onClick={() => setIsOpen((v) => !v)}
-          style={{
-            position: "fixed",
-            bottom: 24,
-            right: 24,
-            width: 60,
-            height: 60,
-            borderRadius: "50%",
-            background: "var(--accent-gradient)",
-            border: "2px solid rgba(201,168,76,0.3)",
-            boxShadow: "0 4px 24px rgba(201,168,76,0.35)",
-            zIndex: 9999,
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            lineHeight: 1,
-          }}
-        >
-          {isOpen ? (
-            <span style={{ color: "#111116", fontSize: 20, fontWeight: 700, lineHeight: 1 }}>✕</span>
-          ) : (
-            <span style={{ color: "#111116", fontWeight: 900, fontSize: 22, lineHeight: 1 }}>M</span>
-          )}
-        </button>
+        {/* Premium peeking launcher — visible only when closed */}
+        {!isOpen && (
+          <button
+            type="button"
+            aria-label={isFr ? "Ouvrir le concierge" : "Open the concierge"}
+            onClick={() => setIsOpen(true)}
+            style={{
+              position: "fixed",
+              top: "50%",
+              right: 0,
+              transform: "translateY(-50%)",
+              width: 320,
+              padding: "16px 18px 16px 22px",
+              borderTopLeftRadius: 18,
+              borderBottomLeftRadius: 18,
+              borderTop: "1px solid rgba(201,168,76,0.55)",
+              borderLeft: "1px solid rgba(201,168,76,0.55)",
+              borderBottom: "1px solid rgba(201,168,76,0.55)",
+              borderRight: "none",
+              background: "linear-gradient(135deg, #1a1a1f 0%, #14141a 100%)",
+              boxShadow: "0 12px 40px rgba(0,0,0,0.55), 0 0 24px rgba(201,168,76,0.18)",
+              zIndex: 9999,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 14,
+              color: "#f4eedd",
+              textAlign: "left",
+              transition: "transform 0.25s ease, box-shadow 0.25s ease",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-50%) translateX(-4px)";
+              (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 16px 50px rgba(0,0,0,0.6), 0 0 32px rgba(201,168,76,0.3)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-50%)";
+              (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 12px 40px rgba(0,0,0,0.55), 0 0 24px rgba(201,168,76,0.18)";
+            }}
+          >
+            {/* Bell icon */}
+            <span
+              aria-hidden="true"
+              style={{
+                fontSize: 28,
+                lineHeight: 1,
+                color: "#c9a84c",
+                filter: "drop-shadow(0 0 6px rgba(201,168,76,0.5))",
+              }}
+            >
+              🛎
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 10, letterSpacing: "0.14em", color: "#c9a84c", fontWeight: 700, marginBottom: 4 }}>
+                {conciergeBrand}
+              </div>
+              <div style={{ fontSize: 14, fontStyle: "italic", color: "#f4eedd", lineHeight: 1.25, marginBottom: 4 }}>
+                {greetingTitle}
+              </div>
+              <div style={{ fontSize: 11, color: "#a8a896", display: "flex", alignItems: "center", gap: 6 }}>
+                <span
+                  style={{
+                    display: "inline-block",
+                    width: 7,
+                    height: 7,
+                    borderRadius: "50%",
+                    background: "#3dd17a",
+                    boxShadow: "0 0 6px rgba(61,209,122,0.6)",
+                  }}
+                />
+                {availableNow}
+              </div>
+            </div>
+            <span aria-hidden="true" style={{ color: "#c9a84c", fontSize: 22, fontWeight: 300, lineHeight: 1 }}>
+              ›
+            </span>
+          </button>
+        )}
 
-        {/* Floating panel */}
+        {/* Close button — visible only when open */}
+        {isOpen && (
+          <button
+            type="button"
+            aria-label={isFr ? "Fermer le concierge" : "Close the concierge"}
+            onClick={() => setIsOpen(false)}
+            style={{
+              position: "fixed",
+              top: 24,
+              right: 24,
+              width: 44,
+              height: 44,
+              borderRadius: "50%",
+              background: "rgba(26,26,31,0.9)",
+              border: "1px solid rgba(201,168,76,0.4)",
+              color: "#c9a84c",
+              fontSize: 18,
+              fontWeight: 600,
+              cursor: "pointer",
+              zIndex: 10001,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+            }}
+          >
+            ✕
+          </button>
+        )}
+
+        {/* Premium opened panel — slides from right, ~26% of viewport */}
         {isOpen ? (
           <div
             style={{
               position: "fixed",
-              bottom: 96,
-              right: 24,
-              width: "min(420px, calc(100vw - 48px))",
-              maxHeight: "calc(100vh - 128px)",
+              top: 0,
+              right: 0,
+              bottom: 0,
+              width: "min(440px, 92vw)",
               zIndex: 9998,
-              borderRadius: 20,
-              overflow: "auto",
-              boxShadow: "0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,168,76,0.15)",
+              background: "linear-gradient(180deg, #14141a 0%, #1a1a22 100%)",
+              boxShadow: "-20px 0 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(201,168,76,0.2)",
               display: "flex",
               flexDirection: "column",
+              animation: "maa-panel-slide 0.35s ease",
             }}
           >
             {widget}
           </div>
         ) : null}
+
+        <style>{`
+          @keyframes maa-panel-slide {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+          }
+        `}</style>
       </div>
     );
   }

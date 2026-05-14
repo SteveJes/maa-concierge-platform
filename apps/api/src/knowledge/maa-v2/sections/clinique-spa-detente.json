@@ -1,0 +1,84 @@
+{
+  "_source": "Daphné PDF p.32-33 — 'Clinique sportive' + 'Soins infirmiers' + 'Spa et salle de détente'",
+  "_sectionId": "clinique_spa_detente",
+  "_principle": "Trois entités distinctes souvent confondues : (1) Clinique sportive standard (poste 234), (2) Soins infirmiers via partenaire Mobile Mediq (514 543-2121), (3) Salle de détente / Spa (poste 234 pour rendez-vous massage). Toujours clarifier avant de répondre.",
+
+  "summary": {
+    "fr": "La Clinique sportive MAA couvre thérapie sportive, physiothérapie, massothérapie, ostéopathie, nutrition et services médicaux. Les soins infirmiers privés sont offerts via le partenaire Mobile Mediq (au club, à domicile ou au bureau, rayon 200 km). La salle de détente/spa donne accès piscine, sauna, bain vapeur, bain tourbillon et massothérapie.",
+    "en": "MAA Sports Clinic covers sports therapy, physiotherapy, massage therapy, osteopathy, nutrition, and medical services. Private nursing care is offered through partner Mobile Mediq (at the club, at home, or at the office, within a 200 km radius). The relaxation room/spa provides access to the pool, sauna, steam room, hot tub, and massage therapy."
+  },
+
+  "cliniqueSportive": {
+    "label": { "fr": "Clinique sportive", "en": "Sports clinic" },
+    "services": ["Thérapie sportive", "Physiothérapie", "Massothérapie", "Ostéopathie", "Nutrition", "Services médicaux"],
+    "bookingMethod": "Formulaire de réservation en ligne OU téléphone au poste 234.",
+    "pricing": null,
+    "pricingNote": "Tarifs des consultations non publiés. ATTENTION: la page Salle de détente affiche un tableau de prix (60 $/25min, 80 $/55min, 105 $/85min) qui correspond aux MASSAGES seulement — ne pas l'appliquer aux autres consultations.",
+    "policies": [
+      "Reçus d'assurance disponibles",
+      "Politique d'annulation: préavis de 24 h",
+      "Formulaire de santé obligatoire à la première visite"
+    ],
+    "highlightedTherapist": "Ghassen Abid (ostéopathe et massothérapeute)",
+    "primaryContact": "clinique_sportive",
+    "safetyRule": "Jamais de diagnostic. Jamais d'interprétation de symptômes. Jamais de garantie de disponibilité.",
+    "confidence": "confirmed"
+  },
+
+  "soinsInfirmiers": {
+    "label": { "fr": "Soins infirmiers (Mobile Mediq)", "en": "Nursing care (Mobile Mediq)" },
+    "partner": "Mobile Mediq",
+    "services": [
+      "Prélèvements sanguins",
+      "Perfusions intraveineuses",
+      "Dépistages d'ITS",
+      "Profils de fertilité",
+      "Injections"
+    ],
+    "locations": ["Au club", "À domicile", "Au bureau"],
+    "serviceRadius": "200 km de Montréal",
+    "bookingMethod": "Formulaire en ligne OU téléphone direct à Mobile Mediq au 514 543-2121.",
+    "pricing": null,
+    "pricingNote": "Tarifs non publiés. ATTENTION: la page contient parfois un tableau de tarifs (60/80/105 $ membre, 65/85/120 $ invité) qui est réutilisé de la salle de détente — NE PAS l'appliquer aux soins infirmiers.",
+    "primaryContact": "mobile_mediq",
+    "safetyRule": "Jamais de diagnostic, jamais d'interprétation de résultats, jamais de recommandation de test. Orienter vers Mobile Mediq pour toute question médicale.",
+    "confidence": "toValidate"
+  },
+
+  "spaSalleDetente": {
+    "label": { "fr": "Spa et salle de détente", "en": "Spa and relaxation room" },
+    "summary": "Espace de relaxation avec services de massothérapie. Accès piscine, sauna, bain vapeur et bain tourbillon sur le toit inclus pour les membres ET pour les clients avec rendez-vous de massage.",
+    "amenitiesAccess": ["Piscine sur le toit", "Sauna", "Bain vapeur", "Bain tourbillon", "Terrasse privée"],
+    "massagePricing": [
+      { "label": { "fr": "Massage 25 min", "en": "Massage 25 min" }, "memberPrice": "60 $", "guestPrice": "65 $", "confidence": "toValidate" },
+      { "label": { "fr": "Massage 55 min", "en": "Massage 55 min" }, "memberPrice": "80 $", "guestPrice": "85 $", "confidence": "toValidate" },
+      { "label": { "fr": "Massage 85 min", "en": "Massage 85 min" }, "memberPrice": "105 $", "guestPrice": "120 $", "confidence": "toValidate" }
+    ],
+    "hours": {
+      "weekday": "9h00 - 19h00",
+      "weekend": "11h00 - 15h00"
+    },
+    "bookingMethod": "Téléphone au poste 234.",
+    "policies": [
+      "Questionnaire santé obligatoire",
+      "Politique d'annulation: préavis de 24 h",
+      "Reçus d'assurance disponibles"
+    ],
+    "highlightedTherapist": "Ghassen Abid",
+    "primaryContact": "clinique_sportive",
+    "confidence": "toValidate",
+    "confusionRule": "La page Salle de détente affiche parfois des messages mélangés avec la clinique. Ne pas présenter cette page comme un simple lounge libre-service — c'est un espace bien-être avec rendez-vous + accès amenities."
+  },
+
+  "intakeQuestion": {
+    "fr": "Pour bien vous orienter, votre besoin concerne-t-il un soin clinique (physio, ostéo, nutrition, médical), un massage, un soin infirmier (prélèvement, injection, perfusion) ou un moment de détente au spa ?",
+    "en": "To point you the right way, are you looking for a clinical treatment (physio, osteo, nutrition, medical), a massage, nursing care (sampling, injection, IV), or a relaxation moment at the spa?"
+  },
+
+  "primaryContact": "clinique_sportive",
+  "fallbackContact": "reception_poste_0",
+  "ctaForVisitors": {
+    "fr": "Si vous me décrivez brièvement le besoin, je pourrai vous orienter vers le bon service.",
+    "en": "If you describe what you're looking for, I can point you to the right service."
+  }
+}

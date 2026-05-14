@@ -1,0 +1,150 @@
+{
+  "_source": "Daphné PDF p.33 + p.191-197 — 'Restaurant Le 1881' + full menu + chef profile",
+  "_sectionId": "restaurant",
+  "_principle": "Réservation en ligne (Libro) pour <6 personnes; téléphone pour groupes/événements. Prix peuvent changer — ne pas confirmer un plat du jour.",
+
+  "summary": {
+    "fr": "Le Restaurant Le 1881 est un restaurant chic au cœur du Club, ouvert aux membres et non-membres. Cuisine bistro réinventée par le chef exécutif Gary Rizk. Réservation en ligne pour moins de 6 personnes, téléphone pour groupes. Salle de conférence pour jusqu'à 10 personnes.",
+    "en": "Restaurant Le 1881 is a chic on-site restaurant, open to members and non-members. Reinvented bistro cuisine by executive chef Gary Rizk. Online booking for fewer than 6 people, phone for groups. Conference room for up to 10 people."
+  },
+
+  "contact": {
+    "address": "2070, rue Peel, Montréal, QC H3A 1W6",
+    "phone": "514 845-8002",
+    "extension": "247",
+    "email": "info@resto1881.com"
+  },
+
+  "hours": {
+    "weekday": "Lundi-Vendredi 7h00 - 22h00",
+    "saturday": "Samedi 8h00 - 22h00",
+    "sunday": "Dimanche 8h00 - 16h00",
+    "confidence": "confirmed"
+  },
+
+  "chef": {
+    "name": "Gary Rizk",
+    "role": "Chef exécutif",
+    "bio": "Natif de Joliette, enfance et adolescence au Liban, retour au Québec en 1990. A débuté comme serveur, puis a découvert sa passion pour la cuisine. Formation à l'ITHQ. Spécialisé dans les cuisines italienne, belge et française. Membre fidèle du MAA depuis plusieurs années, amateur de squash et de spinning. Privilégie produits frais, arrivages de saison et cuisine conviviale."
+  },
+
+  "reservations": {
+    "online_individual": {
+      "description": "Réservation en ligne via Libro pour moins de 6 personnes.",
+      "link": "restaurant_libro"
+    },
+    "phone_groups": {
+      "description": "Réservation par téléphone pour groupes/événements/déjeuners corporatifs et salle de conférence (jusqu'à 10 personnes).",
+      "phone": "514 845-8002"
+    },
+    "online_order": {
+      "description": "Commande pour emporter tous les jours.",
+      "link": "1881_online_order"
+    }
+  },
+
+  "menu": {
+    "_links": ["1881_menu_main", "1881_menu_lunch", "1881_wine_list"],
+    "aPartager": [
+      { "item": { "fr": "Planche de charcuteries", "en": "Charcuterie board" }, "description": "Prosciutto, rosette de Lyon, saucisson, cornichons, moutarde de Dijon", "price": "22 $" },
+      { "item": { "fr": "Planche de fromages", "en": "Cheese board" }, "description": "Sélection de fromages assortis du Québec, compote d'oignon", "price": "22 $" },
+      { "item": { "fr": "Nachos et guacamole", "en": "Nachos and guacamole" }, "description": null, "price": "17 $" }
+    ],
+    "entrees": [
+      { "item": { "fr": "Soupe du jour", "en": "Soup of the day" }, "description": null, "price": "8 $" },
+      { "item": { "fr": "Calamar frit", "en": "Fried calamari" }, "description": "Aïoli au safran", "price": "18 $" },
+      { "item": { "fr": "Tartare de saumon", "en": "Salmon tartare" }, "description": "Échalotes, jus de lime, avocats, huile d'olive, aneth, servi avec choix de frites ou salade. Entrée ou repas.", "price": "17 / 34 $" },
+      { "item": { "fr": "Tartare de bœuf", "en": "Beef tartare" }, "description": "Classique, disponible en plat, servi avec choix de frites ou salade. Entrée ou repas.", "price": "17 / 34 $" },
+      { "item": { "fr": "Falafels", "en": "Falafels" }, "description": "Purée d'aubergines, cornichons, tomates, persil, sauce tahini et sumac", "price": "13 $" },
+      { "item": { "fr": "Frites maison", "en": "Homemade fries" }, "description": null, "price": "7 $" }
+    ],
+    "salades": [
+      { "item": { "fr": "Salade maison", "en": "House salad" }, "description": "Mesclun, concombres, radis, tomates, vinaigrette balsamique", "price": "8 $" },
+      { "item": { "fr": "Salade de chèvre chaud", "en": "Warm goat cheese salad" }, "description": "Laitue, tomates, betteraves, radis, pommes, noix, vinaigre de xérès", "price": "17 $" },
+      { "item": { "fr": "Salade de roquette", "en": "Arugula salad" }, "description": "Haloumi, tomates cerises, concombres, quinoa rouge, noix de pin, menthe", "price": "14 / 23 $" },
+      { "item": { "fr": "Salade de canard", "en": "Duck salad" }, "description": "Mousseline de carottes, kale, pommes, canneberges, pacanes, oranges", "price": "30 $" },
+      { "item": { "fr": "Salade César", "en": "Caesar salad" }, "description": null, "price": "12 / 20 $" }
+    ],
+    "plats": [
+      { "item": { "fr": "Burger 1881", "en": "1881 Burger" }, "description": "Oignons caramélisés, champignons, fromage, sauce chipotle, servi avec choix de frites ou salade", "price": "24 $" },
+      { "item": { "fr": "Club sandwich", "en": "Club sandwich" }, "description": "Pain de campagne, poulet, bacon, tomate, laitue, mayonnaise", "price": "25 $" },
+      { "item": { "fr": "Cavatelli maison", "en": "Homemade cavatelli" }, "description": "Tomates séchées, pesto, noix de pin, pleurotes, roquette, parmesan", "price": "29 $" },
+      { "item": { "fr": "Bavette de bœuf 8 oz", "en": "8 oz beef flank steak" }, "description": "Sauce chimichurri, servie avec choix de frites ou salade", "price": "34 $" },
+      { "item": { "fr": "Contre-filet de bœuf 12 oz", "en": "12 oz beef striploin" }, "description": "Sauce au poivre vert du Madagascar, servi avec choix de frites ou salade", "price": "47 $" },
+      { "item": { "fr": "Short rib de bœuf braisé", "en": "Braised beef short rib" }, "description": "Mousseline de patate douce, légumes maison", "price": "40 $" },
+      { "item": { "fr": "Pêche du jour", "en": "Catch of the day" }, "description": "Selon l'arrivage", "price": "36 $" }
+    ],
+    "desserts": [
+      { "item": { "fr": "Crème brûlée", "en": "Crème brûlée" }, "description": null, "price": "11 $" },
+      { "item": { "fr": "Churros", "en": "Churros" }, "description": "Sauce au caramel à la fleur de sel", "price": "11 $" },
+      { "item": { "fr": "Fondant au chocolat", "en": "Chocolate lava cake" }, "description": null, "price": "11 $" },
+      { "item": { "fr": "Tarte tatin", "en": "Tarte tatin" }, "description": "Crème anglaise", "price": "12 $" }
+    ]
+  },
+
+  "menuDejeunerBrunch": {
+    "_note": "Items marked with * available weekends only.",
+    "items": [
+      { "item": { "fr": "Deux œufs, pommes de terre et pain rôtis", "en": "Two eggs, potatoes, toasted bread" }, "description": null, "price": "12,50 $" },
+      { "item": { "fr": "Le classique", "en": "The classic" }, "description": "Deux œufs au choix, bacon ou saucisses maison, fruits, pommes de terre, crêpes au sirop", "price": "19 $" },
+      { "item": { "fr": "Sandwich déjeuner", "en": "Breakfast sandwich" }, "description": "Pain brioché, œufs brouillés, fromage cheddar, oignons caramélisés, ciboulettes", "price": "11 $" },
+      { "item": { "fr": "Sandwich 1881", "en": "1881 sandwich" }, "description": "Saucisses maison, pain brioché, œufs tournés, cheddar, roquette, oignons rouges", "price": "12 $" },
+      { "item": { "fr": "Chakchouka", "en": "Shakshuka" }, "description": "Sauce tomate, poivrons, harissa, œufs pochés", "price": "20 $" },
+      { "item": { "fr": "Bagel au saumon fumé", "en": "Smoked salmon bagel" }, "description": "Fromage à la crème", "price": "15 $" },
+      { "item": { "fr": "Tartine aux avocats", "en": "Avocado toast" }, "description": "Œufs pochés, pain de campagne, pommes de terre, fruits", "price": "20 $" },
+      { "item": { "fr": "Grilled cheese signature", "en": "Signature grilled cheese" }, "description": "Pain de campagne, cheddar vieilli, compote de pommes, pommes de terre et fruits", "price": "22 $" },
+      { "item": { "fr": "Parfait de yogourt", "en": "Yogurt parfait" }, "description": "Confiture de fruits rouges, granola, fruit frais", "price": "11 $" },
+      { "item": { "fr": "Gaufre liégeoise", "en": "Liège waffle" }, "description": "Fruits frais, crème anglaise", "price": "19 $" },
+      { "item": { "fr": "Omelette jambon et fromage", "en": "Ham and cheese omelette" }, "description": "Pommes de terre et fruits", "price": "22 $" },
+      { "item": { "fr": "Déjeuner 1881*", "en": "1881 breakfast*" }, "description": "Écrasé de pommes de terre au gras de canard, effiloché de bœuf, œuf mollet frit", "price": "25 $", "weekendOnly": true },
+      { "item": { "fr": "Bénédictines au saumon fumé*", "en": "Smoked salmon Benedict*" }, "description": "Sauce hollandaise, muffin anglais, épinards", "price": "24 $", "weekendOnly": true },
+      { "item": { "fr": "Menu enfant", "en": "Kids' menu" }, "description": "Œufs ou crêpes et fruits au choix", "price": "12 $" }
+    ],
+    "extras": [
+      { "item": { "fr": "Pain rôti", "en": "Toast" }, "price": "3 $" },
+      { "item": { "fr": "Sirop d'érable", "en": "Maple syrup" }, "price": "4 $" },
+      { "item": { "fr": "Bagel", "en": "Bagel" }, "price": "4 $" },
+      { "item": { "fr": "Un œuf", "en": "One egg" }, "price": "3 $" },
+      { "item": { "fr": "Pomme de terre", "en": "Potatoes" }, "price": "4 $" },
+      { "item": { "fr": "Bacon ou saucisse", "en": "Bacon or sausage" }, "price": "4 $" }
+    ]
+  },
+
+  "boissons": [
+    { "item": { "fr": "Café filtre", "en": "Drip coffee" }, "price": "3,50 $" },
+    { "item": { "fr": "Thé / tisane", "en": "Tea / herbal tea" }, "price": "5 $" },
+    { "item": { "fr": "Espresso", "en": "Espresso" }, "price": "4 $" },
+    { "item": { "fr": "Latté", "en": "Latte" }, "price": "6 $" },
+    { "item": { "fr": "Cappuccino", "en": "Cappuccino" }, "price": "5 $" },
+    { "item": { "fr": "Macchiato", "en": "Macchiato" }, "price": "4 $" },
+    { "item": { "fr": "Jus d'orange", "en": "Orange juice" }, "price": "4,50 $" }
+  ],
+
+  "wineList": {
+    "exists": true,
+    "rule": {
+      "fr": "Le concierge peut dire que Le 1881 possède une carte des vins avec des vins blancs, rosés, rouges, mousseux et champagnes, MAIS il ne doit pas recommander de vin, confirmer une disponibilité, ni donner de conseil de consommation. Pour les questions sur les vins, les prix, les accords, la disponibilité ou le service d'alcool, référer au personnel du restaurant. Respecter les règles d'âge légal.",
+      "en": "The concierge can mention that Le 1881 has a wine list with whites, rosés, reds, sparkling, and champagne, BUT must not recommend a wine, confirm availability, or give consumption advice. For wine questions, prices, pairings, availability, or alcohol service, refer to restaurant staff. Respect legal age rules."
+    },
+    "link": "1881_wine_list",
+    "templateResponse": {
+      "fr": "Le Restaurant Le 1881 propose une carte des vins avec des vins blancs, rosés, rouges, mousseux et champagnes. Pour connaître les bouteilles disponibles, les prix actuels ou obtenir une recommandation, je vous invite à vérifier directement avec l'équipe du restaurant.",
+      "en": "Le 1881 has a wine list with whites, rosés, reds, sparkling, and champagne. For the available bottles, current prices, or a recommendation, please check directly with the restaurant team."
+    }
+  },
+
+  "limits": [
+    "Ne jamais confirmer une réservation, une disponibilité, un plat du jour ou un prix final sans validation.",
+    "Pour allergies ou restrictions alimentaires, référer directement au restaurant.",
+    "Pour toute boisson alcoolisée, rester général et référer au personnel du restaurant.",
+    "Les prix peuvent changer."
+  ],
+
+  "primaryContact": "restaurant_1881",
+  "primaryLink": "restaurant_libro",
+
+  "ctaForVisitors": {
+    "fr": "Souhaitez-vous que je vous aide à choisir entre réserver une table, commander en ligne ou consulter le menu du restaurant ?",
+    "en": "Would you like me to help you choose between booking a table, ordering online, or browsing the menu?"
+  }
+}

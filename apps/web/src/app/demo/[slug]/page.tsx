@@ -62,16 +62,18 @@ const DUBUB_NUDGES_EN = [
 ];
 
 const MAA_SUGGESTED_FR = [
-  "Quels sont vos tarifs d'abonnement ?",
-  "C'est quoi les horaires de la piscine ?",
-  "Offrez-vous des cours de pilates ?",
-  "Comment réserver une visite ?",
+  "Réserver un entraînement privé",
+  "Horaire de pickleball",
+  "Réserver une visite du club",
+  "Comparer les abonnements",
+  "Services du spa",
 ];
 const MAA_SUGGESTED_EN = [
-  "What are your membership fees?",
-  "What are your pool hours?",
-  "Do you offer pilates classes?",
-  "How do I book a tour?",
+  "Book a private training session",
+  "Pickleball schedule",
+  "Book a club visit",
+  "Compare memberships",
+  "Spa services",
 ];
 const DUBUB_SUGGESTED_FR = [
   "Quels sont vos plans et tarifs ?",
