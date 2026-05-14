@@ -1,0 +1,117 @@
+{
+  "_source": "Daphné PDF p.164-174 — Communauté + Historique + Boutique + Médias",
+  "_sectionId": "club_identity",
+  "_principle": "Section pour répondre aux questions d'identité, d'héritage, de positionnement, de communauté et de crédibilité. JAMAIS utiliser cette section pour confirmer prix, horaires, modalités ou inventaire boutique — uniquement pour parler de qui le MAA est.",
+
+  "summary": {
+    "fr": "Le Club Sportif MAA est une institution montréalaise fondée en 1881. Plus de 140 ans d'héritage sportif. Communauté inclusive et chaleureuse. Réputation premium confirmée par NUVO, La Presse, Radio-Canada. Boutique aux couleurs du Club.",
+    "en": "Club Sportif MAA is a Montreal institution founded in 1881. Over 140 years of sporting heritage. Inclusive and warm community. Premium reputation confirmed by NUVO, La Presse, Radio-Canada. Boutique with Club-branded apparel."
+  },
+
+  "history": {
+    "founded": "1881",
+    "originalName": "Montreal Amateur Athletic Association / M.A.A.A.",
+    "origin": "Fusion de trois clubs fondateurs : La Crosse, la Raquette et le Bicycle Club. Mission d'origine : permettre aux jeunes Montréalais de pratiquer le sport pour la compétition, le côté social et la santé.",
+    "currentBuilding": "Installé sur la rue Peel depuis 1905.",
+    "achievements": [
+      "Quatre Coupes Stanley : 1893, 1894, 1902 et 1903",
+      "Champion de la Coupe Grey en 1931",
+      "Lié au premier médaillé d'or olympique du Canada : Étienne Desmarteau, 1904",
+      "Voté meilleur club d'entraînement au pays par Reader's Digest en 2006"
+    ],
+    "recentRenovation": "Projet de revitalisation mené par Devimco + LemayMichaud. Préservation de la façade Beaux-Arts, restauration des archives sportives, équipements modernes (Technogym, premiers Biostrength au Québec), 7 grands studios, piscine intérieure 25 m, demi-terrain basketball, terrain de pickleball, restaurant Le 1881, clinique sportive, espace détente.",
+    "premiumPositioning": {
+      "fr": "Vous ne rejoignez pas seulement un gym, vous entrez dans un club qui fait partie du patrimoine sportif de Montréal. Le MAA combine plus d'un siècle d'histoire avec des installations modernes au cœur du Mille carré doré.",
+      "en": "You don't just join a gym — you become part of Montreal's sporting heritage. MAA blends over a century of history with modern facilities in the heart of the Golden Square Mile."
+    }
+  },
+
+  "community": {
+    "principle": "Le MAA est une communauté inclusive et respectueuse, ouverte à tous les niveaux de forme physique. La santé y est définie aussi par le lien d'appartenance entre les membres, pas seulement par l'activité physique.",
+    "spotlightMembers": [
+      {
+        "name": "Martha Harrison",
+        "status": "Membre honoraire",
+        "story": "Fréquente le Club depuis 1999. Participe aux cours de groupe (Spinning notamment) et aux événements sociaux. Importatrice de vins et spiritueux qui fait découvrir des produits exclusifs aux membres lors de dégustations.",
+        "concierge_angle": "Illustre la différence entre un gym classique et un club sportif : au MAA, des relations se créent sur plusieurs années."
+      },
+      {
+        "name": "Mara Macri",
+        "status": "Réceptionniste",
+        "story": "Reconnue pour son sourire, sa bonne humeur, sa fiabilité et son énergie. Accueille les membres dès 7h en semaine. Approche personnalisée et orientée solution.",
+        "concierge_angle": "Représente l'accueil humain du Club. L'expérience MAA commence dès la réception."
+      }
+    ]
+  },
+
+  "boutique": {
+    "summary": "Vêtements et produits aux couleurs du MAA. Prolongement de l'expérience d'entraînement — porter les couleurs du Club pendant ses entraînements.",
+    "director": "Valérie Devigne (aucune coordonnée publique disponible)",
+    "access": "https://clubsportifmaa.fliipapp.com/user/register/buy_service/1",
+    "limits": [
+      "Aucun catalogue en ligne complet",
+      "Aucun prix d'article confirmé",
+      "Aucune politique de retour/échange confirmée",
+      "Aucune disponibilité d'inventaire en temps réel"
+    ],
+    "rule": "Pour les articles, tailles, prix ou disponibilité, référer à la Réception du Club. Ne jamais inventer un catalogue ou un stock."
+  },
+
+  "media": {
+    "principle": "Le MAA reçoit régulièrement de l'attention médiatique. Fréquenté par des personnalités du sport, des arts, de la politique et du milieu des affaires. Argument de crédibilité externe — JAMAIS source de prix actuels ou de modalités opérationnelles.",
+    "mentions": [
+      {
+        "outlet": "NUVO Magazine",
+        "title": "Montreal's Chicest Sports Club",
+        "url": "https://nuvomagazine.com/daily-edit/montreals-chicest-sports-club",
+        "angle": "Un des plus vieux clubs sportifs en Amérique du Nord, modernisé pour une clientèle contemporaine. Équilibre patrimoine + modernité."
+      },
+      {
+        "outlet": "La Presse",
+        "title": "La reconstruction réussie d'un grand club montréalais",
+        "url": "https://www.lapresse.ca/sports/chroniques/2023-09-08/la-reconstruction-reussie-d-un-grand-club-montrealais.php",
+        "angle": "Façade Beaux-Arts, hall à double hauteur, studios, piscine 25 m, squash, cours, spa, hammam, boxe, cirque aérien, ambiance soignée et personnel accueillant.",
+        "_priceNote": "L'article mentionne 235,70 $/mois + 34,49 $ squash. NE PAS utiliser comme tarif actuel — l'abonnement est 225 $/mois selon la page Abonnement."
+      },
+      {
+        "outlet": "Radio-Canada / YouTube",
+        "title": "Club MAA : le plus vieux club sportif en Amérique du Nord",
+        "url": "https://www.youtube.com/watch?v=BD13W0LqfG4",
+        "angle": "Réouverture après 4 ans de travaux. Référence patrimoniale."
+      },
+      {
+        "outlet": "Devimco / MAA Condominiums",
+        "url": "https://maacondos.com/en/maa-sports-club/",
+        "angle": "Le complexe sportif est présenté comme un monument du sport montréalais, intégré au projet immobilier haut de gamme."
+      }
+    ],
+    "mediaContact": {
+      "name": "Nathalie Lambert",
+      "role": "Directrice des Communications et Programmes sportifs",
+      "office": "514 845-2233, poste 231",
+      "cell": "514 519-6032",
+      "email": "nlambert@clubsportifmaa.com"
+    }
+  },
+
+  "magazine": {
+    "name": "MAAgazine",
+    "url": "https://www.clubsportifmaa.com/fr/maagazine/",
+    "purpose": "Magazine du Club : actualités, conseils mode de vie, projets, nouvelles communautaires. Non transactionnel."
+  },
+
+  "primaryContact": "reception_poste_0",
+  "mediaContact": "nathalie_lambert",
+
+  "rules": [
+    "Utiliser cette section pour parler d'identité, d'héritage, de crédibilité et de positionnement.",
+    "Ne JAMAIS utiliser cette section comme source pour confirmer prix, horaires, modalités ou inventaire.",
+    "Pour les questions pratiques, rediriger vers la page de service concernée ou la Réception.",
+    "Pour les demandes médias / presse, contacter Nathalie Lambert directement."
+  ],
+
+  "ctaForVisitors": {
+    "fr": "Souhaitez-vous planifier une visite pour découvrir comment le Club combine son héritage historique avec ses installations modernes ?",
+    "en": "Would you like to plan a visit to see how the Club combines its heritage with modern facilities?"
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "_source": "Daphné PDF p.174-186 — 'Clubs affiliés'",
+  "_sectionId": "affiliated_clubs",
+  "_principle": "Le MAA a un réseau de plus de 100 clubs partenaires. Le concierge mentionne le réseau, oriente vers Réception poste 0 pour confirmer l'accès à un club spécifique. JAMAIS confirmer l'accès, les tarifs ou les règles d'un club partenaire — chaque club a ses propres modalités.",
+
+  "summary": {
+    "fr": "Plus de 100 clubs partenaires au Canada, États-Unis et à l'international (Haryana, Singapour, etc.). Chaque club affilié a ses propres règles, horaires, frais et procédures d'accueil. La réception du MAA confirme les modalités d'accès pour le club partenaire choisi.",
+    "en": "More than 100 partner clubs across Canada, the United States, and internationally (Haryana, Singapore, etc.). Each affiliated club has its own rules, hours, fees, and check-in procedures. MAA reception confirms access details for the chosen partner club."
+  },
+
+  "marqueeClubsCanada": [
+    { "city": "Toronto", "name": "Adelaide Club", "address": "1 First Canadian Place, Toronto, ON M5X 1C8", "phone": "416-367-9957", "email": "frontdesk@adelaideclub.com" },
+    { "city": "Calgary", "name": "Bankers Hall Club", "address": "402, 315 – 8 Avenue SW, Calgary, AB T2P 4K1", "phone": "403-298-4750", "email": "mzimmerman@bankershallclub.com" },
+    { "city": "Toronto", "name": "Granite Club", "address": "2350 Bayview Avenue, Toronto, ON M2L 1E4", "phone": "416-449-8713", "email": "reciprocalclubs@graniteclub.com" },
+    { "city": "Vancouver", "name": "Terminal City Club", "address": "837 West Hastings St., Vancouver, BC V6C 1B6", "phone": "604-681-4121", "email": "members@tcclub.com" },
+    { "city": "Vancouver", "name": "The Vancouver Club", "address": "915 West Hastings Street, Vancouver, BC V6C 1C6", "phone": "604-685-9321", "email": "concierge@vancouverclub.ca" },
+    { "city": "Edmonton", "name": "Royal Glenora Club", "address": "11160 River Valley Road NW, Edmonton, AB T5J 2G7", "phone": "780-482-2371", "email": "memberservices@royalglenora.com" },
+    { "city": "Montréal", "name": "Le Club Universitaire de Montréal", "phone": "514-288-0201", "email": "reception@ucmontreal.ca" },
+    { "city": "Toronto", "name": "Royal Canadian Yacht Club", "address": "141 St. George Street, Toronto, ON M5R 2L8", "phone": "416-967-7245", "email": "website@rcyc.ca" }
+  ],
+
+  "marqueeClubsUSA": [
+    { "city": "New York", "name": "New York Athletic Club (NYAC)", "address": "180 Central Park S, New York, NY 10019", "phone": "212-767-7000", "email": "reservation@nyac.org" },
+    { "city": "Boston", "name": "Harvard Club of Boston", "address": "374 Commonwealth Avenue, Boston, MA 02215", "phone": "617-536-1260", "email": "contact@harvardclub.com" },
+    { "city": "Los Angeles", "name": "Los Angeles Athletic Club", "address": "431 West 7th St., Los Angeles, CA 90014", "phone": "213-625-2211", "email": "laac@laac.net" },
+    { "city": "Detroit", "name": "Detroit Athletic Club", "address": "241 Madison St, Detroit, MI 48226", "phone": "313-963-9200", "email": "sean@thedac.com" },
+    { "city": "San Francisco", "name": "The Olympic Club", "address": "524 Post St., San Francisco, CA 94102", "phone": "415-345-5100", "email": "reciprocal@olyclub.com" },
+    { "city": "Bellevue (Seattle)", "name": "Bellevue Club", "address": "11200 SE 6th St, Bellevue, WA 98004", "phone": "425-455-1616", "email": "info@bellevueclub.com" }
+  ],
+
+  "internationalCoverage": [
+    "Haryana, Inde",
+    "Singapour",
+    "Et autres clubs partenaires en Amérique du Nord et à l'international (liste complète disponible auprès de la réception MAA)"
+  ],
+
+  "salesAngle": {
+    "fr": "Très bon argument d'abonnement premium : votre adhésion vous suit au-delà de Montréal grâce à un réseau international de clubs partenaires. Si vous voyagez souvent pour affaires ou loisirs, l'accès à des clubs comme NYAC, Granite Club Toronto, Vancouver Club ou Harvard Club of Boston est un avantage rare.",
+    "en": "A strong premium-membership angle: your membership travels with you beyond Montreal thanks to an international network of partner clubs. If you travel often for business or leisure, access to clubs like NYAC, Toronto's Granite Club, the Vancouver Club, or the Harvard Club of Boston is a rare perk."
+  },
+
+  "limits": [
+    "Ne jamais garantir l'accès à un club affilié — chaque club a ses propres règles.",
+    "Ne jamais confirmer un tarif, une réservation, un dress code ou une règle d'accueil sans validation officielle.",
+    "Ne jamais inventer un club affilié qui n'apparaît pas dans la liste source.",
+    "Pour un déplacement concret, recommander de contacter la réception MAA AVANT le voyage pour confirmer les modalités."
+  ],
+
+  "process": {
+    "fr": "Demander d'abord la ville et le pays. Si un club marquee de la liste correspond, le mentionner par son nom. Ensuite, orienter vers Réception poste 0 pour confirmer modalités d'accès, dress code, lettre d'introduction si requise, frais éventuels et règles de réservation.",
+    "en": "First ask the city and country. If a marquee partner matches, name it. Then route to Reception ext. 0 to confirm access rules, dress code, any introduction letter required, possible fees, and booking rules."
+  },
+
+  "primaryContact": "reception_poste_0",
+  "primaryLink": null,
+
+  "ctaForVisitors": {
+    "fr": "Donnez-moi la ville ou le pays que vous visitez et je peux vous aider à préparer la demande à la réception du MAA.",
+    "en": "Tell me the city or country you're visiting and I can help you prepare the request for MAA reception."
+  }
+}
