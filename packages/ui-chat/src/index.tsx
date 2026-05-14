@@ -2162,10 +2162,12 @@ export function ChatShell({
                 </svg>
               </span>
             ) : null}
-            <span>{lastResponse?.vapi?.buttonLabel ??
-              (locale === "fr-CA"
-                ? (mode === "floating" ? "Souhaitez-vous que l'IA vous appelle ?" : "📞 Continuer par téléphone")
-                : (mode === "floating" ? "Would you like the AI to call you?" : "📞 Continue by phone"))}</span>
+            <span>{mode === "floating"
+              ? (locale === "fr-CA"
+                  ? "Souhaitez-vous que l'IA vous appelle ?"
+                  : "Would you like the AI to call you?")
+              : (lastResponse?.vapi?.buttonLabel ??
+                  (locale === "fr-CA" ? "📞 Continuer par téléphone" : "📞 Continue by phone"))}</span>
           </button>
         </div>
       ) : null}
