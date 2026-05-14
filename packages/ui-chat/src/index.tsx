@@ -1673,7 +1673,7 @@ export function ChatShell({
           <div style={{ fontSize: 11, color: "#c9a84c", letterSpacing: "0.08em", fontWeight: 600, paddingLeft: 2, marginBottom: 4 }}>
             {locale === "fr-CA" ? "Comment puis-je vous aider aujourd'hui ?" : "How can I help you today?"}
           </div>
-          {suggestedQuestions.map((q) => (
+          {suggestedQuestions.map((q, idx) => (
             <button
               key={q}
               type="button"
@@ -1701,6 +1701,7 @@ export function ChatShell({
                 justifyContent: "space-between",
                 gap: 12,
                 boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
+                animation: `maa-cta-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) ${0.55 + idx * 0.08}s both`,
               }}
               onMouseEnter={(e) => {
                 (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(201,168,76,0.85)";
@@ -2401,7 +2402,24 @@ export function ChatShell({
           </button>
         )}
 
-        {/* Premium opened panel — slides from right, ~26% of viewport */}
+        {/* Backdrop with blur — fades in behind the panel */}
+        {isOpen ? (
+          <div
+            aria-hidden="true"
+            onClick={() => setIsOpen(false)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 9997,
+              background: "rgba(8,8,12,0.45)",
+              backdropFilter: "blur(6px)",
+              WebkitBackdropFilter: "blur(6px)",
+              animation: "maa-backdrop-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both",
+            }}
+          />
+        ) : null}
+
+        {/* Premium opened panel — slides from right with spring + gold border glow */}
         {isOpen ? (
           <div
             style={{
@@ -2409,23 +2427,61 @@ export function ChatShell({
               top: 0,
               right: 0,
               bottom: 0,
-              width: "min(440px, 92vw)",
+              width: "min(460px, 92vw)",
               zIndex: 9998,
-              background: "linear-gradient(180deg, #14141a 0%, #1a1a22 100%)",
-              boxShadow: "-20px 0 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(201,168,76,0.2)",
+              background: "linear-gradient(180deg, #14141a 0%, #1a1a22 50%, #14141a 100%)",
+              boxShadow: "-30px 0 80px rgba(0,0,0,0.65), 0 0 0 1px rgba(201,168,76,0.25), inset 1px 0 0 rgba(201,168,76,0.18)",
               display: "flex",
               flexDirection: "column",
-              animation: "maa-panel-slide 0.35s ease",
+              animation: "maa-panel-slide 0.65s cubic-bezier(0.22, 1, 0.36, 1) both, maa-panel-border-glow 1.4s ease-out 0.55s both",
+              willChange: "transform, opacity",
             }}
           >
-            {widget}
+            {/* Subtle gold light-sweep that crosses the panel once on open */}
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                pointerEvents: "none",
+                background: "linear-gradient(115deg, transparent 30%, rgba(201,168,76,0.10) 50%, transparent 70%)",
+                animation: "maa-panel-sheen 1.5s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both",
+                zIndex: 1,
+              }}
+            />
+            <div style={{ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", height: "100%" }}>
+              {widget}
+            </div>
           </div>
         ) : null}
 
         <style>{`
+          @keyframes maa-backdrop-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
           @keyframes maa-panel-slide {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+            0% { transform: translateX(100%) scale(0.985); opacity: 0; }
+            55% { transform: translateX(-8px) scale(1.005); opacity: 1; }
+            80% { transform: translateX(2px) scale(0.998); }
+            100% { transform: translateX(0) scale(1); opacity: 1; }
+          }
+          @keyframes maa-panel-border-glow {
+            0% { box-shadow: -30px 0 80px rgba(0,0,0,0.65), 0 0 0 1px rgba(201,168,76,0.25), inset 1px 0 0 rgba(201,168,76,0.18); }
+            45% { box-shadow: -30px 0 80px rgba(0,0,0,0.65), 0 0 0 1px rgba(201,168,76,0.95), 0 0 48px rgba(201,168,76,0.35), inset 1px 0 0 rgba(201,168,76,0.55); }
+            100% { box-shadow: -30px 0 80px rgba(0,0,0,0.65), 0 0 0 1px rgba(201,168,76,0.25), inset 1px 0 0 rgba(201,168,76,0.18); }
+          }
+          @keyframes maa-panel-sheen {
+            0% { transform: translateX(-100%); opacity: 0; }
+            40% { opacity: 1; }
+            100% { transform: translateX(100%); opacity: 0; }
+          }
+          @keyframes maa-cta-in {
+            0% { transform: translateY(14px) scale(0.97); opacity: 0; }
+            100% { transform: translateY(0) scale(1); opacity: 1; }
           }
         `}</style>
       </div>
