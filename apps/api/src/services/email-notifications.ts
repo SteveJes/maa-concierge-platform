@@ -19,6 +19,19 @@ export interface LeadEmailPayload {
    * list ("steve@dubub.com,daphne@dubub.com"). All addresses are sent in one Brevo call.
    */
   notifyEmail: string;
+  /**
+   * Per-staff routing target detected from the user's question (restaurant,
+   * clinique, abonnement, programmation sportive…). When set, the lead email
+   * SUBJECT and body highlight which department should ultimately own the
+   * lead. Recipients still follow `notifyEmail` (currently shadow-routed to
+   * stevejes@gmail.com) until Daphné flips routing to "live".
+   */
+  routing?: {
+    contactId: string;
+    contactName: string;
+    departmentLabel: string;
+    intent: string;
+  } | null;
 }
 
 /**
@@ -71,6 +84,11 @@ function buildLeadHtml(p: LeadEmailPayload): string {
     <h1>Nouveau lead — concierge IA</h1>
   </div>
   <div class="body">
+    ${p.routing ? `<div style="background:linear-gradient(135deg,rgba(201,168,76,0.14),rgba(201,168,76,0.04));border:1px solid rgba(201,168,76,0.45);border-radius:10px;padding:14px 16px;margin-bottom:22px;">
+      <div class="label" style="color:#8b6010;margin-bottom:6px;">À transmettre à</div>
+      <div style="font-size:16px;font-weight:700;color:#1a1a1a;">${p.routing.contactName}</div>
+      <div style="font-size:12px;color:#5a5a66;margin-top:2px;">${p.routing.departmentLabel} · intent: ${p.routing.intent}</div>
+    </div>` : ""}
     ${p.name ? `<div class="label">Prénom</div><div class="value">${p.name}</div>` : ""}
     <div class="label">Téléphone</div>
     <div class="value phone">📞 ${p.phone}</div>
@@ -102,9 +120,10 @@ export async function sendLeadNotificationEmail(p: LeadEmailPayload): Promise<bo
 
   const isFr = p.locale?.startsWith("fr");
   const nameStr = p.name ? ` — ${p.name}` : "";
+  const routingStr = p.routing ? ` → ${p.routing.contactName}` : "";
   const subject = isFr
-    ? `🔔 Nouveau lead${nameStr} (${p.phone}) — ${p.tenantName}`
-    : `🔔 New lead${nameStr} (${p.phone}) — ${p.tenantName}`;
+    ? `🔔 Nouveau lead${nameStr}${routingStr} (${p.phone}) — ${p.tenantName}`
+    : `🔔 New lead${nameStr}${routingStr} (${p.phone}) — ${p.tenantName}`;
 
   const senderEmail = process.env.BREVO_SENDER_EMAIL ?? "noreply@dubub.com";
   const senderName = `${p.tenantName} Concierge IA`;

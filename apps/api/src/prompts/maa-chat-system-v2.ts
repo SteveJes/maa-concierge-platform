@@ -13,7 +13,38 @@
  * - Links come from links.json ONLY; render as labels, never raw URLs.
  */
 import { buildSharedSafetyRules } from "./shared-safety.js";
-import { loadMaaV2, pickLocalized } from "../knowledge/maa-v2/loader.js";
+import { loadMaaV2, pickLocalized, type MaaV2SectionId } from "../knowledge/maa-v2/loader.js";
+
+/**
+ * Map an inbound user message to the operational sections the LLM needs in
+ * its context for this turn. Keeps the prompt compact instead of inlining
+ * all 11 sections on every request.
+ */
+function relevantSectionsForMessage(userMessage: string): MaaV2SectionId[] {
+  const m = (userMessage ?? "").toLowerCase();
+  const picks = new Set<MaaV2SectionId>();
+  if (/\b(piscine|pool|swim|nage|natation|aqua|espace\s+o|maitre|maître)\b/.test(m)) picks.add("pool");
+  if (/\b(restaurant|menu|1881|table|d[ée]jeuner|d[iî]ner|brunch|carte|vins?|salle\s+priv)\b/.test(m)) picks.add("restaurant");
+  if (/\b(abonnement|adh[ée]sion|membership|tarif|prix|forfait|inscri|s'?inscrire|frais\s+d'initiation)\b/.test(m)) picks.add("abonnement");
+  if (/\b(visite|tour|d[ée]couvrir|essai)\b/.test(m)) picks.add("visite-club");
+  if (/\b(cours|class|yoga|spinning|cardio|hiit|pilates|barre|cross[- ]?fit|aquaforme|zumba)\b/.test(m)) picks.add("cours-en-groupe");
+  if (/\b(cirque|fitness\s+a[ée]rien|powerwatts|nat\s+adulte|pilates\s+reformer)\b/.test(m)) picks.add("cours-specialite");
+  if (/\b(pickleball|pickle[- ]?ball|basketball|basket|squash|triathlon|coaching|personal\s+training|entra[iî]nement\s+priv)\b/.test(m)) picks.add("sports");
+  if (/\b(spa|sauna|hammam|d[ée]tente|massage|massoth[ée]rapie)\b/.test(m)) picks.add("clinique-spa-detente");
+  if (/\b(clinique|physio|physioth[ée]rapie|ost[ée]opathe?|ost[ée]opathie|chiro|chiropr|acupuncture|nutritionniste|nutrition|m[ée]dical|infirmi|mediq)\b/.test(m)) picks.add("clinique-services");
+  if (/\b(communaut[ée]|history|histoire|h[ée]ritage|fond[ée]|nuvo|presse|m[ée]dia|boutique|magazine)\b/.test(m)) picks.add("club-identity");
+  if (/\b(club\s+affili|reciproque|r[ée]ciproque|affiliated|reciprocal|out\s+of\s+town)\b/.test(m)) picks.add("affiliated-clubs");
+  return Array.from(picks);
+}
+
+function formatSectionBlock(id: MaaV2SectionId, content: unknown): string {
+  return [
+    `### Section: ${id}`,
+    "```json",
+    JSON.stringify(content, null, 2),
+    "```",
+  ].join("\n");
+}
 
 function languageInstruction(locale?: string): string {
   if (locale === "fr-CA") return "Respond in French (Quebec/Canada).";
@@ -104,8 +135,9 @@ function formatLinkLine(l: ReturnType<typeof loadMaaV2>["links"]["schedules"][nu
   return `  - [${l.label}](${l.url}) — for "${l.intent}" [${l.confidence}]`;
 }
 
-export function buildMaaChatSystemPromptV2(locale?: string): string {
+export function buildMaaChatSystemPromptV2(locale?: string, userMessage: string = ""): string {
   const k = loadMaaV2();
+  const relevantSections = relevantSectionsForMessage(userMessage);
 
   const allContacts = Object.values(k.contacts.contacts);
   const confirmedContacts = allContacts.filter((c) => c.confidence === "confirmed");
@@ -239,6 +271,22 @@ export function buildMaaChatSystemPromptV2(locale?: string): string {
     `Universal fallback CTA: "${pickLocalized(k.ctas._fallbackUniversalCta, locale)}"`,
     `AI-call fallback (for vague / complex / medical / contractual / high-value cases): "${pickLocalized(k.ctas._aiCallFallbackCta, locale)}"`,
     "",
+
+    // OPERATIONAL SECTIONS — only inlined when the user's message points at
+    // a specific service. Each section is Daphné's structured operational
+    // content (schedules, prices, contacts, rules). When a section is here,
+    // the bot has authoritative detail; it must NOT fall back to generic
+    // hours / generic descriptions. Always cite the section content directly.
+    ...(relevantSections.length > 0
+      ? [
+          "## SERVICE SECTIONS — authoritative operational content for THIS turn",
+          "",
+          "These sections are matched to the visitor's current question. When the visitor asks for an open-swim schedule, you have the full Spring 2026 weekly timetable here. When they ask about the menu, the restaurant section carries phone numbers and reservation links. ALWAYS prefer this content over the generic Hours / Pricing summary tables above; the sections are the ground truth Daphné encoded from the 203-page PDF.",
+          "",
+          ...relevantSections.map((id) => formatSectionBlock(id, k.sections[id])),
+          "",
+        ]
+      : []),
 
     "## LINKS — offer them when relevant, render as labels (NEVER paste raw URLs)",
     "",

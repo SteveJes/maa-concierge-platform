@@ -55,6 +55,21 @@ export interface MaaChatCitation {
   score: number;
 }
 
+/**
+ * When the user's message points at a specific MAA department (restaurant,
+ * spa/clinic, abonnement, programmation sportive…), we surface the best
+ * staff contact alongside the AI reply. The widget uses this to display
+ * "Votre demande sera transmise à [name]" above the lead form, and the
+ * server uses it to route the lead email to that staff member (with the
+ * shadow steve+daphne addresses still CC'd until sign-off).
+ */
+export interface MaaChatRouting {
+  intent: string;
+  contactId: string;
+  contactName: string;
+  departmentLabel: string;
+}
+
 export interface MaaChatResponse {
   assistantMessage: string;
   followUpMode: MaaFollowUpMode;
@@ -64,6 +79,7 @@ export interface MaaChatResponse {
     chunkCount: number;
     resultCount: number;
   };
+  routing?: MaaChatRouting;
   /**
    * When true, the UI must NOT render the booking CTA ("Planifier une visite" / "Schedule a visit"),
    * even if the assistant message happens to contain price tokens like "$" or "abonnement".
@@ -769,6 +785,165 @@ export function deriveSuppressBookingCta(userMessage: string, followUpMode: MaaF
   return false;
 }
 
+/**
+ * Map the user's message to the best MAA staff contact, when their request
+ * clearly points at a specific department. Returns `undefined` when the
+ * intent is ambiguous (fall back to the generic notify list).
+ *
+ * The mapping mirrors `apps/api/src/knowledge/maa-v2/contacts.json` —
+ * Daphné's authoritative routing rules. We deliberately keep this narrow
+ * (high-precision over recall) so the lead form never proposes the wrong
+ * staff member; ambiguous messages stay with the shadow Steve + Daphné list.
+ */
+export function detectServiceRouting(
+  userMessage: string,
+  conversationHistory?: MaaConversationHistoryTurn[],
+): MaaChatRouting | undefined {
+  if (!userMessage) return undefined;
+  const m = userMessage.toLowerCase();
+
+  // Sticky routing: when the user says "oui svp" / "yes please" right after
+  // the bot offered to route them to a specific staff member, the user
+  // message itself has no service keywords. Walk back to the last assistant
+  // turn and resolve the staff name → contact mapping there.
+  // Use a broader affirmative pattern than SHORT_AFFIRMATIVES (which gates on
+  // a fully-affirmative line) — "oui svp", "yes please", "allez-y", "ok merci"
+  // all express acceptance even if they trail other tokens.
+  const looksAffirmative =
+    /^\s*(oui|ouais|yes|yep|yup|ok|okay|sure|d['']?accord|daccord|allez[-\s]?y|allons[-\s]?y|go ahead|please|svp|s['']?il vous pla[iî]t|please do|of course|absolument|with pleasure|avec plaisir|parfait|bien s[uû]r)\b/i.test(
+      userMessage.trim(),
+    );
+  if (looksAffirmative && conversationHistory) {
+    const lastAssistant = [...conversationHistory].reverse().find((t) => t.role === "assistant");
+    if (lastAssistant) {
+      const a = lastAssistant.content.toLowerCase();
+      if (/\bnathalie\s+lambert\b/.test(a) || /\bprogrammes? sportifs?\b/.test(a)) {
+        return {
+          intent: "programmation_sportive",
+          contactId: "nathalie_lambert",
+          contactName: "Nathalie Lambert",
+          departmentLabel: "Programmation sportive",
+        };
+      }
+      if (/\bfrancis\s+bradette\b/.test(a) || /(directeur\s+des\s+ventes|sales\s+director)/.test(a)) {
+        return {
+          intent: "abonnement_visite",
+          contactId: "francis_bradette",
+          contactName: "Francis Bradette",
+          departmentLabel: "Abonnements / visites",
+        };
+      }
+      if (/\bclinique\s+sportive\b/.test(a)) {
+        return {
+          intent: "clinique_spa",
+          contactId: "clinique_sportive",
+          contactName: "Clinique sportive MAA",
+          departmentLabel: "Clinique sportive / spa",
+        };
+      }
+      if (/\byvon\s+proven[cç]al\b/.test(a)) {
+        return {
+          intent: "squash",
+          contactId: "yvon_provencal",
+          contactName: "Yvon Provençal",
+          departmentLabel: "Squash",
+        };
+      }
+      if (/\brestaurant\s+le\s+1881\b/.test(a) || /\bresto\s+1881\b/.test(a)) {
+        return {
+          intent: "restaurant",
+          contactId: "restaurant_1881",
+          contactName: "Restaurant Le 1881",
+          departmentLabel: "Restaurant",
+        };
+      }
+      if (/\bmobile\s+mediq\b/.test(a)) {
+        return {
+          intent: "soins_infirmiers",
+          contactId: "mobile_mediq",
+          contactName: "Mobile Mediq",
+          departmentLabel: "Soins infirmiers (partenaire)",
+        };
+      }
+      if (/\belisabeth\s+boutin\b/.test(a)) {
+        return {
+          intent: "reception",
+          contactId: "elisabeth_boutin",
+          contactName: "Elisabeth Boutin",
+          departmentLabel: "Réception / service client",
+        };
+      }
+    }
+  }
+
+  // Don't pre-route critical intents (cancellation, guarantee, executive…) —
+  // those follow their own safety flow and the front desk is the right
+  // recipient until a human reviews.
+  if (detectCriticalIntent(userMessage)) return undefined;
+
+  // Restaurant Le 1881 — menu, table, reservation
+  if (/\b(restaurant|menu|table|d[ée]jeuner|d[iî]ner|brunch|petit[- ]d[ée]jeuner|carte|vins?|1881|resto|salle\s+(?:priv[ée]e?|de\s+conf[ée]rence)|[ée]v[ée]nement)\b/.test(m)) {
+    return {
+      intent: "restaurant",
+      contactId: "restaurant_1881",
+      contactName: "Restaurant Le 1881",
+      departmentLabel: "Restaurant",
+    };
+  }
+
+  // Clinique sportive / massothérapie — never diagnostic, route to clinic
+  if (/\b(clinique|massage|massoth[ée]rapie|physio|physioth[ée]rapie|ost[ée]opathe?|ost[ée]opathie|chiro|chiropr|acupuncture|kin[ée]si|spa|sauna|hammam|d[ée]tente)\b/.test(m)) {
+    return {
+      intent: "clinique_spa",
+      contactId: "clinique_sportive",
+      contactName: "Clinique sportive MAA",
+      departmentLabel: "Clinique sportive / spa",
+    };
+  }
+
+  // Squash — dedicated pro
+  if (/\bsquash\b/.test(m)) {
+    return {
+      intent: "squash",
+      contactId: "yvon_provencal",
+      contactName: "Yvon Provençal",
+      departmentLabel: "Squash",
+    };
+  }
+
+  // Programmation sportive — cours, sports, piscine, pickleball, basketball
+  if (/\b(cours|classe|programme|programmation|entrain?ement|coaching|entra[iî]neur|trainer|pickleball|pickle[- ]?ball|basketball|basket|piscine|natation|aquaforme|yoga|spinning|cardio|cross[- ]?fit|hiit|tabata|barre|pilates|fitness)\b/.test(m)) {
+    return {
+      intent: "programmation_sportive",
+      contactId: "nathalie_lambert",
+      contactName: "Nathalie Lambert",
+      departmentLabel: "Programmation sportive",
+    };
+  }
+
+  // Abonnements / visites / pricing / tour
+  if (/\b(abonnement|adh[ée]sion|membership|tarif|prix|forfait|inscri|inscription|s'?inscrire|visite|visiter|tour|tour\s+du\s+club|d[ée]couvrir|essai)\b/.test(m)) {
+    return {
+      intent: "abonnement_visite",
+      contactId: "francis_bradette",
+      contactName: "Francis Bradette",
+      departmentLabel: "Abonnements / visites",
+    };
+  }
+
+  // Soins infirmiers (dedicated partner)
+  if (/\b(infirmi[èe]re|infirmier|soins?\s+infirmiers?|mediq|nurse|nursing)\b/.test(m)) {
+    return {
+      intent: "soins_infirmiers",
+      contactId: "mobile_mediq",
+      contactName: "Mobile Mediq",
+      departmentLabel: "Soins infirmiers (partenaire)",
+    };
+  }
+
+  return undefined;
+}
+
 function buildIntentSafetyContext(userMessage: string): string | undefined {
   const intent = detectCriticalIntent(userMessage);
   if (!intent) return undefined;
@@ -943,20 +1118,26 @@ function resolveShortAffirmativeFollowUp(
   const ctx = lastAssistant.content.toLowerCase();
   const fr = isFrenchLocale(locale);
 
-  // Daphné fifth-pass #8/#9: if the previous assistant message offered to
-  // transmit the request / set up a clinical appointment / route to a
-  // specialist, "oui" must MOVE FORWARD — not loop back to the same triage
-  // explanation. Reframe the user's "oui" as "yes, please proceed and ask me
-  // for the details you need" so the AI captures contact info or names the
-  // next step instead of re-describing physio vs sports therapy.
-  const clinicalHandoffOffer =
-    /(transmettre|transmets|transmit|forward|relay).*(demande|rendez-vous|appointment|request)/i.test(ctx) ||
+  // Daphné fifth-pass #8/#9 + 2026-05-18 demo bug: if the previous assistant
+  // message offered to ROUTE / CONNECT the visitor to a staff member (Nathalie,
+  // Francis, clinique, réception, etc.), "oui" must MOVE FORWARD — not loop
+  // back to a generic topic rephrasing. Without this, "vos horaires de
+  // piscine?" → bot offers to connect → user says "oui svp" → message was
+  // rewritten as "Parlez-moi de la piscine" and the same answer was repeated
+  // three times. Reframe "oui" as an explicit acceptance of the handoff so
+  // the AI captures contact info or names the next step.
+  const routingHandoffOffer =
+    /(transmettre|transmets|transmit|forward|relay).*(demande|rendez-vous|appointment|request|message)/i.test(ctx) ||
+    /\b(mettre|mets|mise)\s+(?:vous\s+)?en\s+(?:contact|lien|relation)\b/i.test(ctx) ||
+    /\b(contacter|contact|joindre|reach\s+out)\b.*\b(nathalie|francis|elisabeth|elizabeth|yvon|clinique|r[eé]ception|valérie|valerie|pierre|claude\s+b[eé]langer|directrice|directeur|reception|front\s+desk)\b/i.test(ctx) ||
     /\b(rendez-vous|appointment).*(physio|th[eé]rapeute|entra[iî]neur|sp[eé]cialiste|clinique sportive|specialist|trainer)\b/i.test(ctx) ||
-    /\b(physio|physioth[eé]rapie|th[eé]rapie sportive|kin[eé]siologue)\b/i.test(ctx);
-  if (clinicalHandoffOffer) {
+    /\b(physio|physioth[eé]rapie|th[eé]rapie sportive|kin[eé]siologue)\b/i.test(ctx) ||
+    /souhaitez[- ]vous\s+que\s+je\s+(?:vous\s+)?(?:mette|transmette|transmettre|connecte|connect|envoie|donne)/i.test(ctx) ||
+    /would you like (?:me )?to (?:put|connect|forward|relay|transmit)/i.test(ctx);
+  if (routingHandoffOffer) {
     return fr
-      ? "Oui, allez-y, transmettez ma demande. Quelles informations vous faut-il (nom, téléphone, courriel) ? Je sais que l'équipe clinique confirmera ensuite."
-      : "Yes, please go ahead and transmit my request. What do you need from me (name, phone, email)? I understand the clinical team will confirm afterward.";
+      ? "Oui, allez-y, transmettez ma demande à la bonne personne. Quelles informations vous faut-il (nom, téléphone, courriel) pour que l'équipe me rappelle ?"
+      : "Yes, please go ahead and transmit my request to the right person. What do you need from me (name, phone, email) so the team can reach me?";
   }
 
   if (/piscine|pool|swim|natation/.test(ctx))
@@ -1145,7 +1326,11 @@ function stripCitationMarkersFromAssistantMessage(message: string): string {
  * To add a custom prompt for a new tenant, add a case here and create
  * the corresponding apps/api/src/prompts/{id}-chat-system.ts file.
  */
-function resolveTenantSystemPrompt(tenantCode: string | undefined, locale: string | undefined): string {
+function resolveTenantSystemPrompt(
+  tenantCode: string | undefined,
+  locale: string | undefined,
+  userMessage: string,
+): string {
   // v2 is the default. Set KNOWLEDGE_VERSION=v1 to opt out (e.g. for emergency
   // rollback). v2 sources MAA from apps/api/src/knowledge/maa-v2/ (Daphné's
   // 203-page PDF, structured JSON). v1 reads the legacy tenant-core-facts.json.
@@ -1153,7 +1338,7 @@ function resolveTenantSystemPrompt(tenantCode: string | undefined, locale: strin
   switch (tenantCode) {
     case "maa":
       return knowledgeVersion === "v2"
-        ? buildMaaChatSystemPromptV2(locale)
+        ? buildMaaChatSystemPromptV2(locale, userMessage)
         : buildMaaChatSystemPrompt(locale);
     case "dubub":
       return buildDububChatSystemPrompt(locale);
@@ -1163,7 +1348,7 @@ function resolveTenantSystemPrompt(tenantCode: string | undefined, locale: strin
         return buildGenericTenantChatSystemPrompt(config, locale);
       }
       return knowledgeVersion === "v2"
-        ? buildMaaChatSystemPromptV2(locale)
+        ? buildMaaChatSystemPromptV2(locale, userMessage)
         : buildMaaChatSystemPrompt(locale);
     }
   }
@@ -1241,7 +1426,7 @@ async function callOpenAiForAnswer(
       messages: [
         {
           role: "system",
-          content: resolveTenantSystemPrompt(tenantCode, locale),
+          content: resolveTenantSystemPrompt(tenantCode, locale, originalUserMessage),
         },
         {
           role: "user",
@@ -1439,6 +1624,14 @@ export async function answerMaaChat(
   // guarantee, reservation-problem, or reserve-now messages.
   const intentSafetyContextEarly = buildIntentSafetyContext(request.userMessage);
 
+  // Per-staff routing — when the user's question clearly points at one
+  // department (restaurant, clinique, abonnement, programmation sportive…),
+  // we surface the best staff contact alongside the answer so the lead form
+  // can route the email to that staff member rather than a generic inbox.
+  // Pass conversationHistory so a bare "oui" answer can still infer the
+  // routing target from the previous bot turn.
+  const serviceRouting = detectServiceRouting(request.userMessage, conversationHistory);
+
   // Daphné fourth pass: "is X included?" / specific-service questions must also bypass
   // deterministic handlers, because the pricing handler kept hijacking them and
   // dumping the full tariff grid even though the user wanted to know whether X
@@ -1584,6 +1777,7 @@ export async function answerMaaChat(
         chunkCount: searchableChunks.length,
         resultCount: searchResults.length,
       },
+      routing: serviceRouting,
       suppressBookingCta: deriveSuppressBookingCta(request.userMessage, pricingAnswer.followUpMode),
     };
   }
@@ -1617,6 +1811,7 @@ export async function answerMaaChat(
         chunkCount: searchableChunks.length,
         resultCount: searchResults.length,
       },
+      routing: serviceRouting,
       suppressBookingCta: deriveSuppressBookingCta(request.userMessage, scheduleAnswer.followUpMode),
     };
   }
@@ -1647,6 +1842,7 @@ export async function answerMaaChat(
         chunkCount: searchableChunks.length,
         resultCount: searchResults.length,
       },
+      routing: serviceRouting,
       suppressBookingCta: deriveSuppressBookingCta(request.userMessage, policyAnswer.followUpMode),
     };
   }
@@ -1752,6 +1948,7 @@ export async function answerMaaChat(
       chunkCount: searchableChunks.length,
       resultCount: searchResults.length,
     },
+    routing: serviceRouting,
     suppressBookingCta: deriveSuppressBookingCta(request.userMessage, finalFollowUpMode),
     usage: usageData ? {
       model: usageData.model,

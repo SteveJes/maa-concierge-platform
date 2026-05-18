@@ -292,9 +292,31 @@ function readJson<T>(filename: string): T {
   return JSON.parse(raw) as T;
 }
 
-let cached: MaaV2Knowledge | null = null;
+/**
+ * Operational sections live in /sections/*.json. Each is a free-form bilingual
+ * document with summary, detailed schedules, prices, contacts, rules. The
+ * loader exposes them as a plain map (sectionId → JSON) so the prompt builder
+ * can inline whichever sections are relevant.
+ */
+const SECTION_FILES = [
+  "abonnement",
+  "affiliated-clubs",
+  "clinique-services",
+  "clinique-spa-detente",
+  "club-identity",
+  "cours-en-groupe",
+  "cours-specialite",
+  "pool",
+  "restaurant",
+  "sports",
+  "visite-club",
+] as const;
 
-export function loadMaaV2(): MaaV2Knowledge {
+export type MaaV2SectionId = (typeof SECTION_FILES)[number];
+
+let cached: (MaaV2Knowledge & { sections: Record<MaaV2SectionId, unknown> }) | null = null;
+
+export function loadMaaV2(): MaaV2Knowledge & { sections: Record<MaaV2SectionId, unknown> } {
   if (cached) return cached;
 
   const rules = readJson<MaaV2Rules>("rules.json");
@@ -310,6 +332,11 @@ export function loadMaaV2(): MaaV2Knowledge {
   const voiceTone = readJson<MaaV2VoiceTone>("voice-tone.json");
   const index = readJson<MaaV2Index>("index.json");
 
+  const sections = {} as Record<MaaV2SectionId, unknown>;
+  for (const id of SECTION_FILES) {
+    sections[id] = readJson<unknown>(`sections/${id}.json`);
+  }
+
   cached = {
     rules,
     intents: intentsRaw.intents,
@@ -323,6 +350,7 @@ export function loadMaaV2(): MaaV2Knowledge {
     categories,
     voiceTone,
     index,
+    sections,
   };
   return cached;
 }

@@ -39,6 +39,7 @@ import {
   updateConversation,
 } from "./ingestion/nocodb.js";
 import { runTenantIngestion } from "./ingestion/tenant-ingestion.js";
+import { getContactById, resolveLeadRecipients } from "./knowledge/maa-v2/loader.js";
 
 type TenantRouteParams = {
   tenantId: string;
@@ -51,6 +52,14 @@ type CallbackCaptureBody = {
   preferredTimeText?: string;
   questionSummary?: string;
   consentToContact?: boolean;
+  /**
+   * Optional per-staff routing target. The widget passes this back from the
+   * previous chat response's `routing.contactId` field. When set, the lead
+   * notification email shows "À transmettre à [name]" prominently so the
+   * department owner knows the lead is theirs. Recipients still flow through
+   * the shadow `notifyEmail` list until Daphné flips routing to "live".
+   */
+  routingContactId?: string;
 };
 
 type ChatRouteBody = {
@@ -1891,6 +1900,27 @@ export function createServer() {
 
       const preferredTimeText = toNullableTrimmedString(body.callback?.preferredTimeText);
 
+      // Per-staff routing — only applies to the MAA tenant for now (the only
+      // tenant with a populated contacts/staff directory in maa-v2/).
+      const routingContactId =
+        tenantId === "maa"
+          ? toNullableTrimmedString(body.callback?.routingContactId)
+          : null;
+      const routedContact = routingContactId ? getContactById(routingContactId) : undefined;
+      const routedRecipients =
+        routingContactId && routedContact
+          ? resolveLeadRecipients(routingContactId).join(",")
+          : null;
+      const routingPayload =
+        routedContact
+          ? {
+              contactId: routedContact.id,
+              contactName: routedContact.name,
+              departmentLabel: routedContact.department,
+              intent: routingContactId!,
+            }
+          : null;
+
       if (isDryRunPersistence) {
         callbackPersistence.saved = true;
         callbackPersistence.requestId = newUuid();
@@ -1904,7 +1934,8 @@ export function createServer() {
 
         // Fire lead email even in dry-run (e.g. when NocoDB not configured)
         const tenantForEmail = getTenant(tenantId);
-        const notifyEmailDry = tenantForEmail?.notifyEmail || process.env.LEAD_NOTIFY_EMAIL || "";
+        const baseNotifyEmailDry = tenantForEmail?.notifyEmail || process.env.LEAD_NOTIFY_EMAIL || "";
+        const notifyEmailDry = routedRecipients ?? baseNotifyEmailDry;
         const tenantDisplayName = tenantForEmail?.name ?? "Club Sportif MAA";
         if (notifyEmailDry) {
           const dryConversationForSummary = [
@@ -1928,6 +1959,7 @@ export function createServer() {
                 conversationId: conversationId ?? null,
                 tenantName: tenantDisplayName,
                 notifyEmail: notifyEmailDry,
+                routing: routingPayload,
               });
             } catch (err) {
               request.log.error({ err }, "Lead email (dry-run) failed");
@@ -1981,7 +2013,8 @@ export function createServer() {
 
         // Fire lead notification email in background — do not block response
         const tenantForLeadEmail = getTenant(tenantId);
-        const notifyEmail = tenantForLeadEmail?.notifyEmail || process.env.LEAD_NOTIFY_EMAIL || "";
+        const baseNotifyEmail = tenantForLeadEmail?.notifyEmail || process.env.LEAD_NOTIFY_EMAIL || "";
+        const notifyEmail = routedRecipients ?? baseNotifyEmail;
         const leadTenantName = tenantForLeadEmail?.name ?? "Club Sportif MAA";
         if (notifyEmail) {
           // Generate AI summary in the background, then send email. Both run
@@ -2007,6 +2040,7 @@ export function createServer() {
                 conversationId: conversationId ?? null,
                 tenantName: leadTenantName,
                 notifyEmail,
+                routing: routingPayload,
               });
             } catch (err) {
               request.log.error({ err }, "Lead email failed");
@@ -2152,6 +2186,7 @@ export function createServer() {
       callbackPersistence,
       booking,
       vapi,
+      routing: result.routing,
     };
   });
 

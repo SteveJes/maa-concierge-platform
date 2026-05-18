@@ -3,6 +3,35 @@
 ## Current branch
 - `feat/maa-web-ingestion-v3`
 
+## 2026-05-14 — UI polish + per-staff routing + VAPI regen + in-page navigation
+
+**Demo-ready batch.** Closed out the remaining UI critique from Steve plus three backlog items in one pass. All changes typecheck clean and the existing regression suite stays at 56/57 (the single failure is a pre-existing menu-link wording issue unrelated to this batch).
+
+### UI/UX polish (`packages/ui-chat/src/index.tsx`)
+- **Conseil Privilège bubble** — was unreadable on the dark slider (low-contrast text on dark gradient). Now: rounded 22 px, gold-bordered, cream-on-dark body, gradient gold header, and a `maa-nudge-reveal` keyframe that morphs from a pill into a rounded card while a gold sheen sweeps left → right.
+- **Assistant avatar inset** — messages container had no horizontal padding in floating mode, so the avatar kissed the slider's left edge. Bumped to `8 px 22 px 16 px`.
+- **In-page navigation preview** — when the concierge surfaces a link (markdown or bare URL), the widget now renders it as a button instead of `<a target="_blank">`. Clicking opens a LEFT-side preview panel anchored to the chat slider: gold-edged header, URL chip, "Ouvrir dans un onglet" pill, X close, iframe of the page. Visitor stays on the demo page — no external tab unless they explicitly choose to.
+- **Cross-origin embed fallback** — for MyWellness / FLiiP / Libro etc. that block embedding, a 4.5 s stall timer surfaces a polite banner ("Cette page semble bloquer l'aperçu intégré") with a prominent gold "Open in new tab" CTA.
+
+### Per-staff lead routing (`apps/api/src/services/maa-chat.ts` + `email-notifications.ts` + `server.ts` + widget)
+- New `detectServiceRouting(userMessage)` maps the user's question to the right MAA staff: restaurant → restaurant_1881, spa/clinique → clinique_sportive, squash → yvon_provencal, cours/pickleball/piscine → nathalie_lambert, abonnement/visite → francis_bradette, soins infirmiers → mobile_mediq. Critical intents (cancellation/guarantee/executive) are deliberately excluded.
+- `MaaChatResponse.routing` and the HTTP response now carry `{ intent, contactId, contactName, departmentLabel }`.
+- The widget displays a gold-edged "Transmis à / Routed to [Contact Name] · [Department]" chip above the lead form, and forwards `routingContactId` on submission.
+- Server resolves the contact via `resolveLeadRecipients(contactId)` (still shadow → `stevejes@gmail.com` per `staff.json`). Lead email subject + body now show "À transmettre à [contactName]" so the recipient knows the lead's department.
+
+### VAPI voice prompt regen for v2 parity (`apps/api/src/prompts/vapi-system.ts`)
+- Replaced the "Services possibly offered but not confirmed" block with a v2-confirmed services list: pickleball (schedule confirmed, reservation via app, member-only), clinique sportive (full service line, ext. 234, no diagnosis), Mobile Mediq partner, cours spécialité (cirque aérien / PowerWatts / natation adulte / Pilates), restaurant Le 1881.
+- Added a "Routage par département" section so the voice assistant offers to route to Francis / Nathalie / Clinique / Yvon / Mobile Mediq / reception.
+- Voice now mentions locker tiers + buanderie ($25/mo confirmed) + massage pricing tiers.
+- Regenerated and saved to `apps/api/_inbox/vapi-prompt-maa-v2.txt` (28.7 KB) and `vapi-prompt-dubub-v2.txt` (16.7 KB). **Manual paste into VAPI dashboard required** (Sophie assistant + SophIA assistant).
+
+### What's still pending
+- Paste regenerated voice prompts into VAPI dashboard (manual step).
+- Phase B vision-render for 48 PDF table pages (not blocking demo).
+- Live routing flip: when Daphné signs off, change `staff.json::routingMode` from `"shadow"` to `"live"` to start emailing the real staff.
+- v1 retirement: `tenant-core-facts.json` + old crawler chunks still alongside v2.
+
+
 ## 2026-05-14 — MAA Knowledge Base v2 rebuild (Daphné PDF source)
 
 **Major architectural shift.** v1 ingestion (crawler + `unpdf` flat text into `tenant-core-facts.json`) captured ~5% of MAA's actual website content. Daphné manually compiled the **full** website into a 203-page PDF + canonical-link email and dropped them at `apps/api/_inbox/daphne-maa-v1.pdf` (gitignored). We're rebuilding the MAA brain from her source as structured JSON.

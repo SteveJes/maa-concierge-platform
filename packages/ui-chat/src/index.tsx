@@ -183,7 +183,7 @@ function iconForCta(text: string): React.ReactNode {
 // Render assistant message text with:
 // - bullet points (lines starting with •, -, *, or numbered) → gym icon + styled line
 // - phone numbers → clickable tel: links
-function RichMessageText({ text }: { text: string }) {
+function RichMessageText({ text, onPreviewLink }: { text: string; onPreviewLink?: (url: string) => void }) {
   const lines = text.split("\n");
 
   const elements: React.ReactNode[] = [];
@@ -193,7 +193,7 @@ function RichMessageText({ text }: { text: string }) {
   function flushParagraph() {
     if (pendingParagraph.length === 0) return;
     const raw = pendingParagraph.join(" ").trim();
-    if (raw) elements.push(<span key={elements.length}>{renderInline(raw)}<br /></span>);
+    if (raw) elements.push(<span key={elements.length}>{renderInline(raw, onPreviewLink)}<br /></span>);
     pendingParagraph = [];
   }
 
@@ -208,7 +208,7 @@ function RichMessageText({ text }: { text: string }) {
       elements.push(
         <div key={elements.length} style={{ display: "flex", alignItems: "baseline", gap: 8, margin: "4px 0" }}>
           <span style={{ fontSize: 7, color: "var(--accent)", flexShrink: 0, position: "relative", top: -1, letterSpacing: 0 }}>{icon}</span>
-          <span style={{ lineHeight: 1.55, color: "inherit" }}>{renderInline(content)}</span>
+          <span style={{ lineHeight: 1.55, color: "inherit" }}>{renderInline(content, onPreviewLink)}</span>
         </div>
       );
     } else if (trimmed === "") {
@@ -223,7 +223,7 @@ function RichMessageText({ text }: { text: string }) {
   return <>{elements}</>;
 }
 
-function renderInline(text: string): React.ReactNode[] {
+function renderInline(text: string, onPreviewLink?: (url: string) => void): React.ReactNode[] {
   // Scan once and match (in priority order) markdown links, bare URLs, then
   // phone numbers. Anything not matched is plain text. Daphné's fourth pass:
   // restaurant menu URLs need to be clickable, ideally with a friendly label
@@ -246,7 +246,28 @@ function renderInline(text: string): React.ReactNode[] {
     spans.push({
       start: m.index,
       end: m.index + whole.length,
-      node: (
+      node: onPreviewLink ? (
+        <button
+          key={`md-${m.index}`}
+          type="button"
+          onClick={() => onPreviewLink(url)}
+          style={{
+            background: "none",
+            border: "none",
+            padding: 0,
+            margin: 0,
+            font: "inherit",
+            color: "var(--accent)",
+            fontWeight: 600,
+            textDecoration: "underline",
+            textUnderlineOffset: 2,
+            cursor: "pointer",
+            display: "inline",
+          }}
+        >
+          {label}
+        </button>
+      ) : (
         <a
           key={`md-${m.index}`}
           href={url}
@@ -277,7 +298,29 @@ function renderInline(text: string): React.ReactNode[] {
     spans.push({
       start,
       end: start + url.length,
-      node: (
+      node: onPreviewLink ? (
+        <button
+          key={`url-${start}`}
+          type="button"
+          onClick={() => onPreviewLink(url)}
+          style={{
+            background: "none",
+            border: "none",
+            padding: 0,
+            margin: 0,
+            font: "inherit",
+            color: "var(--accent)",
+            fontWeight: 600,
+            textDecoration: "underline",
+            textUnderlineOffset: 2,
+            cursor: "pointer",
+            display: "inline",
+            wordBreak: "break-all",
+          }}
+        >
+          {url}
+        </button>
+      ) : (
         <a
           key={`url-${start}`}
           href={url}
@@ -403,6 +446,12 @@ type ChatApiResponse = {
   callbackPersistence: CallbackPersistencePayload;
   booking: BookingPayload;
   vapi: VapiPayload;
+  routing?: {
+    intent: string;
+    contactId: string;
+    contactName: string;
+    departmentLabel: string;
+  };
 };
 
 type CallNowApiResponse = {
@@ -690,6 +739,18 @@ export function ChatShell({
   const [showLeadForm, setShowLeadForm] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [isCallingNow, setIsCallingNow] = useState(false);
+  // In floating mode, links in concierge replies open an in-context preview
+  // panel that slides in to the LEFT of the chat slider, keeping the user on
+  // the same page (no external tab).
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  // When a cross-origin destination refuses embedding (MyWellness widget,
+  // FLiiP, Libro, etc.), the iframe just shows a blank/error page and onLoad
+  // may never fire. We can't programmatically detect the X-Frame-Options
+  // block from the parent frame, but we can use a timeout: if the iframe
+  // hasn't reported `load` after 4.5s, surface a polite banner suggesting
+  // "Open in new tab".
+  const [previewStalled, setPreviewStalled] = useState(false);
   const [showIntro, setShowIntro] = useState(darkMode); // DUBUB only: show on first open
 
   // Dynamic suggested questions — fetched from API, fallback to static
@@ -729,6 +790,24 @@ export function ChatShell({
     track("concierge_chat_opened", { locale });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Show the spinner while a previewed page is loading; close preview when
+  // the chat itself closes (the LEFT preview panel only makes sense alongside
+  // the chat slider).
+  useEffect(() => {
+    if (!previewUrl) {
+      setPreviewStalled(false);
+      return;
+    }
+    setPreviewLoading(true);
+    setPreviewStalled(false);
+    track("concierge_preview_opened", { url: previewUrl });
+    const stall = setTimeout(() => setPreviewStalled(true), 4500);
+    return () => clearTimeout(stall);
+  }, [previewUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!isOpen && previewUrl) setPreviewUrl(null);
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Name capture state — persisted in localStorage per tenant
   const STORAGE_KEY = "maa_concierge_user";
@@ -1109,6 +1188,11 @@ export function ChatShell({
             preferredTimeText: callbackPreferredTime.trim() || undefined,
             questionSummary: lastUserQuestion || undefined,
             consentToContact: true,
+            // Per-staff routing — the chat API surfaced the best contact on
+            // the previous reply (Francis for abonnements, Nathalie for cours,
+            // restaurant for menu/réservation, clinique for spa/massage…).
+            // We forward it so the lead email goes straight to that team.
+            routingContactId: lastResponse?.routing?.contactId,
           },
         }),
       });
@@ -1633,7 +1717,7 @@ export function ChatShell({
             ? "linear-gradient(180deg, #0e0e14 0%, #14141a 100%)"
             : (darkMode ? "#0a0f0a" : "#f7f8f9"),
           padding: mode === "floating"
-            ? (messages.length === 1 ? "0" : "8px 0 16px")
+            ? (messages.length === 1 ? "0" : "8px 22px 16px")
             : 16,
           // In floating-mode INITIAL state (no user input yet), don't flex-grow
           // an empty messages container — let the welcome + CTAs flow naturally
@@ -1715,39 +1799,107 @@ export function ChatShell({
 
             // Nudge = distinct info card, visually separate from AI conversation
             if (isNudge) {
+              const isFloating = mode === "floating";
               return (
-                <div key={message.id} data-role="assistant" data-message-text={message.text} style={{ marginBottom: 10, animation: "maa-msg-in 0.3s ease" }}>
-                  <div style={{
-                    borderRadius: 14,
-                    background: `linear-gradient(135deg, rgba(var(--accent-rgb),0.07) 0%, rgba(var(--accent-rgb),0.03) 100%)`,
-                    border: `1px solid rgba(var(--accent-rgb),0.25)`,
-                    boxShadow: `0 2px 8px rgba(var(--accent-rgb),0.10)`,
-                    overflow: "hidden",
-                  }}>
+                <div
+                  key={message.id}
+                  data-role="assistant"
+                  data-message-text={message.text}
+                  style={{
+                    marginBottom: 12,
+                    animation: isFloating
+                      ? "maa-nudge-reveal 0.7s cubic-bezier(0.16, 1, 0.3, 1) both"
+                      : "maa-msg-in 0.3s ease",
+                  }}
+                >
+                  <div
+                    style={{
+                      position: "relative",
+                      borderRadius: isFloating ? 22 : 14,
+                      background: isFloating
+                        ? "linear-gradient(135deg, rgba(82,68,42,0.96) 0%, rgba(60,50,32,0.96) 100%)"
+                        : `linear-gradient(135deg, rgba(var(--accent-rgb),0.07) 0%, rgba(var(--accent-rgb),0.03) 100%)`,
+                      border: isFloating
+                        ? "1px solid rgba(225,190,110,0.65)"
+                        : `1px solid rgba(var(--accent-rgb),0.25)`,
+                      boxShadow: isFloating
+                        ? "0 8px 24px rgba(0,0,0,0.45), 0 0 28px rgba(225,190,110,0.22), inset 0 1px 0 rgba(255,255,255,0.06)"
+                        : `0 2px 8px rgba(var(--accent-rgb),0.10)`,
+                      overflow: "hidden",
+                    }}
+                  >
+                    {/* Subtle gold sheen sweep — slides left → right on reveal */}
+                    {isFloating && (
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          background:
+                            "linear-gradient(115deg, transparent 30%, rgba(212,175,95,0.18) 50%, transparent 70%)",
+                          animation: "maa-nudge-sheen 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both",
+                          pointerEvents: "none",
+                        }}
+                      />
+                    )}
                     {/* Card header */}
-                    <div style={{
-                      display: "flex", alignItems: "center", gap: 6,
-                      padding: "8px 14px 6px",
-                      borderBottom: `1px solid rgba(var(--accent-rgb),0.15)`,
-                      background: `rgba(var(--accent-rgb),0.06)`,
-                    }}>
-                      <span style={{ fontSize: 10 }}>✦</span>
-                      <span style={{
-                        fontSize: 9, fontWeight: 800, letterSpacing: "0.14em",
-                        textTransform: "uppercase", color: "var(--accent)",
-                      }}>
+                    <div
+                      style={{
+                        position: "relative",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: isFloating ? "10px 16px 8px" : "8px 14px 6px",
+                        borderBottom: isFloating
+                          ? "1px solid rgba(212,175,95,0.22)"
+                          : `1px solid rgba(var(--accent-rgb),0.15)`,
+                        background: isFloating
+                          ? "linear-gradient(180deg, rgba(212,175,95,0.10) 0%, rgba(212,175,95,0.02) 100%)"
+                          : `rgba(var(--accent-rgb),0.06)`,
+                      }}
+                    >
+                      <span style={{ fontSize: 10, color: isFloating ? "#e6c977" : undefined }}>✦</span>
+                      <span
+                        style={{
+                          fontSize: 9.5,
+                          fontWeight: 800,
+                          letterSpacing: "0.16em",
+                          textTransform: "uppercase",
+                          color: isFloating ? "#e6c977" : "var(--accent)",
+                          textShadow: isFloating ? "0 0 8px rgba(212,175,95,0.4)" : undefined,
+                        }}
+                      >
                         {locale === "fr-CA" ? nudgeLabelFr : nudgeLabelEn}
                       </span>
-                      <span style={{ marginLeft: "auto", fontSize: 9, color: `rgba(var(--accent-rgb),0.7)`, fontStyle: "italic", fontWeight: 500 }}>
+                      <span
+                        style={{
+                          marginLeft: "auto",
+                          fontSize: 9,
+                          color: isFloating ? "rgba(232,225,200,0.55)" : `rgba(var(--accent-rgb),0.7)`,
+                          fontStyle: "italic",
+                          fontWeight: 500,
+                        }}
+                      >
                         {locale === "fr-CA" ? nudgeSubLabelFr : nudgeSubLabelEn}
                       </span>
                     </div>
                     {/* Card body */}
-                    <div style={{ padding: "10px 14px", color: darkMode ? "#c8d8c0" : "#3a3a4a", fontSize: 13, lineHeight: 1.55, fontStyle: "italic" }}>
-                      <RichMessageText text={message.text} />
+                    <div
+                      style={{
+                        position: "relative",
+                        padding: isFloating ? "12px 16px 14px" : "10px 14px",
+                        color: isFloating ? "#fff6dc" : darkMode ? "#c8d8c0" : "#3a3a4a",
+                        fontSize: 13.5,
+                        lineHeight: 1.6,
+                        fontStyle: "italic",
+                        fontWeight: isFloating ? 500 : 400,
+                        textShadow: isFloating ? "0 1px 1px rgba(0,0,0,0.35)" : undefined,
+                      }}
+                    >
+                      <RichMessageText text={message.text} onPreviewLink={isFloating ? setPreviewUrl : undefined} />
                     </div>
                     {hasPricingSignal && (
-                      <div style={{ padding: "0 14px 10px" }}>
+                      <div style={{ position: "relative", padding: "0 16px 12px" }}>
                         <button
                           type="button"
                           onClick={() => {
@@ -1761,9 +1913,15 @@ export function ChatShell({
                             }, 30);
                           }}
                           style={{
-                            background: "none", border: "none", padding: 0,
-                            cursor: "pointer", fontSize: 12, color: "var(--accent)",
-                            fontWeight: 600, textDecoration: "underline", textUnderlineOffset: 2,
+                            background: "none",
+                            border: "none",
+                            padding: 0,
+                            cursor: "pointer",
+                            fontSize: 12,
+                            color: isFloating ? "#e6c977" : "var(--accent)",
+                            fontWeight: 600,
+                            textDecoration: "underline",
+                            textUnderlineOffset: 2,
                           }}
                         >
                           {locale === "fr-CA" ? pricingCtaFr : pricingCtaEn}
@@ -1792,6 +1950,7 @@ export function ChatShell({
                     style={{
                       width: mode === "floating" ? 28 : 26,
                       height: mode === "floating" ? 28 : 26,
+                      marginLeft: mode === "floating" ? 10 : 0,
                       borderRadius: mode === "floating" ? "50%" : 8,
                       background: mode === "floating"
                         ? "radial-gradient(circle at 30% 30%, #c0a87a 0%, #8b6e3e 60%, #4a3a1f 100%)"
@@ -1842,7 +2001,10 @@ export function ChatShell({
                       lineHeight: 1.55,
                     }}
                   >
-                    <RichMessageText text={message.text} />
+                    <RichMessageText
+                      text={message.text}
+                      onPreviewLink={mode === "floating" ? setPreviewUrl : undefined}
+                    />
                   </div>
                 </div>
                 {/* Smart post-pricing CTA */}
@@ -1910,6 +2072,7 @@ export function ChatShell({
             <div style={{
               width: mode === "floating" ? 28 : 26,
               height: mode === "floating" ? 28 : 26,
+              marginLeft: mode === "floating" ? 10 : 0,
               borderRadius: mode === "floating" ? "50%" : 8,
               background: mode === "floating"
                 ? "radial-gradient(circle at 30% 30%, #c0a87a 0%, #8b6e3e 60%, #4a3a1f 100%)"
@@ -2527,6 +2690,55 @@ export function ChatShell({
           <div style={{ color: mode === "floating" ? "#a8a090" : "#6a6a80", fontSize: 11.5, marginBottom: 12, lineHeight: 1.5 }}>
             {locale === "fr-CA" ? `Un membre de l'équipe ${clientName} vous contactera sous peu.` : `A ${clientName} team member will reach out shortly.`}
           </div>
+          {lastResponse?.routing ? (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "10px 12px",
+                marginBottom: 14,
+                borderRadius: 12,
+                background: mode === "floating"
+                  ? "linear-gradient(135deg, rgba(212,175,95,0.14) 0%, rgba(160,120,48,0.06) 100%)"
+                  : "linear-gradient(135deg, rgba(201,168,76,0.10) 0%, rgba(201,168,76,0.04) 100%)",
+                border: mode === "floating"
+                  ? "1px solid rgba(212,175,95,0.45)"
+                  : "1px solid rgba(201,168,76,0.30)",
+              }}
+            >
+              <span
+                aria-hidden="true"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 24,
+                  height: 24,
+                  borderRadius: "50%",
+                  background: "rgba(212,175,95,0.18)",
+                  color: mode === "floating" ? "#e6c977" : "#8b6010",
+                  flexShrink: 0,
+                }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 2 11 13" />
+                  <path d="m22 2-7 20-4-9-9-4 20-7z" />
+                </svg>
+              </span>
+              <div style={{ flex: 1, minWidth: 0, lineHeight: 1.35 }}>
+                <div style={{ fontSize: 10.5, letterSpacing: "0.10em", textTransform: "uppercase", fontWeight: 700, color: mode === "floating" ? "#d4af5f" : "#8b6010" }}>
+                  {locale === "fr-CA" ? "Transmis à" : "Routed to"}
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: mode === "floating" ? "#f0e8d2" : "#1a1a1a" }}>
+                  {lastResponse.routing.contactName}
+                </div>
+                <div style={{ fontSize: 11, color: mode === "floating" ? "rgba(232,225,200,0.65)" : "#6a6a80" }}>
+                  {lastResponse.routing.departmentLabel}
+                </div>
+              </div>
+            </div>
+          ) : null}
           <div style={{ display: "grid", gap: 8 }}>
             <input
               value={callbackName}
@@ -2797,10 +3009,10 @@ export function ChatShell({
 
     return (
       <div>
-        {/* Panel sliver — a thin slice of the panel peeking from the right edge,
-            BEHIND the launcher tab. Suggests 'there's a full premium panel
-            hiding behind me, just pull me out.' Always visible (closed AND
-            open) so the launcher tab feels like a tab on a larger element. */}
+        {/* Right-edge anchor bar — full-height vertical strip that the launcher
+            tab visually morphs OUT OF. Same gradient + border as the launcher
+            so the tab reads as a rounded extension of the bar, not a floating
+            pill. Always present (closed AND open). */}
         {!isOpen && (
           <div
             aria-hidden="true"
@@ -2809,19 +3021,21 @@ export function ChatShell({
               top: 0,
               right: 0,
               bottom: 0,
-              width: 12,
+              width: 14,
               background:
-                "linear-gradient(180deg, rgba(20,20,26,0.95) 0%, rgba(26,26,32,0.95) 50%, rgba(20,20,26,0.95) 100%)",
-              borderLeft: "1px solid rgba(212,175,95,0.32)",
+                "linear-gradient(180deg, #1c1c22 0%, #14141a 50%, #1a1a1f 100%)",
+              borderLeft: "1px solid rgba(201,168,76,0.55)",
               boxShadow:
-                "inset 1px 0 0 rgba(212,175,95,0.18), -4px 0 16px rgba(0,0,0,0.35)",
+                "inset 1px 0 0 rgba(201,168,76,0.25), -6px 0 22px rgba(0,0,0,0.4)",
               zIndex: 9998,
               pointerEvents: "none",
             }}
           />
         )}
 
-        {/* Premium peeking launcher — luxury watch-box feel, anchored to right edge mid-height */}
+        {/* Premium peeking launcher — visually morphs out of the right-edge bar
+            above. No gap to the bar (right: -1), top/bottom borders sweep in,
+            left side is fully rounded so the tab reads as a connected pill. */}
         {!isOpen && (
           <button
             type="button"
@@ -2831,18 +3045,22 @@ export function ChatShell({
             style={{
               position: "fixed",
               top: "50%",
-              right: 0,
+              right: -1,
               transform: "translateY(-50%)",
               width: 340,
-              padding: "20px 22px 20px 24px",
-              borderTopLeftRadius: 20,
-              borderBottomLeftRadius: 20,
-              border: "1px solid rgba(201,168,76,0.55)",
+              padding: "20px 28px 20px 26px",
+              borderTopLeftRadius: 28,
+              borderBottomLeftRadius: 28,
+              borderTopRightRadius: 0,
+              borderBottomRightRadius: 0,
+              borderTop: "1px solid rgba(201,168,76,0.55)",
+              borderBottom: "1px solid rgba(201,168,76,0.55)",
+              borderLeft: "1px solid rgba(201,168,76,0.55)",
               borderRight: "none",
               background:
                 "linear-gradient(135deg, #1c1c22 0%, #14141a 50%, #1a1a1f 100%)",
               boxShadow:
-                "0 18px 50px rgba(0,0,0,0.6), 0 0 32px rgba(201,168,76,0.22), inset 0 1px 0 rgba(255,255,255,0.04), inset 1px 0 0 rgba(201,168,76,0.25)",
+                "0 18px 50px rgba(0,0,0,0.6), 0 0 32px rgba(201,168,76,0.22), inset 0 1px 0 rgba(255,255,255,0.04)",
               zIndex: 9999,
               cursor: "pointer",
               display: "flex",
@@ -2851,19 +3069,24 @@ export function ChatShell({
               color: "#f4eedd",
               textAlign: "left",
               transition:
-                "transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease",
+                "transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease, border-radius 0.35s ease",
               fontFamily: "Inter, system-ui, sans-serif",
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.transform =
-                "translateY(-50%) translateX(-6px)";
-              (e.currentTarget as HTMLButtonElement).style.boxShadow =
-                "0 22px 60px rgba(0,0,0,0.7), 0 0 44px rgba(201,168,76,0.38), inset 0 1px 0 rgba(255,255,255,0.06), inset 1px 0 0 rgba(201,168,76,0.5)";
+              const el = e.currentTarget as HTMLButtonElement;
+              el.style.transform = "translateY(-50%) translateX(-8px)";
+              el.style.boxShadow =
+                "0 22px 60px rgba(0,0,0,0.7), 0 0 44px rgba(201,168,76,0.38), inset 0 1px 0 rgba(255,255,255,0.06)";
+              el.style.borderTopLeftRadius = "36px";
+              el.style.borderBottomLeftRadius = "36px";
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-50%)";
-              (e.currentTarget as HTMLButtonElement).style.boxShadow =
-                "0 18px 50px rgba(0,0,0,0.6), 0 0 32px rgba(201,168,76,0.22), inset 0 1px 0 rgba(255,255,255,0.04), inset 1px 0 0 rgba(201,168,76,0.25)";
+              const el = e.currentTarget as HTMLButtonElement;
+              el.style.transform = "translateY(-50%)";
+              el.style.boxShadow =
+                "0 18px 50px rgba(0,0,0,0.6), 0 0 32px rgba(201,168,76,0.22), inset 0 1px 0 rgba(255,255,255,0.04)";
+              el.style.borderTopLeftRadius = "28px";
+              el.style.borderBottomLeftRadius = "28px";
             }}
           >
             {/* Concierge bell — inline SVG, premium gold */}
@@ -2998,6 +3221,238 @@ export function ChatShell({
           />
         ) : null}
 
+        {/* In-page preview panel — opens to the LEFT of the chat slider when
+            the concierge surfaces a page (booking, MAA pages, etc.). Keeps the
+            visitor on the same page; no external tab. Closes when chat closes. */}
+        {isOpen && previewUrl ? (
+          <div
+            role="dialog"
+            aria-label={isFr ? "Aperçu de la page" : "Page preview"}
+            style={{
+              position: "fixed",
+              top: 0,
+              bottom: 0,
+              right: "min(460px, 92vw)",
+              width: "min(820px, calc(100vw - min(460px, 92vw) - 24px))",
+              zIndex: 9998,
+              background: "linear-gradient(180deg, #14141a 0%, #1a1a22 100%)",
+              borderLeft: "1px solid rgba(201,168,76,0.32)",
+              borderRight: "1px solid rgba(201,168,76,0.55)",
+              boxShadow:
+                "-12px 0 40px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(212,175,95,0.12)",
+              display: "flex",
+              flexDirection: "column",
+              animation: "maa-preview-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) both",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "12px 16px",
+                background: "linear-gradient(180deg, rgba(20,20,26,0.95) 0%, rgba(26,26,32,0.95) 100%)",
+                borderBottom: "1px solid rgba(212,175,95,0.25)",
+                color: "#f0e8d2",
+                fontFamily: "Inter, system-ui, sans-serif",
+              }}
+            >
+              <span
+                aria-hidden="true"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 26,
+                  height: 26,
+                  borderRadius: 8,
+                  background: "rgba(212,175,95,0.12)",
+                  color: "#e6c977",
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10 14 21 3" />
+                  <path d="M15 3h6v6" />
+                  <path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5" />
+                </svg>
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 10, letterSpacing: "0.18em", color: "#d4af5f", fontWeight: 700 }}>
+                  {isFr ? "APERÇU — RESTEZ DANS LA CONVERSATION" : "PREVIEW — STAY IN THE CONVERSATION"}
+                </div>
+                <div
+                  title={previewUrl}
+                  style={{
+                    fontSize: 12,
+                    color: "rgba(232,225,200,0.7)",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {previewUrl}
+                </div>
+              </div>
+              <a
+                href={previewUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  fontSize: 11,
+                  color: "#e6c977",
+                  textDecoration: "none",
+                  border: "1px solid rgba(212,175,95,0.45)",
+                  padding: "6px 12px",
+                  borderRadius: 999,
+                  fontWeight: 600,
+                  letterSpacing: "0.04em",
+                }}
+              >
+                {isFr ? "Ouvrir dans un onglet" : "Open in new tab"}
+              </a>
+              <button
+                type="button"
+                aria-label={isFr ? "Fermer l'aperçu" : "Close preview"}
+                onClick={() => setPreviewUrl(null)}
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: "50%",
+                  background: "rgba(26,26,31,0.9)",
+                  border: "1px solid rgba(201,168,76,0.4)",
+                  color: "#e6c977",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ position: "relative", flex: 1, minHeight: 0, background: "#f7f7f5" }}>
+              {previewLoading && (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    zIndex: 1,
+                    background: "rgba(20,20,26,0.92)",
+                    color: "#e6c977",
+                    fontSize: 12,
+                    letterSpacing: "0.06em",
+                    fontFamily: "Inter, system-ui, sans-serif",
+                  }}
+                >
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                    <span
+                      style={{
+                        width: 14,
+                        height: 14,
+                        borderRadius: "50%",
+                        border: "2px solid rgba(212,175,95,0.25)",
+                        borderTopColor: "#e6c977",
+                        animation: "spin 0.8s linear infinite",
+                      }}
+                    />
+                    {isFr ? "Chargement de la page…" : "Loading page…"}
+                  </span>
+                </div>
+              )}
+              <iframe
+                key={previewUrl}
+                src={previewUrl}
+                title={isFr ? "Aperçu" : "Preview"}
+                onLoad={() => {
+                  setPreviewLoading(false);
+                  setPreviewStalled(false);
+                }}
+                onError={() => setPreviewLoading(false)}
+                style={{ width: "100%", height: "100%", border: "none", background: "#f7f7f5" }}
+              />
+              {/* Cross-origin embed fallback. Plenty of MAA partners (MyWellness,
+                  FLiiP, Libro) refuse embedding via X-Frame-Options; the parent
+                  frame can't detect that reliably, so we show a polite banner
+                  after a stall + a prominent "Open in new tab" CTA. */}
+              {previewStalled && previewLoading && (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    padding: "14px 18px",
+                    background: "linear-gradient(180deg, rgba(20,20,26,0.94) 0%, rgba(20,20,26,1) 100%)",
+                    borderTop: "1px solid rgba(212,175,95,0.35)",
+                    color: "#f0e8d2",
+                    fontFamily: "Inter, system-ui, sans-serif",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 14,
+                    zIndex: 2,
+                  }}
+                >
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 28,
+                      height: 28,
+                      borderRadius: 8,
+                      background: "rgba(212,175,95,0.18)",
+                      color: "#e6c977",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="8" x2="12" y2="12" />
+                      <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0, lineHeight: 1.4 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13 }}>
+                      {isFr
+                        ? "Cette page semble bloquer l'aperçu intégré."
+                        : "This page seems to block embedded previews."}
+                    </div>
+                    <div style={{ fontSize: 11.5, color: "rgba(232,225,200,0.65)" }}>
+                      {isFr
+                        ? "Ouvrez-la dans un nouvel onglet pour la consulter en plein écran."
+                        : "Open it in a new tab to view it full screen."}
+                    </div>
+                  </div>
+                  <a
+                    href={previewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      flexShrink: 0,
+                      padding: "9px 16px",
+                      borderRadius: 999,
+                      background: "linear-gradient(135deg, #d4af5f 0%, #8b6e3e 100%)",
+                      color: "#1c1410",
+                      fontWeight: 700,
+                      fontSize: 12,
+                      textDecoration: "none",
+                      boxShadow: "0 4px 14px rgba(212,175,95,0.35)",
+                    }}
+                  >
+                    {isFr ? "Ouvrir dans un onglet" : "Open in new tab"}
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : null}
+
         {/* Premium opened panel — slides from right with spring + gold border glow */}
         {isOpen ? (
           <div
@@ -3073,6 +3528,22 @@ export function ChatShell({
             0%, 100% { box-shadow: 0 0 8px rgba(61,209,122,0.7), 0 0 0 0 rgba(61,209,122,0.5); }
             50% { box-shadow: 0 0 12px rgba(61,209,122,0.9), 0 0 0 4px rgba(61,209,122,0); }
           }
+          @keyframes maa-nudge-reveal {
+            0% { transform: translateX(-22px) scale(0.97); opacity: 0; border-radius: 999px; }
+            55% { transform: translateX(0) scale(1.005); opacity: 1; border-radius: 26px; }
+            100% { transform: translateX(0) scale(1); opacity: 1; border-radius: 22px; }
+          }
+          @keyframes maa-nudge-sheen {
+            0% { transform: translateX(-100%); opacity: 0; }
+            35% { opacity: 1; }
+            100% { transform: translateX(120%); opacity: 0; }
+          }
+          @keyframes maa-preview-in {
+            0% { transform: translateX(40px) scale(0.985); opacity: 0; }
+            60% { opacity: 1; }
+            100% { transform: translateX(0) scale(1); opacity: 1; }
+          }
+          @keyframes spin { to { transform: rotate(360deg); } }
         `}</style>
       </div>
     );
