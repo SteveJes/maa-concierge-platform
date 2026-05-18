@@ -1049,4 +1049,121 @@ export const MAA_SCENARIOS: Scenario[] = [
       expected: "yes",
     },
   },
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Phase 9 — Member-status protocol (Daphné 2026-05-18 ask)
+  // Daphné: "le concierge demande si la personne est membre ou non, et
+  // les réponses changent en fonction". These scenarios LOCK IN that:
+  //   (a) For members-only activities, the bot asks once if the visitor is
+  //       a member when it doesn't already know.
+  //   (b) When the visitor has already declared they are a non-member, the
+  //       bot DOES NOT promise access — it uses the templateNonMemberReply
+  //       wording and routes to Francis Bradette.
+  //   (c) When the visitor has declared they ARE a member, the bot answers
+  //       the member-side detail directly without asking again.
+  //   (d) For general questions (hours, address), the bot answers plainly
+  //       without forcing a member-status question.
+  // ────────────────────────────────────────────────────────────────────────
+  {
+    id: "maa-9.1",
+    label: "Pickleball access — bot must ask member status when unknown (FR)",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    userMessage: "Je veux jouer au pickleball cette semaine.",
+    // Bot must ask if the visitor is a member when unknown — single
+    // clarifying question, no member-only access guarantee yet.
+    requireAnyPattern: [/\b[êe]tes[- ]vous\s+(?:d[ée]j[àa]\s+)?membre\b/i, /\bmembre\s+du\s+(?:club|maa)\b.*\?/i, /\bd[ée]j[àa]\s+membre\b.*\?/i],
+    forbidPatterns: [
+      // Bot must NOT confirm access without knowing member status
+      /\b(?:bien\s+s[uû]r|absolument)[,\s].*\b(?:r[ée]server|acc[èe]s|jouer)\b/i,
+    ],
+    forbidFollowUpModes: ["callback", "calendly", "vapi"],
+    phase: 4,
+    source: "Daphné 2026-05-18 — member-status protocol #1",
+    judgeRubric: {
+      question:
+        "Before promising access or scheduling, does the assistant ask exactly once whether the visitor is already a Club member (or thinking about becoming one), in a warm/concise way?",
+      expected: "yes",
+    },
+  },
+  {
+    id: "maa-9.2",
+    label: "Non-member asking about classes — must use templateNonMemberReply + Francis",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    history: [
+      { role: "user", content: "Je veux essayer un cours de yoga." },
+      { role: "assistant", content: "Avec plaisir ! Êtes-vous déjà membre du Club, ou pensez-vous à le devenir ?" },
+    ],
+    userMessage: "Non je ne suis pas membre.",
+    // Templated wording + Francis routing
+    requireAnyPattern: [
+      /francis\s+bradette|francis(?:\s+bradette)?|directeur\s+des\s+ventes/i,
+      /options?\s+d['']?adh[ée]sion|abonnement|visite\s+du\s+club/i,
+    ],
+    forbidPatterns: [
+      // The bot must NOT just register them for the class as if they were a member
+      /\bvoici\s+(?:l['']?)?horaire\b.*yoga.*r[ée]server/i,
+      /\bje\s+(?:vous\s+)?(?:r[ée]serve|inscris)\b/i,
+    ],
+    phase: 4,
+    source: "Daphné 2026-05-18 — non-member template + Francis routing",
+    judgeRubric: {
+      question:
+        "Does the assistant tactfully explain that group classes are tied to membership AND route to Francis Bradette OR offer a club visit, without bluntly refusing?",
+      expected: "yes",
+    },
+  },
+  {
+    id: "maa-9.3",
+    label: "Declared member — answer directly, do NOT re-ask member status",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    history: [
+      { role: "user", content: "Je suis membre depuis 2 ans, à quelle heure ouvre la piscine ?" },
+      { role: "assistant", content: "Voici les horaires actuels de la piscine : en semaine de 6h30 à 20h30, le week-end de 7h à 18h." },
+    ],
+    userMessage: "Et quand est-ce qu'il y a de la nage libre le lundi ?",
+    // Must NOT re-ask member status — they declared in history turn 1
+    forbidPatterns: [
+      /\b[êe]tes[- ]vous\s+(?:d[ée]j[àa]\s+)?membre\b/i,
+      /\bd[ée]j[àa]\s+membre\b.*\?/i,
+    ],
+    phase: 4,
+    source: "Daphné 2026-05-18 — sticky member status across turns",
+    judgeRubric: {
+      question:
+        "Does the assistant answer the open-swim question directly without asking again whether the visitor is a member (since they already said so in the prior turn)?",
+      expected: "yes",
+    },
+  },
+  {
+    id: "maa-9.4",
+    label: "Non-member status remembered — second question must use Francis routing",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    history: [
+      { role: "user", content: "Bonjour, j'aimerais essayer le club." },
+      { role: "assistant", content: "Avec plaisir ! Êtes-vous déjà membre, ou explorez-vous les options ?" },
+      { role: "user", content: "Pas encore membre, je viens voir." },
+      { role: "assistant", content: "Parfait — Francis Bradette peut vous présenter les options et planifier une visite. Que cherchez-vous d'abord ?" },
+    ],
+    userMessage: "Est-ce que je peux réserver un court de squash ?",
+    // Visitor already declared non-member. Bot must NOT ask again.
+    forbidPatterns: [
+      /\b[êe]tes[- ]vous\s+(?:d[ée]j[àa]\s+)?membre\b/i,
+      // Must NOT promise access without flagging the non-member constraint
+      /\bbien\s+s[uû]r[,\s].*\br[ée]serv/i,
+    ],
+    requireAnyPattern: [
+      /yvon|squash.*membre|membre.*squash|non[- ]?membre|francis|visite/i,
+    ],
+    phase: 4,
+    source: "Daphné 2026-05-18 — non-member memory across turns",
+    judgeRubric: {
+      question:
+        "Knowing the visitor is NOT a member from the prior turns, does the assistant acknowledge that squash access is tied to membership AND route to Francis Bradette / Yvon Provençal / a club visit, without re-asking member status?",
+      expected: "yes",
+    },
+  },
 ];
