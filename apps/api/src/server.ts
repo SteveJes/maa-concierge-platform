@@ -1078,6 +1078,50 @@ export function createServer() {
     return { runs };
   });
 
+  // GET /v1/admin/quality/remediation — pending auto-suggested fix plan.
+  // Reads the latest REMEDIATION-*.md file for the tenant. If none exists
+  // yet (e.g. the latest run had 0 failures), returns null.
+  app.get("/v1/admin/quality/remediation", async (request, reply) => {
+    if (!adminAuth(request, reply)) return;
+    const q = request.query as { tenant?: string } | undefined;
+    const tenantFilter = q?.tenant;
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const url = await import("node:url");
+    const currentFile = url.fileURLToPath(import.meta.url);
+    const apiRoot = path.resolve(path.dirname(currentFile), "..").replace(/[\\/]dist[\\/]apps[\\/]api$/, "");
+    const runsDir = path.join(apiRoot, "_sentinel-runs");
+    if (!fs.existsSync(runsDir)) return { plan: null };
+
+    const files = fs.readdirSync(runsDir)
+      .filter((f) => f.startsWith("REMEDIATION-") && f.endsWith(".md"))
+      .sort()
+      .reverse();
+    for (const f of files) {
+      try {
+        const md = fs.readFileSync(path.join(runsDir, f), "utf8");
+        // The plan starts with "# Remediation plan — TENANT". Parse the tenant tag.
+        const tenantMatch = md.match(/^# Remediation plan — ([A-Z]+)/m);
+        const tenantCode = tenantMatch?.[1]?.toLowerCase();
+        if (tenantFilter && tenantCode && tenantCode !== tenantFilter) continue;
+        const failureCount = Number((md.match(/Failures:\s*\*\*(\d+)\*\*/)?.[1]) ?? "0");
+        const passRateMatch = md.match(/Pass rate:\s*\*\*(\d+\.?\d*)%/);
+        return {
+          plan: {
+            file: f,
+            tenantCode,
+            failureCount,
+            passRate: passRateMatch ? Number(passRateMatch[1]) : null,
+            markdown: md,
+          },
+        };
+      } catch {
+        // skip
+      }
+    }
+    return { plan: null };
+  });
+
   // POST /v1/admin/quality/run-sentinel — spawn a Sentinel scenario run in
   // the background. Returns immediately with a job descriptor; the suite
   // takes ~2–5 min and writes the result to `_sentinel-runs/`. The dashboard
