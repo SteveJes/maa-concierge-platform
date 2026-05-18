@@ -11,7 +11,7 @@
  *      eval framework can dispatch (eval-test-designer, kb-editor, etc.).
  *   4. One-click open of the markdown report for the latest run.
  */
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { P, API, Card, SectionTitle } from "../_components/AdminShell";
 
 interface Overview {
@@ -70,6 +70,36 @@ interface HistoryRun {
   failureTypes: Record<string, number>;
 }
 
+interface RunStatus {
+  running: boolean;
+  completed?: boolean;
+  pid?: number;
+  tenant?: string;
+  judge?: boolean;
+  startedAt?: string;
+  elapsedMs?: number;
+  passed?: number;
+  failed?: number;
+  processedCount?: number;
+  logTail?: string;
+}
+
+interface CostsBucket {
+  date?: string;
+  calls: number;
+  inputTokens: number;
+  outputTokens: number;
+  costUsd: number;
+  byTenant: Record<string, number>;
+}
+interface CostsResponse {
+  today: CostsBucket;
+  last7Days: CostsBucket;
+  last30Days: CostsBucket;
+  dailyByTenant: Array<{ date: string; costUsd: number; byTenant: Record<string, number> }>;
+  budget: { dailyTargetUsd: number; todayPctOfDailyTarget: number };
+}
+
 export default function QualityPanel({ tenantId, token }: Props) {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [agents, setAgents] = useState<AgentDef[] | null>(null);
@@ -77,25 +107,70 @@ export default function QualityPanel({ tenantId, token }: Props) {
   const [reportText, setReportText] = useState<string | null>(null);
   const [showReport, setShowReport] = useState(false);
   const [runStatus, setRunStatus] = useState<string | null>(null);
+  const [live, setLive] = useState<RunStatus | null>(null);
+  const [costs, setCosts] = useState<CostsResponse | null>(null);
 
-  useEffect(() => {
+  const refreshAll = useCallback(() => {
     fetch(`${API}/v1/admin/quality/overview?tenant=${encodeURIComponent(tenantId)}`, {
       headers: { "x-admin-token": token },
     })
       .then((r) => r.json())
       .then((data: Overview) => setOverview(data))
       .catch(() => setOverview(null));
-    fetch(`${API}/v1/admin/quality/agents`, { headers: { "x-admin-token": token } })
-      .then((r) => r.json())
-      .then((data: { agents: AgentDef[] }) => setAgents(data.agents))
-      .catch(() => setAgents([]));
     fetch(`${API}/v1/admin/quality/history?tenant=${encodeURIComponent(tenantId)}&limit=30`, {
       headers: { "x-admin-token": token },
     })
       .then((r) => r.json())
       .then((data: { runs: HistoryRun[] }) => setHistory(data.runs))
       .catch(() => setHistory([]));
+    fetch(`${API}/v1/admin/quality/costs?days=14`, { headers: { "x-admin-token": token } })
+      .then((r) => r.json())
+      .then((data: CostsResponse) => setCosts(data))
+      .catch(() => setCosts(null));
   }, [tenantId, token]);
+
+  useEffect(() => {
+    refreshAll();
+    fetch(`${API}/v1/admin/quality/agents`, { headers: { "x-admin-token": token } })
+      .then((r) => r.json())
+      .then((data: { agents: AgentDef[] }) => setAgents(data.agents))
+      .catch(() => setAgents([]));
+  }, [refreshAll, token]);
+
+  // Live polling — every 3s while a run is in flight. When the server reports
+  // completed=true we refresh overview + history once and stop polling.
+  useEffect(() => {
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    async function tick() {
+      try {
+        const res = await fetch(`${API}/v1/admin/quality/run-status`, {
+          headers: { "x-admin-token": token },
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as RunStatus;
+        if (stopped) return;
+        setLive(data);
+        if (data.completed) {
+          // run just finished — pull fresh overview + history then stop
+          refreshAll();
+          setRunStatus(null);
+          // Clear the completed banner after 5s
+          setTimeout(() => { if (!stopped) setLive(null); }, 5000);
+          return;
+        }
+      } catch {
+        // network blip — keep polling
+      }
+      timer = setTimeout(() => { if (!stopped) void tick(); }, 3000);
+    }
+    void tick();
+    return () => {
+      stopped = true;
+      if (timer) clearTimeout(timer);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, tenantId]);
 
   async function openReport(file: string) {
     setShowReport(true);
@@ -128,7 +203,70 @@ export default function QualityPanel({ tenantId, token }: Props) {
   return (
     <section style={{ marginBottom: 28 }}>
       <SectionTitle>Qualité & activité — agents, tests, évaluations</SectionTitle>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       <Card>
+        {/* Live run banner — visible whenever a Sentinel run is in flight or
+            just finished. Streams scenario progress + the log tail so Daphné
+            & Steve can see exactly what's happening, not a blank screen. */}
+        {live && (live.running || live.completed) && (
+          <div
+            style={{
+              marginBottom: 16,
+              padding: "12px 16px",
+              borderRadius: 12,
+              border: `1px solid ${live.completed ? `${P.green}44` : `${P.gold}55`}`,
+              background: live.completed ? `${P.green}10` : `${P.gold}10`,
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                {live.running ? (
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      width: 12,
+                      height: 12,
+                      borderRadius: "50%",
+                      border: `2px solid ${P.gold}`,
+                      borderTopColor: "transparent",
+                      animation: "spin 0.8s linear infinite",
+                      display: "inline-block",
+                    }}
+                  />
+                ) : (
+                  <span style={{ color: P.green, fontWeight: 800 }}>✓</span>
+                )}
+                <span style={{ fontSize: 13, fontWeight: 700, color: P.ink }}>
+                  {live.completed
+                    ? `Sentinel terminé — ${live.passed} réussis · ${live.failed} échecs`
+                    : `Sentinel en cours${live.judge ? " (juge IA)" : ""} — ${live.processedCount ?? 0} scénarios traités${typeof live.passed === "number" ? ` (${live.passed} OK · ${live.failed} KO)` : ""}`}
+                </span>
+              </div>
+              <span style={{ fontSize: 11, color: P.muted }}>
+                {live.elapsedMs ? `Écoulé : ${Math.floor(live.elapsedMs / 1000)}s` : ""}
+              </span>
+            </div>
+            {live.logTail && (
+              <pre
+                style={{
+                  margin: 0,
+                  maxHeight: 140,
+                  overflow: "auto",
+                  background: "#0e0e14",
+                  color: "#e0d8c0",
+                  fontFamily: "ui-monospace, monospace",
+                  fontSize: 11,
+                  lineHeight: 1.45,
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                {live.logTail.split("\n").slice(-12).join("\n")}
+              </pre>
+            )}
+          </div>
+        )}
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
           {runStatus && (
             <span style={{ fontSize: 11, color: runStatus.startsWith("Erreur") ? P.red : P.green, fontWeight: 600 }}>
@@ -294,6 +432,55 @@ export default function QualityPanel({ tenantId, token }: Props) {
             )}
           </div>
         </div>
+
+        {/* Costs — OpenAI usage per tenant + daily budget */}
+        {costs && (
+          <div style={{ marginTop: 24, paddingTop: 20, borderTop: `1px solid ${P.border}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.12em" }}>
+                Coûts OpenAI — budget {costs.budget.dailyTargetUsd.toFixed(2)} $US / jour
+              </div>
+              <div style={{ fontSize: 11, color: P.muted }}>
+                {costs.last7Days.calls.toLocaleString("fr-CA")} appels sur 7j · {costs.last30Days.calls.toLocaleString("fr-CA")} sur 30j
+              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 14 }}>
+              <CostTile
+                label="Aujourd'hui"
+                amount={costs.today.costUsd}
+                sub={`${costs.today.calls.toLocaleString("fr-CA")} appels · ${costs.budget.todayPctOfDailyTarget}% du budget`}
+                warn={costs.budget.todayPctOfDailyTarget >= 80}
+              />
+              <CostTile label="7 derniers jours" amount={costs.last7Days.costUsd} sub={`${costs.last7Days.calls.toLocaleString("fr-CA")} appels`} />
+              <CostTile label="30 derniers jours" amount={costs.last30Days.costUsd} sub={`${costs.last30Days.calls.toLocaleString("fr-CA")} appels`} />
+            </div>
+            {Object.keys(costs.last7Days.byTenant).length > 0 && (
+              <div>
+                <div style={{ fontSize: 10, color: P.muted, textTransform: "uppercase", letterSpacing: "0.10em", marginBottom: 8 }}>
+                  Par tenant — 7 derniers jours
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {Object.entries(costs.last7Days.byTenant)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([tenant, amount]) => {
+                      const pct = costs.last7Days.costUsd > 0 ? (amount / costs.last7Days.costUsd) * 100 : 0;
+                      return (
+                        <div key={tenant} style={{ display: "grid", gridTemplateColumns: "120px 1fr 80px", gap: 10, alignItems: "center" }}>
+                          <span style={{ fontSize: 12, color: P.ink, fontWeight: 600 }}>{tenant}</span>
+                          <div style={{ background: `${P.gold}14`, height: 12, borderRadius: 6, overflow: "hidden" }}>
+                            <div style={{ background: P.gold, width: `${pct}%`, height: "100%", borderRadius: 6 }} />
+                          </div>
+                          <span style={{ fontSize: 11, color: P.dim, fontWeight: 700, textAlign: "right" }}>
+                            {amount.toFixed(4)} $US
+                          </span>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Trend — last 30 Sentinel runs */}
         {history && history.length > 1 && (
@@ -464,6 +651,26 @@ function FailureDistribution({ runs }: { runs: HistoryRun[] }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/** Small KPI tile for an OpenAI cost amount. Goes red when over budget. */
+function CostTile({ label, amount, sub, warn }: { label: string; amount: number; sub?: string; warn?: boolean }) {
+  return (
+    <div
+      style={{
+        background: "#ffffff",
+        border: `1px solid ${warn ? `${P.red}66` : P.border}`,
+        borderRadius: 12,
+        padding: "12px 14px",
+      }}
+    >
+      <div style={{ fontSize: 10, color: P.muted, textTransform: "uppercase", letterSpacing: "0.10em" }}>{label}</div>
+      <div style={{ fontSize: 22, fontWeight: 800, color: warn ? P.red : P.ink, lineHeight: 1.1, marginTop: 4 }}>
+        {amount.toFixed(4)} <span style={{ fontSize: 12, color: P.muted, fontWeight: 600 }}>$US</span>
+      </div>
+      {sub && <div style={{ fontSize: 10, color: P.muted, marginTop: 4 }}>{sub}</div>}
     </div>
   );
 }

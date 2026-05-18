@@ -36,3 +36,6 @@ apps/api/src/scenarios/generated/
 
 # Inbox — raw source documents from tenants (PDFs, emails, notes) before extraction
 apps/api/_inbox/
+
+# Cost tracking — daily OpenAI usage JSONL files (rotated by day)
+apps/api/_costs/

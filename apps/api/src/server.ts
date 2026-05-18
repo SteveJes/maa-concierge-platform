@@ -195,6 +195,21 @@ function recordOpenAiUsage(tenantId: string, model: string, inputTokens: number,
   existing.byModel[model] = m;
 
   openAiUsageStore.set(tenantId, existing);
+
+  // Persist a JSONL record so we survive API restarts and can aggregate by
+  // day in the admin dashboard. One file per day → fast tail reads, easy
+  // rotation. The write is fire-and-forget so we never block a chat reply.
+  try {
+    const day = now.slice(0, 10); // YYYY-MM-DD
+    const file = `_costs/usage-${day}.jsonl`;
+    const line = JSON.stringify({ ts: now, tenantId, model, inputTokens, outputTokens, costUsd }) + "\n";
+    void import("node:fs").then((fs) => {
+      try { fs.mkdirSync("_costs", { recursive: true }); } catch { /* exists */ }
+      try { fs.appendFileSync(file, line); } catch { /* don't break the chat */ }
+    });
+  } catch {
+    // never propagate cost-logging errors to the chat path
+  }
 }
 
 // Token packages — data model ready, purchasing to be wired later
@@ -1062,37 +1077,227 @@ export function createServer() {
       return reply.code(400).send({ error: "invalid_tenant" });
     }
     const child = await import("node:child_process");
+    const fs = await import("node:fs");
     const path = await import("node:path");
     const url = await import("node:url");
     const currentFile = url.fileURLToPath(import.meta.url);
     const apiRoot = path.resolve(path.dirname(currentFile), "..");
+    const runsDir = path.join(apiRoot, "_sentinel-runs");
+    if (!fs.existsSync(runsDir)) fs.mkdirSync(runsDir, { recursive: true });
     const args = ["exec", "tsx", "src/scripts/test-scenarios.ts"];
     if (tenant) args.push("--tenant", tenant);
     if (!judge) args.push("--no-judge");
+
+    // Live progress: pipe spawn stdout/stderr to a known log file so the
+    // dashboard can stream it via /quality/run-status. Also write a small
+    // status JSON so the dashboard knows a run is in flight before any line
+    // hits the log.
+    const logPath = path.join(runsDir, ".current-run.log");
+    const statusPath = path.join(runsDir, ".current-run.json");
+    fs.writeFileSync(logPath, `# Sentinel run starting ${new Date().toISOString()}\n# tenant=${tenant ?? "all"} judge=${judge}\n`);
+    const logFd = fs.openSync(logPath, "a");
 
     try {
       const proc = child.spawn("pnpm", args, {
         cwd: apiRoot,
         env: process.env,
+        shell: true, // resolve `pnpm` via /bin/sh PATH — robust across PM2 / cron
         detached: true,
-        stdio: "ignore",
+        stdio: ["ignore", logFd, logFd],
       });
+      fs.writeFileSync(statusPath, JSON.stringify({
+        pid: proc.pid,
+        startedAt: new Date().toISOString(),
+        tenant: tenant ?? "all",
+        judge,
+      }));
       proc.unref();
+      // The handler doesn't `proc.on('exit')` because the API process may
+      // restart before the child finishes. The status file is cleared by
+      // the next /run-status poll once the PID is no longer alive.
       return {
         started: true,
         pid: proc.pid,
         tenant: tenant ?? "all",
         judge,
         message: judge
-          ? "Sentinel + LLM judge running in background. ~5–10 min for 60 scenarios. Refresh the Quality panel when complete."
+          ? "Sentinel + LLM judge running in background. ~5–10 min for 60 scenarios."
           : "Sentinel running (fast mode, no judge). ~2–5 min for 60 scenarios.",
       };
     } catch (err) {
+      fs.unlinkSync(statusPath);
       return reply.code(500).send({ error: "spawn_failed", detail: (err as Error).message });
     }
   });
 
-  // GET /v1/admin/quality/report/:file — return a markdown report's body.
+  // GET /v1/admin/quality/costs — OpenAI costs per tenant and day.
+  // Aggregates _costs/usage-YYYY-MM-DD.jsonl over the requested range
+  // (default 14 days). Returns:
+  //  - today: { calls, inputTokens, outputTokens, costUsd, byTenant }
+  //  - last7Days: same shape, summed
+  //  - last30Days: same shape, summed
+  //  - dailyByTenant: array of { date, byTenant: { tenantId: costUsd } } for charting
+  //  - budget: { dailyTargetUsd, todayPctOfDailyTarget }
+  app.get("/v1/admin/quality/costs", async (request, reply) => {
+    if (!adminAuth(request, reply)) return;
+    const q = request.query as { days?: string } | undefined;
+    const days = Math.min(Math.max(Number(q?.days ?? "14"), 1), 90);
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const url = await import("node:url");
+    const currentFile = url.fileURLToPath(import.meta.url);
+    const apiRoot = path.resolve(path.dirname(currentFile), "..");
+    const costsDir = path.join(apiRoot, "_costs");
+
+    interface Row { ts: string; tenantId: string; model: string; inputTokens: number; outputTokens: number; costUsd: number }
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const cutoffDay = (() => {
+      const d = new Date(); d.setUTCDate(d.getUTCDate() - days + 1);
+      return d.toISOString().slice(0, 10);
+    })();
+
+    const daily: Array<{ date: string; calls: number; inputTokens: number; outputTokens: number; costUsd: number; byTenant: Record<string, number> }> = [];
+    if (fs.existsSync(costsDir)) {
+      const files = fs
+        .readdirSync(costsDir)
+        .filter((f) => f.startsWith("usage-") && f.endsWith(".jsonl"))
+        .map((f) => ({ f, date: f.slice("usage-".length, "usage-".length + 10) }))
+        .filter((x) => x.date >= cutoffDay)
+        .sort((a, b) => a.date.localeCompare(b.date));
+      for (const { f, date } of files) {
+        const lines = fs.readFileSync(path.join(costsDir, f), "utf8").split("\n").filter(Boolean);
+        const agg = { date, calls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0, byTenant: {} as Record<string, number> };
+        for (const line of lines) {
+          try {
+            const r = JSON.parse(line) as Row;
+            agg.calls += 1;
+            agg.inputTokens += r.inputTokens;
+            agg.outputTokens += r.outputTokens;
+            agg.costUsd += r.costUsd;
+            agg.byTenant[r.tenantId] = (agg.byTenant[r.tenantId] ?? 0) + r.costUsd;
+          } catch { /* skip */ }
+        }
+        agg.costUsd = Math.round(agg.costUsd * 10000) / 10000;
+        for (const t of Object.keys(agg.byTenant)) {
+          agg.byTenant[t] = Math.round(agg.byTenant[t]! * 10000) / 10000;
+        }
+        daily.push(agg);
+      }
+    }
+
+    const today = daily.find((d) => d.date === todayKey) ?? { date: todayKey, calls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0, byTenant: {} };
+    const sumOver = (n: number) => {
+      const slice = daily.slice(-n);
+      const out = { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0, byTenant: {} as Record<string, number> };
+      for (const d of slice) {
+        out.calls += d.calls;
+        out.inputTokens += d.inputTokens;
+        out.outputTokens += d.outputTokens;
+        out.costUsd += d.costUsd;
+        for (const [t, v] of Object.entries(d.byTenant)) {
+          out.byTenant[t] = (out.byTenant[t] ?? 0) + v;
+        }
+      }
+      out.costUsd = Math.round(out.costUsd * 10000) / 10000;
+      for (const t of Object.keys(out.byTenant)) {
+        out.byTenant[t] = Math.round(out.byTenant[t]! * 10000) / 10000;
+      }
+      return out;
+    };
+
+    const dailyTargetUsd = Number(process.env.OPENAI_DAILY_BUDGET_USD ?? "1");
+    return {
+      today,
+      last7Days: sumOver(7),
+      last30Days: sumOver(30),
+      dailyByTenant: daily,
+      budget: {
+        dailyTargetUsd,
+        todayPctOfDailyTarget: dailyTargetUsd > 0 ? Math.round((today.costUsd / dailyTargetUsd) * 1000) / 10 : 0,
+      },
+    };
+  });
+
+  // GET /v1/admin/quality/run-status — live progress of an in-flight
+  // Sentinel run. Returns whether a run is active, the elapsed time, a
+  // running PASS/FAIL count (parsed from the log tail), and the last 60
+  // lines so the dashboard can stream a console-like view. When the run
+  // completes, the next call clears the status file.
+  app.get("/v1/admin/quality/run-status", async (request, reply) => {
+    if (!adminAuth(request, reply)) return;
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const url = await import("node:url");
+    const currentFile = url.fileURLToPath(import.meta.url);
+    const apiRoot = path.resolve(path.dirname(currentFile), "..");
+    const runsDir = path.join(apiRoot, "_sentinel-runs");
+    const logPath = path.join(runsDir, ".current-run.log");
+    const statusPath = path.join(runsDir, ".current-run.json");
+
+    if (!fs.existsSync(statusPath)) {
+      return { running: false };
+    }
+
+    let status: { pid: number; startedAt: string; tenant: string; judge: boolean };
+    try {
+      status = JSON.parse(fs.readFileSync(statusPath, "utf8")) as { pid: number; startedAt: string; tenant: string; judge: boolean };
+    } catch {
+      // status file corrupted — clear it
+      try { fs.unlinkSync(statusPath); } catch { /* ignore */ }
+      return { running: false };
+    }
+
+    // Liveness probe: signal 0 throws if the process is gone.
+    let alive = false;
+    try {
+      if (status.pid) {
+        process.kill(status.pid, 0);
+        alive = true;
+      }
+    } catch {
+      alive = false;
+    }
+
+    if (!alive) {
+      // Process completed — sweep the status file and tell the client to
+      // refresh /quality/overview to pick up the new result.
+      try { fs.unlinkSync(statusPath); } catch { /* ignore */ }
+      const finalLog = fs.existsSync(logPath) ? fs.readFileSync(logPath, "utf8") : "";
+      const tail = finalLog.split("\n").slice(-80).join("\n");
+      const finalPassed = (finalLog.match(/PASS\s+\(/g) ?? []).length;
+      const finalFailed = (finalLog.match(/FAIL\s+\(/g) ?? []).length;
+      return {
+        running: false,
+        completed: true,
+        passed: finalPassed,
+        failed: finalFailed,
+        logTail: tail,
+        startedAt: status.startedAt,
+      };
+    }
+
+    // Still running — parse the log for progress.
+    const log = fs.existsSync(logPath) ? fs.readFileSync(logPath, "utf8") : "";
+    const passed = (log.match(/PASS\s+\(/g) ?? []).length;
+    const failed = (log.match(/FAIL\s+\(/g) ?? []).length;
+    const lines = log.split("\n");
+    const tail = lines.slice(-60).join("\n");
+    const elapsedMs = Date.now() - new Date(status.startedAt).getTime();
+
+    return {
+      running: true,
+      pid: status.pid,
+      tenant: status.tenant,
+      judge: status.judge,
+      startedAt: status.startedAt,
+      elapsedMs,
+      passed,
+      failed,
+      processedCount: passed + failed,
+      logTail: tail,
+    };
+  });
+
   app.get<{ Params: { file: string } }>("/v1/admin/quality/report/:file", async (request, reply) => {
     if (!adminAuth(request, reply)) return;
     const file = request.params.file;
