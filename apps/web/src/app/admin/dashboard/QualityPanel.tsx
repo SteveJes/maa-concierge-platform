@@ -58,9 +58,22 @@ function toneColor(t: "info" | "warn" | "danger"): string {
   return P.blue;
 }
 
+interface HistoryRun {
+  timestamp: string;
+  tenantCode: string;
+  mode: string;
+  judge: boolean;
+  total: number;
+  passed: number;
+  failed: number;
+  passRate: number;
+  failureTypes: Record<string, number>;
+}
+
 export default function QualityPanel({ tenantId, token }: Props) {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [agents, setAgents] = useState<AgentDef[] | null>(null);
+  const [history, setHistory] = useState<HistoryRun[] | null>(null);
   const [reportText, setReportText] = useState<string | null>(null);
   const [showReport, setShowReport] = useState(false);
   const [runStatus, setRunStatus] = useState<string | null>(null);
@@ -76,6 +89,12 @@ export default function QualityPanel({ tenantId, token }: Props) {
       .then((r) => r.json())
       .then((data: { agents: AgentDef[] }) => setAgents(data.agents))
       .catch(() => setAgents([]));
+    fetch(`${API}/v1/admin/quality/history?tenant=${encodeURIComponent(tenantId)}&limit=30`, {
+      headers: { "x-admin-token": token },
+    })
+      .then((r) => r.json())
+      .then((data: { runs: HistoryRun[] }) => setHistory(data.runs))
+      .catch(() => setHistory([]));
   }, [tenantId, token]);
 
   async function openReport(file: string) {
@@ -275,6 +294,22 @@ export default function QualityPanel({ tenantId, token }: Props) {
             )}
           </div>
         </div>
+
+        {/* Trend — last 30 Sentinel runs */}
+        {history && history.length > 1 && (
+          <div style={{ marginTop: 28, paddingTop: 22, borderTop: `1px solid ${P.border}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.12em" }}>
+                Tendance — {history.length} dernières exécutions
+              </div>
+              <div style={{ fontSize: 11, color: P.muted }}>
+                {history.filter((r) => r.judge).length} avec juge IA · {history.filter((r) => !r.judge).length} en mode rapide
+              </div>
+            </div>
+            <TrendChart runs={history} />
+            <FailureDistribution runs={history} />
+          </div>
+        )}
       </Card>
 
       {showReport && (
@@ -311,5 +346,124 @@ export default function QualityPanel({ tenantId, token }: Props) {
         </div>
       )}
     </section>
+  );
+}
+
+/** SVG sparkline of pass rate over time. Each point is a Sentinel run.
+ *  Judged runs get a gold dot, fast runs get a slim grey dot. */
+function TrendChart({ runs }: { runs: HistoryRun[] }) {
+  const W = 760;
+  const H = 140;
+  const PAD_L = 36;
+  const PAD_R = 12;
+  const PAD_T = 12;
+  const PAD_B = 24;
+  const plotW = W - PAD_L - PAD_R;
+  const plotH = H - PAD_T - PAD_B;
+  const xs = runs.map((_, i) => (runs.length === 1 ? plotW / 2 : (i / (runs.length - 1)) * plotW));
+  const ys = runs.map((r) => plotH - (r.passRate / 100) * plotH);
+  const poly = xs.map((x, i) => `${PAD_L + x},${PAD_T + ys[i]!}`).join(" ");
+  const minRate = Math.min(...runs.map((r) => r.passRate));
+  const maxRate = Math.max(...runs.map((r) => r.passRate));
+  const latest = runs[runs.length - 1]!;
+  const prev = runs.length >= 2 ? runs[runs.length - 2]! : null;
+  const delta = prev ? +(latest.passRate - prev.passRate).toFixed(1) : 0;
+
+  return (
+    <div style={{ background: "#ffffff", border: `1px solid ${P.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
+        <div>
+          <div style={{ fontSize: 10, color: P.muted, textTransform: "uppercase", letterSpacing: "0.10em" }}>Taux de réussite</div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+            <span style={{ fontSize: 24, fontWeight: 800, color: P.ink }}>{latest.passRate}%</span>
+            {prev && (
+              <span style={{ fontSize: 12, color: delta >= 0 ? P.green : P.red, fontWeight: 700 }}>
+                {delta >= 0 ? "▲" : "▼"} {Math.abs(delta).toFixed(1)} pt
+              </span>
+            )}
+          </div>
+        </div>
+        <div style={{ textAlign: "right", fontSize: 11, color: P.muted }}>
+          Plage: {minRate}% – {maxRate}%
+        </div>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", display: "block" }} preserveAspectRatio="none">
+        {[100, 90, 80, 70].map((tick) => {
+          const y = PAD_T + plotH - (tick / 100) * plotH;
+          return (
+            <g key={tick}>
+              <line x1={PAD_L} y1={y} x2={W - PAD_R} y2={y} stroke={P.border} strokeDasharray="2 4" />
+              <text x={PAD_L - 6} y={y + 3} textAnchor="end" fontSize="9" fill={P.muted}>{tick}%</text>
+            </g>
+          );
+        })}
+        <polyline points={poly} fill="none" stroke={P.gold} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        {runs.map((r, i) => (
+          <circle
+            key={i}
+            cx={PAD_L + xs[i]!}
+            cy={PAD_T + ys[i]!}
+            r={r.judge ? 4 : 2.5}
+            fill={r.judge ? P.gold : P.muted}
+            stroke="#ffffff"
+            strokeWidth="1.5"
+          >
+            <title>{`${new Date(r.timestamp).toLocaleString("fr-CA", { dateStyle: "short", timeStyle: "short" })} — ${r.passed}/${r.total} (${r.passRate}%${r.judge ? ", juge IA" : ", rapide"})`}</title>
+          </circle>
+        ))}
+        <text x={PAD_L} y={H - 6} fontSize="9" fill={P.muted}>{new Date(runs[0]!.timestamp).toLocaleDateString("fr-CA", { month: "short", day: "numeric" })}</text>
+        <text x={W - PAD_R} y={H - 6} fontSize="9" fill={P.muted} textAnchor="end">{new Date(latest.timestamp).toLocaleDateString("fr-CA", { month: "short", day: "numeric" })}</text>
+      </svg>
+      <div style={{ display: "flex", gap: 14, fontSize: 10, color: P.muted, marginTop: 4 }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+          <span style={{ width: 8, height: 8, borderRadius: "50%", background: P.gold, display: "inline-block" }} /> Juge IA
+        </span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: P.muted, display: "inline-block" }} /> Test rapide
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** Failure-type distribution over the recent runs (totals). */
+function FailureDistribution({ runs }: { runs: HistoryRun[] }) {
+  const totals: Record<string, number> = {};
+  for (const r of runs) {
+    for (const [t, n] of Object.entries(r.failureTypes)) {
+      totals[t] = (totals[t] ?? 0) + n;
+    }
+  }
+  const entries = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+  if (entries.length === 0) {
+    return (
+      <div style={{ background: "#ffffff", border: `1px solid ${P.border}`, borderRadius: 12, padding: "14px 16px", color: P.green, fontWeight: 600, fontSize: 12 }}>
+        ✓ Aucun échec sur les {runs.length} dernières exécutions.
+      </div>
+    );
+  }
+  const max = entries[0]![1];
+  return (
+    <div style={{ background: "#ffffff", border: `1px solid ${P.border}`, borderRadius: 12, padding: "14px 16px" }}>
+      <div style={{ fontSize: 10, color: P.muted, textTransform: "uppercase", letterSpacing: "0.10em", marginBottom: 10 }}>
+        Échecs cumulés par type ({runs.length} exécutions)
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+        {entries.map(([type, count]) => {
+          const meta = FAILURE_LABELS[type] ?? FAILURE_LABELS.unknown!;
+          const c = toneColor(meta.tone);
+          const pct = (count / max) * 100;
+          return (
+            <div key={type} style={{ display: "grid", gridTemplateColumns: "180px 1fr 40px", gap: 10, alignItems: "center" }}>
+              <span style={{ fontSize: 11, color: P.ink, fontWeight: 600 }}>{meta.label}</span>
+              <div style={{ background: `${c}14`, height: 14, borderRadius: 7, overflow: "hidden", position: "relative" }}>
+                <div style={{ background: c, width: `${pct}%`, height: "100%", borderRadius: 7, transition: "width 0.3s" }} />
+              </div>
+              <span style={{ fontSize: 11, color: P.dim, fontWeight: 700, textAlign: "right" }}>{count}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }

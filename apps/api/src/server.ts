@@ -976,6 +976,77 @@ export function createServer() {
     };
   });
 
+  // GET /v1/admin/quality/history — trend data for the dashboard chart.
+  // Returns the last N Sentinel runs (default 30) for the requested tenant,
+  // sorted oldest → newest, with pass rate + failure-type distribution.
+  app.get("/v1/admin/quality/history", async (request, reply) => {
+    if (!adminAuth(request, reply)) return;
+    const q = request.query as { tenant?: string; limit?: string } | undefined;
+    const tenant = q?.tenant;
+    const limit = Math.min(Math.max(Number(q?.limit ?? "30"), 1), 200);
+
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const url = await import("node:url");
+    const currentFile = url.fileURLToPath(import.meta.url);
+    const apiRoot = path.resolve(path.dirname(currentFile), "..");
+    const runsDir = path.join(apiRoot, "_sentinel-runs");
+    if (!fs.existsSync(runsDir)) return { runs: [] };
+
+    interface HistoryPoint {
+      timestamp: string;
+      tenantCode: string;
+      mode: string;
+      judge: boolean;
+      total: number;
+      passed: number;
+      failed: number;
+      passRate: number;
+      failureTypes: Record<string, number>;
+    }
+
+    const files = fs.readdirSync(runsDir).filter((f) => f.endsWith(".json")).sort().reverse();
+    const runs: HistoryPoint[] = [];
+    for (const file of files) {
+      if (runs.length >= limit) break;
+      try {
+        const data = JSON.parse(fs.readFileSync(path.join(runsDir, file), "utf8")) as {
+          tenantCode?: string;
+          timestamp?: string;
+          mode?: string;
+          judge?: boolean;
+          total?: number;
+          passed?: number;
+          failed?: number;
+          passRate?: number;
+          results?: Array<{ passed: boolean; failureType?: string }>;
+        };
+        if (tenant && data.tenantCode !== tenant) continue;
+        const failureTypes: Record<string, number> = {};
+        for (const r of data.results ?? []) {
+          if (r.passed) continue;
+          const t = r.failureType ?? "unknown";
+          failureTypes[t] = (failureTypes[t] ?? 0) + 1;
+        }
+        runs.push({
+          timestamp: data.timestamp ?? "",
+          tenantCode: data.tenantCode ?? "unknown",
+          mode: data.mode ?? "in-process",
+          judge: Boolean(data.judge),
+          total: data.total ?? 0,
+          passed: data.passed ?? 0,
+          failed: data.failed ?? 0,
+          passRate: data.passRate ?? 0,
+          failureTypes,
+        });
+      } catch {
+        // skip
+      }
+    }
+    runs.reverse(); // chronological for charting
+    return { runs };
+  });
+
   // POST /v1/admin/quality/run-sentinel — spawn a Sentinel scenario run in
   // the background. Returns immediately with a job descriptor; the suite
   // takes ~2–5 min and writes the result to `_sentinel-runs/`. The dashboard
