@@ -807,7 +807,11 @@ export function createServer() {
     const path = await import("node:path");
     const url = await import("node:url");
     const currentFile = url.fileURLToPath(import.meta.url);
-    const apiRoot = path.resolve(path.dirname(currentFile), "..");
+    // In prod the API runs from dist/ but the runtime data lives in the
+    // source tree (apps/api/_sentinel-runs, _costs, src/scenarios/golden,
+    // .claude/agents). Strip the compiled-dist suffix so file-system reads
+    // resolve correctly in both dev and prod.
+    const apiRoot = path.resolve(path.dirname(currentFile), "..").replace(/[\\/]dist[\\/]apps[\\/]api$/, "");
     const runsDir = path.join(apiRoot, "_sentinel-runs");
 
     if (!fs.existsSync(runsDir)) {
@@ -878,7 +882,11 @@ export function createServer() {
     const path = await import("node:path");
     const url = await import("node:url");
     const currentFile = url.fileURLToPath(import.meta.url);
-    const apiRoot = path.resolve(path.dirname(currentFile), "..");
+    // In prod the API runs from dist/ but the runtime data lives in the
+    // source tree (apps/api/_sentinel-runs, _costs, src/scenarios/golden,
+    // .claude/agents). Strip the compiled-dist suffix so file-system reads
+    // resolve correctly in both dev and prod.
+    const apiRoot = path.resolve(path.dirname(currentFile), "..").replace(/[\\/]dist[\\/]apps[\\/]api$/, "");
     const repoRoot = path.resolve(apiRoot, "../..");
     const agentsDir = path.join(repoRoot, ".claude", "agents");
     if (!fs.existsSync(agentsDir)) return { agents: [] };
@@ -908,7 +916,11 @@ export function createServer() {
     const path = await import("node:path");
     const url = await import("node:url");
     const currentFile = url.fileURLToPath(import.meta.url);
-    const apiRoot = path.resolve(path.dirname(currentFile), "..");
+    // In prod the API runs from dist/ but the runtime data lives in the
+    // source tree (apps/api/_sentinel-runs, _costs, src/scenarios/golden,
+    // .claude/agents). Strip the compiled-dist suffix so file-system reads
+    // resolve correctly in both dev and prod.
+    const apiRoot = path.resolve(path.dirname(currentFile), "..").replace(/[\\/]dist[\\/]apps[\\/]api$/, "");
     const runsDir = path.join(apiRoot, "_sentinel-runs");
     const goldenDir = path.join(apiRoot, "src", "scenarios", "golden");
 
@@ -1004,7 +1016,11 @@ export function createServer() {
     const path = await import("node:path");
     const url = await import("node:url");
     const currentFile = url.fileURLToPath(import.meta.url);
-    const apiRoot = path.resolve(path.dirname(currentFile), "..");
+    // In prod the API runs from dist/ but the runtime data lives in the
+    // source tree (apps/api/_sentinel-runs, _costs, src/scenarios/golden,
+    // .claude/agents). Strip the compiled-dist suffix so file-system reads
+    // resolve correctly in both dev and prod.
+    const apiRoot = path.resolve(path.dirname(currentFile), "..").replace(/[\\/]dist[\\/]apps[\\/]api$/, "");
     const runsDir = path.join(apiRoot, "_sentinel-runs");
     if (!fs.existsSync(runsDir)) return { runs: [] };
 
@@ -1081,7 +1097,11 @@ export function createServer() {
     const path = await import("node:path");
     const url = await import("node:url");
     const currentFile = url.fileURLToPath(import.meta.url);
-    const apiRoot = path.resolve(path.dirname(currentFile), "..");
+    // In prod the API runs from dist/ but the runtime data lives in the
+    // source tree (apps/api/_sentinel-runs, _costs, src/scenarios/golden,
+    // .claude/agents). Strip the compiled-dist suffix so file-system reads
+    // resolve correctly in both dev and prod.
+    const apiRoot = path.resolve(path.dirname(currentFile), "..").replace(/[\\/]dist[\\/]apps[\\/]api$/, "");
     const runsDir = path.join(apiRoot, "_sentinel-runs");
     if (!fs.existsSync(runsDir)) fs.mkdirSync(runsDir, { recursive: true });
     const args = ["exec", "tsx", "src/scripts/test-scenarios.ts"];
@@ -1146,7 +1166,11 @@ export function createServer() {
     const path = await import("node:path");
     const url = await import("node:url");
     const currentFile = url.fileURLToPath(import.meta.url);
-    const apiRoot = path.resolve(path.dirname(currentFile), "..");
+    // In prod the API runs from dist/ but the runtime data lives in the
+    // source tree (apps/api/_sentinel-runs, _costs, src/scenarios/golden,
+    // .claude/agents). Strip the compiled-dist suffix so file-system reads
+    // resolve correctly in both dev and prod.
+    const apiRoot = path.resolve(path.dirname(currentFile), "..").replace(/[\\/]dist[\\/]apps[\\/]api$/, "");
     const costsDir = path.join(apiRoot, "_costs");
 
     interface Row { ts: string; tenantId: string; model: string; inputTokens: number; outputTokens: number; costUsd: number }
@@ -1229,7 +1253,11 @@ export function createServer() {
     const path = await import("node:path");
     const url = await import("node:url");
     const currentFile = url.fileURLToPath(import.meta.url);
-    const apiRoot = path.resolve(path.dirname(currentFile), "..");
+    // In prod the API runs from dist/ but the runtime data lives in the
+    // source tree (apps/api/_sentinel-runs, _costs, src/scenarios/golden,
+    // .claude/agents). Strip the compiled-dist suffix so file-system reads
+    // resolve correctly in both dev and prod.
+    const apiRoot = path.resolve(path.dirname(currentFile), "..").replace(/[\\/]dist[\\/]apps[\\/]api$/, "");
     const runsDir = path.join(apiRoot, "_sentinel-runs");
     const logPath = path.join(runsDir, ".current-run.log");
     const statusPath = path.join(runsDir, ".current-run.json");
@@ -1309,7 +1337,11 @@ export function createServer() {
     const path = await import("node:path");
     const url = await import("node:url");
     const currentFile = url.fileURLToPath(import.meta.url);
-    const apiRoot = path.resolve(path.dirname(currentFile), "..");
+    // In prod the API runs from dist/ but the runtime data lives in the
+    // source tree (apps/api/_sentinel-runs, _costs, src/scenarios/golden,
+    // .claude/agents). Strip the compiled-dist suffix so file-system reads
+    // resolve correctly in both dev and prod.
+    const apiRoot = path.resolve(path.dirname(currentFile), "..").replace(/[\\/]dist[\\/]apps[\\/]api$/, "");
     const filePath = path.join(apiRoot, "_sentinel-runs", file);
     if (!fs.existsSync(filePath)) return reply.code(404).send({ error: "not_found" });
     const markdown = fs.readFileSync(filePath, "utf8");
