@@ -103,20 +103,31 @@ function formatIntentLine(i: ReturnType<typeof loadMaaV2>["intents"][number], lo
   const q = pickLocalized(i.clarificationQuestion, locale);
   const action = pickLocalized(i.action, locale);
   const cta = pickLocalized(i.ctaTemplate, locale);
-  return `  - **${label}** (ex: "${i.examples[0]}") → Ask: "${q}" Then ${action} CTA: "${cta}"`;
+  const fallback = pickLocalized(i.fallback, locale);
+  const routing = Object.entries(i.departmentByAnswer)
+    .map(([answer, target]) => `${answer}→${target}`)
+    .join(" · ");
+  return `  - **${label}** (ex: "${i.examples[0]}") → Ask: "${q}" Then ${action} CTA: "${cta}" · Routing: ${routing} · Fallback: ${fallback}`;
 }
 
 function formatClarificationLine(c: ReturnType<typeof loadMaaV2>["clarifications"][number], locale: string | undefined): string {
   const q = pickLocalized(c.clarificationQuestion, locale);
   const rule = pickLocalized(c.prudenceRule, locale);
-  return `  - "${c.word}" (= ${c.possibleMeanings.slice(0, 4).join(" / ")}…) → Ask: "${q}" Rule: ${rule}`;
+  const aliases = c.aliases.length > 0 ? ` · Aliases: ${c.aliases.join(", ")}` : "";
+  return `  - "${c.word}" (= ${c.possibleMeanings.join(" / ")})${aliases} → Ask: "${q}" Rule: ${rule}`;
 }
 
 function formatConfusionLine(z: ReturnType<typeof loadMaaV2>["confusionZones"][number], locale: string | undefined): string {
   const dept = pickLocalized(z.department, locale);
   const conf = pickLocalized(z.confusion, locale);
   const rule = pickLocalized(z.rule, locale);
-  return `  - **${dept}** [${z.confidence}]: ${conf} → ${rule}`;
+  const note = pickLocalized(z.note, locale);
+  const contacts = [
+    `Primary: ${z.primaryContact}`,
+    z.secondaryContact ? `Secondary: ${z.secondaryContact}` : null,
+    z.tertiaryContact ? `Tertiary: ${z.tertiaryContact}` : null,
+  ].filter(Boolean).join(" · ");
+  return `  - **${dept}** [${z.confidence}]: ${conf} → ${rule} · ${contacts}${note ? ` · Note: ${note}` : ""}`;
 }
 
 function formatCtaLine(c: ReturnType<typeof loadMaaV2>["ctas"]["ctasByService"][number], locale: string | undefined): string {
@@ -126,9 +137,17 @@ function formatCtaLine(c: ReturnType<typeof loadMaaV2>["ctas"]["ctasByService"][
 
 function formatCategoryLine(c: ReturnType<typeof loadMaaV2>["categories"]["categories"][number], locale: string | undefined): string {
   const label = pickLocalized(c.label, locale);
-  const upsells = c.upsellOptions.length > 0 ? ` Upsell: ${c.upsellOptions.slice(0, 2).join(", ")}.` : "";
-  const tplLine = c.typeSentence ? ` Phrase-type: "${c.typeSentence}"` : "";
-  return `  - **${label}** — Intent: ${c.typicalIntent} | Answer: ${c.expectedAnswer} | Contact: ${c.primaryContact}.${upsells} Limit: ${c.limit}${tplLine}`;
+  const upsells = c.upsellOptions.length > 0 ? ` · Upsell: ${c.upsellOptions.join(", ")}` : "";
+  const tplLine = c.typeSentence ? ` · Phrase-type: "${c.typeSentence}"` : "";
+  const contacts = c.secondaryContact
+    ? `${c.primaryContact} (secondary: ${c.secondaryContact})`
+    : c.primaryContact;
+  const action = c.recommendedAction ? ` · Action: ${c.recommendedAction}` : "";
+  const extra = c.extraInstruction ? ` · Extra: ${c.extraInstruction}` : "";
+  const nonMember = c.nonMemberRule ? ` · NonMemberRule: ${c.nonMemberRule}` : "";
+  const policies = c.commonPolicies && c.commonPolicies.length > 0 ? ` · Policies: ${c.commonPolicies.join("; ")}` : "";
+  const chef = c.chef ? ` · Chef: ${c.chef.name} (${c.chef.role})` : "";
+  return `  - **${label}** — Intent: ${c.typicalIntent} | Answer: ${c.expectedAnswer} | Contact: ${contacts}${action}${upsells} · Limit: ${c.limit}${tplLine}${extra}${nonMember}${policies}${chef}`;
 }
 
 function formatLinkLine(l: ReturnType<typeof loadMaaV2>["links"]["schedules"][number]): string {
@@ -208,7 +227,15 @@ export function buildMaaChatSystemPromptV2(locale?: string, userMessage: string 
     "",
     "## INTERNAL RULES (apply silently, never tell the visitor about them)",
     "",
+    `**Separation rule (rules.json::separationRule)**: ${k.rules.separationRule}`,
+    "",
     ...k.rules.globalPrudenceRules.map((r) => `- ${r}`),
+    "",
+    "### Bloc-type cheat-sheet (rules.json::blocTypes) — know which content type you're reading:",
+    ...Object.entries(k.rules.blocTypes).map(([key, bloc]) => `- **${bloc.label}** (${key}): ${bloc.nature}. Use: ${bloc.use}.`),
+    "",
+    "### Known stale facts — NEVER cite these numbers (categories.json::siteStructure.knownStaleSources):",
+    ...k.categories.siteStructure.knownStaleSources.map((s) => `- ${s}`),
     "",
     "Forbidden phrases (NEVER use these in a reply to the visitor):",
     ...k.rules.forbiddenPhrases.map((p) => `- "${p}"`),
@@ -266,6 +293,8 @@ export function buildMaaChatSystemPromptV2(locale?: string, userMessage: string 
 
     "## SOFT CTA BY SERVICE — always end a service-specific answer with the right CTA",
     "",
+    `**Principle (ctas.json::_principle)**: ${pickLocalized((k.ctas as unknown as { _principle: { fr: string; en: string } })._principle, locale)}`,
+    "",
     ...k.ctas.ctasByService.map((c) => formatCtaLine(c, locale)),
     "",
     `Universal fallback CTA: "${pickLocalized(k.ctas._fallbackUniversalCta, locale)}"`,
@@ -282,6 +311,8 @@ export function buildMaaChatSystemPromptV2(locale?: string, userMessage: string 
           "## SERVICE SECTIONS — authoritative operational content for THIS turn",
           "",
           "These sections are matched to the visitor's current question. When the visitor asks for an open-swim schedule, you have the full Spring 2026 weekly timetable here. When they ask about the menu, the restaurant section carries phone numbers and reservation links. ALWAYS prefer this content over the generic Hours / Pricing summary tables above; the sections are the ground truth Daphné encoded from the 203-page PDF.",
+          "",
+          "**OBEY embedded rules**: inside each section JSON, any field named `rule`, `_principle`, `memberRule`, `_note`, `_internalSource`, `authoritative`, `_rule`, or `responseRule` is a DIRECTIVE you MUST follow silently. Do not recite them to the visitor — apply them. If `authoritative` is set on hours/prices, ONLY quote that value (never list legacy / contradictory alternatives). If `memberRule` is set on an activity, gate access accordingly using the MEMBER-STATUS PROTOCOL above.",
           "",
           ...relevantSections.map((id) => formatSectionBlock(id, k.sections[id])),
           "",
@@ -312,6 +343,54 @@ export function buildMaaChatSystemPromptV2(locale?: string, userMessage: string 
     "- Information is À valider / Daté / Contradictoire (then say 'actuellement' + propose validation)",
     "- Topic is medical, sensitive, or contractual (then route to the right specialist + offer prise en note / AI call)",
     "- The visitor explicitly wants to speak to a human",
+    "",
+
+    "## SOFTNESS RULE — Daphné's instruction (voice-tone.json::softnessRule)",
+    "",
+    `${pickLocalized(k.voiceTone.softnessRule, locale)}`,
+    "",
+    "Apply this rule to ANY claim about: promotions, horaires, tarifs, disponibilités, règles d'accès, conditions. Always frame with 'actuellement' (FR) / 'currently' (EN) and offer to confirm rather than pretend the value is permanent.",
+    "",
+
+    "## SOURCE HIERARCHY (voice-tone.json::sourceHierarchy)",
+    "",
+    "When two facts disagree, prefer them in this order (most authoritative first):",
+    ...k.voiceTone.sourceHierarchy.order.map((s) => `- ${s}`),
+    "",
+
+    "## STYLE BY RESPONSE LENGTH (voice-tone.json::styleByResponseLength)",
+    "",
+    `- **Short (default for direct answers)**: ${pickLocalized(k.voiceTone.styleByResponseLength.short, locale)}`,
+    `- **Long (only when the question is complex)**: ${pickLocalized(k.voiceTone.styleByResponseLength.long, locale)}`,
+    "Use the SHORT register by default. Move to LONG only when the visitor's question requires it.",
+    "",
+
+    "## WHEN TO TRANSFER TO HUMAN (voice-tone.json::whenToTransferToHuman)",
+    "",
+    "Trigger a human transfer / lead capture when ANY of these are true:",
+    ...k.voiceTone.whenToTransferToHuman.map((trigger) => `- ${trigger}`),
+    "",
+
+    "## WHEN TO PROPOSE AN AI CALL (voice-tone.json::whenToProposeAiCall)",
+    "",
+    "Offer the AI call (VAPI continuation) when ANY of these are true:",
+    ...k.voiceTone.whenToProposeAiCall.map((trigger) => `- ${trigger}`),
+    "",
+
+    "## WHEN INFORMATION IS MISSING — 4-step structure (voice-tone.json::missingInfoStructure)",
+    "",
+    `Principle: ${k.voiceTone.missingInfoStructure._principle}`,
+    "Steps you MUST follow when an answer can't be fully confirmed:",
+    ...k.voiceTone.missingInfoStructure.steps.map((step) => `- ${step}`),
+    "",
+    `Template (use verbatim wording when relevant): "${pickLocalized(k.voiceTone.missingInfoStructure.template, locale)}"`,
+    "",
+
+    "## UPSELL RULES (voice-tone.json::upsellRules)",
+    "",
+    `Principle: ${k.voiceTone.upsellRules._principle}`,
+    "Intent → upsell options (pick at most ONE per reply, adjacent to the visitor's intent):",
+    ...Object.entries(k.voiceTone.upsellRules.examples).map(([intent, options]) => `- **${intent}** → ${options}`),
     "",
 
     "## MEMBER-STATUS PROTOCOL — Daphné's instruction (voice-tone.json::nonMemberRule)",
