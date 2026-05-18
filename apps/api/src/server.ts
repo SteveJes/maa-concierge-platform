@@ -925,6 +925,14 @@ export function createServer() {
     const goldenDir = path.join(apiRoot, "src", "scenarios", "golden");
 
     // Latest run: read most-recent matching JSON
+    interface FailureDetail {
+      id: string;
+      label: string;
+      failureType: string;
+      failureReason: string | null;
+      assistantMessage: string;
+      judgeVerdict: { verdict: string; reasoning: string } | null;
+    }
     let latestRun: {
       timestamp: string;
       tenantCode: string;
@@ -933,6 +941,7 @@ export function createServer() {
       failed: number;
       passRate: number;
       failureTypeBreakdown: Record<string, number>;
+      failures: FailureDetail[];
       reportFile: string | null;
     } | null = null;
 
@@ -947,14 +956,31 @@ export function createServer() {
             passed?: number;
             failed?: number;
             passRate?: number;
-            results?: Array<{ passed: boolean; failureType?: string }>;
+            results?: Array<{
+              id: string;
+              label: string;
+              passed: boolean;
+              failureType?: string;
+              failureReason?: string;
+              assistantMessage?: string;
+              judgeVerdict?: { verdict: string; reasoning: string };
+            }>;
           };
           if (tenantFilter && data.tenantCode !== tenantFilter) continue;
           const breakdown: Record<string, number> = {};
+          const failures: FailureDetail[] = [];
           for (const r of data.results ?? []) {
             if (r.passed) continue;
             const t = r.failureType ?? "unknown";
             breakdown[t] = (breakdown[t] ?? 0) + 1;
+            failures.push({
+              id: r.id,
+              label: r.label,
+              failureType: t,
+              failureReason: r.failureReason ?? null,
+              assistantMessage: (r.assistantMessage ?? "").slice(0, 320),
+              judgeVerdict: r.judgeVerdict ?? null,
+            });
           }
           // The report file shares the same basename as the JSON run, just
           // with .md instead of .json. Some versions of the runner prefix
@@ -975,6 +1001,7 @@ export function createServer() {
             failed: data.failed ?? 0,
             passRate: data.passRate ?? 0,
             failureTypeBreakdown: breakdown,
+            failures,
             reportFile,
           };
           break;

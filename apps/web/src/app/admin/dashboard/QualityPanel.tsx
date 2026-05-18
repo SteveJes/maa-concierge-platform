@@ -14,6 +14,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { P, API, Card, SectionTitle } from "../_components/AdminShell";
 
+interface FailureDetail {
+  id: string;
+  label: string;
+  failureType: string;
+  failureReason: string | null;
+  assistantMessage: string;
+  judgeVerdict: { verdict: string; reasoning: string } | null;
+}
+
 interface Overview {
   latestRun: {
     timestamp: string;
@@ -23,11 +32,28 @@ interface Overview {
     failed: number;
     passRate: number;
     failureTypeBreakdown: Record<string, number>;
+    failures: FailureDetail[];
     reportFile: string | null;
   } | null;
   goldenScenarios: { count: number; files: string[] };
   links: { sentinelRunsDir: string; goldenDir: string; agentsDir: string };
 }
+
+const FAILURE_OWNER: Record<string, { agent: string; surface: string }> = {
+  source_leak: { agent: "/eval-test-designer", surface: "apps/api/src/prompts/maa-chat-system-v2.ts (SOURCE PRIVACY)" },
+  premature_callback: { agent: "Prompt review", surface: "FOLLOW-UP MODE rule" },
+  repetition: { agent: "/rag-failure-analyst", surface: "services/maa-chat.ts (resolveShortAffirmativeFollowUp)" },
+  model_hallucination: { agent: "/rag-failure-analyst → /kb-editor", surface: "matching section JSON" },
+  missing_knowledge: { agent: "/kb-editor", surface: "apps/api/src/knowledge/maa-v2/sections/" },
+  bad_retrieval: { agent: "/rag-failure-analyst", surface: "relevantSectionsForMessage regex" },
+  conflicting_kb: { agent: "/kb-editor", surface: "sources-vivantes.json + matching section" },
+  french_localization_issue: { agent: "/fr-qc-reviewer", surface: "BILINGUAL POLICY + STRICT LANGUAGE LOCK" },
+  sales_quality_issue: { agent: "/fr-qc-reviewer", surface: "UPSELL RULES + voice-tone.json" },
+  prompt_problem: { agent: "Prompt author", surface: "apps/api/src/prompts/maa-chat-system-v2.ts" },
+  slow_response: { agent: "Performance review", surface: "answerMaaChat tracing" },
+  ui_bug: { agent: "/playwright-qa-engineer", surface: "packages/ui-chat/src/index.tsx" },
+  unknown: { agent: "Manual triage", surface: "Read reply + tag failure_type" },
+};
 
 interface AgentDef { name: string; description: string; tools: string[] }
 
@@ -327,6 +353,19 @@ export default function QualityPanel({ tenantId, token }: Props) {
             ▶ Test complet avec juge IA
           </button>
         </div>
+
+        {/* ── ACTION CENTER ── what to do next, per failure ───────────────── */}
+        {overview?.latestRun && overview.latestRun.failures.length > 0 && (
+          <ActionCenter
+            run={overview.latestRun}
+            history={history}
+            onOpenReport={overview.latestRun.reportFile ? () => openReport(overview.latestRun!.reportFile!) : undefined}
+            onOpenRemediation={remediation && remediation.failureCount > 0 ? () => setShowRemediation(true) : undefined}
+            onRerun={() => void runSentinel({ judge: true })}
+            rerunning={!!runStatus}
+          />
+        )}
+
         <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 24 }}>
           {/* Failure-type breakdown */}
           <div>
@@ -725,6 +764,212 @@ function FailureDistribution({ runs }: { runs: HistoryRun[] }) {
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+/** ── ACTION CENTER ──────────────────────────────────────────────────────
+ *  Top-of-panel block Daphné + Steve open every morning. Shows the hero
+ *  pass-rate with climb badge, then a numbered list of "what to do" — every
+ *  failing scenario with its label, classified failure type, suggested
+ *  subagent owner, and a row of inline actions (view detail, view full
+ *  remediation plan, re-run after fixing).
+ */
+interface ActionCenterRun {
+  timestamp: string;
+  total: number;
+  passed: number;
+  failed: number;
+  passRate: number;
+  failures: FailureDetail[];
+}
+
+function ActionCenter({
+  run,
+  history,
+  onOpenReport,
+  onOpenRemediation,
+  onRerun,
+  rerunning,
+}: {
+  run: ActionCenterRun;
+  history: HistoryRun[] | null;
+  onOpenReport?: () => void;
+  onOpenRemediation?: () => void;
+  onRerun: () => void;
+  rerunning: boolean;
+}) {
+  const previous = history && history.length >= 2 ? history[history.length - 2] : null;
+  const delta = previous ? +(run.passRate - previous.passRate).toFixed(1) : 0;
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  return (
+    <div
+      style={{
+        marginBottom: 24,
+        background: "linear-gradient(135deg, #fbf8ef 0%, #f7f4ea 100%)",
+        border: `1px solid ${P.gold}44`,
+        borderRadius: 14,
+        padding: "20px 22px",
+        boxShadow: "0 2px 14px rgba(201,168,76,0.10)",
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
+          <span style={{ fontSize: 11, fontWeight: 800, color: P.muted, textTransform: "uppercase", letterSpacing: "0.14em" }}>
+            Prochaines étapes
+          </span>
+          <span style={{ fontSize: 26, fontWeight: 800, color: P.ink, lineHeight: 1 }}>
+            {run.passRate}%
+          </span>
+          {previous && (
+            <span style={{ fontSize: 12, color: delta >= 0 ? P.green : P.red, fontWeight: 700 }}>
+              {delta >= 0 ? "▲" : "▼"} {Math.abs(delta).toFixed(1)} pt vs précédente
+            </span>
+          )}
+          <span style={{ fontSize: 12, color: P.muted }}>
+            · {run.passed} / {run.total} scénarios · {run.failures.length} correctif{run.failures.length > 1 ? "s" : ""} à appliquer pour atteindre 100 %
+          </span>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          {onOpenRemediation && (
+            <button
+              onClick={onOpenRemediation}
+              style={{
+                background: "linear-gradient(135deg,#c9a84c,#8b6010)",
+                border: "none", borderRadius: 8,
+                color: "#1a1610", fontSize: 12, fontWeight: 700,
+                padding: "8px 14px", cursor: "pointer",
+                boxShadow: "0 2px 6px rgba(201,168,76,0.28)",
+              }}
+            >
+              ⚙ Plan complet
+            </button>
+          )}
+          {onOpenReport && (
+            <button
+              onClick={onOpenReport}
+              style={{
+                background: "#ffffff",
+                border: `1px solid ${P.border}`, borderRadius: 8,
+                color: P.ink, fontSize: 12, fontWeight: 600,
+                padding: "8px 14px", cursor: "pointer",
+                boxShadow: "0 1px 2px rgba(20,16,8,0.04)",
+              }}
+            >
+              📄 Rapport
+            </button>
+          )}
+          <button
+            onClick={onRerun}
+            disabled={rerunning}
+            style={{
+              background: rerunning ? "#e8e3d6" : P.ink,
+              border: "none", borderRadius: 8,
+              color: rerunning ? P.muted : "#fbf8ef",
+              fontSize: 12, fontWeight: 700,
+              padding: "8px 14px", cursor: rerunning ? "default" : "pointer",
+            }}
+          >
+            ▶ Re-tester avec juge
+          </button>
+        </div>
+      </div>
+
+      {/* Per-failure rows */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {run.failures.map((f, i) => {
+          const meta = FAILURE_LABELS[f.failureType] ?? FAILURE_LABELS.unknown!;
+          const owner = FAILURE_OWNER[f.failureType] ?? FAILURE_OWNER.unknown!;
+          const c = toneColor(meta.tone);
+          const isOpen = expandedId === f.id;
+          return (
+            <div
+              key={f.id}
+              style={{
+                background: "#ffffff",
+                border: `1px solid ${P.border}`,
+                borderRadius: 10,
+                padding: "12px 14px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <span style={{
+                  width: 22, height: 22, borderRadius: "50%",
+                  background: P.ink, color: "#fbf8ef",
+                  fontSize: 11, fontWeight: 800,
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  flexShrink: 0,
+                }}>{i + 1}</span>
+                <span style={{
+                  fontFamily: "ui-monospace, monospace", fontSize: 11, fontWeight: 700,
+                  color: P.gold, background: `${P.gold}14`,
+                  padding: "2px 8px", borderRadius: 999,
+                  flexShrink: 0,
+                }}>{f.id}</span>
+                <span style={{
+                  display: "inline-flex", alignItems: "center", gap: 4,
+                  padding: "3px 9px", borderRadius: 999,
+                  background: `${c}14`, border: `1px solid ${c}44`,
+                  color: c, fontSize: 11, fontWeight: 600,
+                  flexShrink: 0,
+                }}>{meta.label}</span>
+                <span style={{ flex: 1, minWidth: 200, fontSize: 13, color: P.ink, fontWeight: 600 }}>{f.label}</span>
+                <span style={{ fontSize: 11, color: P.muted, flexShrink: 0 }}>
+                  À traiter par : <strong style={{ color: P.ink }}>{owner.agent}</strong>
+                </span>
+                <button
+                  onClick={() => setExpandedId(isOpen ? null : f.id)}
+                  style={{
+                    background: "none", border: `1px solid ${P.border}`,
+                    borderRadius: 6, padding: "4px 10px",
+                    fontSize: 11, color: P.dim, cursor: "pointer", fontWeight: 600,
+                  }}
+                >
+                  {isOpen ? "▲ Cacher" : "▼ Détails"}
+                </button>
+              </div>
+              {isOpen && (
+                <div style={{ marginTop: 12, paddingLeft: 34, fontSize: 12, color: P.dim, lineHeight: 1.55, display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div>
+                    <span style={{ color: P.muted, fontWeight: 700, fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase" }}>Surface du fix</span>
+                    <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, color: P.ink, marginTop: 2 }}>{owner.surface}</div>
+                  </div>
+                  {f.failureReason && (
+                    <div>
+                      <span style={{ color: P.muted, fontWeight: 700, fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase" }}>Raison technique</span>
+                      <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 11, color: P.ink, marginTop: 2, wordBreak: "break-word" }}>{f.failureReason}</div>
+                    </div>
+                  )}
+                  {f.judgeVerdict && (
+                    <div>
+                      <span style={{ color: P.muted, fontWeight: 700, fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase" }}>Verdict du juge IA</span>
+                      <div style={{ fontSize: 11, color: P.ink, marginTop: 2, fontStyle: "italic" }}>
+                        <strong>{f.judgeVerdict.verdict}</strong> — {f.judgeVerdict.reasoning}
+                      </div>
+                    </div>
+                  )}
+                  {f.assistantMessage && (
+                    <div>
+                      <span style={{ color: P.muted, fontWeight: 700, fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase" }}>Réponse du concierge</span>
+                      <div style={{
+                        fontSize: 11, color: P.ink, marginTop: 2,
+                        background: "#fbf8ef", padding: "8px 10px", borderRadius: 6,
+                        borderLeft: `3px solid ${P.gold}66`,
+                        fontStyle: "italic",
+                      }}>{f.assistantMessage}…</div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ marginTop: 14, fontSize: 11, color: P.muted, lineHeight: 1.55 }}>
+        💡 <strong>Comment procéder :</strong> ouvrez « ⚙ Plan complet » pour la version Markdown détaillée, dispatcher l'agent suggéré pour chaque correctif, puis cliquez « ▶ Re-tester avec juge » pour confirmer la progression.
       </div>
     </div>
   );
