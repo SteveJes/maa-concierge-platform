@@ -84,6 +84,14 @@ interface RunStatus {
   logTail?: string;
 }
 
+interface RemediationPlan {
+  file: string;
+  tenantCode?: string;
+  failureCount: number;
+  passRate: number | null;
+  markdown: string;
+}
+
 interface CostsBucket {
   date?: string;
   calls: number;
@@ -109,6 +117,8 @@ export default function QualityPanel({ tenantId, token }: Props) {
   const [runStatus, setRunStatus] = useState<string | null>(null);
   const [live, setLive] = useState<RunStatus | null>(null);
   const [costs, setCosts] = useState<CostsResponse | null>(null);
+  const [remediation, setRemediation] = useState<RemediationPlan | null>(null);
+  const [showRemediation, setShowRemediation] = useState(false);
 
   const refreshAll = useCallback(() => {
     fetch(`${API}/v1/admin/quality/overview?tenant=${encodeURIComponent(tenantId)}`, {
@@ -127,6 +137,12 @@ export default function QualityPanel({ tenantId, token }: Props) {
       .then((r) => r.json())
       .then((data: CostsResponse) => setCosts(data))
       .catch(() => setCosts(null));
+    fetch(`${API}/v1/admin/quality/remediation?tenant=${encodeURIComponent(tenantId)}`, {
+      headers: { "x-admin-token": token },
+    })
+      .then((r) => r.json())
+      .then((data: { plan: RemediationPlan | null }) => setRemediation(data.plan))
+      .catch(() => setRemediation(null));
   }, [tenantId, token]);
 
   useEffect(() => {
@@ -382,6 +398,26 @@ export default function QualityPanel({ tenantId, token }: Props) {
                     Voir le rapport Markdown
                   </button>
                 )}
+                {remediation && remediation.failureCount > 0 && (
+                  <button
+                    onClick={() => setShowRemediation(true)}
+                    style={{
+                      marginLeft: 8,
+                      background: "linear-gradient(135deg,#c9a84c,#8b6010)",
+                      border: "none",
+                      borderRadius: 8,
+                      color: "#1a1610",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      padding: "8px 14px",
+                      cursor: "pointer",
+                      boxShadow: "0 2px 6px rgba(201,168,76,0.28)",
+                    }}
+                    title="Auto-suggested fixes for the latest run"
+                  >
+                    ⚙ {remediation.failureCount} correctifs proposés
+                  </button>
+                )}
               </>
             ) : (
               <div style={{ fontSize: 12, color: P.muted }}>Aucune exécution disponible — lancer une suite Sentinel.</div>
@@ -529,6 +565,45 @@ export default function QualityPanel({ tenantId, token }: Props) {
               <button onClick={() => setShowReport(false)} style={{ background: "none", border: "none", cursor: "pointer", color: P.muted, fontSize: 16 }}>✕</button>
             </div>
             <pre style={{ whiteSpace: "pre-wrap", fontFamily: "ui-monospace, monospace", fontSize: 12, color: P.ink, margin: 0 }}>{reportText ?? "Chargement…"}</pre>
+          </div>
+        </div>
+      )}
+
+      {showRemediation && remediation && (
+        <div
+          role="dialog"
+          aria-label="Auto-suggested remediation"
+          onClick={() => setShowRemediation(false)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 100,
+            background: "rgba(20,16,8,0.45)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 24,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#ffffff",
+              border: `1px solid ${P.border}`,
+              borderRadius: 14,
+              padding: "20px 24px",
+              maxWidth: 880,
+              maxHeight: "85vh",
+              overflow: "auto",
+              boxShadow: "0 22px 60px rgba(20,16,8,0.18)",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12 }}>
+              <div>
+                <strong style={{ color: P.ink, fontSize: 15 }}>Plan de remédiation auto</strong>
+                <div style={{ fontSize: 11, color: P.muted, marginTop: 2 }}>
+                  {remediation.failureCount} correctif{remediation.failureCount > 1 ? "s" : ""} proposé{remediation.failureCount > 1 ? "s" : ""} · Pass rate {remediation.passRate}%
+                </div>
+              </div>
+              <button onClick={() => setShowRemediation(false)} style={{ background: "none", border: "none", cursor: "pointer", color: P.muted, fontSize: 16 }}>✕</button>
+            </div>
+            <pre style={{ whiteSpace: "pre-wrap", fontFamily: "ui-monospace, monospace", fontSize: 12, color: P.ink, margin: 0, lineHeight: 1.55 }}>{remediation.markdown}</pre>
           </div>
         </div>
       )}

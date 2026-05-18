@@ -379,9 +379,17 @@ export const MAA_SCENARIOS: Scenario[] = [
     tenantCode: "maa",
     locale: "fr-CA",
     userMessage: "Est-ce que l'abonnement donne accès aux cours de groupe ?",
-    requireAnyPattern: [/oui|inclus|donne accès|comprend/i],
+    // Accept multiple natural ways of affirming inclusion — Daphné's playbook
+    // calls for warm + direct, but the wording varies ("Tout à fait, ils sont
+    // inclus", "Effectivement…", "Oui, l'abonnement comprend…").
+    requireAnyPattern: [/oui|inclus|donne acc[èe]s|comprend|tout\s+[àa]\s+fait|effectivement|absolument|en effet|fait partie/i],
     phase: 3,
     source: "Daphné 6 #22 — 8/10",
+    judgeRubric: {
+      question:
+        "Does the assistant confirm clearly that group classes ARE included with the membership (any positive affirmation form is fine — 'oui', 'tout à fait', 'effectivement', 'fait partie de…')?",
+      expected: "yes",
+    },
   },
   {
     id: "maa-6.23",
@@ -703,7 +711,7 @@ export const MAA_SCENARIOS: Scenario[] = [
     source: "Daphné 2026-05-18 #1 — source-leak pool hours",
     judgeRubric: {
       question:
-        "Does the assistant present a single set of pool hours plainly, without mentioning any internal source name (PDF, site public, page publique) or saying there are two versions?",
+        "Does the assistant give the current pool hours (weekday + weekend values are both fine — that is NOT 'two versions') WITHOUT containing any of these exact internal-source phrases: 'selon le PDF', 'PDF Printemps', 'page publique', 'site public', 'deux versions', 'version contradictoire'?",
       expected: "yes",
     },
   },
@@ -729,7 +737,7 @@ export const MAA_SCENARIOS: Scenario[] = [
     source: "Daphné 2026-05-18 #2 — source-leak EN pool hours",
     judgeRubric: {
       question:
-        "Does the assistant present a single set of pool hours plainly in English, without mentioning any internal source name (PDF, public website) or saying there are two versions?",
+        "Does the assistant give the current pool hours in English (weekday + weekend = two valid time slots, NOT 'two versions') WITHOUT containing any of these exact internal-source phrases: 'according to the PDF', 'on the public website', 'per the website', 'two versions of', 'PDF Spring'?",
       expected: "yes",
     },
   },
@@ -773,7 +781,7 @@ export const MAA_SCENARIOS: Scenario[] = [
     source: "Daphné 2026-05-18 #4 — source-leak class schedule",
     judgeRubric: {
       question:
-        "Does the assistant present a single answer about class schedules plainly, without mentioning any internal source name (PDF, site public, page publique) or saying there are two versions?",
+        "Does the assistant answer the class-schedule question WITHOUT containing these exact internal-source phrases: 'selon le PDF interne', 'page publique', 'site public', 'deux versions', 'version contradictoire'? Naming the public booking PLATFORM (e.g. MyWellness widget, FLiiP, official PDF link) is FINE — those are public-facing tools, not internal sources.",
       expected: "yes",
     },
   },
@@ -795,7 +803,7 @@ export const MAA_SCENARIOS: Scenario[] = [
     source: "Daphné 2026-05-18 #5 — source-leak pricing",
     judgeRubric: {
       question:
-        "Does the assistant present pricing plainly, without mentioning any internal source name (PDF, site public, page publique) or saying there are two versions?",
+        "Does the assistant give the current pricing WITHOUT containing these exact internal-source phrases: 'selon le PDF', 'page publique', 'site public', 'deux versions'? Naming a CONTACT (e.g. Francis Bradette for details) is FINE — that is routing to a person, not a source leak.",
       expected: "yes",
     },
   },

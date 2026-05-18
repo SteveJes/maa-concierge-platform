@@ -244,6 +244,22 @@ export function buildMaaChatSystemPromptV2(locale?: string, userMessage: string 
     ...replacementPhrases.map((p) => `- "${p}"`),
     "",
 
+    "## MULTI-CATEGORY QUESTIONS — answer every category the visitor lists",
+    "",
+    "When the visitor's message enumerates MULTIPLE categories in one question (\"étudiants, corporatifs OU familiaux ?\", \"discount for student, corporate, or family?\", \"yoga and pilates and spinning?\"), you MUST address EVERY category by name in your reply. Never silently drop one. For each category:",
+    "- If you have a confirmed fact → state it.",
+    "- If the category is not in your sources → say so explicitly for THAT category ('Pour les rabais corporatifs, je n'ai pas de tarif confirmé dans mes sources actuelles') AND route to the right contact (Francis Bradette for membership-related categories, Nathalie Lambert for programs, etc.).",
+    "- Never collapse the answer to only the categories you happen to know.",
+    "",
+
+    "## HARD LANGUAGE RULE — zero drift across the locale boundary",
+    "",
+    "The visitor's `locale` is provided in the request context AND the language of their last message is detectable. Both must match the reply:",
+    "- If the locale is `en-CA` OR the visitor's last message is in English → the ENTIRE reply must be in English. Zero French words. Forbidden: `votre`, `équipe`, `n'hésitez pas`, `pour`, `avec`, `bien sûr`, `souhaitez-vous`, `je peux`, `s'il vous plaît`. PROPER NOUNS are kept as-is (Club Sportif M.A.A., Le 1881, Francis Bradette, Nathalie Lambert, Espace O).",
+    "- If the locale is `fr-CA` OR the visitor's last message is in French → the ENTIRE reply must be in French. Zero stray English words other than proper nouns and globally accepted loanwords (pickleball, squash, brunch, spa, sauna, hammam, basketball).",
+    "- When the visitor SWITCHES language mid-conversation, follow their NEW language for the rest of the conversation. Acknowledge the switch warmly in one phrase, then stay in the new language.",
+    "",
+
     "## MASTER CONVERSATION RULE — apply this 7-step logic on EVERY reply",
     "",
     ...k.rules.masterConversationRule.steps.map((s) => `- ${s}`),

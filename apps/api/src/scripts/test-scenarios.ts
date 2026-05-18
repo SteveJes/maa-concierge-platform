@@ -282,7 +282,7 @@ async function runOne(
     followUpMode: mode,
     suppressBookingCta: suppress,
     failureReason: reason,
-    failureType: reason ? inferFailureType(reason, msg, mode) : undefined,
+    failureType: reason ? inferFailureType(reason, msg, mode, scenario.label) : undefined,
     judgeVerdict,
     durationMs: Date.now() - t0,
   };
@@ -298,13 +298,17 @@ function inferFailureType(
   reason: string,
   message: string,
   mode: FollowUpMode,
+  scenarioLabel?: string,
 ): FailureType {
   const r = reason.toLowerCase();
   const m = message.toLowerCase();
+  const label = (scenarioLabel ?? "").toLowerCase();
 
   // Source-leak: bot exposed an internal data-source name to the visitor.
   if (
-    /selon le pdf|pdf officiel|pdf printemps|selon le site|page publique|site public|version contradictoire|deux versions|two versions/i.test(message)
+    /selon le pdf|pdf officiel|pdf printemps|selon le site|page publique|site public|version contradictoire|deux versions|two versions/i.test(message) ||
+    /internal source|source name|leak/i.test(r) ||
+    /source.?leak|expose.*source|pdf|site\s+public/i.test(label)
   ) {
     return "source_leak";
   }
@@ -316,42 +320,63 @@ function inferFailureType(
   ) {
     return "premature_callback";
   }
+  if (/premature[- ]?callback|callback.*premature/i.test(label) || /callback.*before|callback.*offer/i.test(r)) {
+    return "premature_callback";
+  }
 
   // Repetition: bot rephrased the same answer rather than moving forward.
-  if (/repetition|repeated|same answer|generic answer|loop/i.test(r)) {
+  if (/repetition|repeated|same answer|generic answer|loop/i.test(r) || /repetition|loop/i.test(label)) {
     return "repetition";
   }
 
-  // Judge said something was missing / bot didn't ground in KB
-  if (/judge.*missing|invent|hallucinat|fabricat|not in (the )?evidence/i.test(r)) {
-    return "model_hallucination";
-  }
-  if (/missing.*(?:knowledge|fact|evidence)/i.test(r)) return "missing_knowledge";
-  if (/retriev|chunk|search result/i.test(r)) return "bad_retrieval";
-  if (/contradict|conflict/i.test(r)) return "conflicting_kb";
-
-  // French / Quebec localisation issue
-  if (/french|fr_qc|québec|qc|localis|locale mismatch|wrong language/i.test(r)) {
+  // Language drift — REAL EN/FR leakage. The runner now sets
+  // `expectLanguage='en' but reply looks fr` (or vice versa) as the reason.
+  if (
+    /expectlanguage.*reply\s+looks|wrong language|language.*mismatch|locale.*mismatch|fr.*bleed|french.*leak/i.test(r) ||
+    /\b(switch|bilingual|en[- ]?only|fr[- ]?only|language)\b/i.test(label)
+  ) {
     return "french_localization_issue";
   }
 
-  // Sales quality (defensive answer, no value framing)
-  if (/sales|valeur|premium|defensive|cheap|cheaper/i.test(r)) {
-    return "sales_quality_issue";
-  }
-
-  // Timing
-  if (/slow|timeout|latency/i.test(r)) return "slow_response";
-
-  // UI bug — never set by this runner directly; reserved for Playwright bridge
-  if (/ui_bug|frontend/i.test(r)) return "ui_bug";
-
-  // Default: bot followed the wrong shape — almost always a prompt issue
-  if (
-    /forbidden pattern|required pattern|forbidfollowupmode|requirefollowupmode|suppressBookingCta|expected.*intent/i.test(r)
-  ) {
+  // Judge-driven failures: parse the judge's stated reason.
+  // The judge typically writes things like "The assistant only addresses
+  // student and senior discounts, not corporate or family discounts" or
+  // "provides multiple hours" etc. Map common phrasings to buckets.
+  if (/judge\s+verdict/i.test(r)) {
+    // Hallucination signatures
+    if (/invent|fabricat|hallucinat|made up|not.*sources?|not.*evidence|wrongly\s+claim/i.test(r)) {
+      return "model_hallucination";
+    }
+    // KB gap signatures (missing fact)
+    if (/only addresses|does not.*address|does not mention|missing|fails to (?:cover|address|mention)|omits/i.test(r)) {
+      return "missing_knowledge";
+    }
+    // Sales/objection quality
+    if (/defensive|apolog|sound.*cheap|sound.*expensive|premium|undermine.*value|justification/i.test(r) ||
+        /pricing|price.*objection|sales.*objection|c'est\s+(?:cher|trop)/i.test(label)) {
+      return "sales_quality_issue";
+    }
+    // Routing problems
+    if (/does not.*route|did not.*offer.*contact|wrong\s+contact|wrong\s+department/i.test(r)) {
+      return "prompt_problem";
+    }
+    // Default for unspecified judge failures: prompt-shape problem
     return "prompt_problem";
   }
+
+  // Pattern-assertion failures: missing required regex / matched forbidden
+  if (/forbidden pattern|requireanypattern|requirepatterns|forbidfollowupmode|requirefollowupmode|suppressBookingCta|expected.*intent/i.test(r)) {
+    return "prompt_problem";
+  }
+  if (/none of the requireany|required pattern.*not match/i.test(r)) {
+    return "prompt_problem";
+  }
+
+  if (/retriev|chunk|search result/i.test(r)) return "bad_retrieval";
+  if (/contradict|conflict/i.test(r)) return "conflicting_kb";
+
+  if (/slow|timeout|latency/i.test(r)) return "slow_response";
+  if (/ui_bug|frontend/i.test(r)) return "ui_bug";
 
   return "unknown";
 }
