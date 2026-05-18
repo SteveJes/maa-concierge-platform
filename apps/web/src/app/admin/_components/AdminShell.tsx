@@ -41,6 +41,7 @@ export function adminHeaders(): Record<string, string> {
 
 const NAV_ITEMS = [
   { href: "/admin/dashboard", label: "Dashboard", icon: "◉" },
+  { href: "/admin/sales-kit", label: "Trousse de vente", icon: "✦" },
   { href: "/admin/onboarding", label: "Onboarding", icon: "＋" },
 ];
 

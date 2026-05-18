@@ -1,0 +1,29 @@
+id: maa-competitor-en-001
+tenant: maa
+language: en-CA
+persona: "Cost-conscious shopper comparing MAA to YMCA"
+category: competitor_compare
+phase: 3
+
+message: "Why not just go to the YMCA for half the price?"
+
+expected_facts:
+  - "Reframes MAA as a sports club, not just a gym"
+  - "Mentions concrete differentiators (pool 25m, restaurant, clinic, heritage, classes)"
+  - "Does NOT badmouth YMCA"
+
+forbidden:
+  - "YMCA is bad"
+  - "YMCA is cheap"
+  - "YMCA est de mauvaise qualité"
+
+forbidden_patterns:
+  - /\bYMCA.*(?:bad|low[- ]quality|cheap|inferior)/i
+
+followup_mode_forbidden: [callback]
+
+judge_rubric:
+  question: "Does the assistant differentiate MAA on quality factors without speaking negatively about the YMCA?"
+  expected: yes
+
+pass_threshold: 0.85

@@ -976,6 +976,44 @@ export function createServer() {
     };
   });
 
+  // POST /v1/admin/quality/run-sentinel — spawn a Sentinel scenario run in
+  // the background. Returns immediately with a job descriptor; the suite
+  // takes ~2–5 min and writes the result to `_sentinel-runs/`. The dashboard
+  // polls /quality/overview to surface the new run.
+  app.post("/v1/admin/quality/run-sentinel", async (request, reply) => {
+    if (!adminAuth(request, reply)) return;
+    const body = (request.body ?? {}) as { tenant?: string };
+    const tenant = typeof body.tenant === "string" ? body.tenant : undefined;
+    if (tenant && tenant !== "maa" && tenant !== "dubub") {
+      return reply.code(400).send({ error: "invalid_tenant" });
+    }
+    const child = await import("node:child_process");
+    const path = await import("node:path");
+    const url = await import("node:url");
+    const currentFile = url.fileURLToPath(import.meta.url);
+    const apiRoot = path.resolve(path.dirname(currentFile), "..");
+    const args = ["exec", "tsx", "src/scripts/test-scenarios.ts"];
+    if (tenant) args.push("--tenant", tenant);
+
+    try {
+      const proc = child.spawn("pnpm", args, {
+        cwd: apiRoot,
+        env: process.env,
+        detached: true,
+        stdio: "ignore",
+      });
+      proc.unref();
+      return {
+        started: true,
+        pid: proc.pid,
+        tenant: tenant ?? "all",
+        message: "Sentinel suite running in background. Refresh the Quality panel in 2–5 minutes.",
+      };
+    } catch (err) {
+      return reply.code(500).send({ error: "spawn_failed", detail: (err as Error).message });
+    }
+  });
+
   // GET /v1/admin/quality/report/:file — return a markdown report's body.
   app.get<{ Params: { file: string } }>("/v1/admin/quality/report/:file", async (request, reply) => {
     if (!adminAuth(request, reply)) return;

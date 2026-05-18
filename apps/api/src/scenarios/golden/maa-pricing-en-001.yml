@@ -1,0 +1,35 @@
+id: maa-pricing-en-001
+tenant: maa
+language: en-CA
+persona: "English-speaking prospect price-shopping"
+category: pricing_objection
+phase: 3
+
+message: "Why is it $225 a month? That feels high for a gym."
+
+expected_facts:
+  - "States the $225/mo annual price plainly"
+  - "Reframes from 'gym' to 'sports club' (heritage, restaurant, clinic)"
+  - "Stays in English throughout"
+
+tone:
+  - confident
+  - warm
+  - quebec_english_natural
+
+forbidden:
+  - "sorry"
+  - "I know it's expensive"
+  - "money-back guarantee"
+
+forbidden_patterns:
+  - /\bgaranteed?\s+refund/i
+  - /\béquipe\b/i
+
+followup_mode_forbidden: [callback]
+
+judge_rubric:
+  question: "Does the assistant reframe MAA as a premium sports club (not just a gym) and stay in English without any French leakage?"
+  expected: yes
+
+pass_threshold: 0.85

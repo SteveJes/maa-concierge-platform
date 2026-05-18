@@ -4,21 +4,48 @@
 import Vapi from "@vapi-ai/web";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
-// Rotating proactive nudge messages — fired every 35s during inactivity
+// Rotating proactive nudge messages — fired every 35s during inactivity.
+// The widget picks a fresh one each surfacing using a Fisher-Yates shuffle
+// so visitors never see the same Conseil Privilège twice in a row.
 const PROACTIVE_NUDGES_FR = [
   "Saviez-vous que nos membres bénéficient d'un accès complet à la piscine, au spa et à plus de 50 cours de groupe par semaine ? Je peux vous aider à trouver la formule idéale.",
-  "Le Club Sportif MAA est l'un des clubs les plus prestigieux de Montréal, fondé en 1881. Souhaitez-vous en savoir plus sur nos installations ou nos tarifs ?",
-  "Notre piscine intérieure de 25 mètres, notre spa et nos courts de squash sont parmi les meilleures installations du centre-ville. Puis-je répondre à vos questions ?",
-  "Vous pensez à l'abonnement ? Je peux vous donner un aperçu de nos formules et vous aider à choisir la meilleure option selon vos besoins.",
-  "Besoin d'un coup de pouce ? Je suis disponible pour vous aider avec les tarifs, les horaires, les cours ou pour planifier une visite des installations.",
+  "Le Club Sportif MAA est l'un des clubs les plus prestigieux de Montréal, fondé en 1881 — l'un des plus vieux clubs sportifs en Amérique du Nord. Souhaitez-vous en apprendre davantage sur son héritage ?",
+  "Notre piscine intérieure de 25 mètres et notre Espace O sur le toit comptent parmi les plus beaux du centre-ville. Curieux de connaître l'horaire de la nage libre ?",
+  "Vous pensez à l'abonnement ? Je peux vous donner un aperçu des formules annuelles, étudiantes et aînées, et vous orienter selon votre rythme.",
+  "Besoin d'un coup de pouce ? Je suis disponible pour les tarifs, les horaires, les cours ou pour planifier une visite des installations.",
+  "Le restaurant Le 1881, situé à l'intérieur du Club, propose une cuisine raffinée de style bistro. Souhaitez-vous consulter le menu ou réserver une table ?",
+  "Notre clinique sportive offre massothérapie, physiothérapie, ostéopathie et nutrition — tous sur place au cœur du Mille carré doré. Une question particulière sur ces services ?",
+  "Vous aimez le pickleball ? Nos courts dédiés sont accessibles aux membres avec un horaire publié chaque semaine. Souhaitez-vous voir comment réserver ?",
+  "Nos cours spécialisés — cirque aérien, PowerWatts, Pilates Reformer — sont guidés par des instructeurs reconnus. Lequel pique votre curiosité ?",
+  "Pour une introduction tout en douceur au Club, je peux organiser une visite guidée des installations avec un membre de l'équipe.",
+  "Plus de 50 cours de groupe par semaine — yoga, spinning, HIIT, aquaforme, Pilates. Voulez-vous voir l'horaire d'aujourd'hui ?",
+  "Pour les membres, le Club offre aussi une buanderie, des casiers privés et un service de spa complet — bain tourbillon, sauna, hammam. Curieux d'en savoir plus ?",
 ];
 const PROACTIVE_NUDGES_EN = [
   "Did you know our members enjoy full access to the pool, spa, and over 50 group classes per week? I can help you find the perfect plan.",
-  "Club Sportif MAA has been a Montreal landmark since 1881. Would you like to learn more about our facilities or membership options?",
-  "Our 25m indoor pool, full spa, and squash courts are among the finest facilities in downtown Montreal. Can I answer any questions for you?",
-  "Thinking about membership? I can walk you through our plans and help you find the best fit for your lifestyle.",
+  "Club Sportif MAA has been a Montreal landmark since 1881 — one of the oldest sports clubs in North America. Would you like to hear about its heritage?",
+  "Our 25-metre indoor pool and rooftop Espace O are among the finest downtown. Curious about the open-swim schedule?",
+  "Thinking about membership? I can walk you through annual, student, and senior plans and help you find what fits your rhythm.",
   "Need a hand? I'm here to help with pricing, hours, group classes, or to schedule a tour of the club.",
+  "Le 1881 restaurant, right inside the Club, serves refined bistro cuisine. Would you like the menu or to book a table?",
+  "Our sports clinic offers massage, physio, osteopathy and nutrition — all on site in the heart of the Golden Square Mile. Any specific service you're curious about?",
+  "Love pickleball? Our dedicated courts are open to members with a weekly published schedule. Want to see how to reserve a slot?",
+  "Our specialty programs — aerial circus, PowerWatts, Pilates Reformer — are led by top instructors. Which one interests you?",
+  "For a gentle introduction to the Club, I can arrange a guided tour of the facilities with a team member.",
+  "More than 50 group classes a week — yoga, spinning, HIIT, aqua-fit, Pilates. Want today's schedule?",
+  "Members also enjoy laundry service, private lockers and a full spa — whirlpool, sauna, steam room. Curious to hear more?",
 ];
+
+/** Fisher-Yates shuffle copy. Used to rotate proactive nudges so visitors
+ *  don't see the same Conseil Privilège twice in a session. */
+function shuffleNudges<T>(arr: T[]): T[] {
+  const out = arr.slice();
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j]!, out[i]!];
+  }
+  return out;
+}
 
 const GYM_SERVICES_FR = [
   "Piscine intérieure 25m",
@@ -686,6 +713,8 @@ export function ChatShell({
   pricingCtaMessageFr = "Je souhaite planifier une visite des installations.",
   pricingCtaMessageEn = "I'd like to schedule a tour of the facilities.",
   injectMessage,
+  onConciergeLink,
+  onOpenChange,
 }: {
   accentColor?: string;
   accentGradient?: string;
@@ -712,6 +741,18 @@ export function ChatShell({
   pricingCtaMessageFr?: string;
   pricingCtaMessageEn?: string;
   injectMessage?: string;
+  /**
+   * When the host page provides this callback (split-screen demo layout), the
+   * widget hands off every link click to the host instead of opening its
+   * internal LEFT preview panel. The host can then navigate its own iframe so
+   * the visitor stays in context and continues browsing while chatting.
+   */
+  onConciergeLink?: (url: string) => void;
+  /**
+   * Optional open/close notification — the host page uses this to resize the
+   * surrounding layout (e.g. shrink an iframe to make room for the panel).
+   */
+  onOpenChange?: (isOpen: boolean) => void;
 } = {}) {
 
   const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
@@ -738,6 +779,19 @@ export function ChatShell({
   const [showBookingCallbackFallback, setShowBookingCallbackFallback] = useState(false);
   const [showLeadForm, setShowLeadForm] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  // Notify the host when the panel opens/closes so it can resize its layout
+  // (split-screen demo shrinks its iframe to make room for the chat).
+  useEffect(() => {
+    onOpenChange?.(isOpen);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+  // Hand off link clicks to the host page when running in split-screen mode.
+  // Falls back to the internal LEFT preview panel when onConciergeLink is
+  // not provided (e.g. embedded on a third-party site).
+  const linkClickHandler = useMemo(
+    () => (url: string) => (onConciergeLink ? onConciergeLink(url) : setPreviewUrl(url)),
+    [onConciergeLink],
+  );
   const [isCallingNow, setIsCallingNow] = useState(false);
   // In floating mode, links in concierge replies open an in-context preview
   // panel that slides in to the LEFT of the chat slider, keeping the user on
@@ -879,6 +933,16 @@ export function ChatShell({
   const [inboundReadyNumber, setInboundReadyNumber] = useState<string | null>(null); // Sophie's inbound number shown after context registration
   const [isRegisteringInbound, setIsRegisteringInbound] = useState(false);
   const [nudgeIndex, setNudgeIndex] = useState(0);
+  // Lock a per-session shuffled order so visitors never see the same nudge
+  // twice in a session and never see the same one first across reloads.
+  const nudgeOrderRef = useRef<{ fr: number[]; en: number[] } | null>(null);
+  if (nudgeOrderRef.current === null) {
+    const indices = (arr: unknown[]) => Array.from({ length: arr.length }, (_, i) => i);
+    nudgeOrderRef.current = {
+      fr: shuffleNudges(indices(nudgesFr)),
+      en: shuffleNudges(indices(nudgesEn)),
+    };
+  }
 
   useEffect(() => {
     if (!isSending) {
@@ -889,13 +953,21 @@ export function ChatShell({
     return () => clearTimeout(timer);
   }, [isSending]);
 
-  // Rotating proactive nudges during inactivity — first at 25s, then every 35s, max 5 total
+  // Rotating proactive nudges during inactivity — first at 25s, then every 35s.
+  // Surface up to 6 nudges per session, walking through a per-session shuffled
+  // order so visitors never see the same Conseil Privilège twice.
   useEffect(() => {
-    if (messages.length > 1 || nudgeIndex >= 5) return;
+    if (messages.length > 1 || nudgeIndex >= 6) return;
     const delay = nudgeIndex === 0 ? 25000 : 35000;
     const timer = setTimeout(() => {
       const nudges = locale === "fr-CA" ? nudgesFr : nudgesEn;
-      const text = nudges[nudgeIndex % nudges.length]!;
+      const order = nudgeOrderRef.current
+        ? (locale === "fr-CA" ? nudgeOrderRef.current.fr : nudgeOrderRef.current.en)
+        : null;
+      const idx = order && order.length > 0
+        ? order[nudgeIndex % order.length]!
+        : nudgeIndex % nudges.length;
+      const text = nudges[idx]!;
       setMessages((current) => [...current, { id: newId(), role: "assistant", text, kind: "nudge" }]);
       setNudgeIndex((i) => i + 1);
     }, delay);
@@ -1896,7 +1968,7 @@ export function ChatShell({
                         textShadow: isFloating ? "0 1px 1px rgba(0,0,0,0.35)" : undefined,
                       }}
                     >
-                      <RichMessageText text={message.text} onPreviewLink={isFloating ? setPreviewUrl : undefined} />
+                      <RichMessageText text={message.text} onPreviewLink={isFloating ? linkClickHandler : undefined} />
                     </div>
                     {hasPricingSignal && (
                       <div style={{ position: "relative", padding: "0 16px 12px" }}>
@@ -2003,7 +2075,7 @@ export function ChatShell({
                   >
                     <RichMessageText
                       text={message.text}
-                      onPreviewLink={mode === "floating" ? setPreviewUrl : undefined}
+                      onPreviewLink={mode === "floating" ? linkClickHandler : undefined}
                     />
                   </div>
                 </div>
@@ -2915,7 +2987,29 @@ export function ChatShell({
             fontFamily: "Inter, system-ui, sans-serif",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+          <a
+            href="https://dubub.ca"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              minWidth: 0,
+              textDecoration: "none",
+              borderRadius: 8,
+              transition: "background 0.2s",
+              padding: "4px 6px",
+              margin: "-4px -6px",
+            }}
+            title={locale === "en-CA" ? "Discover DUBUB — premium AI concierges for your business" : "Découvrez DUBUB — concierges IA premium pour votre entreprise"}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLAnchorElement).style.background = "rgba(212,175,95,0.08)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLAnchorElement).style.background = "transparent";
+            }}
+          >
             <span
               aria-hidden="true"
               style={{
@@ -2942,7 +3036,7 @@ export function ChatShell({
                 {locale === "en-CA" ? "Confidential and secure" : "Confidentiel et sécurisé"}
               </div>
             </div>
-          </div>
+          </a>
           <button
             type="button"
             onClick={() => { setShowLeadForm((v) => !v); setShowInlineCallForm(false); setShowPhoneFallback(false); }}
@@ -2968,7 +3062,7 @@ export function ChatShell({
               (e.currentTarget as HTMLButtonElement).style.background = "none";
             }}
           >
-            {locale === "en-CA" ? "Leave my info" : "Mes coordonnées"}
+            {locale === "en-CA" ? "Get a callback" : "Être recontacté"}
           </button>
         </div>
       ) : (
@@ -3181,8 +3275,11 @@ export function ChatShell({
           </button>
         )}
 
-        {/* Backdrop with blur — fades in behind the panel */}
-        {isOpen ? (
+        {/* Backdrop with blur — only when the host page does NOT manage its
+            own LEFT pane (i.e. classic embed mode). In split-screen demo mode
+            the iframe IS the left content and the visitor must be able to
+            keep interacting with it, so we skip the backdrop. */}
+        {isOpen && !onConciergeLink ? (
           <div
             aria-hidden="true"
             onClick={() => setIsOpen(false)}

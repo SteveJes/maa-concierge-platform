@@ -63,6 +63,7 @@ export default function QualityPanel({ tenantId, token }: Props) {
   const [agents, setAgents] = useState<AgentDef[] | null>(null);
   const [reportText, setReportText] = useState<string | null>(null);
   const [showReport, setShowReport] = useState(false);
+  const [runStatus, setRunStatus] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`${API}/v1/admin/quality/overview?tenant=${encodeURIComponent(tenantId)}`, {
@@ -86,10 +87,52 @@ export default function QualityPanel({ tenantId, token }: Props) {
     setReportText(res.ok ? await res.text() : `Erreur ${res.status}`);
   }
 
+  async function runSentinel() {
+    setRunStatus("Démarrage…");
+    try {
+      const res = await fetch(`${API}/v1/admin/quality/run-sentinel`, {
+        method: "POST",
+        headers: { "x-admin-token": token, "Content-Type": "application/json" },
+        body: JSON.stringify({ tenant: tenantId }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = (await res.json()) as { message?: string };
+      setRunStatus(body.message ?? "Lancée. La suite dure 2-5 minutes — rafraîchir cette page ensuite.");
+      setTimeout(() => setRunStatus(null), 12000);
+    } catch (err) {
+      setRunStatus(`Erreur : ${(err as Error).message}`);
+    }
+  }
+
   return (
     <section style={{ marginBottom: 28 }}>
       <SectionTitle>Qualité & activité — agents, tests, évaluations</SectionTitle>
       <Card>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
+          {runStatus && (
+            <span style={{ fontSize: 11, color: runStatus.startsWith("Erreur") ? P.red : P.green, fontWeight: 600 }}>
+              {runStatus}
+            </span>
+          )}
+          <button
+            onClick={() => void runSentinel()}
+            disabled={!!runStatus && !runStatus.startsWith("Erreur")}
+            style={{
+              background: "linear-gradient(135deg,#c9a84c,#8b6010)",
+              border: "none",
+              borderRadius: 8,
+              color: "#1a1610",
+              fontWeight: 700,
+              fontSize: 12,
+              padding: "8px 16px",
+              cursor: runStatus ? "default" : "pointer",
+              boxShadow: "0 2px 6px rgba(201,168,76,0.28)",
+              opacity: runStatus ? 0.7 : 1,
+            }}
+          >
+            ▶ Lancer Sentinel
+          </button>
+        </div>
         <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 24 }}>
           {/* Failure-type breakdown */}
           <div>

@@ -147,6 +147,14 @@ export default function DemoSlugPage() {
   const [notFound, setNotFound] = useState(false);
   const vpHeightRef = useRef<number | null>(null);
   const [bubbleOffset, setBubbleOffset] = useState({ x: 0, y: 0 });
+  // Split-screen: the iframe owns the LEFT pane and the chat owns the RIGHT.
+  // We hold the iframe ref + a current-URL state here so the concierge can
+  // navigate the visitor's left pane via onConciergeLink.
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const [iframeUrl, setIframeUrl] = useState<string | null>(null);
+  // Track the chat panel's open/closed state from inside ChatShell so the
+  // iframe knows how much horizontal room it has.
+  const [chatOpenState, setChatOpenState] = useState(false);
 
   // Android-only keyboard fix
   useEffect(() => {
@@ -354,20 +362,49 @@ export default function DemoSlugPage() {
         <span className="badge-short">Démo · {config.name}</span>
       </div>
 
+      {/* Split-screen: site iframe owns the LEFT, concierge owns the RIGHT.
+          When the chat opens we shrink the iframe's right edge to make room for
+          the 460px panel. Visitors keep surfing the site while chatting; when
+          the concierge surfaces a link, we navigate the LEFT iframe instead of
+          opening a separate preview panel. */}
       {config.websiteUrl ? (
         <iframe
-          src={config.websiteUrl}
+          ref={iframeRef}
+          src={iframeUrl ?? config.websiteUrl}
           title={config.name}
-          style={{ position: "fixed", inset: 0, width: "100%", height: "100%", border: "none", zIndex: 0, pointerEvents: "none" }}
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: chatOpenState ? "min(460px, 92vw)" : 0,
+            bottom: 0,
+            width: "auto",
+            height: "100%",
+            border: "none",
+            zIndex: 0,
+            pointerEvents: "auto",
+            transition: "right 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
+            background: "#fff",
+          }}
         />
       ) : (
-        <div style={{ position: "fixed", inset: 0, zIndex: 0, background: "linear-gradient(135deg, #0d0d14 0%, #1a1a2a 100%)" }} />
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: chatOpenState ? "min(460px, 92vw)" : 0,
+            bottom: 0,
+            zIndex: 0,
+            background: "linear-gradient(135deg, #0d0d14 0%, #1a1a2a 100%)",
+            transition: "right 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
+          }}
+        />
       )}
 
-      <div style={{ position: "fixed", inset: 0, zIndex: 1, pointerEvents: "none" }} />
-
       {/* Premium ChatShell in floating mode — owns its own peeking launcher tab
-          + 5-layer slide-in animation + close button. Matches Daphné's mockup. */}
+          + 5-layer slide-in animation + close button. Concierge links navigate
+          the LEFT iframe via onConciergeLink so the visitor stays in context. */}
       <ChatShell
         mode="floating"
         tenantId={config.tenantId}
@@ -392,6 +429,11 @@ export default function DemoSlugPage() {
         pricingCtaEn={config.pricingCtaEn}
         pricingCtaMessageFr={config.pricingCtaMessageFr}
         pricingCtaMessageEn={config.pricingCtaMessageEn}
+        onConciergeLink={(url) => {
+          setIframeUrl(url);
+          setChatOpenState(true);
+        }}
+        onOpenChange={(isOpen) => setChatOpenState(isOpen)}
       />
     </>
   );

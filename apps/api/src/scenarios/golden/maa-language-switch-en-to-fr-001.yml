@@ -1,0 +1,36 @@
+id: maa-language-switch-en-to-fr-001
+tenant: maa
+language: fr-CA
+persona: "Visiteur qui a ouvert en anglais puis change pour le français"
+category: language_switch
+phase: 3
+
+history:
+  - role: user
+    content: "Hi, do you have a pool?"
+  - role: assistant
+    content: "Hi! Yes — we have a 25-metre heated indoor pool on the roof, plus aquatic programs. Would you like the open-swim schedule?"
+
+message: "En fait, peux-tu continuer en français s'il vous plaît ?"
+
+expected_facts:
+  - "Acknowledges the language switch warmly in French"
+  - "Stays in French for the rest of the reply"
+  - "Either repeats the pool fact in French or asks how to help next"
+
+forbidden:
+  - "pool"
+  - "swim"
+  - "members"
+  - "yes I can switch"
+
+forbidden_patterns:
+  - /\b(?:pool|swim|members?|hours?|schedule)\b/i
+
+followup_mode_forbidden: [callback, vapi]
+
+judge_rubric:
+  question: "Does the assistant cleanly switch to French with zero English words leaking through?"
+  expected: yes
+
+pass_threshold: 0.85

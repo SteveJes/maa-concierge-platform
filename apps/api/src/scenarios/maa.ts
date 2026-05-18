@@ -678,4 +678,375 @@ export const MAA_SCENARIOS: Scenario[] = [
     phase: 3,
     source: "Daphné 7 #10 — 7/10",
   },
+
+  // ── Phase 8 — Daphné 2026-05-18 sales-kit batch ────────────────────────────
+  // Every scenario here is `phase: 4` (post-launch / production incidents).
+  // Phase 8 in the source string is the batch label, not the runner phase.
+
+  // — Source-leak scenarios (never mention PDF, site public, two versions) ——
+  {
+    id: "maa-8.1",
+    label: "Pool hours FR — never expose 'selon le PDF' or 'deux versions'",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    userMessage: "vos horaires de la piscine?",
+    forbidPatterns: [
+      /selon\s+le\s+pdf/i,
+      /selon\s+le\s+site/i,
+      /page\s+publique/i,
+      /pdf\s+printemps/i,
+      /deux\s+versions/i,
+      /version\s+contradictoire/i,
+    ],
+    requireAnyPattern: [/piscine|6h30|7h|20h30|18h|horaire/i],
+    phase: 4,
+    source: "Daphné 2026-05-18 #1 — source-leak pool hours",
+    judgeRubric: {
+      question:
+        "Does the assistant present a single set of pool hours plainly, without mentioning any internal source name (PDF, site public, page publique) or saying there are two versions?",
+      expected: "yes",
+    },
+  },
+  {
+    id: "maa-8.2",
+    label: "Pool hours EN — never expose internal source names",
+    tenantCode: "maa",
+    locale: "en-CA",
+    userMessage: "what are the pool hours?",
+    forbidPatterns: [
+      /selon\s+le\s+pdf/i,
+      /selon\s+le\s+site/i,
+      /page\s+publique/i,
+      /pdf\s+printemps/i,
+      /deux\s+versions/i,
+      /two\s+versions/i,
+      /according\s+to\s+the\s+pdf/i,
+      /per\s+the\s+(?:public\s+)?(?:website|page)/i,
+    ],
+    requireAnyPattern: [/pool|6:30|7(?::00)?\s*[ap]m|hours|swim/i],
+    expectLanguage: "en",
+    phase: 4,
+    source: "Daphné 2026-05-18 #2 — source-leak EN pool hours",
+    judgeRubric: {
+      question:
+        "Does the assistant present a single set of pool hours plainly in English, without mentioning any internal source name (PDF, public website) or saying there are two versions?",
+      expected: "yes",
+    },
+  },
+  {
+    id: "maa-8.3",
+    label: "Restaurant hours FR — never expose 'selon le PDF' or 'deux versions'",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    userMessage: "Quels sont les horaires du restaurant Le 1881?",
+    forbidPatterns: [
+      /selon\s+le\s+pdf/i,
+      /selon\s+le\s+site/i,
+      /page\s+publique/i,
+      /pdf\s+printemps/i,
+      /deux\s+versions/i,
+    ],
+    requireAnyPattern: [/1881|restaurant|horaire|midi|soir|d[ée]jeuner|d[îi]ner/i],
+    phase: 4,
+    source: "Daphné 2026-05-18 #3 — source-leak restaurant hours",
+    judgeRubric: {
+      question:
+        "Does the assistant present restaurant hours (or a graceful 'must confirm') plainly, without mentioning any internal source name (PDF, site public) or saying there are two versions?",
+      expected: "yes",
+    },
+  },
+  {
+    id: "maa-8.4",
+    label: "Class schedule FR — never expose 'selon le PDF' or 'selon le site'",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    userMessage: "C'est quoi l'horaire des cours de groupe cette semaine?",
+    forbidPatterns: [
+      /selon\s+le\s+pdf/i,
+      /selon\s+le\s+site/i,
+      /page\s+publique/i,
+      /pdf\s+printemps/i,
+      /deux\s+versions/i,
+    ],
+    requireAnyPattern: [/cours|horaire|yoga|spinning|pilates|équipe|confirm/i],
+    phase: 4,
+    source: "Daphné 2026-05-18 #4 — source-leak class schedule",
+    judgeRubric: {
+      question:
+        "Does the assistant present a single answer about class schedules plainly, without mentioning any internal source name (PDF, site public, page publique) or saying there are two versions?",
+      expected: "yes",
+    },
+  },
+  {
+    id: "maa-8.5",
+    label: "Pricing FR — never expose 'selon le PDF' or 'selon le site'",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    userMessage: "C'est combien l'abonnement mensuel?",
+    forbidPatterns: [
+      /selon\s+le\s+pdf/i,
+      /selon\s+le\s+site/i,
+      /page\s+publique/i,
+      /pdf\s+printemps/i,
+      /deux\s+versions/i,
+    ],
+    requireAnyPattern: [/225|\$|abonnement|mois|tarif/i],
+    phase: 4,
+    source: "Daphné 2026-05-18 #5 — source-leak pricing",
+    judgeRubric: {
+      question:
+        "Does the assistant present pricing plainly, without mentioning any internal source name (PDF, site public, page publique) or saying there are two versions?",
+      expected: "yes",
+    },
+  },
+
+  // — Premature callback scenarios (no callback mode until visitor accepts) ——
+  {
+    id: "maa-8.6",
+    label: "Premature callback FR — bot offers handoff, must end with question, no callback mode",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    userMessage: "Je voudrais en savoir plus sur l'abonnement corporatif",
+    forbidFollowUpModes: ["callback", "vapi"],
+    requirePatterns: [/\?/],
+    phase: 4,
+    source: "Daphné 2026-05-18 #6 — premature callback FR",
+    judgeRubric: {
+      question:
+        "Does the assistant end its reply with a question to the visitor (e.g. 'Souhaitez-vous que je transmette votre demande?') WITHOUT having already auto-triggered the callback / lead form?",
+      expected: "yes",
+    },
+  },
+  {
+    id: "maa-8.7",
+    label: "Premature callback EN — bot offers handoff, must end with question, no callback mode",
+    tenantCode: "maa",
+    locale: "en-CA",
+    userMessage: "I'd like to know more about your corporate membership options",
+    forbidFollowUpModes: ["callback", "vapi"],
+    requirePatterns: [/\?/],
+    expectLanguage: "en",
+    phase: 4,
+    source: "Daphné 2026-05-18 #7 — premature callback EN",
+    judgeRubric: {
+      question:
+        "Does the assistant end its reply with a question to the visitor (e.g. 'Would you like me to pass this along to our team?') WITHOUT having already auto-triggered the callback / lead form?",
+      expected: "yes",
+    },
+  },
+
+  // — Bilingual / language-switch scenarios ————————————————————————————————
+  {
+    id: "maa-8.8",
+    label: "Language switch FR→EN — must follow switch, no French leak",
+    tenantCode: "maa",
+    locale: "en-CA",
+    history: [
+      { role: "user", content: "C'est combien l'abonnement?" },
+      {
+        role: "assistant",
+        content:
+          "L'abonnement individuel commence à 225 $/mois. Souhaitez-vous que je transmette votre demande à l'équipe?",
+      },
+    ],
+    userMessage: "Actually can you continue in English please?",
+    forbidPatterns: [
+      /\béquipe\b/i,
+      /\bvotre\b/i,
+      /\bn['']h[ée]sitez\s+pas\b/i,
+      /\babonnement\b/i,
+      /\bcourriel\b/i,
+      /\bsouhaitez[- ]vous\b/i,
+    ],
+    expectLanguage: "en",
+    phase: 4,
+    source: "Daphné 2026-05-18 #8 — language switch FR→EN",
+    judgeRubric: {
+      question:
+        "Is the assistant's reply written ENTIRELY in English after the user explicitly asked to continue in English, with no French sentences or French words bleeding through?",
+      expected: "yes",
+    },
+  },
+  {
+    id: "maa-8.9",
+    label: "Language switch EN→FR — must follow switch, no English leak",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    history: [
+      { role: "user", content: "How much is the membership?" },
+      {
+        role: "assistant",
+        content:
+          "Individual membership starts at $225/month. Would you like me to pass your request along to our team?",
+      },
+    ],
+    userMessage: "En fait peux-tu continuer en français svp?",
+    forbidPatterns: [
+      /\bteam\b/i,
+      /\byour\b/i,
+      /\bwould\s+you\s+like\b/i,
+      /\bmembership\b/i,
+      /\bplease\b/i,
+    ],
+    expectLanguage: "fr",
+    phase: 4,
+    source: "Daphné 2026-05-18 #9 — language switch EN→FR",
+    judgeRubric: {
+      question:
+        "Is the assistant's reply written ENTIRELY in French after the user explicitly asked to continue in French, with no English sentences or English words bleeding through?",
+      expected: "yes",
+    },
+  },
+  {
+    id: "maa-8.10",
+    label: "Bilingual mid-flow — user types in EN after FR thread, bot stays in EN",
+    tenantCode: "maa",
+    locale: "en-CA",
+    history: [
+      { role: "user", content: "Avez-vous une piscine?" },
+      {
+        role: "assistant",
+        content:
+          "Oui, le Club Sportif MAA dispose d'une piscine intérieure. Souhaitez-vous connaître les horaires?",
+      },
+    ],
+    userMessage: "Yes please, what are the pool hours?",
+    forbidPatterns: [
+      /\béquipe\b/i,
+      /\bvotre\b/i,
+      /\bn['']h[ée]sitez\s+pas\b/i,
+      /\bsouhaitez[- ]vous\b/i,
+      /\bpiscine\b/i,
+    ],
+    expectLanguage: "en",
+    phase: 4,
+    source: "Daphné 2026-05-18 #10 — bilingual mid-flow EN reply",
+    judgeRubric: {
+      question:
+        "Does the assistant switch to English after the user clearly switches, with no French words like 'piscine' / 'équipe' / 'votre' leaking into the English reply?",
+      expected: "yes",
+    },
+  },
+
+  // — Sales-quality scenarios (price objections — justify, don't apologize) ——
+  {
+    id: "maa-8.11",
+    label: "Price objection FR 'c'est cher pour un gym' — justify value, don't apologize",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    userMessage: "225$/mois c'est cher pour un gym",
+    forbidPatterns: [
+      /\bc[''']?est\s+(?:trop\s+)?(?:cher|[ée]lev[ée])\b/i,
+      /\bd[ée]sol[ée]\b/i,
+      /\bje\s+comprends\s+que\s+c[''']?est\s+cher\b/i,
+      /\bje\s+suis\s+navr[ée]\b/i,
+    ],
+    requireAnyPattern: [/piscine|spa|cours|restaurant|histoire|1881|squash|installations/i],
+    phase: 4,
+    source: "Daphné 2026-05-18 #11 — sales objection FR",
+    judgeRubric: {
+      question:
+        "Does the assistant justify the $225/month price with concrete inclusions (pool, classes, spa, history, restaurant, squash, installations) WITHOUT apologizing, agreeing it's expensive, or sounding defensive?",
+      expected: "yes",
+    },
+  },
+  {
+    id: "maa-8.12",
+    label: "Price objection FR '225$ c'est trop' — value-frame, no apology",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    userMessage: "225$ c'est trop pour moi",
+    forbidPatterns: [
+      /\bc[''']?est\s+(?:trop\s+)?(?:cher|[ée]lev[ée])\b/i,
+      /\bd[ée]sol[ée]\b/i,
+      /\bje\s+comprends\s+que\s+c[''']?est\s+(?:cher|trop)\b/i,
+    ],
+    requireAnyPattern: [/piscine|spa|cours|restaurant|histoire|1881|squash|installations|inclus|équipe/i],
+    phase: 4,
+    source: "Daphné 2026-05-18 #12 — sales objection FR variant",
+    judgeRubric: {
+      question:
+        "Does the assistant respond by framing what's INCLUDED for the price (pool, spa, classes, restaurant, history) or offering to connect with the team to discuss options, WITHOUT apologizing or agreeing the price is too high?",
+      expected: "yes",
+    },
+  },
+  {
+    id: "maa-8.13",
+    label: "Price objection EN 'why is it $225/month?' — justify with inclusions",
+    tenantCode: "maa",
+    locale: "en-CA",
+    userMessage: "Why is it $225/month? That seems expensive.",
+    forbidPatterns: [
+      /\bsorry\b[^.!?]*\b(?:cost|price|expensive|high)\b/i,
+      /\bi\s+understand\s+(?:it[''']s|that[''']s)\s+(?:expensive|costly|a lot)\b/i,
+      /\byou\s+are\s+right\b[^.!?]*\bexpensive\b/i,
+    ],
+    requireAnyPattern: [/pool|spa|class|restaurant|history|1881|squash|amenit|include/i],
+    expectLanguage: "en",
+    phase: 4,
+    source: "Daphné 2026-05-18 #13 — sales objection EN",
+    judgeRubric: {
+      question:
+        "Does the assistant justify the $225/month price in English with concrete inclusions (pool, classes, spa, history, restaurant, squash, amenities) WITHOUT apologizing or agreeing it's expensive?",
+      expected: "yes",
+    },
+  },
+
+  // — Per-staff routing scenarios ——————————————————————————————————————————
+  {
+    id: "maa-8.14",
+    label: "Restaurant reservation routing — must surface Le 1881",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    userMessage: "Je voudrais réserver une table pour samedi soir",
+    requireAnyPattern: [/1881|restaurant|réserv|table/i],
+    phase: 4,
+    source: "Daphné 2026-05-18 #14 — routing restaurant",
+    judgeRubric: {
+      question:
+        "Does the assistant route the user toward the on-site restaurant Le 1881 (by naming it OR by offering to transmit the reservation request to the restaurant team), instead of generic membership / visit messaging?",
+      expected: "yes",
+    },
+  },
+  {
+    id: "maa-8.15",
+    label: "Back pain routing — must surface Clinique sportive, never diagnose",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    userMessage: "J'ai mal au dos depuis une semaine, qu'est-ce que je peux faire?",
+    expectIntent: "clinical_pain",
+    forbidPatterns: [
+      /\bhernie\s+discale\b/i,
+      /\bsciatique\b/i,
+      /\blombalgie\b/i,
+      /\btendinite\b/i,
+      /\bdiscopathie\b/i,
+      /\bnerf\s+sciatique\b/i,
+      /\bid[ée]al/i,
+    ],
+    requireAnyPattern: [/clinique|physio|thérapie\s+sportive|équipe\s+clinique|orient|professionnel/i],
+    phase: 4,
+    source: "Daphné 2026-05-18 #15 — routing clinique sportive",
+    judgeRubric: {
+      question:
+        "Does the assistant route the user toward the Clinique sportive / physiotherapy / sports-therapy team (by naming it OR offering to transmit the request) WITHOUT naming any medical diagnosis?",
+      expected: "yes",
+    },
+  },
+  {
+    id: "maa-8.16",
+    label: "Membership rates routing EN — must surface Francis Bradette / membership team",
+    tenantCode: "maa",
+    locale: "en-CA",
+    userMessage: "What are your membership rates?",
+    requireAnyPattern: [/francis|bradette|membership\s+(?:team|advisor|director)|225|\$\d|rate/i],
+    expectLanguage: "en",
+    phase: 4,
+    source: "Daphné 2026-05-18 #16 — routing membership EN",
+    judgeRubric: {
+      question:
+        "Does the assistant either share the membership rate ($225/month) plainly OR route the user toward the membership team / Francis Bradette by name, in English?",
+      expected: "yes",
+    },
+  },
 ];

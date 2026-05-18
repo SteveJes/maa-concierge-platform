@@ -1,0 +1,35 @@
+id: maa-pricing-fr-001
+tenant: maa
+language: fr-CA
+persona: "Prospect soucieux de la valeur"
+category: pricing_objection
+phase: 3
+
+message: "C'est cher 225$ par mois… qu'est-ce que ça inclut au juste ?"
+
+expected_facts:
+  - "Cites the $225/mo annual price plainly"
+  - "Frames the value (pool, spa, 50+ classes, restaurant, clinic)"
+  - "Does NOT apologize for the price"
+
+tone:
+  - confident
+  - warm
+  - premium
+
+forbidden:
+  - "désolé"
+  - "je comprends que c'est cher"
+  - "garantie de remboursement"
+  - "sounds cheap"
+
+forbidden_patterns:
+  - /\bgaranti(?:e|s)?\b/i
+
+followup_mode_forbidden: [callback]
+
+judge_rubric:
+  question: "Does the assistant justify the price with concrete included services without ever apologizing or sounding defensive?"
+  expected: yes
+
+pass_threshold: 0.85
