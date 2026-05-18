@@ -100,6 +100,45 @@ const CASES: Case[] = [
     expectedRoutingContactId: "nathalie_lambert",
     mustInclude: [/(name|phone|email|contact|transmit|reach|forward)/i],
   },
+  {
+    label: "MAAgazine — 'alors oui svp' after 'je peux vous orienter vers l'équipe' moves forward",
+    history: [
+      { role: "user", content: "je vois que vous avez un MAAgazine, c'est quoi au juste?" },
+      {
+        role: "assistant",
+        content:
+          "Le MAAgazine est une publication exclusive du Club. Si vous souhaitez recevoir une édition, je peux vous orienter vers l'équipe responsable.",
+      },
+    ],
+    userMessage: "alors oui svp",
+    locale: "fr-CA",
+    // The MAAgazine doesn't map to a single staff contact, so we don't
+    // assert on contactId — what we assert is the FORWARD-MOVING reply
+    // (asking for contact info OR giving the URL), not a verbatim repeat.
+    mustInclude: [/(coordonn[ée]es|nom|t[ée]l[ée]phone|courriel|transmet|maagazine)/i],
+    mustNotInclude: [/^\s*Le MAAgazine est une publication exclusive du Club\.?\s+Si vous souhaitez recevoir/i],
+  },
+  {
+    label: "MAAgazine — bare 'oui' must stay on topic, never jump to 'planifier une visite'",
+    history: [
+      { role: "user", content: "je vois que vous avez un MAAgazine, c'est quoi au juste?" },
+      {
+        role: "assistant",
+        content:
+          "Le MAAgazine est une publication exclusive du Club. Si vous souhaitez recevoir une édition, je peux vous orienter vers l'équipe responsable.",
+      },
+      { role: "user", content: "alors oui svp" },
+      {
+        role: "assistant",
+        content:
+          "Pour recevoir le MAAgazine, vous pouvez consulter le lien. Souhaitez-vous que je transmette votre demande ?",
+      },
+    ],
+    userMessage: "oui",
+    locale: "fr-CA",
+    mustInclude: [/(maagazine|coordonn[ée]es|transmet|courriel|nom)/i],
+    mustNotInclude: [/planifier\s+une\s+visite\s+du\s+club/i, /francis\s+bradette.*directeur/i],
+  },
 ];
 
 async function runCase(c: Case): Promise<{ pass: boolean; reason?: string }> {

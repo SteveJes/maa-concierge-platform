@@ -1178,4 +1178,89 @@ export const MAA_SCENARIOS: Scenario[] = [
       expected: "yes",
     },
   },
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Phase 10 — MAAgazine handoff bug (Steve 2026-05-18 own QA pass)
+  // The bot was repeating the same MAAgazine description for "alors oui svp"
+  // and "oui" because:
+  //   (a) "alors oui svp" failed the `^oui` anchored regex
+  //   (b) "je peux vous orienter vers l'équipe" wasn't in the handoff-offer
+  //       regex
+  //   (c) On a third "oui" with no recognizable topic, the resolver fell
+  //       back to a generic ask which the LLM then transformed into "Je
+  //       peux vous aider à planifier une visite" — completely off-topic.
+  // These scenarios lock in:
+  //   - "alors oui svp" after a "je peux vous orienter" offer moves forward
+  //   - The MAAgazine URL is surfaced when the visitor accepts the handoff
+  //   - The reply never jumps to "visite du Club" when the topic is mag
+  // ────────────────────────────────────────────────────────────────────────
+  {
+    id: "maa-10.1",
+    label: "MAAgazine handoff — 'alors oui svp' after 'je peux vous orienter' must move forward",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    history: [
+      { role: "user", content: "je vois que vous avez un MAAgazine, c'est quoi au juste?" },
+      {
+        role: "assistant",
+        content:
+          "Le MAAgazine est une publication exclusive du Club Sportif MAA. Si vous souhaitez en savoir plus ou recevoir une édition, je peux vous orienter vers l'équipe responsable.",
+      },
+    ],
+    userMessage: "alors oui svp",
+    // Bot must NOT repeat the same MAAgazine description verbatim — it must
+    // either give the URL OR ask for contact info OR transmit the request.
+    forbidPatterns: [
+      /publication\s+exclusive\s+du\s+club/i,
+      /actualit[ée]s.*conseils\s+d[''']?experts/i,
+    ],
+    requireAnyPattern: [
+      /maagazine\.[/\w]*|clubsportifmaa\.com\/(?:fr\/)?maagazine/i,
+      /coordonn[ée]es|courriel|email|nom|t[ée]l[ée]phone|transmet/i,
+    ],
+    phase: 4,
+    source: "Steve 2026-05-18 own QA — MAAgazine handoff loop",
+    judgeRubric: {
+      question:
+        "Does the assistant MOVE FORWARD from the previous MAAgazine description — either by giving the magazine URL, asking for contact info, or saying it will transmit the request — INSTEAD OF repeating the same description?",
+      expected: "yes",
+    },
+  },
+  {
+    id: "maa-10.2",
+    label: "MAAgazine topic — second 'oui' must stay on topic, never jump to 'planifier une visite'",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    history: [
+      { role: "user", content: "je vois que vous avez un MAAgazine, c'est quoi au juste?" },
+      {
+        role: "assistant",
+        content:
+          "Le MAAgazine est une publication exclusive du Club Sportif MAA qui partage des nouvelles, des conseils, et des projets. Si vous souhaitez recevoir une édition, je peux vous orienter vers l'équipe responsable.",
+      },
+      { role: "user", content: "alors oui svp" },
+      {
+        role: "assistant",
+        content:
+          "Pour recevoir le MAAgazine, vous pouvez consulter [MAAgazine](https://www.clubsportifmaa.com/fr/maagazine/). Souhaitez-vous que je transmette votre demande pour qu'on vous envoie la dernière édition ?",
+      },
+    ],
+    userMessage: "oui",
+    // The conversation has been about the MAAgazine. The bot must NOT jump
+    // to "Je peux vous aider à planifier une visite du Club".
+    forbidPatterns: [
+      /planifier\s+une\s+visite\s+du\s+club/i,
+      /francis\s+bradette.*directeur\s+des\s+ventes/i,
+    ],
+    requireAnyPattern: [
+      /maagazine|coordonn[ée]es|courriel|nom|t[ée]l[ée]phone|transmet/i,
+    ],
+    phase: 4,
+    source: "Steve 2026-05-18 own QA — topic preservation on bare 'oui'",
+    judgeRubric: {
+      question:
+        "Does the reply stay on the MAAgazine topic (asking for contact info, giving the URL, or confirming transmission) WITHOUT jumping to 'planifier une visite du Club' or proposing membership which the visitor never asked about?",
+      expected: "yes",
+    },
+  },
 ];

@@ -32,7 +32,7 @@ function relevantSectionsForMessage(userMessage: string): MaaV2SectionId[] {
   if (/\b(pickleball|pickle[- ]?ball|basketball|basket|squash|triathlon|coaching|personal\s+training|entra[iî]nement\s+priv)\b/.test(m)) picks.add("sports");
   if (/\b(spa|sauna|hammam|d[ée]tente|massage|massoth[ée]rapie)\b/.test(m)) picks.add("clinique-spa-detente");
   if (/\b(clinique|physio|physioth[ée]rapie|ost[ée]opathe?|ost[ée]opathie|chiro|chiropr|acupuncture|nutritionniste|nutrition|m[ée]dical|infirmi|mediq)\b/.test(m)) picks.add("clinique-services");
-  if (/\b(communaut[ée]|history|histoire|h[ée]ritage|fond[ée]|nuvo|presse|m[ée]dia|boutique|magazine)\b/.test(m)) picks.add("club-identity");
+  if (/\b(communaut[ée]|history|histoire|h[ée]ritage|fond[ée]|nuvo|presse|m[ée]dia|boutique|magazine|maagazine|maa[- ]?magazine|publication\s+du\s+club)\b/.test(m)) picks.add("club-identity");
   if (/\b(club\s+affili|reciproque|r[ée]ciproque|affiliated|reciprocal|out\s+of\s+town)\b/.test(m)) picks.add("affiliated-clubs");
   return Array.from(picks);
 }

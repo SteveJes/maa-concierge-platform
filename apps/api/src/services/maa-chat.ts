@@ -809,9 +809,16 @@ export function detectServiceRouting(
   // Use a broader affirmative pattern than SHORT_AFFIRMATIVES (which gates on
   // a fully-affirmative line) — "oui svp", "yes please", "allez-y", "ok merci"
   // all express acceptance even if they trail other tokens.
+  // 2026-05-18 demo bug: "alors oui svp" was failing because the regex was
+  // anchored to ^ which excluded any leading filler ("alors", "bon", "et
+  // bien", "donc"). Rule of thumb: a SHORT message (≤ 6 words) that
+  // contains an affirmative token anywhere is acceptance.
+  const trimmedAffirmative = userMessage.trim();
+  const affirmativeWordCount = trimmedAffirmative.split(/\s+/).length;
   const looksAffirmative =
-    /^\s*(oui|ouais|yes|yep|yup|ok|okay|sure|d['']?accord|daccord|allez[-\s]?y|allons[-\s]?y|go ahead|please|svp|s['']?il vous pla[iî]t|please do|of course|absolument|with pleasure|avec plaisir|parfait|bien s[uû]r)\b/i.test(
-      userMessage.trim(),
+    affirmativeWordCount <= 6 &&
+    /\b(oui|ouais|ouip|yes|yep|yup|ok|okay|sure|d['']?accord|daccord|allez[-\s]?y|allons[-\s]?y|go\s+ahead|please|svp|s['']?il\s+vous\s+pla[iî]t|please\s+do|of\s+course|absolument|with\s+pleasure|avec\s+plaisir|parfait|bien\s+s[uû]r|certainement)\b/i.test(
+      trimmedAffirmative,
     );
   if (looksAffirmative && conversationHistory) {
     const lastAssistant = [...conversationHistory].reverse().find((t) => t.role === "assistant");
@@ -1132,8 +1139,15 @@ function resolveShortAffirmativeFollowUp(
     /\b(contacter|contact|joindre|reach\s+out)\b.*\b(nathalie|francis|elisabeth|elizabeth|yvon|clinique|r[eé]ception|valérie|valerie|pierre|claude\s+b[eé]langer|directrice|directeur|reception|front\s+desk)\b/i.test(ctx) ||
     /\b(rendez-vous|appointment).*(physio|th[eé]rapeute|entra[iî]neur|sp[eé]cialiste|clinique sportive|specialist|trainer)\b/i.test(ctx) ||
     /\b(physio|physioth[eé]rapie|th[eé]rapie sportive|kin[eé]siologue)\b/i.test(ctx) ||
-    /souhaitez[- ]vous\s+que\s+je\s+(?:vous\s+)?(?:mette|transmette|transmettre|connecte|connect|envoie|donne)/i.test(ctx) ||
-    /would you like (?:me )?to (?:put|connect|forward|relay|transmit)/i.test(ctx);
+    /souhaitez[- ]vous\s+que\s+je\s+(?:vous\s+)?(?:mette|transmette|transmettre|connecte|connect|envoie|donne|prenne|note|orient)/i.test(ctx) ||
+    // 2026-05-18 MAAgazine bug: "je peux vous orienter vers l'équipe responsable"
+    // wasn't matching. Also covers "rediriger vers", "diriger vers".
+    /\b(orienter|orientez|rediriger|redirigez|diriger|dirigez)\s+(?:vous\s+)?vers\b/i.test(ctx) ||
+    // "Je peux prendre votre demande" / "I can take your request" / "je peux noter"
+    /\bje\s+peux\s+(?:prendre|noter|transmettre|envoyer|relayer|partager)\b/i.test(ctx) ||
+    /\bI\s+can\s+(?:take|note|forward|relay|share|pass\s+along)\b/i.test(ctx) ||
+    // Generic "would you like ... me to ..." offer in either language
+    /would you like (?:me )?to (?:put|connect|forward|relay|transmit|share|pass|note)/i.test(ctx);
   if (routingHandoffOffer) {
     return fr
       ? "Oui, allez-y, transmettez ma demande à la bonne personne. Quelles informations vous faut-il (nom, téléphone, courriel) pour que l'équipe me rappelle ?"
