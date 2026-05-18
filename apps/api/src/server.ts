@@ -982,8 +982,11 @@ export function createServer() {
   // polls /quality/overview to surface the new run.
   app.post("/v1/admin/quality/run-sentinel", async (request, reply) => {
     if (!adminAuth(request, reply)) return;
-    const body = (request.body ?? {}) as { tenant?: string };
+    const body = (request.body ?? {}) as { tenant?: string; judge?: boolean };
     const tenant = typeof body.tenant === "string" ? body.tenant : undefined;
+    // Judge defaults to ON — the intelligent grading layer is what makes the
+    // suite valuable. The dashboard offers a "fast" variant via judge:false.
+    const judge = body.judge !== false;
     if (tenant && tenant !== "maa" && tenant !== "dubub") {
       return reply.code(400).send({ error: "invalid_tenant" });
     }
@@ -994,6 +997,7 @@ export function createServer() {
     const apiRoot = path.resolve(path.dirname(currentFile), "..");
     const args = ["exec", "tsx", "src/scripts/test-scenarios.ts"];
     if (tenant) args.push("--tenant", tenant);
+    if (!judge) args.push("--no-judge");
 
     try {
       const proc = child.spawn("pnpm", args, {
@@ -1007,7 +1011,10 @@ export function createServer() {
         started: true,
         pid: proc.pid,
         tenant: tenant ?? "all",
-        message: "Sentinel suite running in background. Refresh the Quality panel in 2–5 minutes.",
+        judge,
+        message: judge
+          ? "Sentinel + LLM judge running in background. ~5–10 min for 60 scenarios. Refresh the Quality panel when complete."
+          : "Sentinel running (fast mode, no judge). ~2–5 min for 60 scenarios.",
       };
     } catch (err) {
       return reply.code(500).send({ error: "spawn_failed", detail: (err as Error).message });

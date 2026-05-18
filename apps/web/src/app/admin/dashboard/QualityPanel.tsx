@@ -87,18 +87,20 @@ export default function QualityPanel({ tenantId, token }: Props) {
     setReportText(res.ok ? await res.text() : `Erreur ${res.status}`);
   }
 
-  async function runSentinel() {
-    setRunStatus("Démarrage…");
+  async function runSentinel(opts: { judge: boolean }) {
+    setRunStatus(opts.judge ? "Démarrage (avec juge IA)…" : "Démarrage…");
     try {
       const res = await fetch(`${API}/v1/admin/quality/run-sentinel`, {
         method: "POST",
         headers: { "x-admin-token": token, "Content-Type": "application/json" },
-        body: JSON.stringify({ tenant: tenantId }),
+        body: JSON.stringify({ tenant: tenantId, judge: opts.judge }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const body = (await res.json()) as { message?: string };
-      setRunStatus(body.message ?? "Lancée. La suite dure 2-5 minutes — rafraîchir cette page ensuite.");
-      setTimeout(() => setRunStatus(null), 12000);
+      setRunStatus(body.message ?? (opts.judge
+        ? "Lancée avec juge IA. Suite + jugement = ~5-10 min. Rafraîchir ensuite."
+        : "Lancée. La suite dure 2-5 minutes — rafraîchir ensuite."));
+      setTimeout(() => setRunStatus(null), 15000);
     } catch (err) {
       setRunStatus(`Erreur : ${(err as Error).message}`);
     }
@@ -115,7 +117,25 @@ export default function QualityPanel({ tenantId, token }: Props) {
             </span>
           )}
           <button
-            onClick={() => void runSentinel()}
+            onClick={() => void runSentinel({ judge: false })}
+            disabled={!!runStatus && !runStatus.startsWith("Erreur")}
+            style={{
+              background: "#ffffff",
+              border: `1px solid ${P.border}`,
+              borderRadius: 8,
+              color: P.ink,
+              fontWeight: 600,
+              fontSize: 12,
+              padding: "8px 14px",
+              cursor: runStatus ? "default" : "pointer",
+              opacity: runStatus ? 0.7 : 1,
+            }}
+            title="Test rapide (assertions seulement, sans juge IA — 2-5 min)"
+          >
+            ▶ Test rapide
+          </button>
+          <button
+            onClick={() => void runSentinel({ judge: true })}
             disabled={!!runStatus && !runStatus.startsWith("Erreur")}
             style={{
               background: "linear-gradient(135deg,#c9a84c,#8b6010)",
@@ -129,8 +149,9 @@ export default function QualityPanel({ tenantId, token }: Props) {
               boxShadow: "0 2px 6px rgba(201,168,76,0.28)",
               opacity: runStatus ? 0.7 : 1,
             }}
+            title="Test complet avec juge IA — meilleure détection de tonalité, hallucination, qualité (5-10 min)"
           >
-            ▶ Lancer Sentinel
+            ▶ Test complet avec juge IA
           </button>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 24 }}>
