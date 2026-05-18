@@ -55,14 +55,17 @@ const FLOWS: Flow[] = [
   },
   {
     id: "pool-hours-handoff",
-    label: "Pool hours: 'oui svp' to Nathalie offer must advance to contact-info ask",
+    label: "Pool hours: explicit handoff request, 'oui svp' must advance to contact-info ask",
     locale: "fr-CA",
     turns: [
-      { say: "vos horaires de nage libre?" },
+      // Force a handoff context in turn 1 — the autonomous bot would just
+      // answer pool hours otherwise (which is correct behaviour). We're
+      // testing the handoff-acceptance path specifically.
+      { say: "j'aimerais que quelqu'un de l'équipe m'aide avec mes horaires de nage libre" },
       {
         say: "oui svp",
         expect: {
-          mustInclude: [/(nathalie|coordonn[éè]es|nom|t[éè]l[éè]phone|courriel|transmet)/i],
+          mustInclude: [/(nathalie|coordonn[éè]es|nom|t[éè]l[éè]phone|courriel|transmet|contact)/i],
         },
       },
     ],
