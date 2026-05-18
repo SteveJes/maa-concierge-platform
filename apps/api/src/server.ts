@@ -929,9 +929,17 @@ export function createServer() {
             const t = r.failureType ?? "unknown";
             breakdown[t] = (breakdown[t] ?? 0) + 1;
           }
+          // The report file shares the same basename as the JSON run, just
+          // with .md instead of .json. Some versions of the runner prefix
+          // it with "REPORT-" — try both.
           const reportBase = file.replace(/\.json$/, "");
-          const reportFile = `REPORT-${data.tenantCode}-${(data.timestamp ?? "").replace(/[:.]/g, "-")}.md`;
-          const reportExists = fs.existsSync(path.join(runsDir, reportFile));
+          const candidate1 = `${reportBase}.md`;
+          const candidate2 = `REPORT-${reportBase}.md`;
+          const reportFile = fs.existsSync(path.join(runsDir, candidate1))
+            ? candidate1
+            : fs.existsSync(path.join(runsDir, candidate2))
+              ? candidate2
+              : null;
           latestRun = {
             timestamp: data.timestamp ?? "",
             tenantCode: data.tenantCode ?? "unknown",
@@ -940,7 +948,7 @@ export function createServer() {
             failed: data.failed ?? 0,
             passRate: data.passRate ?? 0,
             failureTypeBreakdown: breakdown,
-            reportFile: reportExists ? reportFile : (fs.existsSync(path.join(runsDir, `REPORT-${reportBase}.md`)) ? `REPORT-${reportBase}.md` : null),
+            reportFile,
           };
           break;
         } catch {
@@ -972,7 +980,8 @@ export function createServer() {
   app.get<{ Params: { file: string } }>("/v1/admin/quality/report/:file", async (request, reply) => {
     if (!adminAuth(request, reply)) return;
     const file = request.params.file;
-    if (!/^REPORT-[a-z0-9._-]+\.md$/i.test(file)) {
+    // Accept "REPORT-...md" (old prefix) OR plain "{tenant}-{timestamp}.md".
+    if (!/^(REPORT-)?[a-z0-9._-]+\.md$/i.test(file)) {
       return reply.code(400).send({ error: "invalid_filename" });
     }
     const fs = await import("node:fs");
