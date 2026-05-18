@@ -376,14 +376,12 @@ export default function DemoSlugPage() {
             position: "fixed",
             top: 0,
             left: 0,
-            right: chatOpenState ? "min(460px, 92vw)" : 0,
-            bottom: 0,
-            width: "auto",
+            width: chatOpenState ? "calc(100% - min(460px, 92vw))" : "100%",
             height: "100%",
             border: "none",
             zIndex: 0,
             pointerEvents: "auto",
-            transition: "right 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
+            transition: "width 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
             background: "#fff",
           }}
         />
@@ -393,11 +391,11 @@ export default function DemoSlugPage() {
             position: "fixed",
             top: 0,
             left: 0,
-            right: chatOpenState ? "min(460px, 92vw)" : 0,
-            bottom: 0,
+            width: chatOpenState ? "calc(100% - min(460px, 92vw))" : "100%",
+            height: "100%",
             zIndex: 0,
             background: "linear-gradient(135deg, #0d0d14 0%, #1a1a2a 100%)",
-            transition: "right 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
+            transition: "width 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
           }}
         />
       )}
