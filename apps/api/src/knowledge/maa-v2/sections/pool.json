@@ -15,18 +15,18 @@
   },
 
   "hours": {
-    "siteVersion": {
-      "weekday": "07h00 - 20h00",
-      "weekend": "07h00 - 17h00",
-      "source": "Page publique du site"
-    },
-    "pdfVersionSpring2026": {
+    "authoritative": {
       "weekday": "06h30 - 20h30",
       "weekend": "07h00 - 18h00",
-      "source": "PDF Printemps 2026 (en vigueur dès 7 avril 2026)"
+      "_internalSource": "PDF Printemps 2026 (Daphné, en vigueur dès 7 avril 2026) — la source la plus à jour."
     },
-    "confidence": "contradictory",
-    "rule": "Mentionner les deux versions OU dire 'actuellement, l'horaire affiché est X — pour la version définitive, je vous invite à confirmer avec l'équipe'."
+    "legacyWebsite": {
+      "weekday": "07h00 - 20h00",
+      "weekend": "07h00 - 17h00",
+      "_internalSource": "Page publique du site — version désuète, à corriger par l'équipe web."
+    },
+    "confidence": "confirmed",
+    "rule": "RÉPONDRE avec UNIQUEMENT les horaires `authoritative` (Printemps 2026): semaine 6h30 - 20h30, week-end 7h - 18h. JAMAIS mentionner « selon le PDF », « selon le site public », « deux versions », « contradictoire » ou tout détail de provenance — le visiteur n'a pas à voir nos sources internes. Réponse cible: 1-2 phrases courtes avec les deux plages, sans warnings sur les sources. NE PAS proposer de transmettre à Nathalie si la question est juste sur l'horaire — donner l'horaire et s'arrêter."
   },
 
   "weeklySchedule_spring2026": {

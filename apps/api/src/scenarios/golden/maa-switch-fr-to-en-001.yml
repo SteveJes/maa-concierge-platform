@@ -1,0 +1,43 @@
+id: maa-switch-fr-to-en-001
+tenant: maa
+language: en-CA
+persona: "Visitor who opened in French, then switched to English mid-conversation."
+category: language_switch
+phase: 4
+
+# Prior turns — the visitor opened in French. The locale field for this final
+# turn is en-CA because the visitor's switch should make the bot follow them.
+history:
+  - role: user
+    content: "Bonjour, quels sont vos tarifs d'abonnement ?"
+  - role: assistant
+    content: "Bonjour ! L'abonnement annuel est de 225 $ par mois. Souhaitez-vous que je vous présente nos options pour étudiants ou aînés ?"
+
+message: "Actually, can you switch to English? I'd like to hear about the student rate."
+
+expected_facts:
+  - "Acknowledges the switch warmly in English."
+  - "Stays in English for the rest of the reply."
+  - "Gives the student rate ($195/month for 25 and under)."
+
+tone:
+  - warm
+  - quebec_english_natural
+
+forbidden:
+  - "garanti"
+  - "membre à vie gratuit"
+
+forbidden_patterns:
+  - /\béquipe\b/i
+  - /\bvotre\b/i
+  - /\babonnement\b/i
+
+followup_mode_forbidden: [callback, vapi]
+
+judge_rubric:
+  question: "Does the assistant cleanly switch to English, give the student rate, and contain zero French words?"
+  expected: yes
+
+pass_threshold: 0.85
+source: "Daphné 2026-05-18 — bilingual coverage parity ask"

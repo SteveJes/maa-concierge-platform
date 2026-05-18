@@ -1,0 +1,44 @@
+# Daphné 2026-05-18 — the pool-hours bug that broke the demo.
+# Sequence: visitor asks for swim hours → bot answers → bot OFFERS routing →
+# visitor says "oui svp" → bot MUST move forward (ask for contact info or
+# state it will transmit) and MUST NOT loop on the same generic answer.
+id: maa-pool-routing-001
+tenant: maa
+language: fr-CA
+persona: "Visiteuse curieuse de l'horaire piscine"
+category: routing_handoff
+phase: 3
+
+history:
+  - role: user
+    content: "cest quand vos horaires de la piscine?"
+  - role: assistant
+    content: |
+      Les horaires de la piscine sont actuellement de 6h30 à 20h30 en semaine
+      et de 7h à 18h le week-end. Souhaitez-vous que je vous mette en contact
+      avec Nathalie Lambert, directrice des programmes sportifs, pour des
+      détails sur la nage libre ?
+
+message: "oui svp"
+
+expected_facts:
+  - "Acknowledges the user accepted the handoff (no looping)"
+  - "Either asks for name/phone/email OR confirms transmission to Nathalie"
+  - "Does NOT recite the same hours again"
+
+forbidden:
+  - "06h30 - 20h30"
+  - "7h à 17h"
+  - "selon le PDF"
+  - "selon le site"
+  - "deux versions"
+  - "comme indiqué précédemment"
+
+followup_mode_required: [callback]
+followup_mode_forbidden: [clarify]
+
+judge_rubric:
+  question: "Does the assistant advance the routing flow by either asking for the visitor's contact info OR confirming the request will be transmitted to Nathalie Lambert?"
+  expected: yes
+
+pass_threshold: 0.85

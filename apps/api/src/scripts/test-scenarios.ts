@@ -39,6 +39,7 @@ import type {
   ScenarioResult,
   FollowUpMode,
   TenantCode,
+  FailureType,
 } from "../scenarios/types.js";
 import { judgeScenario } from "../scenarios/judge.js";
 
@@ -271,6 +272,7 @@ async function runOne(
     }
   }
 
+  const reason = failures.length > 0 ? failures.join("; ") : undefined;
   return {
     id: scenario.id,
     label: scenario.label,
@@ -279,10 +281,79 @@ async function runOne(
     assistantMessage: msg,
     followUpMode: mode,
     suppressBookingCta: suppress,
-    failureReason: failures.length > 0 ? failures.join("; ") : undefined,
+    failureReason: reason,
+    failureType: reason ? inferFailureType(reason, msg, mode) : undefined,
     judgeVerdict,
     durationMs: Date.now() - t0,
   };
+}
+
+/**
+ * Infer the bucket a failure belongs in. The runner reads the failureReason
+ * + the assistant message + the followUpMode and picks the closest taxonomy
+ * entry. This is what makes the markdown report actionable: each section is
+ * a queue for a specific kind of fix.
+ */
+function inferFailureType(
+  reason: string,
+  message: string,
+  mode: FollowUpMode,
+): FailureType {
+  const r = reason.toLowerCase();
+  const m = message.toLowerCase();
+
+  // Source-leak: bot exposed an internal data-source name to the visitor.
+  if (
+    /selon le pdf|pdf officiel|pdf printemps|selon le site|page publique|site public|version contradictoire|deux versions|two versions/i.test(message)
+  ) {
+    return "source_leak";
+  }
+
+  // Premature callback: bot opened the lead form before the visitor accepted.
+  if (
+    mode === "callback" &&
+    /souhaitez[- ]vous|would you like|préférez[- ]vous|prefer to/i.test(message)
+  ) {
+    return "premature_callback";
+  }
+
+  // Repetition: bot rephrased the same answer rather than moving forward.
+  if (/repetition|repeated|same answer|generic answer|loop/i.test(r)) {
+    return "repetition";
+  }
+
+  // Judge said something was missing / bot didn't ground in KB
+  if (/judge.*missing|invent|hallucinat|fabricat|not in (the )?evidence/i.test(r)) {
+    return "model_hallucination";
+  }
+  if (/missing.*(?:knowledge|fact|evidence)/i.test(r)) return "missing_knowledge";
+  if (/retriev|chunk|search result/i.test(r)) return "bad_retrieval";
+  if (/contradict|conflict/i.test(r)) return "conflicting_kb";
+
+  // French / Quebec localisation issue
+  if (/french|fr_qc|québec|qc|localis|locale mismatch|wrong language/i.test(r)) {
+    return "french_localization_issue";
+  }
+
+  // Sales quality (defensive answer, no value framing)
+  if (/sales|valeur|premium|defensive|cheap|cheaper/i.test(r)) {
+    return "sales_quality_issue";
+  }
+
+  // Timing
+  if (/slow|timeout|latency/i.test(r)) return "slow_response";
+
+  // UI bug — never set by this runner directly; reserved for Playwright bridge
+  if (/ui_bug|frontend/i.test(r)) return "ui_bug";
+
+  // Default: bot followed the wrong shape — almost always a prompt issue
+  if (
+    /forbidden pattern|required pattern|forbidfollowupmode|requirefollowupmode|suppressBookingCta|expected.*intent/i.test(r)
+  ) {
+    return "prompt_problem";
+  }
+
+  return "unknown";
 }
 
 function filterScenarios(
@@ -373,7 +444,7 @@ function persistSentinelRun(results: ScenarioResult[], args: CliArgs): void {
   for (const [tenantCode, tenantResults] of byTenant) {
     const total = tenantResults.length;
     const passed = tenantResults.filter((r) => r.passed).length;
-    const summary = {
+    const summary: SentinelRunSummary = {
       tenantCode,
       timestamp: new Date().toISOString(),
       mode: args.live ? "live" : "in-process",
@@ -391,6 +462,130 @@ function persistSentinelRun(results: ScenarioResult[], args: CliArgs): void {
     const filePath = path.join(runsDir, `${tenantCode}-${timestamp}.json`);
     writeFileSync(filePath, JSON.stringify(summary, null, 2));
     console.log(`[sentinel] persisted ${tenantCode} run → ${path.basename(filePath)}`);
+
+    // Markdown twin — Daphné-readable, drops next to the JSON. Sections
+    // grouped by failure type so a fix-pass is a single read-and-route.
+    const mdPath = path.join(runsDir, `${tenantCode}-${timestamp}.md`);
+    writeFileSync(mdPath, renderMarkdownReport(summary));
+    console.log(`[sentinel] persisted ${tenantCode} report → ${path.basename(mdPath)}`);
+  }
+}
+
+interface SentinelRunSummary {
+  tenantCode: TenantCode;
+  timestamp: string;
+  mode: "live" | "in-process";
+  judge: boolean;
+  total: number;
+  passed: number;
+  failed: number;
+  passRate: number;
+  filters: { phase?: number; tenant?: string };
+  results: ScenarioResult[];
+}
+
+function renderMarkdownReport(s: SentinelRunSummary): string {
+  const failures = s.results.filter((r) => !r.passed);
+  const byType = new Map<FailureType, ScenarioResult[]>();
+  for (const f of failures) {
+    const t = f.failureType ?? "unknown";
+    const arr = byType.get(t) ?? [];
+    arr.push(f);
+    byType.set(t, arr);
+  }
+  const orderedTypes: FailureType[] = [
+    "source_leak",
+    "premature_callback",
+    "repetition",
+    "model_hallucination",
+    "missing_knowledge",
+    "bad_retrieval",
+    "conflicting_kb",
+    "french_localization_issue",
+    "sales_quality_issue",
+    "prompt_problem",
+    "slow_response",
+    "ui_bug",
+    "unknown",
+  ];
+
+  const lines: string[] = [];
+  lines.push(`# Concierge QA Report — ${s.tenantCode.toUpperCase()}`);
+  lines.push("");
+  lines.push(`Run: ${s.timestamp}`);
+  lines.push(`Mode: ${s.mode} · Judge: ${s.judge ? "on" : "off"}`);
+  if (s.filters.phase) lines.push(`Phase filter: ${s.filters.phase}`);
+  lines.push("");
+  lines.push("## Summary");
+  lines.push(`- Scenarios: **${s.total}**`);
+  lines.push(`- Passed: **${s.passed}**`);
+  lines.push(`- Failed: **${s.failed}**`);
+  lines.push(`- Pass rate: **${s.passRate}%**`);
+  lines.push("");
+
+  if (failures.length === 0) {
+    lines.push("All scenarios passed. Nothing to triage.");
+    return lines.join("\n");
+  }
+
+  lines.push("## Failures by category");
+  lines.push("");
+  for (const t of orderedTypes) {
+    const arr = byType.get(t);
+    if (!arr || arr.length === 0) continue;
+    lines.push(`### ${prettyFailureType(t)} (${arr.length})`);
+    lines.push("");
+    for (const f of arr) {
+      lines.push(`- **${f.id}** — ${f.label}`);
+      if (f.failureReason) lines.push(`  - Reason: ${f.failureReason}`);
+      const preview = f.assistantMessage.replace(/\s+/g, " ").slice(0, 220);
+      lines.push(`  - Reply: ${preview}${f.assistantMessage.length > 220 ? "…" : ""}`);
+      if (f.judgeVerdict) lines.push(`  - Judge: ${f.judgeVerdict.verdict} — ${f.judgeVerdict.reasoning}`);
+      lines.push(`  - Suggested owner: ${suggestedOwner(t)}`);
+    }
+    lines.push("");
+  }
+  return lines.join("\n");
+}
+
+function prettyFailureType(t: FailureType): string {
+  switch (t) {
+    case "source_leak": return "🔒 Source leak (visitor saw an internal source name)";
+    case "premature_callback": return "📋 Premature callback (lead form opened before visitor accepted)";
+    case "repetition": return "🔁 Repetition (bot looped on same answer)";
+    case "model_hallucination": return "👻 Model hallucination (invented facts)";
+    case "missing_knowledge": return "📚 Missing knowledge (KB gap)";
+    case "bad_retrieval": return "🔍 Bad retrieval (right doc not pulled)";
+    case "conflicting_kb": return "⚖️ Conflicting KB (two sources disagree)";
+    case "french_localization_issue": return "🇫🇷 French / Québec localisation";
+    case "sales_quality_issue": return "💰 Sales quality (premium framing missing)";
+    case "prompt_problem": return "📝 Prompt problem (shape / followUpMode / forbidden CTA)";
+    case "slow_response": return "🐌 Slow response";
+    case "ui_bug": return "🖥️ UI bug";
+    case "unknown": return "❓ Unclassified";
+  }
+}
+
+function suggestedOwner(t: FailureType): string {
+  switch (t) {
+    case "source_leak":
+    case "premature_callback":
+    case "prompt_problem":
+    case "repetition":
+    case "sales_quality_issue":
+    case "french_localization_issue":
+      return "prompt (apps/api/src/prompts/) — `/eval-test-designer` or `/fr-qc-reviewer`";
+    case "missing_knowledge":
+    case "bad_retrieval":
+    case "conflicting_kb":
+      return "knowledge base (apps/api/src/knowledge/maa-v2/) — `/kb-editor`";
+    case "model_hallucination":
+      return "safety layer + KB — `/rag-failure-analyst`";
+    case "ui_bug":
+      return "widget (packages/ui-chat/) — `/playwright-qa-engineer`";
+    case "slow_response":
+    case "unknown":
+      return "Steve / Claude triage";
   }
 }
 

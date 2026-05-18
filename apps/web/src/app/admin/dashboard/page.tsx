@@ -6,6 +6,7 @@ import AdminShell, { P, API, Card, SectionTitle } from "../_components/AdminShel
 import SettingsPanel from "./SettingsPanel";
 import LeadsPanel from "./LeadsPanel";
 import SentinelPanel from "./SentinelPanel";
+import QualityPanel from "./QualityPanel";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -67,7 +68,7 @@ function planColor(p: string) { return p === "enterprise" ? P.gold : p === "prof
 
 function StatCard({ label, value, sub, accent }: { label: string; value: string | number; sub?: string; accent?: string }) {
   return (
-    <div style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${P.border}`, borderRadius: 12, padding: "16px 18px" }}>
+    <div style={{ background: "#ffffff", border: `1px solid ${P.border}`, borderRadius: 12, padding: "16px 18px" }}>
       <div style={{ fontSize: 10, color: P.muted, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>{label}</div>
       <div style={{ fontSize: 24, fontWeight: 800, color: accent ?? P.white, lineHeight: 1 }}>{value}</div>
       {sub && <div style={{ fontSize: 10, color: P.muted, marginTop: 4 }}>{sub}</div>}
@@ -83,7 +84,7 @@ function ObsLinkCard({ label, title, description, href, accent }: { label: strin
       rel="noreferrer"
       style={{
         display: "block",
-        background: "rgba(255,255,255,0.03)",
+        background: "#ffffff",
         border: `1px solid ${accent}33`,
         borderRadius: 12,
         padding: "16px 18px",
@@ -92,11 +93,11 @@ function ObsLinkCard({ label, title, description, href, accent }: { label: strin
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.borderColor = `${accent}88`;
-        e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+        e.currentTarget.style.background = "#fbf8ef";
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.borderColor = `${accent}33`;
-        e.currentTarget.style.background = "rgba(255,255,255,0.03)";
+        e.currentTarget.style.background = "#ffffff";
       }}
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
@@ -207,7 +208,7 @@ export default function AdminDashboard() {
   const actions = selectedId && token ? (
     <>
       {lastRefresh && <span style={{ fontSize: 11, color: P.muted }}>Rafraîchi {lastRefresh.toLocaleTimeString("fr-CA")}</span>}
-      <button onClick={() => token && selectedId && void fetchOverview(selectedId, token)} style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${P.border}`, borderRadius: 8, color: P.white, fontSize: 12, padding: "8px 14px", cursor: "pointer" }}>↻ Actualiser</button>
+      <button onClick={() => token && selectedId && void fetchOverview(selectedId, token)} style={{ background: "#ffffff", border: `1px solid ${P.border}`, borderRadius: 8, color: P.ink, fontSize: 12, padding: "8px 14px", cursor: "pointer", boxShadow: "0 1px 2px rgba(20,16,8,0.04)" }}>↻ Actualiser</button>
     </>
   ) : undefined;
 
@@ -331,6 +332,7 @@ export default function AdminDashboard() {
           />
 
           {/* Sentinel — AI-quality watchdog (included by default for every tenant) */}
+          <QualityPanel tenantId={tenant.id} token={token} />
           <SentinelPanel tenantId={tenant.id} tenantName={tenant.name} token={token} />
 
           {/* Leads list + CSV export */}
@@ -443,7 +445,7 @@ function AdminShellWithSidebar({ children, sidebar, title, subtitle, actions }: 
   function logout() { localStorage.removeItem("dubub_admin_token"); router.replace("/admin/login"); }
 
   return (
-    <div style={{ minHeight: "100vh", background: P.bg, fontFamily: "Inter, system-ui, sans-serif", color: P.white, display: "flex" }}>
+    <div style={{ minHeight: "100vh", background: P.bgGradient, fontFamily: "Inter, system-ui, sans-serif", color: P.ink, display: "flex" }}>
       {/* Nav sidebar */}
       <aside style={{ width: 220, background: P.sidebar, borderRight: `1px solid ${P.border}`, display: "flex", flexDirection: "column", flexShrink: 0, position: "sticky", top: 0, height: "100vh" }}>
         <div style={{ padding: "24px 20px 20px", borderBottom: `1px solid ${P.border}` }}>

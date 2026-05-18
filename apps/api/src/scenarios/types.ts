@@ -73,6 +73,32 @@ export interface Scenario extends ScenarioAssertions {
   source?: string;
 }
 
+/**
+ * Failure-type taxonomy — the buckets every failed scenario must fit into.
+ * Daphné's 2026-05-18 ask: classify failures so the team can route them to
+ * the right fix (prompt vs KB vs UI vs model vs French vs sales quality).
+ *
+ * The harness infers this from the assertion that fired:
+ *  - source_leak / repetition / fr_qc_issue / sales_quality_issue come from
+ *    targeted regex patterns
+ *  - missing_knowledge / bad_retrieval come from the judge rubric verdict
+ *  - prompt_problem is the default bucket when none of the above match
+ */
+export type FailureType =
+  | "prompt_problem"
+  | "missing_knowledge"
+  | "bad_retrieval"
+  | "conflicting_kb"
+  | "model_hallucination"
+  | "ui_bug"
+  | "slow_response"
+  | "sales_quality_issue"
+  | "french_localization_issue"
+  | "source_leak"
+  | "repetition"
+  | "premature_callback"
+  | "unknown";
+
 export interface ScenarioResult {
   id: string;
   label: string;
@@ -82,6 +108,7 @@ export interface ScenarioResult {
   followUpMode: FollowUpMode;
   suppressBookingCta: boolean;
   failureReason?: string;
+  failureType?: FailureType;
   judgeVerdict?: { verdict: "yes" | "no"; reasoning: string };
   durationMs: number;
 }

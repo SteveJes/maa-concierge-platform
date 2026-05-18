@@ -41,11 +41,11 @@ function LoginForm() {
   }
 
   return (
-    <div style={{ width: 360, background: "#0e1520", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "40px 36px", boxShadow: "0 24px 64px rgba(0,0,0,0.5)" }}>
+    <div style={{ width: 380, background: "#ffffff", border: "1px solid rgba(20,16,8,0.08)", borderRadius: 18, padding: "44px 38px", boxShadow: "0 24px 64px rgba(20,16,8,0.10), 0 2px 6px rgba(20,16,8,0.04)" }}>
       <div style={{ marginBottom: 32, textAlign: "center" }}>
         <div style={{ display: "inline-block", background: "linear-gradient(135deg,#c9a84c,#8b6010)", borderRadius: 10, padding: "8px 14px", fontWeight: 800, fontSize: 18, color: "#111", letterSpacing: "0.08em", marginBottom: 14 }}>DUBUB</div>
-        <div style={{ color: "rgba(255,255,255,0.8)", fontWeight: 700, fontSize: 20 }}>Admin Console</div>
-        <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, marginTop: 4 }}>Concierge Platform — Internal</div>
+        <div style={{ color: "#1a1610", fontWeight: 700, fontSize: 20 }}>Admin Console</div>
+        <div style={{ color: "rgba(20,16,8,0.50)", fontSize: 12, marginTop: 4 }}>Concierge Platform — Internal</div>
       </div>
 
       <form onSubmit={(e) => void submit(e)} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -72,8 +72,8 @@ function LoginForm() {
 
 export default function AdminLogin() {
   return (
-    <div style={{ minHeight: "100vh", background: "#06090c", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Inter, system-ui, sans-serif" }}>
-      <Suspense fallback={<div style={{ color: "rgba(255,255,255,0.3)", fontSize: 14 }}>Loading…</div>}>
+    <div style={{ minHeight: "100vh", background: "radial-gradient(120% 80% at 20% 0%, #ffffff 0%, #f7f4ea 45%, #efe9d6 100%)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Inter, system-ui, sans-serif" }}>
+      <Suspense fallback={<div style={{ color: "rgba(20,16,8,0.45)", fontSize: 14 }}>Loading…</div>}>
         <LoginForm />
       </Suspense>
     </div>
@@ -81,15 +81,17 @@ export default function AdminLogin() {
 }
 
 const inputStyle: React.CSSProperties = {
-  background: "rgba(255,255,255,0.05)",
-  border: "1px solid rgba(255,255,255,0.1)",
-  borderRadius: 8,
-  color: "#fff",
+  background: "#ffffff",
+  border: "1px solid rgba(20,16,8,0.10)",
+  borderRadius: 10,
+  color: "#1a1610",
   fontSize: 14,
-  padding: "11px 14px",
+  padding: "12px 14px",
   outline: "none",
   width: "100%",
   boxSizing: "border-box",
+  boxShadow: "inset 0 1px 2px rgba(20,16,8,0.04)",
+  colorScheme: "light",
 };
 
 const btnStyle: React.CSSProperties = {

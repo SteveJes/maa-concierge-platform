@@ -67,7 +67,7 @@ interface Props {
 
 const inputBase: React.CSSProperties = {
   width: "100%",
-  background: "rgba(255,255,255,0.04)",
+  background: "#fbf8ef",
   border: `1px solid ${P.border}`,
   borderRadius: 8,
   color: P.white,
@@ -277,7 +277,7 @@ export default function SettingsPanel({ tenantId, initial, token, onSaved }: Pro
                           padding: "6px 12px",
                           borderRadius: 8,
                           border: `1px solid ${active ? P.gold + "88" : P.border}`,
-                          background: active ? "rgba(201,168,76,0.15)" : "rgba(255,255,255,0.03)",
+                          background: active ? "rgba(201,168,76,0.15)" : "#ffffff",
                           color: active ? P.gold : P.muted,
                           fontSize: 11,
                           fontWeight: 700,
@@ -362,7 +362,7 @@ export default function SettingsPanel({ tenantId, initial, token, onSaved }: Pro
         </div>
 
         {/* Restaurant menu links — used by the concierge to direct guests to the right PDF */}
-        <div style={{ marginBottom: 24, padding: 16, background: "rgba(255,255,255,0.02)", borderRadius: 10, border: `1px solid ${P.border}` }}>
+        <div style={{ marginBottom: 24, padding: 16, background: "#fbf8ef", borderRadius: 10, border: `1px solid ${P.border}` }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: P.white, marginBottom: 4 }}>🍽 Restaurant — liens du menu</div>
           <div style={{ fontSize: 11, color: P.muted, marginBottom: 14 }}>
             Le concierge IA utilise ces URLs pour rediriger le visiteur vers le bon menu. Affichés sous forme de liens nommés (« Menu », « Petit-déjeuner », « Carte des vins ») et non en URL brute. Laisser vide si le tenant n&apos;a pas de restaurant.
@@ -499,7 +499,7 @@ export default function SettingsPanel({ tenantId, initial, token, onSaved }: Pro
             onClick={() => void save()}
             disabled={!dirty || saving}
             style={{
-              background: dirty ? P.gold : "rgba(255,255,255,0.06)",
+              background: dirty ? P.gold : "#f0ece1",
               color: dirty ? "#111" : P.muted,
               border: "none",
               borderRadius: 8,

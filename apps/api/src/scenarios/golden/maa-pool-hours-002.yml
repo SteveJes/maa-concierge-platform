@@ -1,0 +1,36 @@
+# Daphné 2026-05-18 — the pool-hours SOURCE LEAK bug. The bot must answer
+# with ONLY Daphné's authoritative Spring 2026 schedule and must NEVER
+# mention "PDF officiel", "site public", "deux versions", or any provenance
+# detail. The visitor only sees a clean concierge answer.
+id: maa-pool-hours-002
+tenant: maa
+language: fr-CA
+persona: "Membre / prospect qui veut juste l'horaire"
+category: source_leak
+phase: 3
+
+message: "Vos horaires de piscine ?"
+
+expected_facts:
+  - "States 6h30 - 20h30 weekday hours"
+  - "States 7h - 18h weekend hours"
+  - "Answer fits in 1-2 sentences"
+
+forbidden:
+  - "selon le PDF"
+  - "PDF officiel"
+  - "selon le site"
+  - "page publique"
+  - "deux versions"
+  - "contradictoire"
+  - "Printemps 2026"
+  - "en vigueur depuis"
+
+# An hours question alone should NOT trigger routing — just answer.
+followup_mode_forbidden: [callback, vapi]
+
+judge_rubric:
+  question: "Does the assistant answer the hours question with ONLY the schedule (no mention of internal sources, no warnings about contradictions, no offer to transmit unless the visitor asked)?"
+  expected: yes
+
+pass_threshold: 0.9

@@ -351,7 +351,7 @@ export default function OnboardingPage() {
         )}
 
         {/* Setup checklist */}
-        <div style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${P.border}`, borderRadius: 12, padding: "18px 22px", marginBottom: 20 }}>
+        <div style={{ background: "#ffffff", border: `1px solid ${P.border}`, borderRadius: 12, padding: "18px 22px", marginBottom: 20 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 14 }}>Ce qui a été configuré</div>
           {[
             { ok: true, label: `Tenant "${data.companyName}" créé dans la plateforme` },
@@ -443,7 +443,7 @@ export default function OnboardingPage() {
                 <div style={{
                   width: 32, height: 32, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 12, fontWeight: 700,
-                  background: done ? P.gold : active ? "rgba(201,168,76,0.15)" : "rgba(255,255,255,0.05)",
+                  background: done ? P.gold : active ? "rgba(201,168,76,0.15)" : "#f0ece1",
                   border: `2px solid ${done || active ? P.gold : P.border}`,
                   color: done ? "#111" : active ? P.gold : P.muted,
                   transition: "all 0.2s",
@@ -545,7 +545,7 @@ function Step2({ data, set }: { data: OnboardingData; set: <K extends keyof Onbo
           {TONES.map(t => (
             <label key={t.value} style={{
               display: "flex", alignItems: "flex-start", gap: 12,
-              background: data.tone === t.value ? "rgba(201,168,76,0.08)" : "rgba(255,255,255,0.03)",
+              background: data.tone === t.value ? "rgba(201,168,76,0.08)" : "#ffffff",
               border: `1px solid ${data.tone === t.value ? "rgba(201,168,76,0.35)" : P.border}`,
               borderRadius: 10, padding: "12px 14px", cursor: "pointer", transition: "all 0.15s",
             }}>
@@ -583,7 +583,7 @@ function Step3({ data, set, fileRef, onFiles }: {
       <SectionTitle>Knowledge Sources</SectionTitle>
 
       {/* Crawler toggle */}
-      <div style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${P.border}`, borderRadius: 12, padding: "18px 20px" }}>
+      <div style={{ background: "#ffffff", border: `1px solid ${P.border}`, borderRadius: 12, padding: "18px 20px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Website Crawler</div>
@@ -612,7 +612,7 @@ function Step3({ data, set, fileRef, onFiles }: {
           style={{
             border: `2px dashed ${dragging ? P.gold : P.border}`,
             borderRadius: 12, padding: "32px 24px", textAlign: "center", cursor: "pointer",
-            background: dragging ? "rgba(201,168,76,0.05)" : "rgba(255,255,255,0.02)",
+            background: dragging ? "rgba(201,168,76,0.05)" : "#fbf8ef",
             transition: "all 0.2s",
           }}
         >
@@ -625,7 +625,7 @@ function Step3({ data, set, fileRef, onFiles }: {
         {data.pdfs.length > 0 && (
           <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
             {data.pdfs.map((f, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "8px 12px" }}>
+              <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#fbf8ef", borderRadius: 8, padding: "8px 12px" }}>
                 <span style={{ fontSize: 13, color: P.dim }}>📄 {f.name} <span style={{ color: P.muted, fontSize: 11 }}>({(f.size / 1024).toFixed(0)} KB)</span></span>
                 <button onClick={() => set("pdfs", data.pdfs.filter((_, j) => j !== i))}
                   style={{ background: "none", border: "none", color: P.muted, cursor: "pointer", fontSize: 16, lineHeight: 1, padding: "0 4px" }}>×</button>
@@ -643,7 +643,7 @@ function Step4({ data, set }: { data: OnboardingData; set: <K extends keyof Onbo
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <SectionTitle>AI Voice & Phone (VAPI)</SectionTitle>
 
-      <div style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${P.border}`, borderRadius: 12, padding: "18px 20px" }}>
+      <div style={{ background: "#ffffff", border: `1px solid ${P.border}`, borderRadius: 12, padding: "18px 20px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Enable AI Voice Calls</div>
@@ -682,7 +682,7 @@ function Step4({ data, set }: { data: OnboardingData; set: <K extends keyof Onbo
       <div style={{ height: 1, background: P.border }} />
 
       <SectionTitle>Booking & Visit Scheduling</SectionTitle>
-      <div style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${P.border}`, borderRadius: 12, padding: "18px 20px" }}>
+      <div style={{ background: "#ffffff", border: `1px solid ${P.border}`, borderRadius: 12, padding: "18px 20px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Enable Booking</div>
@@ -736,7 +736,7 @@ function Step5({ data, set }: {
             return (
               <label key={pl.value} style={{
                 display: "flex", alignItems: "flex-start", gap: 14, cursor: "pointer",
-                background: active ? "rgba(201,168,76,0.08)" : "rgba(255,255,255,0.03)",
+                background: active ? "rgba(201,168,76,0.08)" : "#ffffff",
                 border: `1px solid ${active ? "rgba(201,168,76,0.35)" : P.border}`,
                 borderRadius: 12, padding: "14px 16px", transition: "all 0.15s",
               }}>
@@ -774,7 +774,7 @@ function Step5({ data, set }: {
           ].map(t => (
             <label key={t.v} style={{
               flex: 1, display: "flex", alignItems: "center", gap: 10, cursor: "pointer",
-              background: data.billingTerm === t.v ? "rgba(201,168,76,0.08)" : "rgba(255,255,255,0.03)",
+              background: data.billingTerm === t.v ? "rgba(201,168,76,0.08)" : "#ffffff",
               border: `1px solid ${data.billingTerm === t.v ? "rgba(201,168,76,0.35)" : P.border}`,
               borderRadius: 10, padding: "12px 14px",
             }}>
@@ -814,7 +814,7 @@ function Step5({ data, set }: {
       </div>
 
       {/* Add-ons (coming soon) */}
-      <div style={{ background: "rgba(255,255,255,0.02)", border: `1px solid ${P.border}`, borderRadius: 12, padding: "16px 18px", opacity: 0.6 }}>
+      <div style={{ background: "#fbf8ef", border: `1px solid ${P.border}`, borderRadius: 12, padding: "16px 18px", opacity: 0.6 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ fontWeight: 700, fontSize: 14 }}>Add-ons</div>
           <div style={{ background: "rgba(255,255,255,0.07)", borderRadius: 6, padding: "3px 10px", fontSize: 11, color: P.muted }}>Bientôt disponible</div>
@@ -852,7 +852,7 @@ function Step5({ data, set }: {
       </div>
 
       {/* Invoice send toggle */}
-      <div style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${P.border}`, borderRadius: 12, padding: "16px 18px" }}>
+      <div style={{ background: "#ffffff", border: `1px solid ${P.border}`, borderRadius: 12, padding: "16px 18px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 3 }}>Envoyer la facture par courriel</div>
@@ -935,7 +935,7 @@ function Step6({ data, uploadProgress }: { data: OnboardingData; uploadProgress:
       </div>
 
       {uploadProgress.length > 0 && (
-        <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 10, padding: "14px 16px" }}>
+        <div style={{ background: "#ffffff", borderRadius: 10, padding: "14px 16px" }}>
           <div style={{ fontSize: 11, color: P.muted, marginBottom: 8 }}>Upload progress</div>
           {uploadProgress.map((msg, i) => <div key={i} style={{ fontSize: 13, color: P.dim }}>{msg}</div>)}
         </div>

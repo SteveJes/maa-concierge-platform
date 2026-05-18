@@ -1,0 +1,40 @@
+id: maa-pool-hours-en-001
+tenant: maa
+language: en-CA
+persona: "English-speaking prospect — wants the basic pool schedule."
+category: pool_hours_en
+phase: 4
+
+message: "What are the pool hours?"
+
+expected_facts:
+  - "Gives the authoritative pool hours plainly (6:30am-8:30pm weekdays / 7am-6pm weekends)."
+  - "Does NOT mention a PDF, the public website, or two versions."
+  - "Stays in English."
+
+tone:
+  - professional
+  - warm
+  - quebec_english_natural
+
+forbidden:
+  - "selon le PDF"
+  - "PDF Spring 2026"
+  - "two versions"
+  - "page publique"
+
+# Pure-EN reply MUST contain no French leakage tokens. Catch the most common.
+forbidden_patterns:
+  - /\béquipe\b/i
+  - /\bvotre\b/i
+  - /\bn'h[ée]sitez\s+pas\b/i
+
+followup_mode_required: [clarify, done]
+followup_mode_forbidden: [callback, vapi]
+
+judge_rubric:
+  question: "Does the assistant answer in natural Quebec-English, give the Spring 2026 hours without naming any internal source, and stay in English throughout?"
+  expected: yes
+
+pass_threshold: 0.85
+source: "Daphné 2026-05-18 — bilingual coverage parity ask"

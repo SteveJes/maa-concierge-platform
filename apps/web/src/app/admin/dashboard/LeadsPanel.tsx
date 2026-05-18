@@ -129,7 +129,7 @@ export default function LeadsPanel({ tenantId, tenantName, token }: Props) {
                 key={d}
                 onClick={() => setDays(d)}
                 style={{
-                  background: days === d ? "rgba(201,168,76,0.15)" : "rgba(255,255,255,0.04)",
+                  background: days === d ? "rgba(201,168,76,0.15)" : "#fbf8ef",
                   border: `1px solid ${days === d ? P.gold + "66" : P.border}`,
                   borderRadius: 8,
                   color: days === d ? P.gold : P.dim,
@@ -147,7 +147,7 @@ export default function LeadsPanel({ tenantId, tenantName, token }: Props) {
             onClick={handleExport}
             disabled={leads.length === 0}
             style={{
-              background: leads.length > 0 ? P.gold : "rgba(255,255,255,0.06)",
+              background: leads.length > 0 ? P.gold : "#f0ece1",
               color: leads.length > 0 ? "#111" : P.muted,
               border: "none",
               borderRadius: 8,
@@ -208,7 +208,7 @@ export default function LeadsPanel({ tenantId, tenantName, token }: Props) {
 
 function KpiTile({ label, value, sub, accent }: { label: string; value: number; sub?: string; accent?: string }) {
   return (
-    <div style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${P.border}`, borderRadius: 12, padding: "14px 16px" }}>
+    <div style={{ background: "#ffffff", border: `1px solid ${P.border}`, borderRadius: 12, padding: "14px 16px" }}>
       <div style={{ fontSize: 9, color: P.muted, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 4 }}>{label}</div>
       <div style={{ fontSize: 22, fontWeight: 800, color: accent ?? P.white, lineHeight: 1 }}>{value}</div>
       {sub && <div style={{ fontSize: 10, color: P.muted, marginTop: 4 }}>{sub}</div>}

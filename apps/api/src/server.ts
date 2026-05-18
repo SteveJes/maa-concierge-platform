@@ -853,6 +853,139 @@ export function createServer() {
     return { runs };
   });
 
+  // GET /v1/admin/quality/agents — list the subagent definitions under
+  // .claude/agents/ so the dashboard can surface what each agent does.
+  // This lets Steve + Daphné see, without opening the repo, that we have
+  // an `/eval-test-designer`, a `/kb-editor`, a `/rag-failure-analyst`, etc.
+  app.get("/v1/admin/quality/agents", async (request, reply) => {
+    if (!adminAuth(request, reply)) return;
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const url = await import("node:url");
+    const currentFile = url.fileURLToPath(import.meta.url);
+    const apiRoot = path.resolve(path.dirname(currentFile), "..");
+    const repoRoot = path.resolve(apiRoot, "../..");
+    const agentsDir = path.join(repoRoot, ".claude", "agents");
+    if (!fs.existsSync(agentsDir)) return { agents: [] };
+    const files = fs.readdirSync(agentsDir).filter((f) => f.endsWith(".md"));
+    const agents: Array<{ name: string; description: string; tools: string[] }> = [];
+    for (const file of files) {
+      const raw = fs.readFileSync(path.join(agentsDir, file), "utf8");
+      const fmMatch = raw.match(/^---\s*\n([\s\S]*?)\n---/);
+      if (!fmMatch) continue;
+      const fm = fmMatch[1] ?? "";
+      const name = (fm.match(/^name:\s*(.+)$/m)?.[1] ?? file.replace(/\.md$/, "")).trim();
+      const description = (fm.match(/^description:\s*(.+?)(?=\ntools:|\n[a-z_]+:|$)/ms)?.[1] ?? "").trim();
+      const toolsRaw = fm.match(/^tools:\s*(.+)$/m)?.[1] ?? "";
+      const tools = toolsRaw.split(",").map((t) => t.trim()).filter(Boolean);
+      agents.push({ name, description, tools });
+    }
+    return { agents };
+  });
+
+  // GET /v1/admin/quality/overview — single-call summary for the dashboard:
+  // latest Sentinel run failure-type breakdown + golden YAML coverage count.
+  app.get("/v1/admin/quality/overview", async (request, reply) => {
+    if (!adminAuth(request, reply)) return;
+    const query = request.query as { tenant?: string } | undefined;
+    const tenantFilter = query?.tenant;
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const url = await import("node:url");
+    const currentFile = url.fileURLToPath(import.meta.url);
+    const apiRoot = path.resolve(path.dirname(currentFile), "..");
+    const runsDir = path.join(apiRoot, "_sentinel-runs");
+    const goldenDir = path.join(apiRoot, "src", "scenarios", "golden");
+
+    // Latest run: read most-recent matching JSON
+    let latestRun: {
+      timestamp: string;
+      tenantCode: string;
+      total: number;
+      passed: number;
+      failed: number;
+      passRate: number;
+      failureTypeBreakdown: Record<string, number>;
+      reportFile: string | null;
+    } | null = null;
+
+    if (fs.existsSync(runsDir)) {
+      const files = fs.readdirSync(runsDir).filter((f) => f.endsWith(".json")).sort().reverse();
+      for (const file of files) {
+        try {
+          const data = JSON.parse(fs.readFileSync(path.join(runsDir, file), "utf8")) as {
+            tenantCode?: string;
+            timestamp?: string;
+            total?: number;
+            passed?: number;
+            failed?: number;
+            passRate?: number;
+            results?: Array<{ passed: boolean; failureType?: string }>;
+          };
+          if (tenantFilter && data.tenantCode !== tenantFilter) continue;
+          const breakdown: Record<string, number> = {};
+          for (const r of data.results ?? []) {
+            if (r.passed) continue;
+            const t = r.failureType ?? "unknown";
+            breakdown[t] = (breakdown[t] ?? 0) + 1;
+          }
+          const reportBase = file.replace(/\.json$/, "");
+          const reportFile = `REPORT-${data.tenantCode}-${(data.timestamp ?? "").replace(/[:.]/g, "-")}.md`;
+          const reportExists = fs.existsSync(path.join(runsDir, reportFile));
+          latestRun = {
+            timestamp: data.timestamp ?? "",
+            tenantCode: data.tenantCode ?? "unknown",
+            total: data.total ?? 0,
+            passed: data.passed ?? 0,
+            failed: data.failed ?? 0,
+            passRate: data.passRate ?? 0,
+            failureTypeBreakdown: breakdown,
+            reportFile: reportExists ? reportFile : (fs.existsSync(path.join(runsDir, `REPORT-${reportBase}.md`)) ? `REPORT-${reportBase}.md` : null),
+          };
+          break;
+        } catch {
+          // skip malformed
+        }
+      }
+    }
+
+    // Golden scenario coverage
+    const goldenFiles = fs.existsSync(goldenDir)
+      ? fs.readdirSync(goldenDir).filter((f) => f.endsWith(".yml") || f.endsWith(".yaml"))
+      : [];
+
+    return {
+      latestRun,
+      goldenScenarios: {
+        count: goldenFiles.length,
+        files: goldenFiles,
+      },
+      links: {
+        sentinelRunsDir: "apps/api/_sentinel-runs/",
+        goldenDir: "apps/api/src/scenarios/golden/",
+        agentsDir: ".claude/agents/",
+      },
+    };
+  });
+
+  // GET /v1/admin/quality/report/:file — return a markdown report's body.
+  app.get<{ Params: { file: string } }>("/v1/admin/quality/report/:file", async (request, reply) => {
+    if (!adminAuth(request, reply)) return;
+    const file = request.params.file;
+    if (!/^REPORT-[a-z0-9._-]+\.md$/i.test(file)) {
+      return reply.code(400).send({ error: "invalid_filename" });
+    }
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const url = await import("node:url");
+    const currentFile = url.fileURLToPath(import.meta.url);
+    const apiRoot = path.resolve(path.dirname(currentFile), "..");
+    const filePath = path.join(apiRoot, "_sentinel-runs", file);
+    if (!fs.existsSync(filePath)) return reply.code(404).send({ error: "not_found" });
+    const markdown = fs.readFileSync(filePath, "utf8");
+    return reply.type("text/plain").send(markdown);
+  });
+
   // POST /v1/admin/onboarding — create a new tenant + send invoice
   app.post("/v1/admin/onboarding", async (request, reply) => {
     if (!adminAuth(request, reply)) return;

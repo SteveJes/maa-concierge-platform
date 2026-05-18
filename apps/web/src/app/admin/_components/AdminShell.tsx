@@ -2,23 +2,31 @@
 
 import { useRouter, usePathname } from "next/navigation";
 
+// Premium LIGHT palette — Daphné's brief on 2026-05-18: "background must look
+// light and fluid". Cream-ivory base, white panels, gold accents preserved.
+// Text colour names ("white", "muted", "dim") are kept for backwards-compat
+// with every component that destructures from P — but the values now read as
+// dark-on-light to stay legible.
 export const P = {
-  bg: "#06090c",
-  sidebar: "#0a0f14",
-  card: "#0e1520",
-  cardHover: "#121d2a",
-  border: "rgba(255,255,255,0.07)",
-  borderFocus: "rgba(201,168,76,0.4)",
+  bg: "#f5f3ec",
+  bgGradient:
+    "radial-gradient(120% 80% at 20% 0%, #ffffff 0%, #f7f4ea 45%, #efe9d6 100%)",
+  sidebar: "#ffffff",
+  card: "#ffffff",
+  cardHover: "#fbf8ef",
+  border: "rgba(20,16,8,0.08)",
+  borderFocus: "rgba(201,168,76,0.45)",
   gold: "#c9a84c",
   goldLight: "#e8c96a",
-  green: "#22d68a",
-  orange: "#ff9100",
-  red: "#ff5252",
-  blue: "#3db8f5",
-  purple: "#b388ff",
-  muted: "rgba(255,255,255,0.30)",
-  dim: "rgba(255,255,255,0.55)",
-  white: "#ffffff",
+  green: "#1f9c5a",
+  orange: "#c87a16",
+  red: "#c23434",
+  blue: "#1c6dbf",
+  purple: "#7a4ed1",
+  muted: "rgba(20,16,8,0.45)",
+  dim: "rgba(20,16,8,0.65)",
+  white: "#1a1610",
+  ink: "#1a1610",
 };
 
 export const API =
@@ -53,9 +61,9 @@ export default function AdminShell({ children, title, subtitle, actions }: Props
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: P.bg, fontFamily: "Inter, system-ui, sans-serif", color: P.white, display: "flex" }}>
+    <div style={{ minHeight: "100vh", background: P.bgGradient, fontFamily: "Inter, system-ui, sans-serif", color: P.ink, display: "flex" }}>
       {/* ── Sidebar ── */}
-      <aside style={{ width: 220, background: P.sidebar, borderRight: `1px solid ${P.border}`, display: "flex", flexDirection: "column", flexShrink: 0, position: "sticky", top: 0, height: "100vh" }}>
+      <aside style={{ width: 240, background: P.sidebar, borderRight: `1px solid ${P.border}`, boxShadow: "1px 0 12px rgba(20,16,8,0.04)", display: "flex", flexDirection: "column", flexShrink: 0, position: "sticky", top: 0, height: "100vh" }}>
         {/* Logo */}
         <div style={{ padding: "24px 20px 20px", borderBottom: `1px solid ${P.border}` }}>
           <div style={{ background: "linear-gradient(135deg,#c9a84c,#8b6010)", borderRadius: 8, padding: "5px 10px", fontWeight: 800, fontSize: 15, color: "#111", letterSpacing: "0.08em", display: "inline-block" }}>DUBUB</div>
@@ -99,7 +107,7 @@ export default function AdminShell({ children, title, subtitle, actions }: Props
       <main style={{ flex: 1, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         {/* Page header */}
         {(title ?? actions) && (
-          <div style={{ padding: "28px 36px 20px", borderBottom: `1px solid ${P.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap", background: P.sidebar }}>
+          <div style={{ padding: "28px 36px 20px", borderBottom: `1px solid ${P.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap", background: "rgba(255,255,255,0.78)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}>
             <div>
               {title && <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>{title}</h1>}
               {subtitle && <p style={{ margin: "4px 0 0", fontSize: 13, color: P.muted }}>{subtitle}</p>}
@@ -129,7 +137,7 @@ export function SectionTitle({ children }: { children: React.ReactNode }) {
 
 export function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <div style={{ background: P.card, border: `1px solid ${P.border}`, borderRadius: 14, padding: "24px", ...style }}>
+    <div style={{ background: P.card, border: `1px solid ${P.border}`, borderRadius: 16, padding: "24px", boxShadow: "0 1px 2px rgba(20,16,8,0.04), 0 8px 24px rgba(20,16,8,0.06)", ...style }}>
       {children}
     </div>
   );
@@ -145,31 +153,32 @@ export function GoldBtn({ children, onClick, disabled, type = "button" }: { chil
 
 export function GhostBtn({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
   return (
-    <button type="button" onClick={onClick} style={{ background: "rgba(255,255,255,0.05)", border: `1px solid ${P.border}`, borderRadius: 10, color: P.dim, fontWeight: 600, fontSize: 14, padding: "12px 24px", cursor: "pointer" }}>
+    <button type="button" onClick={onClick} style={{ background: "#ffffff", border: `1px solid ${P.border}`, borderRadius: 10, color: P.ink, fontWeight: 600, fontSize: 14, padding: "12px 24px", cursor: "pointer", boxShadow: "0 1px 2px rgba(20,16,8,0.04)" }}>
       {children}
     </button>
   );
 }
 
 export const fieldStyle: React.CSSProperties = {
-  background: "#1e1e2a",
-  border: "1px solid rgba(255,255,255,0.1)",
+  background: "#ffffff",
+  border: `1px solid ${P.border}`,
   borderRadius: 10,
-  color: "#fff",
+  color: P.ink,
   fontSize: 14,
   padding: "11px 14px",
   outline: "none",
   width: "100%",
   boxSizing: "border-box",
   fontFamily: "Inter, system-ui, sans-serif",
-  colorScheme: "dark",
+  colorScheme: "light",
+  boxShadow: "inset 0 1px 2px rgba(20,16,8,0.04)",
 };
 
 export const labelStyle: React.CSSProperties = {
   display: "block",
   fontSize: 11,
   fontWeight: 700,
-  color: "rgba(255,255,255,0.45)",
+  color: "rgba(20,16,8,0.55)",
   textTransform: "uppercase",
   letterSpacing: "0.1em",
   marginBottom: 6,

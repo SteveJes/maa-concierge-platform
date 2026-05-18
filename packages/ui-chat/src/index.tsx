@@ -3033,9 +3033,9 @@ export function ChatShell({
           />
         )}
 
-        {/* Premium peeking launcher — visually morphs out of the right-edge bar
-            above. No gap to the bar (right: -1), top/bottom borders sweep in,
-            left side is fully rounded so the tab reads as a connected pill. */}
+        {/* Premium folder-tab launcher — narrow vertical strip pulling out of
+            the right-edge bar. Bell icon on top + vertical-written brand line
+            + green dot at the bottom. Daphné's "folder tab" feel. */}
         {!isOpen && (
           <button
             type="button"
@@ -3047,10 +3047,11 @@ export function ChatShell({
               top: "50%",
               right: -1,
               transform: "translateY(-50%)",
-              width: 340,
-              padding: "20px 28px 20px 26px",
-              borderTopLeftRadius: 28,
-              borderBottomLeftRadius: 28,
+              width: 58,
+              minHeight: 220,
+              padding: "16px 8px",
+              borderTopLeftRadius: 22,
+              borderBottomLeftRadius: 22,
               borderTopRightRadius: 0,
               borderBottomRightRadius: 0,
               borderTop: "1px solid rgba(201,168,76,0.55)",
@@ -3064,12 +3065,13 @@ export function ChatShell({
               zIndex: 9999,
               cursor: "pointer",
               display: "flex",
+              flexDirection: "column",
               alignItems: "center",
-              gap: 16,
+              justifyContent: "space-between",
+              gap: 12,
               color: "#f4eedd",
-              textAlign: "left",
               transition:
-                "transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease, border-radius 0.35s ease",
+                "transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease, border-radius 0.35s ease, width 0.35s ease",
               fontFamily: "Inter, system-ui, sans-serif",
             }}
             onMouseEnter={(e) => {
@@ -3077,25 +3079,27 @@ export function ChatShell({
               el.style.transform = "translateY(-50%) translateX(-8px)";
               el.style.boxShadow =
                 "0 22px 60px rgba(0,0,0,0.7), 0 0 44px rgba(201,168,76,0.38), inset 0 1px 0 rgba(255,255,255,0.06)";
-              el.style.borderTopLeftRadius = "36px";
-              el.style.borderBottomLeftRadius = "36px";
+              el.style.borderTopLeftRadius = "28px";
+              el.style.borderBottomLeftRadius = "28px";
+              el.style.width = "64px";
             }}
             onMouseLeave={(e) => {
               const el = e.currentTarget as HTMLButtonElement;
               el.style.transform = "translateY(-50%)";
               el.style.boxShadow =
                 "0 18px 50px rgba(0,0,0,0.6), 0 0 32px rgba(201,168,76,0.22), inset 0 1px 0 rgba(255,255,255,0.04)";
-              el.style.borderTopLeftRadius = "28px";
-              el.style.borderBottomLeftRadius = "28px";
+              el.style.borderTopLeftRadius = "22px";
+              el.style.borderBottomLeftRadius = "22px";
+              el.style.width = "58px";
             }}
           >
-            {/* Concierge bell — inline SVG, premium gold */}
+            {/* Concierge bell — top of the tab */}
             <span
               aria-hidden="true"
               style={{
                 flexShrink: 0,
-                width: 36,
-                height: 36,
+                width: 32,
+                height: 32,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -3104,73 +3108,46 @@ export function ChatShell({
                 animation: "maa-launcher-bell-breathe 3.6s ease-in-out infinite",
               }}
             >
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 3a3 3 0 0 1 3 3v.6a6 6 0 0 1 4 5.6V15l1.4 2H3.6L5 15v-2.8a6 6 0 0 1 4-5.6V6a3 3 0 0 1 3-3z" fill="currentColor" fillOpacity="0.18"/>
                 <path d="M12 3a3 3 0 0 1 3 3v.6a6 6 0 0 1 4 5.6V15l1.4 2H3.6L5 15v-2.8a6 6 0 0 1 4-5.6V6a3 3 0 0 1 3-3z"/>
                 <path d="M10 19a2 2 0 0 0 4 0"/>
               </svg>
             </span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div
-                style={{
-                  fontSize: 10,
-                  letterSpacing: "0.18em",
-                  color: "#d4af5f",
-                  fontWeight: 700,
-                  marginBottom: 6,
-                }}
-              >
-                {conciergeBrand}
-              </div>
-              <div
-                style={{
-                  fontSize: 15,
-                  fontStyle: "italic",
-                  fontWeight: 500,
-                  color: "#f8efdd",
-                  lineHeight: 1.25,
-                  marginBottom: 6,
-                  fontFamily: "Georgia, 'Times New Roman', serif",
-                }}
-              >
-                {greetingTitle}
-              </div>
-              <div
-                style={{
-                  fontSize: 11,
-                  color: "#a0a090",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 7,
-                  fontWeight: 500,
-                }}
-              >
-                <span
-                  style={{
-                    display: "inline-block",
-                    width: 7,
-                    height: 7,
-                    borderRadius: "50%",
-                    background: "#3dd17a",
-                    boxShadow: "0 0 8px rgba(61,209,122,0.7)",
-                    animation: "maa-pulse-green 2.2s ease-in-out infinite",
-                  }}
-                />
-                {availableNow}
-              </div>
-            </div>
+
+            {/* Vertical-written greeting — reads bottom-to-top like a folder tab */}
+            <span
+              style={{
+                writingMode: "vertical-rl",
+                transform: "rotate(180deg)",
+                fontSize: 13,
+                fontStyle: "italic",
+                fontWeight: 500,
+                color: "#f8efdd",
+                letterSpacing: "0.08em",
+                lineHeight: 1.2,
+                fontFamily: "Georgia, 'Times New Roman', serif",
+                textShadow: "0 1px 4px rgba(0,0,0,0.5)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {greetingTitle}
+            </span>
+
+            {/* Green availability pulse — bottom of the tab */}
             <span
               aria-hidden="true"
               style={{
-                color: "#d4af5f",
-                fontSize: 24,
-                fontWeight: 300,
-                lineHeight: 1,
-                opacity: 0.85,
+                display: "inline-block",
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: "#3dd17a",
+                boxShadow: "0 0 10px rgba(61,209,122,0.8)",
+                animation: "maa-pulse-green 2.2s ease-in-out infinite",
+                flexShrink: 0,
               }}
-            >
-              ›
-            </span>
+            />
           </button>
         )}
 
