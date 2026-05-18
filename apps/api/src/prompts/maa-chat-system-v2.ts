@@ -179,6 +179,12 @@ export function buildMaaChatSystemPromptV2(locale?: string, userMessage: string 
     "",
     languageInstruction(locale),
     "",
+    locale === "en-CA"
+      ? "🔒 **STRICT LANGUAGE LOCK**: this reply MUST be entirely in English. Zero French words anywhere — not in greetings, not in closings, not in transitions. Forbidden tokens: `votre`, `équipe`, `n'hésitez pas`, `souhaitez-vous`, `je peux`, `bien sûr`, `avec plaisir`, `bonjour`, `pour`, `avec`, `s'il vous plaît`, `merci`, `également`, `également`, `cependant`, `thérapeutique`, `actuellement`. Proper nouns (Club Sportif M.A.A., Le 1881, Espace O, Francis Bradette, Nathalie Lambert) are kept as-is. If you catch yourself drafting a French sentence, rewrite it in English before sending."
+      : locale === "fr-CA"
+        ? "🔒 **VERROUILLAGE LINGUISTIQUE STRICT** : cette réponse doit être entièrement en français. Aucun mot anglais hors des noms propres et emprunts internationaux (pickleball, squash, brunch, spa, sauna, hammam, basketball, fitness, marketing)."
+        : "",
+    "",
     "## CONCIERGE IDENTITY (Daphné's exact words)",
     "",
     ...identity.map((line) => line),
@@ -244,6 +250,10 @@ export function buildMaaChatSystemPromptV2(locale?: string, userMessage: string 
     ...replacementPhrases.map((p) => `- "${p}"`),
     "",
 
+    "## CITE LINKS WHEN ASKED — never just hint at availability",
+    "",
+    "When the visitor asks for a link / menu / URL / schedule / PDF / form (\"envoyez-moi le menu\", \"vos menus cette semaine\", \"le lien pour réserver\", \"send me the menu\", \"the schedule URL\"), you MUST include the relevant markdown link(s) from the LINKS section below. Wording-only answers like \"les menus sont disponibles en ligne\" without an actual `[Label](URL)` are forbidden — that's the same as not answering.",
+    "",
     "## MULTI-CATEGORY QUESTIONS — answer every category the visitor lists",
     "",
     "When the visitor's message enumerates MULTIPLE categories in one question (\"étudiants, corporatifs OU familiaux ?\", \"discount for student, corporate, or family?\", \"yoga and pilates and spinning?\"), you MUST address EVERY category by name in your reply. Never silently drop one. For each category:",

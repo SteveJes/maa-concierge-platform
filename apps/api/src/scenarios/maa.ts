@@ -629,7 +629,7 @@ export const MAA_SCENARIOS: Scenario[] = [
   },
   {
     id: "maa-7.9",
-    label: "Quick info no form — must NOT invent gym topic out of nowhere",
+    label: "Quick info no form — no callback, no booking CTA, one short clarification",
     tenantCode: "maa",
     locale: "fr-CA",
     userMessage: "Je veux juste savoir vite, pas remplir un formulaire.",
@@ -642,10 +642,14 @@ export const MAA_SCENARIOS: Scenario[] = [
     requireSuppressBookingCta: true,
     phase: 2,
     source: "Daphné 7 #9 — 6/10",
+    // The user didn't tell us WHAT they want to know yet — they only said
+    // "I want a quick answer, no form". Asking ONE short clarification
+    // ("Sur quel sujet ?") is the right move; what we forbid is dumping
+    // unrelated gym topics OR forcing a callback form. Rubric reflects that.
     judgeRubric: {
       question:
-        "Does the assistant invent a topic (like 'gym slot reservation') that the user never mentioned, instead of asking ONE short clarification question?",
-      expected: "no",
+        "Does the assistant respect the visitor's 'quick answer, no form' constraint by NOT triggering a callback form AND NOT pushing a booking visit CTA? (Asking ONE short clarification question — like 'sur quel sujet ?' — is fine and expected.)",
+      expected: "yes",
     },
   },
 
