@@ -1973,32 +1973,37 @@ export function createServer() {
       const agentName = vapiTenantId === "dubub" ? "SophIA" : "Sophie";
       const orgName = vapiTenantId === "dubub" ? "DUBUB" : "Club M.A.A.";
 
-      const interruptFr = vapiTenantId === "dubub"
-        ? " J'ai tendance à être assez détaillée — n'hésitez surtout pas à m'interrompre à tout moment."
-        : "";
-      const interruptEn = vapiTenantId === "dubub"
-        ? " I tend to go into detail — please feel free to jump in at any point."
-        : "";
+      // Quebec Law 25 (CAI guidance) — recording / monitoring requires
+      // informed-consent notice at the start of the call. AI-identity
+      // disclosure is also required (so the caller knows they're not
+      // speaking to a human). Both are folded into the opening line —
+      // ONE polite, premium sentence each. Daphné 2026-05-19 brief: also
+      // tell the caller they can interrupt, mentioned once.
+      const consentNoticeFr = " Pour la qualité du service, notre échange peut être enregistré. N'hésitez pas à m'interrompre à tout moment.";
+      const consentNoticeEn = " For service quality, this call may be recorded. Feel free to interrupt me at any time.";
+
+      const aiIdFr = `concierge intelligent`;
+      const aiIdEn = `intelligent concierge`;
 
       let firstMessage: string;
       if (isFr) {
-        if (name && hasTopic)
-          firstMessage = `Bonjour ${name}. Ici ${agentName}, de ${orgName}. Je vois que vous aviez une question sur ${topic.fr}. Je suis là pour vous aider.${interruptFr}`;
-        else if (name)
-          firstMessage = `Bonjour ${name}. Ici ${agentName}, de ${orgName}. J'ai votre demande devant moi.${interruptFr}`;
-        else if (hasTopic)
-          firstMessage = `Bonjour. Ici ${agentName}, de ${orgName}. Je vois que vous vous intéressiez à ${topic.fr}. Je vous écoute.${interruptFr}`;
-        else
-          firstMessage = `Bonjour. Ici ${agentName}, de ${orgName}. J'ai votre demande devant moi.${interruptFr}`;
+        const lead = name && hasTopic
+          ? `Bonjour ${name}, ici ${agentName}, le ${aiIdFr} de ${orgName}. Je vois que vous aviez une question sur ${topic.fr}.`
+          : name
+          ? `Bonjour ${name}, ici ${agentName}, le ${aiIdFr} de ${orgName}. J'ai votre demande devant moi.`
+          : hasTopic
+          ? `Bonjour, ici ${agentName}, le ${aiIdFr} de ${orgName}. Je vois que vous vous intéressiez à ${topic.fr}.`
+          : `Bonjour, ici ${agentName}, le ${aiIdFr} de ${orgName}.`;
+        firstMessage = `${lead}${consentNoticeFr} Comment puis-je vous aider ?`;
       } else {
-        if (name && hasTopic)
-          firstMessage = `Hello ${name}. This is ${agentName} at ${orgName}. I see you had a question about ${topic.en}. I'm here to help.${interruptEn}`;
-        else if (name)
-          firstMessage = `Hello ${name}. This is ${agentName} at ${orgName}. I have your request right here.${interruptEn}`;
-        else if (hasTopic)
-          firstMessage = `Hello. This is ${agentName} at ${orgName}. I see you were asking about ${topic.en}. How can I help?${interruptEn}`;
-        else
-          firstMessage = `Hello. This is ${agentName} at ${orgName}. I have your request right here.${interruptEn}`;
+        const lead = name && hasTopic
+          ? `Hello ${name}, this is ${agentName}, the ${aiIdEn} for ${orgName}. I see you had a question about ${topic.en}.`
+          : name
+          ? `Hello ${name}, this is ${agentName}, the ${aiIdEn} for ${orgName}. I have your request right here.`
+          : hasTopic
+          ? `Hello, this is ${agentName}, the ${aiIdEn} for ${orgName}. I see you were asking about ${topic.en}.`
+          : `Hello, this is ${agentName}, the ${aiIdEn} for ${orgName}.`;
+        firstMessage = `${lead}${consentNoticeEn} How can I help?`;
       }
 
       request.log.info({

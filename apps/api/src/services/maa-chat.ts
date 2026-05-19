@@ -756,6 +756,16 @@ function applyPostProcessGuards(
     // preserved.
     .replace(/\b(?:le\s+yoga|les\s+cours)\s+(?:est|sont)\s+(?:disponibles?\s+)?(?:à\s+la\s+carte|drop[- ]?in)[^.!?]*[.!?]/giu, "");
 
+  // 0d. Invented-price hallucination guard. Daphné 2026-05-19 phone call:
+  //     bot claimed "$160 pour la piscine" and "$80 frais d'inscription".
+  //     Neither exists in any source — pool is INCLUDED in the annual
+  //     membership and the initiation fee is currently $0 (waived, normally
+  //     $250). Strip these specific invented constructions.
+  out = out
+    .replace(/\b160\s*\$?\s*(?:par\s+mois|\/mois|par\s+an|\/an|monthly|\/month|annually|\/year)?\s*(?:pour|for)\s+(?:la|the)?\s*piscine\b/gi, "L'accès à la piscine est inclus avec l'abonnement annuel")
+    .replace(/\b80\s*\$?\s*(?:frais\s+d['']?(?:inscription|adh[ée]sion|initiation)|sign[- ]?up\s+fee|enrol(?:l?ment)?\s+fee|initiation\s+fee)\b/gi, "les frais d'initiation sont actuellement offerts (valeur de 250 $)")
+    .replace(/\bfrais\s+d['']?(?:inscription|adh[ée]sion|initiation)\s+(?:de|of|à)\s+80\s*\$?\b/gi, "les frais d'initiation sont actuellement offerts");
+
   // 0c. Membership-interest misread guard — Daphné 2026-05-19 demo bug. The
   //     bot replied "Vous pouvez nous joindre au 514 845-2233, poste 234" to
   //     "je voudrais me joindre à votre gym" — interpreting "joindre" as
@@ -1741,6 +1751,59 @@ function isConversationClose(userMessage: string): boolean {
   return /^(?:ok\s+)?(merci|merci\s+beaucoup|thanks?|thank\s+you|ty|tysm|cheers|bye|bye[\s-]?bye|au\s+revoir|à\s+plus|a\s+plus|à\s+bient[ôo]t|salut|ciao|parfait|parfait\s+merci|nickel|super|great|cool)\s*$/.test(m);
 }
 
+/**
+ * Azure Speech-to-Text mistranscribes MAA-specific service names on the
+ * phone (Daphné 2026-05-19 call: "pickleball" → "PECO Ball" / "pickoball").
+ * The brain then gives a "I don't see it" answer instead of the correct
+ * pickleball response. Pre-normalize phonetic look-alikes BEFORE the brain
+ * sees the message so phone Sophie matches web Sophie.
+ *
+ * Conservative: only rewrites when a near-phonetic match is high-confidence
+ * (whole-word boundaries, common-vowel swaps). Never rewrites in a way
+ * that could change a real word's meaning.
+ */
+function normalizePhoneticMistranscriptions(message: string): string {
+  if (!message) return message;
+  let out = message;
+
+  // pickleball — Azure French model produces: PECO ball, pickoball, pikoball,
+  // picole ball, pickel ball, pickle balle, pico ball, pequeball, pickerball
+  out = out.replace(
+    /\b(peco\s*ball|pickoball|picoball|pikoball|picole\s*ball|pickel(?:l)?\s*ball|pickle\s*balle|pequeball|pickerball|pickle[\s-]?ball)\b/gi,
+    "pickleball",
+  );
+
+  // MAAgazine — STT: MAEgazine, MAYgazine, ma magazine, ma's magazine
+  out = out.replace(
+    /\b(mae\s*gazine|may\s*gazine|ma\s+magazine|ma['']?s\s+magazine)\b/gi,
+    "MAAgazine",
+  );
+
+  // Club Sportif M.A.A. → STT often: club sportif MAE, club sportif ma, club sportif may
+  out = out.replace(
+    /\bclub\s+sportif\s+(?:mae|may|ma)\b(?!\s*-?a)/gi,
+    "Club Sportif MAA",
+  );
+
+  // Espace O (rooftop pool) → STT often: espace zéro, espace oh, espace au
+  out = out.replace(
+    /\bespace\s+(?:zero|zéro|oh|au)\b/gi,
+    "Espace O",
+  );
+
+  // Francis Bradette / Nathalie Lambert — common phonetic slips
+  out = out.replace(/\bfrancis\s+bradet(?:e|tte)\b/gi, "Francis Bradette");
+  out = out.replace(/\bnathalie\s+lamber(?:t|ts)?\b/gi, "Nathalie Lambert");
+
+  // Le 1881 — STT: dix-huit-quatre-vingt-un / dix-huit-cent-quatre-vingt-un
+  out = out.replace(
+    /\b(?:le\s+)?(?:dix[- ]?huit[- ]?(?:cent[- ]?)?quatre[- ]?vingt[- ]?un|eighteen[- ]?eighty[- ]?one)\b/gi,
+    "Le 1881",
+  );
+
+  return out;
+}
+
 function buildCloseAcknowledgement(locale: string | undefined): MaaChatResponse {
   const fr = !locale?.toLowerCase().startsWith("en");
   return {
@@ -1759,9 +1822,17 @@ export async function answerMaaChat(
 ): Promise<MaaChatResponse> {
   const tenant = await findTenantByCode(request.tenantCode ?? "maa");
   const searchableChunks = await getSearchableChunksForTenant(tenant.uuid);
+
+  // Phonetic STT normalization — catches Azure mistranscriptions of MAA
+  // service names ("pickleball" → "PECO ball") BEFORE the brain processes
+  // the message. Applied to both the current user message and history so
+  // the model sees consistent terminology across turns.
+  const normalizedUserMessage = normalizePhoneticMistranscriptions(request.userMessage);
+  request = { ...request, userMessage: normalizedUserMessage };
+
   const conversationHistory = normalizeConversationHistory(
     request.conversationHistory,
-  );
+  ).map((t) => ({ ...t, content: normalizePhoneticMistranscriptions(t.content) }));
 
   // Short-circuit: when the visitor is just closing the conversation
   // ("ok merci" / "thanks"), don't re-answer the prior question. Give a

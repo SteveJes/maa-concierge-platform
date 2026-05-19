@@ -629,6 +629,55 @@ const FLOWS: Flow[] = [
       },
     ],
   },
+
+  // Daphné 2026-05-19 phone call hallucination — bot invented "$160 for the
+  // pool" and "$80 signup fee". Neither exists in any source. Block both.
+  {
+    id: "no-invented-pool-fee",
+    label: "Pool: must NOT invent a separate fee ($160 etc) — pool is INCLUDED in membership",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "combien ça coûte pour accéder à la piscine ?",
+        expect: {
+          mustInclude: [/(inclus|incluse|fait\s+partie|abonnement|225)/i],
+          mustNotInclude: [
+            /\b160\s*\$?\s*(?:par\s+mois|\/mois|pour\s+(?:la|le)?\s*piscine)/i,
+            /\bfrais\s+(?:de|d['']?)\s*piscine\b/i,
+          ],
+        },
+      },
+    ],
+  },
+  {
+    id: "no-invented-signup-fee",
+    label: "Signup fee: must say WAIVED ($0, normally $250) — never invent $80",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "y a-t-il des frais d'inscription ?",
+        expect: {
+          mustInclude: [/(offert|gratuit|aucun|sans\s+frais|0\s*\$|250\s*\$|waived|free)/i],
+          mustNotInclude: [/\b80\s*\$?\s*(?:frais|d['']?inscription|d['']?initiation|d['']?adh[ée]sion)/i],
+        },
+      },
+    ],
+  },
+  // Phonetic STT pickleball — Azure mistranscribes "pickleball" as "PECO ball" /
+  // "pickoball". Brain must normalize and answer the pickleball question.
+  {
+    id: "phonetic-pickleball-peco",
+    label: "Phonetic STT: 'PECO ball' / 'pickoball' must be normalized to pickleball",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "avez-vous du PECO Ball au club ?",
+        expect: {
+          mustInclude: [/(pickleball|28|membre|application)/i],
+        },
+      },
+    ],
+  },
 ];
 
 async function postChat(message: string, locale: string, conversationId: string | null): Promise<{

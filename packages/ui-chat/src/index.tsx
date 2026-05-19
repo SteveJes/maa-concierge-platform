@@ -73,6 +73,73 @@ const GYM_SERVICES_EN = [
   "Restaurant Le 1881",
 ];
 
+/**
+ * Luxurious one-shot tooltip that announces the call-Sophie feature.
+ * Fades in after the chat opens, holds for ~3 s, then fades out — never
+ * shown again in the same session (sessionStorage flag). Daphné's
+ * 2026-05-19 brief: tell the user once, elegantly, never nag.
+ */
+function SophieCallTooltip({ locale, canCall }: { locale: string; canCall: boolean }) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (!canCall) return;
+    if (typeof window === "undefined") return;
+    const seenKey = "dubub_call_tooltip_seen";
+    try {
+      if (window.sessionStorage.getItem(seenKey) === "1") return;
+    } catch { /* sessionStorage blocked — show anyway */ }
+
+    const fadeInTimer = setTimeout(() => setVisible(true), 900);
+    const fadeOutTimer = setTimeout(() => {
+      setVisible(false);
+      try { window.sessionStorage.setItem(seenKey, "1"); } catch { /* ok */ }
+    }, 4400);
+
+    return () => {
+      clearTimeout(fadeInTimer);
+      clearTimeout(fadeOutTimer);
+    };
+  }, [canCall]);
+
+  if (!canCall) return null;
+  const isFr = !locale.startsWith("en");
+  const msg = isFr
+    ? "Préférez la voix ? Sophie peut vous appeler."
+    : "Prefer voice? Sophie can call you.";
+
+  return (
+    <div
+      aria-hidden={!visible}
+      style={{
+        position: "absolute",
+        top: -42,
+        left: 0,
+        background: "linear-gradient(135deg, rgba(38,32,22,0.97), rgba(28,22,14,0.97))",
+        border: "1px solid rgba(212,175,95,0.55)",
+        borderRadius: 14,
+        padding: "7px 12px",
+        fontSize: 11,
+        color: "#f8efdd",
+        whiteSpace: "nowrap",
+        fontWeight: 500,
+        fontStyle: "italic",
+        fontFamily: "Georgia, 'Times New Roman', serif",
+        letterSpacing: "0.01em",
+        boxShadow: "0 6px 22px rgba(0,0,0,0.45), 0 0 0 1px rgba(212,175,95,0.18)",
+        opacity: visible ? 1 : 0,
+        transform: visible ? "translateY(0)" : "translateY(6px)",
+        transition: "opacity 0.55s ease, transform 0.55s ease",
+        pointerEvents: "none",
+        zIndex: 5,
+      }}
+    >
+      <span style={{ marginRight: 6 }}>📞</span>
+      {msg}
+    </div>
+  );
+}
+
 function GymLoadingIndicator({ locale, floating = false }: { locale: string; floating?: boolean }) {
   return (
     <div
@@ -1560,12 +1627,17 @@ export function ChatShell({
             background:
               "linear-gradient(180deg, #0f0f14 0%, #14141a 60%, #181820 100%)",
             borderBottom: "1px solid rgba(201,168,76,0.18)",
-            padding: "22px 22px 20px",
+            // Extra top padding so the fixed-positioned close ✕ (at viewport
+            // top:24, height:44 → bottom edge 68) clears the brand line AND
+            // the italic "Sophie vous accueille" portrait header line. Daphné
+            // mobile screenshot 2026-05-19 caught the overlap.
+            padding: "40px 22px 20px",
             position: "relative",
             fontFamily: "Inter, system-ui, sans-serif",
           }}
         >
-          {/* Brand line at the very top */}
+          {/* Brand line at the very top — clearance for the fixed close ✕ at
+              viewport top:24/right:24 (width:44 → 68px from right edge). */}
           <div
             style={{
               fontSize: 10,
@@ -1573,85 +1645,23 @@ export function ChatShell({
               color: "#d4af5f",
               fontWeight: 700,
               marginBottom: 16,
-              // Reserve clearance for BOTH the phone button (left) and the
-              // fixed-positioned close ✕ (sitting at viewport top:24/right:24).
-              paddingRight: 124,
+              paddingRight: 76,
             }}
           >
             {locale === "en-CA" ? "AI CONCIERGE BY DUBUB" : "CONCIERGE IA PAR DUBUB"}
           </div>
 
-          {/* ── Top-right luxury call button ─────────────────────────────────
-              Restored 2026-05-19. Sits LEFT of the close ✕ button (which is
-              fixed at viewport top:24/right:24 with width 44 = 68px from right
-              edge). Phone button anchors at right:78 to leave a clean ~10px
-              gap. On click, opens the inline call form — when the visitor
-              submits, the VAPI handoff carries the full conversation context
-              so Sophie picks up the call already briefed on what they were
-              discussing in chat (`handoff_last_user_message`). */}
-          {canTransferCurrentChatByPhone ? (
-            <button
-              type="button"
-              onClick={() => { setShowInlineCallForm(true); setShowPhoneFallback(false); }}
-              title={locale === "en-CA" ? "Have Sophie call you — with full conversation context" : "Faites-vous rappeler par Sophie — avec tout le contexte de la conversation"}
-              aria-label={locale === "en-CA" ? "Call Sophie" : "Appeler Sophie"}
-              style={{
-                position: "absolute",
-                top: 18,
-                right: 78,
-                width: 42,
-                height: 42,
-                borderRadius: "50%",
-                background:
-                  "radial-gradient(circle at 30% 30%, #d4af5f 0%, #b08a3a 60%, #6b4f1a 100%)",
-                border: "1px solid rgba(255,225,160,0.85)",
-                boxShadow:
-                  "0 0 0 1px rgba(212,175,95,0.5), 0 4px 16px rgba(212,175,95,0.35), inset 0 1px 2px rgba(255,255,255,0.4)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#1c1410",
-                cursor: "pointer",
-                padding: 0,
-                transition: "transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease",
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.08)";
-                (e.currentTarget as HTMLButtonElement).style.boxShadow =
-                  "0 0 0 1px rgba(255,225,160,0.85), 0 6px 22px rgba(212,175,95,0.55), inset 0 1px 2px rgba(255,255,255,0.55)";
-                (e.currentTarget as HTMLButtonElement).style.filter = "brightness(1.07)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
-                (e.currentTarget as HTMLButtonElement).style.boxShadow =
-                  "0 0 0 1px rgba(212,175,95,0.5), 0 4px 16px rgba(212,175,95,0.35), inset 0 1px 2px rgba(255,255,255,0.4)";
-                (e.currentTarget as HTMLButtonElement).style.filter = "brightness(1)";
-              }}
-            >
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>
-              </svg>
-              {/* Pulsing availability dot */}
-              <span
-                aria-hidden="true"
-                style={{
-                  position: "absolute",
-                  bottom: -1,
-                  right: -1,
-                  width: 11,
-                  height: 11,
-                  borderRadius: "50%",
-                  background: "#3dd17a",
-                  border: "2px solid #14141a",
-                  boxShadow: "0 0 6px rgba(61,209,122,0.7)",
-                  animation: "maa-pulse-green 2.2s ease-in-out infinite",
-                }}
-              />
-            </button>
-          ) : null}
+          {/* Portrait + identity row — phone button now sits attached to the
+              avatar (bottom-right of the gold ring) where Steve asked. */}
+          <div style={{ display: "flex", alignItems: "center", gap: 14, position: "relative" }}>
 
-          {/* Portrait + identity row */}
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            {/* ── Avatar + integrated phone call button ──────────────────
+                Phone is anchored as a small premium chip at the bottom-right
+                of Sophie's portrait. On open, a luxurious tooltip "bubble"
+                fades in for ~3.5s announcing the call-me feature, then fades
+                out so it never feels nagging. Daphné 2026-05-19 brief. */}
+            <div style={{ position: "relative", flexShrink: 0 }}>
+              <SophieCallTooltip locale={locale} canCall={canTransferCurrentChatByPhone} />
             {/* Premium Sophie avatar — gold ring + soft inner glow + monogram */}
             <div
               style={{
@@ -1680,6 +1690,47 @@ export function ChatShell({
                 <path d="M12 12.5c2.6 0 4.6-2.1 4.6-4.7S14.6 3 12 3 7.4 5.2 7.4 7.8 9.4 12.5 12 12.5z" fill="#1c1410"/>
                 <path d="M4 21c0-3.9 3.6-7 8-7s8 3.1 8 7" stroke="#1c1410" strokeWidth="1.6" strokeLinecap="round" fill="#1c1410"/>
               </svg>
+            </div>
+
+            {/* Phone chip attached to the avatar's bottom-right corner */}
+            {canTransferCurrentChatByPhone ? (
+              <button
+                type="button"
+                onClick={() => { setShowInlineCallForm(true); setShowPhoneFallback(false); }}
+                title={locale === "en-CA" ? "Have Sophie call you — full conversation context" : "Faites-vous rappeler par Sophie — avec tout le contexte"}
+                aria-label={locale === "en-CA" ? "Call Sophie" : "Appeler Sophie"}
+                style={{
+                  position: "absolute",
+                  bottom: -2,
+                  right: -2,
+                  width: 28,
+                  height: 28,
+                  borderRadius: "50%",
+                  background: "radial-gradient(circle at 30% 30%, #d4af5f 0%, #b08a3a 60%, #6b4f1a 100%)",
+                  border: "2px solid #14141a",
+                  boxShadow: "0 0 0 1px rgba(212,175,95,0.55), 0 3px 10px rgba(212,175,95,0.4)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#1c1410",
+                  cursor: "pointer",
+                  padding: 0,
+                  transition: "transform 0.18s ease, box-shadow 0.18s ease",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.12)";
+                  (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 0 1px rgba(255,225,160,0.85), 0 4px 14px rgba(212,175,95,0.55)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
+                  (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 0 1px rgba(212,175,95,0.55), 0 3px 10px rgba(212,175,95,0.4)";
+                }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>
+                </svg>
+              </button>
+            ) : null}
             </div>
 
             {/* Name + title + status */}
@@ -3320,7 +3371,9 @@ export function ChatShell({
           </button>
         )}
 
-        {/* Close button — visible only when open */}
+        {/* Close button — visible only when open. Top:14 + size 38 sits
+            comfortably above the floating header's first content line on
+            mobile, no more overlap. */}
         {isOpen && (
           <button
             type="button"
@@ -3328,15 +3381,15 @@ export function ChatShell({
             onClick={() => setIsOpen(false)}
             style={{
               position: "fixed",
-              top: 24,
-              right: 24,
-              width: 44,
-              height: 44,
+              top: 14,
+              right: 18,
+              width: 38,
+              height: 38,
               borderRadius: "50%",
               background: "rgba(26,26,31,0.9)",
               border: "1px solid rgba(201,168,76,0.4)",
               color: "#c9a84c",
-              fontSize: 18,
+              fontSize: 16,
               fontWeight: 600,
               cursor: "pointer",
               zIndex: 10001,
