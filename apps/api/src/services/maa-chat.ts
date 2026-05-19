@@ -744,11 +744,31 @@ function applyPostProcessGuards(
   //     sometimes slips and says "il est possible de participer sans être
   //     membre" or "you might be able to drop in" even though the source
   //     doesn't confirm à-la-carte. Strip the affirmation surgically.
+  //     IMPORTANT: only strip AFFIRMATIONS — NEVER strip denials like "le
+  //     yoga n'est pas disponible à la carte" or "le yoga ne se fait pas à
+  //     la carte". Those are correct.
   out = out
     .replace(/\b(?:il\s+(?:est|semble|serait)\s+(?:peut[- ]?[êe]tre\s+)?possible\s+de\s+participer\s+sans\s+être\s+membre)[^.!?]*[.!?]/giu, "")
     .replace(/\b(?:vous\s+pouvez|on\s+peut)\s+participer\s+(?:au\s+yoga\s+|à\s+un\s+cours\s+)?sans\s+être\s+membre[^.!?]*[.!?]/giu, "")
     .replace(/\byou\s+(?:might\s+|may\s+|can\s+)(?:be\s+able\s+)?(?:to\s+)?drop[\s-]?in\s+(?:without\s+a\s+membership|as\s+a\s+non[- ]?member)[^.!?]*[.!?]/giu, "")
+    // affirmative "le yoga EST à la carte" — only strip when preceded by an
+    // affirmative verb (est/sont). Negations (n'est pas, ne sont pas) are
+    // preserved.
     .replace(/\b(?:le\s+yoga|les\s+cours)\s+(?:est|sont)\s+(?:disponibles?\s+)?(?:à\s+la\s+carte|drop[- ]?in)[^.!?]*[.!?]/giu, "");
+
+  // 0c. Membership-interest misread guard — Daphné 2026-05-19 demo bug. The
+  //     bot replied "Vous pouvez nous joindre au 514 845-2233, poste 234" to
+  //     "je voudrais me joindre à votre gym" — interpreting "joindre" as
+  //     CONTACT instead of JOIN. Rewrite that specific failure pattern.
+  out = out
+    .replace(
+      /\bVous\s+pouvez\s+nous\s+joindre\s+au\s+514\s*845.2233(?:[^.!?]*?poste\s+\d+)?\s*[.!?]/giu,
+      "Bienvenue ! Pour explorer les options d'abonnement ou organiser une visite, je peux vous mettre en contact avec Francis Bradette, directeur des ventes — il pourra vous orienter selon votre objectif.",
+    )
+    .replace(
+      /\bYou\s+can\s+reach\s+us\s+at\s+(?:\(?514\)?\s*845.2233|the\s+team)[^.!?]*[.!?]/giu,
+      "Welcome! To explore membership options or arrange a visit, I can connect you with Francis Bradette, our Director of Sales — he'll guide you based on your goal.",
+    );
 
   // 1. Course-count source lock (Daphné sixth-pass #3). Until MAA confirms
   //    "175 classes/week", the authoritative figure is "plus de 75 cours
@@ -1986,6 +2006,28 @@ export async function answerMaaChat(
     ? "EXPLICIT TEAM-HELP REQUEST. The visitor asked specifically for help from a team member (not info). DO NOT autonomously answer with raw facts (hours, prices, schedules). INSTEAD: (1) acknowledge their request warmly in one short sentence; (2) propose connecting them to the right person by name (Nathalie Lambert for pool/classes/sports programming, Francis Bradette for membership/visits, Clinique sportive for clinic services, Restaurant Le 1881 for restaurant); (3) ask what info you should transmit (name, phone, email, preferred time). Set followUpMode: 'clarify'. The reply MUST mention a specific staff name (Nathalie/Francis/etc.) and explicitly ask for contact info — that is the whole point of the request."
     : undefined;
 
+  // Membership-interest signal — Daphné 2026-05-19 demo bug:
+  //   "je fait de lembonpoint et voudrais me joindre a votre gym"
+  // The bot misread "me joindre à votre gym" as "joindre = contact" and
+  // replied "Vous pouvez nous joindre au 514 845-2233, poste 234." That's
+  // catastrophically wrong — the visitor is a PROSPECT expressing interest
+  // in becoming a member, often with a goal (weight loss, fitness, etc.).
+  //
+  // This detector catches the JOIN sense (membership interest) and forces a
+  // warm prospect reply with Francis + visit, not a generic phone number.
+  const isMembershipInterest =
+    /\b(?:me\s+)?joindre\s+(?:à|a)\s+(?:votre|le)\s+(?:gym|club|centre)\b/i.test(request.userMessage) ||
+    /\bjoin\s+(?:your|the)\s+(?:gym|club|center|centre)\b/i.test(request.userMessage) ||
+    /\b(?:je\s+)?(?:veux|voudrais|aimerais|souhaite|cherche\s+à|j['']?aimerais)\s+(?:devenir\s+membre|m['']?abonner|m['']?inscrire|adhérer)\b/i.test(request.userMessage) ||
+    /\b(?:I['']?d\s+like\s+to|I\s+want\s+to|I['']?m\s+looking\s+to)\s+(?:become\s+a\s+member|join|sign\s+up|enroll)\b/i.test(request.userMessage) ||
+    // Prospect goal signals — "embonpoint", "perdre du poids", "remise en forme" alongside an interest verb
+    (/\b(embonpoint|perdre\s+du\s+poids|weight\s+loss|remise\s+en\s+forme|me\s+remettre\s+en\s+forme|get\s+in\s+shape|tone\s+up|se\s+remettre\s+en\s+forme)\b/i.test(request.userMessage) &&
+     /\b(votre|your|gym|club|centre|center|m['']?inscrire|join|membre|member|abonn)\b/i.test(request.userMessage));
+
+  const membershipInterestContext = isMembershipInterest
+    ? "MEMBERSHIP INTEREST DETECTED. The visitor is expressing interest in becoming a member of Club Sportif MAA (often with a stated goal — weight loss, fitness, getting in shape, etc.). You MUST: (1) acknowledge their goal WARMLY in one short sentence (not robotic, not generic), (2) describe ONE or TWO relevant Club facilities (50,000 sq ft training floor + cardio/strength rooms, indoor 25m pool, 75+ weekly group classes including yoga/spinning/HIIT, certified trainers, on-site sports clinic), (3) propose connecting them to **Francis Bradette, Directeur des ventes** OR offer a Club visit so they can see the space and discuss options. NEVER reply with just a phone number — that's the worst possible answer to a prospect. NEVER use the word 'joindre' in the sense of 'contact us at...' — the visitor used 'joindre' to mean JOIN (become a member). Set followUpMode: 'clarify'."
+    : undefined;
+
   // Compose all available context fragments for the AI call. Multiple safety
   // contexts can apply at once (e.g. cancellation_policy + included-question
   // is rare but possible). Concatenate so the AI sees every relevant rule.
@@ -1999,6 +2041,7 @@ export async function answerMaaChat(
     vagueTopicContext,
     gymAccessMembershipUnknownContext,
     explicitTeamHelpContext,
+    membershipInterestContext,
   ]
     .filter((s): s is string => typeof s === "string" && s.length > 0)
     .join("\n\n") || undefined;

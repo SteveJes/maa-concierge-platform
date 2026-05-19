@@ -573,6 +573,55 @@ const FLOWS: Flow[] = [
       },
     ],
   },
+
+  // Daphné 2026-05-19 demo bug: "je voudrais me joindre à votre gym" was
+  // misread as "contact us at 514 845-2233". The bot must interpret JOIN as
+  // membership interest, never reply with a phone number alone.
+  {
+    id: "membership-interest-embonpoint",
+    label: "Prospect with weight-loss goal wants to join: WARM acknowledgement + Francis/visit, NO bare phone number",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "je fais de l'embonpoint et voudrais me joindre à votre gym",
+        expect: {
+          mustInclude: [/(francis|bradette|abonnement|visite|adh[ée]sion|trainer|entra[îi]neur|programme|d['']?accueillir|bienvenue)/i],
+          mustNotInclude: [
+            /^Vous\s+pouvez\s+nous\s+joindre\s+au\s+514\s*845.2233/i,
+            /^You\s+can\s+reach\s+us\s+at/i,
+          ],
+        },
+      },
+    ],
+  },
+  {
+    id: "membership-interest-join-direct",
+    label: "Direct 'I want to join' must route to Francis/visit, never to a generic phone number",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "j'aimerais devenir membre de votre club",
+        expect: {
+          mustInclude: [/(francis|bradette|abonnement|visite|adh[ée]sion)/i],
+          mustNotInclude: [/^Vous\s+pouvez\s+nous\s+joindre\s+au\s+514/i],
+        },
+      },
+    ],
+  },
+  {
+    id: "yoga-denial-not-affirmation",
+    label: "Yoga: when bot says 'NOT à la carte', it must NOT trigger the affirmation guard wrongly",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "puis-je faire du yoga sans abonnement ?",
+        expect: {
+          // Either bot affirms membership-only OR uses "non" / "n'est pas" denial — both valid
+          mustInclude: [/(membre|abonnement|francis|bradette|adh[ée]sion)/i],
+        },
+      },
+    ],
+  },
 ];
 
 async function postChat(message: string, locale: string, conversationId: string | null): Promise<{
@@ -603,11 +652,21 @@ function longestCommonSubstring(a: string, b: string): string {
   return best;
 }
 
+// Throttle so we don't hammer NocoDB / OpenAI rate limits during back-to-back
+// flows. 600ms between requests keeps the full 37-flow suite well under any
+// burst limit while only adding ~22s to total runtime.
+const THROTTLE_MS = Number(process.env.DAPHNE_REPLAY_THROTTLE_MS ?? 600);
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function runFlow(flow: Flow): Promise<{ id: string; passed: boolean; failureReason?: string; transcript: string[] }> {
   const transcript: string[] = [];
   let conversationId: string | null = null;
   const priorBotReplies: string[] = [];
   for (const [i, turn] of flow.turns.entries()) {
+    if (THROTTLE_MS > 0) await sleep(THROTTLE_MS);
     transcript.push(`USER ${i + 1}: ${turn.say}`);
     let reply: string;
     try {
