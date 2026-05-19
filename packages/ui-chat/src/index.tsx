@@ -86,10 +86,15 @@ function SophieCallTooltip({ locale, canCall }: { locale: string; canCall: boole
   useEffect(() => {
     if (!canCall) return;
     if (typeof window === "undefined") return;
-    const seenKey = "dubub_call_tooltip_seen";
+    // Per-chat-open key (bumped to _v3 on 2026-05-19 so existing users
+    // who already saw the early version get the new tooltip on next visit).
+    // Cap at 3 reveals per session — visible enough to land, not naggy.
+    const seenKey = "dubub_call_tooltip_seen_v3";
+    let count = 0;
     try {
-      if (window.sessionStorage.getItem(seenKey) === "1") return;
-    } catch { /* sessionStorage blocked — show anyway */ }
+      count = Number(window.sessionStorage.getItem(seenKey) ?? "0");
+    } catch { /* sessionStorage blocked — count stays 0 */ }
+    if (count >= 3) return;
 
     // Slower reveal cadence: 1.1s wait → 7.2s hold → 0.9s fade-out tail.
     // Reads "deliberate" rather than "notification". Daphné 2026-05-19
@@ -97,7 +102,7 @@ function SophieCallTooltip({ locale, canCall }: { locale: string; canCall: boole
     const fadeInTimer = setTimeout(() => setVisible(true), 1100);
     const fadeOutTimer = setTimeout(() => {
       setVisible(false);
-      try { window.sessionStorage.setItem(seenKey, "1"); } catch { /* ok */ }
+      try { window.sessionStorage.setItem(seenKey, String(count + 1)); } catch { /* ok */ }
     }, 8300);
 
     return () => {
