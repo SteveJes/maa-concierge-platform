@@ -1930,25 +1930,40 @@ export function createServer() {
             return { fr: "une rencontre avec notre équipe", en: "a meeting with our team" };
           return { fr: "", en: "" };
         }
-        // MAA — original topic detection
-        if (m.includes("tarif") || m.includes("prix") || m.includes("abonnement") || m.includes("cost") || m.includes("price") || m.includes("membership"))
-          return { fr: "nos tarifs et abonnements", en: "our membership pricing" };
-        if (m.includes("piscine") || m.includes("pool") || m.includes("nage"))
-          return { fr: "notre piscine", en: "our pool" };
-        if (m.includes("cours") || m.includes("classe") || m.includes("yoga") || m.includes("pilates") || m.includes("spinning") || m.includes("class"))
-          return { fr: "nos cours de groupe", en: "our group classes" };
-        if (m.includes("horaire") || m.includes("heure") || m.includes("ouvert") || m.includes("schedule") || m.includes("hours"))
-          return { fr: "nos horaires", en: "our hours" };
-        if (m.includes("spa") || m.includes("sauna") || m.includes("hammam"))
-          return { fr: "notre espace spa", en: "our spa" };
-        if (m.includes("visite") || m.includes("tour") || m.includes("rendez-vous") || m.includes("visit"))
-          return { fr: "une visite du club", en: "a club visit" };
+        // MAA — topic detection. Order matters: more SPECIFIC topics first
+        // so a chat about "pickleball" doesn't get hijacked by "pool" because
+        // of an earlier passing mention of "nage" / "piscine".
+        // Daphné 2026-05-19 demo bug: chat about pickleball → Sophie opened
+        // the phone call with "notre piscine". Pickleball was completely
+        // missing from this list.
+        if (m.includes("pickleball") || m.includes("pickle ball") || m.includes("pickelball") || m.includes("pickball"))
+          return { fr: "le pickleball", en: "pickleball" };
         if (m.includes("squash"))
           return { fr: "nos courts de squash", en: "our squash courts" };
+        if (m.includes("clinique") || m.includes("physio") || m.includes("ostéo") || m.includes("osteo") || m.includes("massoth") || m.includes("massage") || m.includes("nutrition"))
+          return { fr: "notre clinique sportive et services bien-être", en: "our sports clinic and wellness services" };
+        if (m.includes("restaurant") || m.includes("1881") || m.includes("menu") || m.includes("table"))
+          return { fr: "le restaurant Le 1881", en: "Restaurant Le 1881" };
+        if (m.includes("maagazine") || m.includes("maa-magazine") || m.includes("magazine du club"))
+          return { fr: "le MAAgazine", en: "the MAAgazine" };
+        if (m.includes("cirque") || m.includes("powerwatts") || m.includes("natation adulte") || m.includes("pilates reformer"))
+          return { fr: "nos cours de spécialité", en: "our specialty programs" };
+        if (m.includes("cours") || m.includes("classe") || m.includes("yoga") || m.includes("pilates") || m.includes("spinning") || m.includes("class"))
+          return { fr: "nos cours de groupe", en: "our group classes" };
         if (m.includes("etudiant") || m.includes("étudiant") || m.includes("student"))
           return { fr: "nos tarifs étudiants", en: "our student rates" };
         if (m.includes("senior") || m.includes("aîné"))
           return { fr: "nos tarifs seniors", en: "our senior rates" };
+        if (m.includes("tarif") || m.includes("prix") || m.includes("abonnement") || m.includes("cost") || m.includes("price") || m.includes("membership"))
+          return { fr: "nos tarifs et abonnements", en: "our membership pricing" };
+        if (m.includes("piscine") || m.includes("pool") || m.includes("nage") || m.includes("natation"))
+          return { fr: "notre piscine", en: "our pool" };
+        if (m.includes("spa") || m.includes("sauna") || m.includes("hammam") || m.includes("bain"))
+          return { fr: "notre espace spa", en: "our spa" };
+        if (m.includes("horaire") || m.includes("heure") || m.includes("ouvert") || m.includes("schedule") || m.includes("hours"))
+          return { fr: "nos horaires", en: "our hours" };
+        if (m.includes("visite") || m.includes("tour") || m.includes("rendez-vous") || m.includes("visit"))
+          return { fr: "une visite du club", en: "a club visit" };
         return { fr: "", en: "" };
       };
 

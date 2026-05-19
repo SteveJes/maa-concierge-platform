@@ -1573,17 +1573,21 @@ export function ChatShell({
               color: "#d4af5f",
               fontWeight: 700,
               marginBottom: 16,
-              paddingRight: 58,
+              // Reserve clearance for BOTH the phone button (left) and the
+              // fixed-positioned close ✕ (sitting at viewport top:24/right:24).
+              paddingRight: 124,
             }}
           >
             {locale === "en-CA" ? "AI CONCIERGE BY DUBUB" : "CONCIERGE IA PAR DUBUB"}
           </div>
 
           {/* ── Top-right luxury call button ─────────────────────────────────
-              Restored 2026-05-19. Anchored top-right of the premium header.
-              Click opens the inline call form — when the visitor submits,
-              the VAPI handoff carries the full conversation context so
-              Sophie picks up the call knowing exactly what they were
+              Restored 2026-05-19. Sits LEFT of the close ✕ button (which is
+              fixed at viewport top:24/right:24 with width 44 = 68px from right
+              edge). Phone button anchors at right:78 to leave a clean ~10px
+              gap. On click, opens the inline call form — when the visitor
+              submits, the VAPI handoff carries the full conversation context
+              so Sophie picks up the call already briefed on what they were
               discussing in chat (`handoff_last_user_message`). */}
           {canTransferCurrentChatByPhone ? (
             <button
@@ -1593,8 +1597,8 @@ export function ChatShell({
               aria-label={locale === "en-CA" ? "Call Sophie" : "Appeler Sophie"}
               style={{
                 position: "absolute",
-                top: 14,
-                right: 14,
+                top: 18,
+                right: 78,
                 width: 42,
                 height: 42,
                 borderRadius: "50%",
