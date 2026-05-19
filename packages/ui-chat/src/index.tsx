@@ -90,14 +90,16 @@ function SophieCallTooltip({ locale, canCall }: { locale: string; canCall: boole
     // earlier v3 flag now that the copy + cadence are different. Up to 5
     // gentle re-reveals across the visitor's chat session, each spaced ~38s
     // apart and bouncing in luxuriously. Visible but never aggressive.
-    const seenKey = "dubub_call_tooltip_seen_v4";
+    const seenKey = "dubub_call_tooltip_seen_v5";
     let count = 0;
     try {
       count = Number(window.sessionStorage.getItem(seenKey) ?? "0");
     } catch { /* sessionStorage blocked — count stays 0 */ }
+    // Land sooner so the user actually catches it while still looking at
+    // the avatar; hold a beat longer; periodic gentle re-reveal.
     const MAX_REVEALS = 5;
-    const HOLD_MS = 6800;
-    const GAP_MS = 38000;
+    const HOLD_MS = 7400;
+    const GAP_MS = 32000;
     let cancelled = false;
     const timers: ReturnType<typeof setTimeout>[] = [];
 
@@ -117,8 +119,10 @@ function SophieCallTooltip({ locale, canCall }: { locale: string; canCall: boole
       }, delayMs));
     };
 
-    // First reveal lands 1.1s after the chat opens — feels deliberate.
-    scheduleOne(1100);
+    // First reveal at 750ms — lands while the chat-open animation is
+    // still finishing, so the visitor sees the bubble as part of the
+    // arrival flow rather than missing it.
+    scheduleOne(750);
 
     return () => {
       cancelled = true;
@@ -140,35 +144,34 @@ function SophieCallTooltip({ locale, canCall }: { locale: string; canCall: boole
       aria-hidden={!visible}
       style={{
         position: "absolute",
-        // Anchor the tooltip above and slightly to the RIGHT of the avatar
-        // so its little caret points down at the phone chip (bottom-right
-        // corner of the avatar). Keeps the visual flow intentional.
-        top: -46,
-        left: 32,
+        // Anchor the tooltip below the avatar and floated to the right so
+        // it can breathe on mobile (full chat width − avatar width) instead
+        // of being crushed into a 190 px box. Caret points UP at the
+        // phone chip.
+        top: 74,
+        left: 12,
         background: "linear-gradient(135deg, rgba(44,36,22,0.98), rgba(28,22,14,0.98))",
-        border: "1px solid rgba(212,175,95,0.62)",
+        border: "1px solid rgba(212,175,95,0.7)",
         borderRadius: 14,
-        padding: "8px 13px",
-        fontSize: 11.5,
+        padding: "10px 14px",
+        fontSize: 12.5,
         color: "#f8efdd",
-        // Mobile-safe wrap: stay on one line when there's room, gracefully
-        // break to a second line on narrow screens instead of clipping
-        // off-screen. maxWidth caps the bubble to ~190 px so it never
-        // shoots past the avatar on small viewports.
         whiteSpace: "normal",
-        maxWidth: 190,
-        lineHeight: 1.35,
+        // Allow up to the full chat-panel width minus a small inset. On
+        // mobile (panel ≈ 100vw) this gives the bubble a full readable
+        // line; on desktop it caps at ~280 px.
+        maxWidth: "min(280px, calc(100vw - 56px))",
+        lineHeight: 1.4,
         textAlign: "left",
         fontWeight: 500,
         fontStyle: "italic",
         fontFamily: "Georgia, 'Times New Roman', serif",
         letterSpacing: "0.01em",
         boxShadow:
-          "0 10px 28px rgba(0,0,0,0.55), 0 0 0 1px rgba(212,175,95,0.28), 0 0 18px rgba(212,175,95,0.22)",
+          "0 10px 28px rgba(0,0,0,0.55), 0 0 0 1px rgba(212,175,95,0.32), 0 0 22px rgba(212,175,95,0.32)",
         opacity: visible ? 1 : 0,
-        // Soft spring overshoot on entrance (cubic-bezier with t>1) for the
-        // luxurious bounce Steve asked for; gentle ease-out on the way back.
-        transform: visible ? "translateY(0) scale(1)" : "translateY(8px) scale(0.94)",
+        // Soft spring overshoot on entrance for the luxurious bounce.
+        transform: visible ? "translateY(0) scale(1)" : "translateY(-8px) scale(0.94)",
         transition: visible
           ? "opacity 0.9s cubic-bezier(0.22, 1.4, 0.36, 1), transform 0.95s cubic-bezier(0.34, 1.56, 0.64, 1)"
           : "opacity 0.7s ease, transform 0.7s ease",
@@ -178,18 +181,19 @@ function SophieCallTooltip({ locale, canCall }: { locale: string; canCall: boole
     >
       <span style={{ marginRight: 6 }}>📞</span>
       {msg}
-      {/* Tiny gold caret pointing down toward the phone chip. */}
+      {/* Tiny gold caret pointing UP toward the phone chip (bubble sits
+          below the avatar now so the eye flows up to the icon). */}
       <span
         aria-hidden="true"
         style={{
           position: "absolute",
-          bottom: -6,
-          left: 14,
+          top: -6,
+          left: 32,
           width: 10,
           height: 10,
           background: "linear-gradient(135deg, rgba(44,36,22,0.98), rgba(28,22,14,0.98))",
-          borderRight: "1px solid rgba(212,175,95,0.62)",
-          borderBottom: "1px solid rgba(212,175,95,0.62)",
+          borderLeft: "1px solid rgba(212,175,95,0.7)",
+          borderTop: "1px solid rgba(212,175,95,0.7)",
           transform: "rotate(45deg)",
         }}
       />
