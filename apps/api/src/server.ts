@@ -3699,94 +3699,160 @@ export function createServer() {
     return reply.send({ results });
   });
 
-  // Custom LLM proxy for VAPI — VAPI appends /chat/completions to the URL, so register both paths
+  // VAPI Custom LLM — routes the phone call's text through the SAME brain
+  // as web chat (`answerMaaChat`). This is the path that gives phone Sophie
+  // RAG, all 12 post-process guards, the member-status protocol, autonomy
+  // rules, MAAgazine phrase strip, restaurant-context handoff — every fix
+  // we ship to chat now reaches the phone surface automatically.
+  //
+  // VAPI dashboard config (per tenant):
+  //   Provider: Custom LLM
+  //   URL:      https://api.dubub.com/v1/vapi/llm?tenantId=maa (or =dubub)
+  //   Model:    any non-empty string (we ignore it — model selection lives
+  //             inside answerMaaChat).
+  //
+  // VAPI appends /chat/completions to the URL on outbound calls, so we
+  // register BOTH /v1/vapi/llm and /v1/vapi/llm/chat/completions.
+  //
+  // Multi-tenant: ?tenantId= query param identifies which brain to wake.
+  // Unknown / missing tenantId → defaults to "maa" (safe fallback).
+  //
+  // Rollback path: flip VAPI dashboard Provider back to "OpenAI" + paste
+  // the prompt from _inbox/vapi-prompt-{tenant}-v2.txt. One click.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async function vapiLlmHandler(request: any, reply: any) {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return reply.code(500).send({ error: "OPENAI_API_KEY not set" });
-    }
-
     const body = request.body as {
       messages?: { role: string; content: string }[];
       model?: string;
-      temperature?: number;
-      max_tokens?: number;
       stream?: boolean;
     };
 
+    // tenantId comes from the URL query (one VAPI assistant per tenant).
+    const tenantIdRaw = ((request.query as Record<string, string | undefined>).tenantId ?? "maa").toLowerCase();
+    const tenantId = getTenant(tenantIdRaw) ? tenantIdRaw : "maa";
+
     const messages = body.messages ?? [];
-    const temperature = body.temperature ?? 0.3;
-    const max_tokens = body.max_tokens ?? 500;
 
-    // Detect locale from system prompt to pick the right filler
-    const systemContent = messages.find(m => m.role === "system")?.content ?? "";
-    const isEnglish = systemContent.includes("locale detected: en") ||
-      (messages[messages.length - 1]?.content ?? "").match(/^(hi|hello|yes|ok|sure|what|how|when|where|do you|is there|can you)/i) !== null;
-    const fillers = isEnglish
-      ? ["Sure, ", "Absolutely, ", "Of course, "]
-      : ["Oui, ", "Bien sûr, ", "Absolument, ", "Tout à fait, "];
-    const filler = fillers[Math.floor(Math.random() * fillers.length)];
+    // Find the last USER turn — that's the "current question" the brain
+    // answers. Everything before becomes conversationHistory.
+    const lastUserIdx = (() => {
+      for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i]?.role === "user") return i;
+      }
+      return -1;
+    })();
 
-    const callId = `chatcmpl-${Date.now()}`;
+    const userMessage = lastUserIdx >= 0 ? (messages[lastUserIdx]?.content ?? "") : "";
+    const conversationHistory = messages
+      .slice(0, lastUserIdx)
+      .filter((m) => m.role === "user" || m.role === "assistant")
+      .map((m) => ({ role: m.role as "user" | "assistant", content: m.content ?? "" }));
+
+    // Locale detection — VAPI doesn't pass it explicitly. Use the last user
+    // turn's text. Default to fr-CA for MAA / DUBUB Quebec audience.
+    const fr = (() => {
+      const text = userMessage.toLowerCase();
+      if (!text) return true;
+      // Strong English signals — punctuation + common English words.
+      const englishHits = (text.match(/\b(the|and|is|are|you|i|can|do|does|what|how|where|when|why|please|thanks|hello|hi|yes|no|need|want|with|for|about)\b/g) ?? []).length;
+      const frenchHits = (text.match(/\b(le|la|les|un|une|des|du|de|et|est|sont|vous|je|on|nous|pouvez|comment|où|quand|pourquoi|svp|merci|bonjour|oui|non|avec|pour|sans|chez)\b/g) ?? []).length;
+      return frenchHits >= englishHits;
+    })();
+    const locale = fr ? "fr-CA" : "en-CA";
+
+    const callId = `chatcmpl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
     reply.raw.setHeader("Content-Type", "text/event-stream");
     reply.raw.setHeader("Cache-Control", "no-cache");
     reply.raw.setHeader("Connection", "keep-alive");
     reply.raw.setHeader("Access-Control-Allow-Origin", "*");
+    reply.raw.flushHeaders?.();
 
-    // Emit filler immediately — ElevenLabs starts TTS within ~500ms
-    const fillerChunk = {
+    const writeChunk = (deltaContent: string, finishReason: string | null = null) => {
+      const chunk = {
+        id: callId,
+        object: "chat.completion.chunk",
+        created: Math.floor(Date.now() / 1000),
+        model: "dubub-brain-v1",
+        choices: [
+          {
+            index: 0,
+            delta: deltaContent === "" && finishReason ? {} : { role: "assistant" as const, content: deltaContent },
+            finish_reason: finishReason,
+          },
+        ],
+      };
+      reply.raw.write(`data: ${JSON.stringify(chunk)}\n\n`);
+    };
+
+    // Emit a tiny role-only delta first so VAPI knows the assistant is
+    // starting to speak. Keeps the channel warm during the ~2-4s
+    // answerMaaChat round-trip.
+    reply.raw.write(`data: ${JSON.stringify({
       id: callId,
       object: "chat.completion.chunk",
-      choices: [{ index: 0, delta: { role: "assistant", content: filler }, finish_reason: null }],
-    };
-    reply.raw.write(`data: ${JSON.stringify(fillerChunk)}\n\n`);
+      created: Math.floor(Date.now() / 1000),
+      model: "dubub-brain-v1",
+      choices: [{ index: 0, delta: { role: "assistant" }, finish_reason: null }],
+    })}\n\n`);
 
     try {
-      const upstream = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages,
-          temperature,
-          max_tokens,
-          stream: true,
-        }),
+      const start = Date.now();
+      const result = await answerMaaChat({
+        userMessage,
+        locale,
+        conversationHistory,
+        tenantCode: tenantId,
+        maxResults: 5,
       });
+      const elapsed = Date.now() - start;
 
-      if (!upstream.ok || !upstream.body) {
-        reply.raw.write(`data: [DONE]\n\n`);
-        reply.raw.end();
-        return;
-      }
+      const assistantMessage = (result.assistantMessage ?? "").trim();
 
-      const reader = upstream.body.getReader();
-      const decoder = new TextDecoder();
+      // Stream the response word-by-word so VAPI's TTS gets a smooth feed.
+      // ~25-char chunks keeps prosody natural and stays well under any
+      // SSE buffer limit. 35 ms between chunks adds ~half a second of
+      // total feel without hurting time-to-first-audio.
+      const words = assistantMessage.split(/(\s+)/);
       let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            reply.raw.write(line + "\n\n");
-          }
+      const flush = () => {
+        if (buffer.length > 0) {
+          writeChunk(buffer);
+          buffer = "";
+        }
+      };
+      for (const w of words) {
+        buffer += w;
+        if (buffer.length >= 25) {
+          flush();
+          await new Promise((r) => setTimeout(r, 35));
         }
       }
-    } catch (err) {
-      request.log.error({ err }, "VAPI custom LLM upstream error");
-    }
+      flush();
 
-    reply.raw.write("data: [DONE]\n\n");
-    reply.raw.end();
+      // Final chunk with finish_reason — required by OpenAI / VAPI spec.
+      writeChunk("", "stop");
+      reply.raw.write("data: [DONE]\n\n");
+      reply.raw.end();
+
+      request.log.info({
+        tenantId,
+        locale,
+        userMessage: userMessage.slice(0, 80),
+        replyLen: assistantMessage.length,
+        elapsedMs: elapsed,
+      }, "VAPI custom LLM brain reply");
+    } catch (err) {
+      request.log.error({ err, tenantId }, "VAPI custom LLM brain error");
+      // Polite fallback so the caller hears SOMETHING, not silence.
+      const fallback = fr
+        ? "Je suis désolée, j'ai un petit souci technique. Pour vous aider, vous pouvez aussi appeler le 514 845-2233, poste 234."
+        : "I'm sorry, I'm having a small technical issue. To help you, you can also call (514) 845-2233, extension 234.";
+      writeChunk(fallback);
+      writeChunk("", "stop");
+      reply.raw.write("data: [DONE]\n\n");
+      reply.raw.end();
+    }
   }
 
   app.post("/v1/vapi/llm", vapiLlmHandler);
