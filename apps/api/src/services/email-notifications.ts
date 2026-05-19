@@ -99,13 +99,13 @@ function buildLeadHtml(p: LeadEmailPayload): string {
         concierge: "AI Concierge",
       };
 
+  // NOTE: actionItems are intentionally hidden from the rendered HTML —
+  // Steve's 2026-05-19 feedback: clients shouldn't see "À FAIRE" bullets
+  // because they look like the AI is instructing the staff. The data
+  // remains in the API trace (Langfuse) and in the structured logs for
+  // internal review, just not surfaced to email recipients.
   const richSummaryHtml = p.richSummary
     ? `
-    ${p.richSummary.actionItems.length > 0 ? `
-      <div class="label">${T.actionItems}</div>
-      <ul style="margin:0 0 16px;padding-left:22px;color:#1a1a1a;font-size:14px;line-height:1.55;">
-        ${p.richSummary.actionItems.map((it) => `<li>${escapeHtml(it)}</li>`).join("")}
-      </ul>` : ""}
     ${p.richSummary.topicsAsked.length > 0 ? `
       <div class="label">${T.topicsAsked}</div>
       <div style="font-size:13px;color:#444;margin-bottom:16px;">${p.richSummary.topicsAsked.map((t) => `<span style="display:inline-block;background:#f0ece1;border:1px solid rgba(201,168,76,0.4);border-radius:12px;padding:3px 10px;margin:0 6px 6px 0;font-size:12px;">${escapeHtml(t)}</span>`).join("")}</div>` : ""}
@@ -181,7 +181,7 @@ function buildLeadHtml(p: LeadEmailPayload): string {
     </div>
     <a href="tel:${p.phone}" class="cta">Rappeler maintenant</a>
   </div>
-  <div class="footer">${p.tenantName} — Concierge IA par MAA Platform</div>
+  <div class="footer">${p.tenantName} — Concierge IA propulsé par <strong style="color:#c9a84c;letter-spacing:0.08em;">DUBUB</strong></div>
 </div>
 </body>
 </html>`;
@@ -225,9 +225,9 @@ export async function sendLeadNotificationEmail(p: LeadEmailPayload): Promise<bo
           p.email ? `Courriel: ${p.email}` : null,
           p.preferredTime ? `Plage horaire: ${p.preferredTime}` : null,
           p.aiSummary ? `Résumé IA: ${p.aiSummary}` : null,
-          p.richSummary?.actionItems?.length
-            ? `À faire:\n${p.richSummary.actionItems.map((it) => `  - ${it}`).join("\n")}`
-            : null,
+          // actionItems are intentionally NOT rendered in the email body
+          // (HTML or plain text) per Steve's 2026-05-19 feedback. The data
+          // is still generated and traced via Langfuse for internal review.
           p.richSummary?.suggestedNextStep
             ? `Prochaine étape: ${p.richSummary.suggestedNextStep}`
             : null,
