@@ -1573,11 +1573,78 @@ export function ChatShell({
               color: "#d4af5f",
               fontWeight: 700,
               marginBottom: 16,
-              paddingRight: 32,
+              paddingRight: 58,
             }}
           >
             {locale === "en-CA" ? "AI CONCIERGE BY DUBUB" : "CONCIERGE IA PAR DUBUB"}
           </div>
+
+          {/* ── Top-right luxury call button ─────────────────────────────────
+              Restored 2026-05-19. Anchored top-right of the premium header.
+              Click opens the inline call form — when the visitor submits,
+              the VAPI handoff carries the full conversation context so
+              Sophie picks up the call knowing exactly what they were
+              discussing in chat (`handoff_last_user_message`). */}
+          {canTransferCurrentChatByPhone ? (
+            <button
+              type="button"
+              onClick={() => { setShowInlineCallForm(true); setShowPhoneFallback(false); }}
+              title={locale === "en-CA" ? "Have Sophie call you — with full conversation context" : "Faites-vous rappeler par Sophie — avec tout le contexte de la conversation"}
+              aria-label={locale === "en-CA" ? "Call Sophie" : "Appeler Sophie"}
+              style={{
+                position: "absolute",
+                top: 14,
+                right: 14,
+                width: 42,
+                height: 42,
+                borderRadius: "50%",
+                background:
+                  "radial-gradient(circle at 30% 30%, #d4af5f 0%, #b08a3a 60%, #6b4f1a 100%)",
+                border: "1px solid rgba(255,225,160,0.85)",
+                boxShadow:
+                  "0 0 0 1px rgba(212,175,95,0.5), 0 4px 16px rgba(212,175,95,0.35), inset 0 1px 2px rgba(255,255,255,0.4)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#1c1410",
+                cursor: "pointer",
+                padding: 0,
+                transition: "transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.08)";
+                (e.currentTarget as HTMLButtonElement).style.boxShadow =
+                  "0 0 0 1px rgba(255,225,160,0.85), 0 6px 22px rgba(212,175,95,0.55), inset 0 1px 2px rgba(255,255,255,0.55)";
+                (e.currentTarget as HTMLButtonElement).style.filter = "brightness(1.07)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
+                (e.currentTarget as HTMLButtonElement).style.boxShadow =
+                  "0 0 0 1px rgba(212,175,95,0.5), 0 4px 16px rgba(212,175,95,0.35), inset 0 1px 2px rgba(255,255,255,0.4)";
+                (e.currentTarget as HTMLButtonElement).style.filter = "brightness(1)";
+              }}
+            >
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>
+              </svg>
+              {/* Pulsing availability dot */}
+              <span
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  bottom: -1,
+                  right: -1,
+                  width: 11,
+                  height: 11,
+                  borderRadius: "50%",
+                  background: "#3dd17a",
+                  border: "2px solid #14141a",
+                  boxShadow: "0 0 6px rgba(61,209,122,0.7)",
+                  animation: "maa-pulse-green 2.2s ease-in-out infinite",
+                }}
+              />
+            </button>
+          ) : null}
 
           {/* Portrait + identity row */}
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
