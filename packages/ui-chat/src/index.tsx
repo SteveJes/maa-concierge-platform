@@ -151,7 +151,14 @@ function SophieCallTooltip({ locale, canCall }: { locale: string; canCall: boole
         padding: "8px 13px",
         fontSize: 11.5,
         color: "#f8efdd",
-        whiteSpace: "nowrap",
+        // Mobile-safe wrap: stay on one line when there's room, gracefully
+        // break to a second line on narrow screens instead of clipping
+        // off-screen. maxWidth caps the bubble to ~190 px so it never
+        // shoots past the avatar on small viewports.
+        whiteSpace: "normal",
+        maxWidth: 190,
+        lineHeight: 1.35,
+        textAlign: "left",
         fontWeight: 500,
         fontStyle: "italic",
         fontFamily: "Georgia, 'Times New Roman', serif",
