@@ -86,36 +86,54 @@ function SophieCallTooltip({ locale, canCall }: { locale: string; canCall: boole
   useEffect(() => {
     if (!canCall) return;
     if (typeof window === "undefined") return;
-    // Per-chat-open key (bumped to _v3 on 2026-05-19 so existing users
-    // who already saw the early version get the new tooltip on next visit).
-    // Cap at 3 reveals per session — visible enough to land, not naggy.
-    const seenKey = "dubub_call_tooltip_seen_v3";
+    // Per-chat-open cap, key bumped to _v4 on 2026-05-19 to invalidate the
+    // earlier v3 flag now that the copy + cadence are different. Up to 5
+    // gentle re-reveals across the visitor's chat session, each spaced ~38s
+    // apart and bouncing in luxuriously. Visible but never aggressive.
+    const seenKey = "dubub_call_tooltip_seen_v4";
     let count = 0;
     try {
       count = Number(window.sessionStorage.getItem(seenKey) ?? "0");
     } catch { /* sessionStorage blocked — count stays 0 */ }
-    if (count >= 3) return;
+    const MAX_REVEALS = 5;
+    const HOLD_MS = 6800;
+    const GAP_MS = 38000;
+    let cancelled = false;
+    const timers: ReturnType<typeof setTimeout>[] = [];
 
-    // Slower reveal cadence: 1.1s wait → 7.2s hold → 0.9s fade-out tail.
-    // Reads "deliberate" rather than "notification". Daphné 2026-05-19
-    // brief: more visibility for a winning feature, still never naggy.
-    const fadeInTimer = setTimeout(() => setVisible(true), 1100);
-    const fadeOutTimer = setTimeout(() => {
-      setVisible(false);
-      try { window.sessionStorage.setItem(seenKey, String(count + 1)); } catch { /* ok */ }
-    }, 8300);
+    const scheduleOne = (delayMs: number) => {
+      if (cancelled || count >= MAX_REVEALS) return;
+      timers.push(setTimeout(() => {
+        if (cancelled) return;
+        setVisible(true);
+        timers.push(setTimeout(() => {
+          if (cancelled) return;
+          setVisible(false);
+          count += 1;
+          try { window.sessionStorage.setItem(seenKey, String(count)); } catch { /* ok */ }
+          // Schedule the next reveal AFTER this one finishes fading out.
+          scheduleOne(GAP_MS);
+        }, HOLD_MS));
+      }, delayMs));
+    };
+
+    // First reveal lands 1.1s after the chat opens — feels deliberate.
+    scheduleOne(1100);
 
     return () => {
-      clearTimeout(fadeInTimer);
-      clearTimeout(fadeOutTimer);
+      cancelled = true;
+      for (const t of timers) clearTimeout(t);
     };
   }, [canCall]);
 
   if (!canCall) return null;
   const isFr = !locale.startsWith("en");
+  // Correct phrasing — the visitor calls Sophie (with their chat context
+  // pre-loaded into her brain via the VAPI handoff), not the other way
+  // around. Steve 2026-05-19: "we call Sophie, remember?".
   const msg = isFr
-    ? "Préférez la voix ? Sophie peut vous appeler."
-    : "Prefer voice? Sophie can call you.";
+    ? "Appelez Sophie — elle connaît déjà votre demande."
+    : "Call Sophie — she's already briefed on your request.";
 
   return (
     <div
@@ -141,8 +159,12 @@ function SophieCallTooltip({ locale, canCall }: { locale: string; canCall: boole
         boxShadow:
           "0 10px 28px rgba(0,0,0,0.55), 0 0 0 1px rgba(212,175,95,0.28), 0 0 18px rgba(212,175,95,0.22)",
         opacity: visible ? 1 : 0,
-        transform: visible ? "translateY(0)" : "translateY(6px)",
-        transition: "opacity 0.7s ease, transform 0.7s ease",
+        // Soft spring overshoot on entrance (cubic-bezier with t>1) for the
+        // luxurious bounce Steve asked for; gentle ease-out on the way back.
+        transform: visible ? "translateY(0) scale(1)" : "translateY(8px) scale(0.94)",
+        transition: visible
+          ? "opacity 0.9s cubic-bezier(0.22, 1.4, 0.36, 1), transform 0.95s cubic-bezier(0.34, 1.56, 0.64, 1)"
+          : "opacity 0.7s ease, transform 0.7s ease",
         pointerEvents: "none",
         zIndex: 5,
       }}
