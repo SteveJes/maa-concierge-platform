@@ -740,6 +740,16 @@ function applyPostProcessGuards(
     .replace(/\bpublication\s+exclusive\s+du\s+(club\s+sportif\s+maa|club)\b/gi, "magazine du Club")
     .replace(/\bune\s+publication\s+exclusive\b/gi, "le magazine du Club");
 
+  // 0b. Yoga / group-class à-la-carte affirmation guard. At temp 0.3 the model
+  //     sometimes slips and says "il est possible de participer sans être
+  //     membre" or "you might be able to drop in" even though the source
+  //     doesn't confirm à-la-carte. Strip the affirmation surgically.
+  out = out
+    .replace(/\b(?:il\s+(?:est|semble|serait)\s+(?:peut[- ]?[êe]tre\s+)?possible\s+de\s+participer\s+sans\s+être\s+membre)[^.!?]*[.!?]/giu, "")
+    .replace(/\b(?:vous\s+pouvez|on\s+peut)\s+participer\s+(?:au\s+yoga\s+|à\s+un\s+cours\s+)?sans\s+être\s+membre[^.!?]*[.!?]/giu, "")
+    .replace(/\byou\s+(?:might\s+|may\s+|can\s+)(?:be\s+able\s+)?(?:to\s+)?drop[\s-]?in\s+(?:without\s+a\s+membership|as\s+a\s+non[- ]?member)[^.!?]*[.!?]/giu, "")
+    .replace(/\b(?:le\s+yoga|les\s+cours)\s+(?:est|sont)\s+(?:disponibles?\s+)?(?:à\s+la\s+carte|drop[- ]?in)[^.!?]*[.!?]/giu, "");
+
   // 1. Course-count source lock (Daphné sixth-pass #3). Until MAA confirms
   //    "175 classes/week", the authoritative figure is "plus de 75 cours
   //    par semaine". Catches "175 cours", "175 classes", "175 séances", and
@@ -1698,6 +1708,32 @@ async function callOpenAiForAnswer(
   } as OpenAiJsonResponse & { _usage: { model: string; inputTokens: number; outputTokens: number } };
 }
 
+/**
+ * Detect a conversation-closing statement ("merci", "thanks", "ok merci",
+ * "bye", "au revoir", "parfait merci"). When the visitor is wrapping up the
+ * thread, the bot should give a SHORT warm acknowledgement — never re-answer
+ * the previous question. Daphné 2026-05-19 canary catch: "ok merci" was
+ * causing a verbatim repetition of the prior MAAgazine description.
+ */
+function isConversationClose(userMessage: string): boolean {
+  const m = userMessage.trim().toLowerCase().replace(/[!?.]/g, "");
+  if (m.length === 0 || m.length > 30) return false;
+  return /^(?:ok\s+)?(merci|merci\s+beaucoup|thanks?|thank\s+you|ty|tysm|cheers|bye|bye[\s-]?bye|au\s+revoir|à\s+plus|a\s+plus|à\s+bient[ôo]t|salut|ciao|parfait|parfait\s+merci|nickel|super|great|cool)\s*$/.test(m);
+}
+
+function buildCloseAcknowledgement(locale: string | undefined): MaaChatResponse {
+  const fr = !locale?.toLowerCase().startsWith("en");
+  return {
+    assistantMessage: fr
+      ? "Avec plaisir ! N'hésitez pas si vous avez d'autres questions."
+      : "You're welcome! Don't hesitate if you have other questions.",
+    followUpMode: "done",
+    citations: [],
+    retrieval: { query: "", chunkCount: 0, resultCount: 0 },
+    suppressBookingCta: true,
+  };
+}
+
 export async function answerMaaChat(
   request: MaaChatRequest,
 ): Promise<MaaChatResponse> {
@@ -1706,6 +1742,13 @@ export async function answerMaaChat(
   const conversationHistory = normalizeConversationHistory(
     request.conversationHistory,
   );
+
+  // Short-circuit: when the visitor is just closing the conversation
+  // ("ok merci" / "thanks"), don't re-answer the prior question. Give a
+  // warm 1-line acknowledgement. Skips OpenAI entirely — fast + cheap.
+  if (isConversationClose(request.userMessage) && conversationHistory.length > 0) {
+    return buildCloseAcknowledgement(request.locale);
+  }
 
   const isDubub = request.tenantCode === "dubub";
 
