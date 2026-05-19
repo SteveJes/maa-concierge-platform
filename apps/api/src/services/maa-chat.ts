@@ -756,11 +756,38 @@ function applyPostProcessGuards(
     // preserved.
     .replace(/\b(?:le\s+yoga|les\s+cours)\s+(?:est|sont)\s+(?:disponibles?\s+)?(?:à\s+la\s+carte|drop[- ]?in)[^.!?]*[.!?]/giu, "");
 
-  // 0d. Invented-price hallucination guard. Daphné 2026-05-19 phone call:
-  //     bot claimed "$160 pour la piscine" and "$80 frais d'inscription".
-  //     Neither exists in any source — pool is INCLUDED in the annual
-  //     membership and the initiation fee is currently $0 (waived, normally
-  //     $250). Strip these specific invented constructions.
+  // 0d. Invented-price hallucination guards. Daphné 2026-05-19:
+  //     - Phone call: "$160 pour la piscine", "$80 frais d'inscription"
+  //     - Chat: "tarifs variant de 40 $ à 160 $ par mois", "consultation
+  //       initiale obligatoire de 80 $" for aquatic programs.
+  //     None of these exist anywhere in the knowledge base — the bot was
+  //     anchoring on Cirque-aérien's 40 $ drop-in and extrapolating.
+  //
+  // Strategy: replace the WHOLE sentence that contains the invented price
+  // pattern with the authoritative fact, so we don't leave dangling
+  // fragments. Sentence-aware, so we don't break legitimate price mentions
+  // elsewhere in the reply.
+  const replaceSentenceContaining = (re: RegExp, replacement: string) => {
+    out = out
+      .split(/(?<=[.!?])\s+/)
+      .map((s) => (re.test(s) ? replacement : s))
+      .join(" ");
+  };
+  // Pool / aquatic — pool is INCLUDED in membership.
+  replaceSentenceContaining(
+    /\b\d{2,3}\s*\$?\s*(?:par\s+mois|\/mois)[^.!?]*?(?:piscine|aquatique|pool|swim|natation\s+adulte)/i,
+    "L'accès à la piscine est inclus avec l'abonnement; les programmes aquatiques précis (natation adultes, Aqua-HIIT, club triathlon) peuvent comporter des frais distincts confirmés par Nathalie Lambert.",
+  );
+  replaceSentenceContaining(
+    /\b(?:tarifs?\s+variant\s+de|prices?\s+ranging\s+from|de)\s+\d+\s*\$?\s*(?:à|to|-)\s*\d+\s*\$?\s*(?:par\s+mois|\/mois|monthly|\/month)/i,
+    "Les tarifs précis des programmes aquatiques (natation adultes, cours privés) seront confirmés par Nathalie Lambert.",
+  );
+  // Signup / initiation — currently waived ($0, normally $250).
+  replaceSentenceContaining(
+    /\bconsultation\s+initiale\s+obligatoire\s+de\s+\d+\s*\$/i,
+    "Aucune consultation initiale obligatoire n'est confirmée pour ce type de programme; l'équipe Nathalie Lambert pourra préciser.",
+  );
+  // Direct phrase strips (kept from previous guard).
   out = out
     .replace(/\b160\s*\$?\s*(?:par\s+mois|\/mois|par\s+an|\/an|monthly|\/month|annually|\/year)?\s*(?:pour|for)\s+(?:la|the)?\s*piscine\b/gi, "L'accès à la piscine est inclus avec l'abonnement annuel")
     .replace(/\b80\s*\$?\s*(?:frais\s+d['']?(?:inscription|adh[ée]sion|initiation)|sign[- ]?up\s+fee|enrol(?:l?ment)?\s+fee|initiation\s+fee)\b/gi, "les frais d'initiation sont actuellement offerts (valeur de 250 $)")
@@ -1353,6 +1380,38 @@ function resolveShortAffirmativeFollowUp(
     return fr
       ? "Oui, allez-y, transmettez ma demande à la bonne personne. Quelles informations vous faut-il (nom, téléphone, courriel) pour que l'équipe me rappelle ?"
       : "Yes, please go ahead and transmit my request to the right person. What do you need from me (name, phone, email) so the team can reach me?";
+  }
+
+  // Daphné 2026-05-19 "oui" loop bug. Bot offered "Souhaitez-vous que je
+  // vous aide à choisir un programme selon votre niveau ou vos objectifs ?".
+  // User said "oui". Bot repeated the SAME offer instead of advancing.
+  //
+  // When the bot's last reply ended with a "Souhaitez-vous que je vous aide
+  // à X ?" / "Would you like me to help you X?" question, rewrite "oui" as
+  // an explicit acceptance that CONTAINS the verb-object so the LLM moves
+  // forward instead of restating the same paragraph.
+  const helpOfferMatch =
+    lastAssistant.content.match(/Souhaitez[- ]vous\s+que\s+je\s+(?:vous\s+)?aide\s+(?:à\s+|a\s+)([^?.!]+)\?/i) ||
+    lastAssistant.content.match(/(?:Voulez|Aimeriez)[- ]vous\s+que\s+je\s+(?:vous\s+)?aide\s+(?:à\s+|a\s+)([^?.!]+)\?/i) ||
+    lastAssistant.content.match(/Would\s+you\s+like\s+(?:me\s+)?to\s+help\s+you\s+([^?.!]+)\?/i);
+  if (helpOfferMatch && helpOfferMatch[1]) {
+    const action = helpOfferMatch[1].trim().replace(/\s+/g, " ");
+    return fr
+      ? `Oui, allez-y, aidez-moi à ${action}. Donnez-moi des choix concrets pour avancer, en évitant de répéter ce qui a déjà été dit.`
+      : `Yes, please help me ${action}. Give me concrete next-step options without repeating what you just said.`;
+  }
+
+  // Also catch generic "Souhaitez-vous que je vous X ?" where X is a verb
+  // (note/transmette/envoie/etc.) so a bare "oui" advances rather than
+  // looping back into the same description.
+  const generalOfferMatch =
+    lastAssistant.content.match(/Souhaitez[- ]vous\s+que\s+(?:je|nous)\s+([^?.!]+)\?/i) ||
+    lastAssistant.content.match(/Would\s+you\s+like\s+(?:me|us)\s+to\s+([^?.!]+)\?/i);
+  if (generalOfferMatch && generalOfferMatch[1] && !routingHandoffOffer) {
+    const action = generalOfferMatch[1].trim().replace(/\s+/g, " ");
+    return fr
+      ? `Oui, allez-y, ${action}. Avancez la conversation en évitant de répéter votre message précédent.`
+      : `Yes, please ${action}. Move the conversation forward without repeating your previous message.`;
   }
 
   // MAAgazine context — when the bot just described the magazine, "alors oui svp"

@@ -663,6 +663,44 @@ const FLOWS: Flow[] = [
       },
     ],
   },
+  // Daphné 2026-05-19 chat: bot offered "Souhaitez-vous que je vous aide à
+  // choisir un programme?", user said "oui", bot REPEATED THE SAME OFFER.
+  // The "oui" must advance the conversation, not loop.
+  {
+    id: "oui-loop-aquatic-help-offer",
+    label: "After 'Souhaitez-vous que je vous aide à X?', 'oui' must advance — not repeat the offer",
+    locale: "fr-CA",
+    turns: [
+      { say: "quels programmes aquatiques offrez-vous ?" },
+      {
+        say: "oui",
+        expect: {
+          // Bot must NOT echo back the same offer verbatim. The universal
+          // verbatim-repetition check already enforces this generically.
+          mustNotInclude: [/Souhaitez-vous\s+que\s+je\s+vous\s+aide\s+à\s+choisir/i],
+        },
+      },
+    ],
+  },
+  // Aquatic-program price hallucination — bot was inventing $40-160/mois
+  // monthly fees and $80 consultations. Block any such number.
+  {
+    id: "aquatic-program-no-invented-prices",
+    label: "Aquatic programs: must NOT invent monthly prices ($40-160/mois, $80 consultation, etc)",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "combien coûtent les programmes aquatiques par mois ?",
+        expect: {
+          mustNotInclude: [
+            /\b(?:40|80|160)\s*\$?\s*(?:à|to|-)\s*\d+\s*\$?\s*(?:par\s+mois|\/mois|monthly)/i,
+            /\bconsultation\s+initiale\s+obligatoire\s+de\s+\d+\s*\$/i,
+            /\btarifs?\s+variant\s+de\s+\d+\s*\$\s+à\s+\d+\s*\$\s+par\s+mois/i,
+          ],
+        },
+      },
+    ],
+  },
   // Phonetic STT pickleball — Azure mistranscribes "pickleball" as "PECO ball" /
   // "pickoball". Brain must normalize and answer the pickleball question.
   {
