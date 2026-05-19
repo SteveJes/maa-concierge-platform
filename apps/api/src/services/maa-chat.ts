@@ -571,6 +571,124 @@ function stripMassageFromFitnessAnswer(userMessage: string, message: string): st
     .trim();
 }
 
+/**
+ * Daphné AUTONOMY GOAL ("Rendre autonome x 100") — the bot keeps appending
+ * reflexive "Je vous recommande de valider avec l'équipe au 514 845-2233"
+ * trailers even after stating a confirmed fact (price, schedule, inclusion).
+ * That feels like the concierge dodges the question. When the reply ALREADY
+ * carries an authoritative fact, strip the verbose human-handoff trailer.
+ *
+ * NEVER strips when the reply concerns:
+ * - medical / contractual / insurance topics (rendez-vous, contrat, santé, blessure)
+ * - explicit non-member access (the warm-route guard handles those)
+ * - the trailer is the ONLY sentence (then it's a legitimate routing answer)
+ */
+function stripExcessiveAutonomyTrailer(reply: string): string {
+  // Bail if the reply is short — almost certainly a legitimate routing answer.
+  if (reply.length < 120) return reply;
+
+  // Bail on contexts where human validation is genuinely appropriate.
+  // NOTE: "rendez-vous" / "appointment" are intentionally NOT in this list —
+  // they appear too often as background context (e.g. "les clients ayant un
+  // rendez-vous de massothérapie") and would block legitimate trailer strips.
+  if (/\b(contrat|contract|sant[ée]|health|blessure|injury|prescription|ordonnance|diagnostic|adh[ée]sion\s+(?:officielle|formelle)|formal\s+sign[- ]?up|annulation|cancellation\s+policy)\b/i.test(reply)) {
+    return reply;
+  }
+
+  // Heuristic for "this reply already has a confirmed fact":
+  //  - currency mention ($25, 225 $, 225$, 1 195 $)
+  //  - explicit schedule ("07h00", "7 h 30", "lundi de 7h à 20h")
+  //  - explicit count ("75 cours", "28 créneaux", "12 contacts")
+  //  - explicit inclusion verb on a noun ("inclut", "comprend", "donne accès")
+  const hasConfirmedFact =
+    /\$\s?\d|\d\s?\$|\d+\s*€|\b\d{1,4}\s*\$\s*\/?\s*(?:mois|month|year|annu|an\b)/i.test(reply) ||
+    /\b\d{1,2}\s?h\s?\d{2}\b|\b\d{1,2}\s?h\s?\d{0,2}\s*[à-]\s*\d/i.test(reply) ||
+    /\b\d{2,3}\s+(?:cours|créneaux|classes|s[eé]ances|courts|terrains|timeslots)\b/i.test(reply) ||
+    /\b(inclut|comprend|donne acc[eè]s|includes|covers)\b/i.test(reply);
+
+  if (!hasConfirmedFact) return reply;
+
+  // Strip patterns. We target the typical autonomy-violating trailer.
+  const patterns: RegExp[] = [
+    // "Pour [plus de détails|toute question|connaître ...], je vous [recommande|conseille|invite] [de|à] [valider|confirmer|contacter] ... 514 845-2233 ..."
+    /\s*(?:Pour\s+(?:plus\s+de\s+détails|toute\s+question(?:\s+spécifique)?(?:\s+sur[^.]+?)?|connaître\s+(?:les\s+modalités|les\s+détails)[^.]+?|ajouter\s+ce\s+service|d['']autres\s+précisions|connaître\s+les\s+conditions\s+exactes)[^.]*?,?\s+)?je\s+vous\s+(?:recommande|conseille|invite)\s+(?:de|d['']|à)\s+(?:valider|confirmer|contacter|appeler)\b[^.!?]*?(?:514[\s.-]?845[\s.-]?2233|poste\s+\d+|l['']?[ée]quipe(?:\s+au)?)\b[^.!?]*[.!?]/giu,
+    // "Pour valider/confirmer, je vous invite à appeler..."
+    /\s*Pour\s+(?:valider|confirmer)[^.!?]*?(?:514[\s.-]?845[\s.-]?2233|appeler\s+la\s+r[ée]ception)[^.!?]*[.!?]/giu,
+    // "I recommend you contact ... 514 845 2233"
+    /\s*I\s+(?:recommend|suggest|advise)\s+(?:you\s+)?(?:to\s+)?(?:contact|call|reach\s+out\s+to|confirm\s+with)\b[^.!?]*?(?:514[\s.-]?845[\s.-]?2233|the\s+team|reception)\b[^.!?]*[.!?]/giu,
+  ];
+
+  let out = reply;
+  for (const re of patterns) out = out.replace(re, "");
+
+  // Cleanup whitespace + dangling punctuation.
+  out = out.replace(/\s{2,}/g, " ").replace(/\s+([.!?])/g, "$1").trim();
+  return out;
+}
+
+/**
+ * Daphné MEMBER-STATUS PROTOCOL — when the visitor signals non-member status
+ * AND the topic is a members-only service (spa/sauna/courses/squash/pickleball),
+ * the reply MUST warmly route to Francis Bradette or a visit. The prompt asks
+ * for this but at temperature 0.3 the model sometimes still gives a "members
+ * only" answer and stops there — which feels like a door slam. Detect that
+ * and append a soft upsell sentence.
+ *
+ * Catches the 2026-05-18 demo bug: "est-ce que je peux utiliser le sauna sans
+ * être membre ?" → bot says yes-but-only-with-massage, then on "donc je dois
+ * être membre c'est ça?" the bot just confirmed without offering Francis.
+ */
+function ensureNonMemberWarmRoute(
+  userMessage: string,
+  conversationHistory: MaaConversationHistoryTurn[],
+  reply: string,
+  locale: string | undefined,
+): string {
+  const haystack = [
+    userMessage,
+    ...conversationHistory.filter((t) => t.role === "user").map((t) => t.content),
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  const nonMemberSignal =
+    /\bsans\s+(?:[eê]tre\s+)?membre\b/.test(haystack) ||
+    /\bje\s+ne\s+suis\s+pas\s+membre\b/.test(haystack) ||
+    /\bnon[- ]?membre\b/.test(haystack) ||
+    /\bpas\s+(?:encore\s+)?(?:un|une)\s+membre\b/.test(haystack) ||
+    /\bnot\s+(?:yet\s+)?a\s+member\b/.test(haystack) ||
+    /\bdo(?:n['']?t|\s+not)\s+have\s+(?:a\s+)?membership\b/.test(haystack) ||
+    /\bdois\s+(?:je\s+)?[eê]tre\s+membre\b/.test(haystack) ||
+    /\bdo\s+i\s+(?:have\s+to\s+|need\s+to\s+)?be\s+a\s+member\b/.test(haystack);
+
+  if (!nonMemberSignal) return reply;
+
+  const membersOnlyTopic =
+    /\b(sauna|spa|hammam|bain\s+(?:tourbillon|vapeur)|jacuzzi|piscine|pool|cours\s+(?:en\s+)?groupe|group\s+class|pickleball|squash|natation|swim|salle\s+d['']?entra[iî]nement|gym|fitness|train(?:ing\s+room)?|d[ée]tente)\b/i.test(
+      reply,
+    ) ||
+    /\b(sauna|spa|hammam|bain\s+(?:tourbillon|vapeur)|jacuzzi|piscine|pool|cours\s+(?:en\s+)?groupe|group\s+class|pickleball|squash|natation|swim|salle\s+d['']?entra[iî]nement|gym|fitness|d[ée]tente)\b/i.test(
+      userMessage,
+    );
+
+  if (!membersOnlyTopic) return reply;
+
+  const alreadyHasWarmRoute =
+    /\b(francis|bradette|abonnement|adh[ée]sion|membership|visite\s+du\s+club|club\s+visit|planifier\s+une\s+visite|schedule\s+(?:a\s+)?visit)\b/i.test(
+      reply,
+    );
+
+  if (alreadyHasWarmRoute) return reply;
+
+  const fr = isFrenchLocale(locale);
+  const upsell = fr
+    ? " Si vous souhaitez explorer les options d'abonnement ou organiser une visite du Club, je peux vous mettre en contact avec Francis Bradette, directeur des ventes."
+    : " If you'd like to explore membership options or arrange a Club visit, I can put you in touch with Francis Bradette, Director of Sales.";
+
+  const trimmed = reply.replace(/\s+$/u, "");
+  return `${trimmed}${upsell}`;
+}
+
 function applyPostProcessGuards(
   message: string,
   intent: CriticalIntent | undefined,
@@ -1154,6 +1272,15 @@ function resolveShortAffirmativeFollowUp(
       : "Yes, please go ahead and transmit my request to the right person. What do you need from me (name, phone, email) so the team can reach me?";
   }
 
+  // MAAgazine context — when the bot just described the magazine, "alors oui svp"
+  // means "yes, send it to me". Pivot to a delivery request so the bot collects
+  // the visitor's email + transmits to the communications team.
+  if (/maagazine|maa[- ]magazine|publication\s+du\s+club/i.test(ctx)) {
+    return fr
+      ? "Oui, j'aimerais recevoir le MAAgazine. Quelles informations avez-vous besoin (nom, courriel) pour me l'envoyer ou transmettre ma demande à l'équipe responsable ?"
+      : "Yes, I'd like to receive the MAAgazine. What information do you need (name, email) to send it to me or pass my request to the team?";
+  }
+
   if (/piscine|pool|swim|natation/.test(ctx))
     return fr ? "Parlez-moi de la piscine et des services inclus dans l'abonnement." : "Tell me about the pool and what's included in the membership.";
   if (/spa|massage|massothérapie|soin/.test(ctx))
@@ -1349,10 +1476,15 @@ function resolveTenantSystemPrompt(
   // rollback). v2 sources MAA from apps/api/src/knowledge/maa-v2/ (Daphné's
   // 203-page PDF, structured JSON). v1 reads the legacy tenant-core-facts.json.
   const knowledgeVersion = process.env.KNOWLEDGE_VERSION ?? "v2";
+  // Per-tenant live-source overrides (MyWellness / FLiiP URLs editable from
+  // the admin Settings panel). For MAA, defaults live in
+  // knowledge/maa-v2/links.json but staff can rotate them via dashboard.
+  const maaConfig = getTenant("maa");
+  const maaLiveSources = maaConfig?.liveSources ?? undefined;
   switch (tenantCode) {
     case "maa":
       return knowledgeVersion === "v2"
-        ? buildMaaChatSystemPromptV2(locale, userMessage)
+        ? buildMaaChatSystemPromptV2(locale, userMessage, maaLiveSources)
         : buildMaaChatSystemPrompt(locale);
     case "dubub":
       return buildDububChatSystemPrompt(locale);
@@ -1362,7 +1494,7 @@ function resolveTenantSystemPrompt(
         return buildGenericTenantChatSystemPrompt(config, locale);
       }
       return knowledgeVersion === "v2"
-        ? buildMaaChatSystemPromptV2(locale, userMessage)
+        ? buildMaaChatSystemPromptV2(locale, userMessage, maaLiveSources)
         : buildMaaChatSystemPrompt(locale);
     }
   }
@@ -1706,6 +1838,14 @@ export async function answerMaaChat(
     /\b(?:i['']?ve\s+got|i\s+have)\s+a\s+(?:question|request)\s+about\b/i.test(request.userMessage) ||
     /\b(?:i\s+wanted\s+to\s+ask|tell\s+me\s+(?:more\s+)?about)\b/i.test(request.userMessage);
 
+  const isExplicitTeamHelpRequest =
+    /\b(quelqu['']?un|qu['']?un)\s+de\s+l['']?[ée]quipe\b/i.test(request.userMessage) ||
+    /\bj['']?aimerais\s+(?:que|de\s+l['']?aide\s+(?:de|d['']))\s+l['']?[ée]quipe\b/i.test(request.userMessage) ||
+    /\bparler\s+(?:à|avec)\s+(?:quelqu['']?un|une?\s+personne)\b/i.test(request.userMessage) ||
+    /\bsomeone\s+from\s+(?:the\s+)?team\b/i.test(request.userMessage) ||
+    /\bspeak\s+(?:to|with)\s+(?:someone|a\s+person|a\s+team\s+member)\b/i.test(request.userMessage) ||
+    /\btalk\s+to\s+(?:someone|a\s+person|a\s+human|the\s+team)\b/i.test(request.userMessage);
+
   const skipDeterministicHandlers =
     intentSafetyContextEarly !== undefined ||
     includedQuestion.match ||
@@ -1714,7 +1854,8 @@ export async function answerMaaChat(
     isQuickInfoNoForm ||
     isPickleballScheduleQuestion ||
     isVagueTopicRequest ||
-    isGymAccessMembershipUnknown;
+    isGymAccessMembershipUnknown ||
+    isExplicitTeamHelpRequest;
 
   const multiIntentContext = isMultiIntentPricingPlusBooking
     ? "MULTI-INTENT (pricing + booking): The user is asking BOTH pricing AND booking in one message. Answer BOTH parts IN THE USER'S LANGUAGE. First state the membership tariffs cautiously (with the call-to-confirm hedge). Then answer the booking question briefly — explain that you can guide them through scheduling, and that final confirmation comes from the team or an official system. Do NOT collapse the reply to either intent alone. Set followUpMode: 'clarify' (do NOT pick 'vapi' or 'calendly' for this combo — the user wants the answer here, not a handoff)."
@@ -1740,6 +1881,12 @@ export async function answerMaaChat(
     ? "GYM ACCESS — MEMBERSHIP STATUS UNKNOWN. The user is asking about access to the training rooms / gym BUT did NOT declare being a member. STRICT RULES: (1) DO NOT start with 'Vous pouvez accéder' / 'You can access' — that's a guarantee for someone whose status you don't know. (2) Lead with the qualified form: 'Si vous êtes membre, vous avez accès aux salles d'entraînement selon les conditions du Club. Pour un accès non-membre ou invité, l'équipe pourra confirmer les options.' / 'If you're a member, you have access according to the Club's conditions. For non-member or guest access, the team can confirm options.' (3) DO NOT recite club hours unless the user asked for hours. (4) NEVER trigger the visit CTA. Set followUpMode: 'clarify'."
     : undefined;
 
+  // explicitTeamHelpContext: extra prompt context attached when the visitor
+  // explicitly asked for human help (see `isExplicitTeamHelpRequest` above).
+  const explicitTeamHelpContext = isExplicitTeamHelpRequest
+    ? "EXPLICIT TEAM-HELP REQUEST. The visitor asked specifically for help from a team member (not info). DO NOT autonomously answer with raw facts (hours, prices, schedules). INSTEAD: (1) acknowledge their request warmly in one short sentence; (2) propose connecting them to the right person by name (Nathalie Lambert for pool/classes/sports programming, Francis Bradette for membership/visits, Clinique sportive for clinic services, Restaurant Le 1881 for restaurant); (3) ask what info you should transmit (name, phone, email, preferred time). Set followUpMode: 'clarify'. The reply MUST mention a specific staff name (Nathalie/Francis/etc.) and explicitly ask for contact info — that is the whole point of the request."
+    : undefined;
+
   // Compose all available context fragments for the AI call. Multiple safety
   // contexts can apply at once (e.g. cancellation_policy + included-question
   // is rare but possible). Concatenate so the AI sees every relevant rule.
@@ -1752,6 +1899,7 @@ export async function answerMaaChat(
     pickleballScheduleContext,
     vagueTopicContext,
     gymAccessMembershipUnknownContext,
+    explicitTeamHelpContext,
   ]
     .filter((s): s is string => typeof s === "string" && s.length > 0)
     .join("\n\n") || undefined;
@@ -1952,6 +2100,13 @@ export async function answerMaaChat(
     cleanedAssistantMessage,
   );
   cleanedAssistantMessage = softenUncertaintyWording(cleanedAssistantMessage);
+  cleanedAssistantMessage = stripExcessiveAutonomyTrailer(cleanedAssistantMessage);
+  cleanedAssistantMessage = ensureNonMemberWarmRoute(
+    request.userMessage,
+    conversationHistory,
+    cleanedAssistantMessage,
+    request.locale,
+  );
 
   return {
     assistantMessage: cleanedAssistantMessage,

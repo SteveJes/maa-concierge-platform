@@ -2385,13 +2385,14 @@ export function ChatShell({
 
       {/* ── Action area ────────────────────────────────────────────────────── */}
 
-      {/* Booking button */}
+      {/* Booking button — routes through the host onConciergeLink hook OR the
+          internal LEFT preview panel so visitors stay on the page (no new tab).
+          Falls back to a real anchor only when no handler is available. */}
       {showBookingButton ? (
         <div style={{ margin: "0 16px 12px", display: "flex", flexWrap: "wrap", gap: 8 }}>
-          <a
-            href={lastResponse!.booking.bookingUrl!}
-            target="_blank"
-            rel="noreferrer"
+          <button
+            type="button"
+            onClick={() => linkClickHandler(lastResponse!.booking.bookingUrl!)}
             style={{
               display: "inline-block",
               padding: "10px 18px",
@@ -2401,10 +2402,13 @@ export function ChatShell({
               textDecoration: "none",
               fontWeight: 600,
               fontSize: 14,
+              border: "none",
+              cursor: "pointer",
+              fontFamily: "inherit",
             }}
           >
             {locale === "fr-CA" ? "Planifier une visite" : "Book a tour"}
-          </a>
+          </button>
           {lastResponse!.booking.allowCallbackFallback && !showBookingCallbackFallback ? (
             <button
               type="button"

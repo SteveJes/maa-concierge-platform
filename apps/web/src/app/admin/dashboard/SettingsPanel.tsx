@@ -54,6 +54,13 @@ interface TenantSettings {
     groupReservationsPhone?: string | null;
     groupReservationsCapacity?: string | null;
   };
+  liveSources?: {
+    groupClassesScheduleUrl?: string | null;
+    poolScheduleUrl?: string | null;
+    membershipPurchaseUrl?: string | null;
+    serviceBookingUrl?: string | null;
+    platformNotes?: string | null;
+  };
 }
 
 const DAY_LABELS_FR = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
@@ -488,6 +495,91 @@ export default function SettingsPanel({ tenantId, initial, token, onSaved }: Pro
                   })
                 }
                 placeholder="ex. salle de conférence jusqu'à 10 personnes"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Live sources — editable MyWellness / FLiiP / pool schedule URLs */}
+        <div style={{ marginBottom: 24, padding: 16, background: "#fbf8ef", borderRadius: 10, border: `1px solid ${P.border}` }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: P.white, marginBottom: 4 }}>📡 Sources vivantes — horaires &amp; réservations</div>
+          <div style={{ fontSize: 11, color: P.muted, marginBottom: 14 }}>
+            URLs que le concierge IA utilise pour diriger vers MyWellness (horaires en temps réel), FLiiP (achat d&apos;abonnement et services), ou un PDF d&apos;horaire mis à jour. Mettre à jour ici quand MAA fait pivoter ses plateformes — aucun changement de code requis.
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14 }}>
+            <div>
+              <label style={labelStyle}>Horaire cours en groupe (MyWellness)</label>
+              <input
+                type="url"
+                style={inputBase}
+                value={form.liveSources?.groupClassesScheduleUrl ?? ""}
+                onChange={(e) =>
+                  update("liveSources", {
+                    ...(form.liveSources ?? {}),
+                    groupClassesScheduleUrl: e.target.value || null,
+                  })
+                }
+                placeholder="https://widgets.mywellness.com/facility/…"
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Horaire piscine (PDF ou widget)</label>
+              <input
+                type="url"
+                style={inputBase}
+                value={form.liveSources?.poolScheduleUrl ?? ""}
+                onChange={(e) =>
+                  update("liveSources", {
+                    ...(form.liveSources ?? {}),
+                    poolScheduleUrl: e.target.value || null,
+                  })
+                }
+                placeholder="https://…/horaire-piscine.pdf"
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Achat d&apos;abonnement (FLiiP)</label>
+              <input
+                type="url"
+                style={inputBase}
+                value={form.liveSources?.membershipPurchaseUrl ?? ""}
+                onChange={(e) =>
+                  update("liveSources", {
+                    ...(form.liveSources ?? {}),
+                    membershipPurchaseUrl: e.target.value || null,
+                  })
+                }
+                placeholder="https://clubsportifmaa.fliipapp.com/user/register/buy_membership/…"
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Réservation de service (FLiiP)</label>
+              <input
+                type="url"
+                style={inputBase}
+                value={form.liveSources?.serviceBookingUrl ?? ""}
+                onChange={(e) =>
+                  update("liveSources", {
+                    ...(form.liveSources ?? {}),
+                    serviceBookingUrl: e.target.value || null,
+                  })
+                }
+                placeholder="https://clubsportifmaa.fliipapp.com/user/register/buy_service/…"
+              />
+            </div>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label style={labelStyle}>Notes plateformes (optionnel — affiché au concierge en contexte)</label>
+              <input
+                type="text"
+                style={inputBase}
+                value={form.liveSources?.platformNotes ?? ""}
+                onChange={(e) =>
+                  update("liveSources", {
+                    ...(form.liveSources ?? {}),
+                    platformNotes: e.target.value || null,
+                  })
+                }
+                placeholder="ex. Réservation pickleball via l'app MAA. Cours via MyWellness."
               />
             </div>
           </div>

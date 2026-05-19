@@ -106,6 +106,36 @@ export interface TenantConfig {
     /** Free-form note about the conference room / private dining capacity (e.g. "10 people"). */
     groupReservationsCapacity?: string | null;
   };
+
+  // ── Live sources (per tenant) ──────────────────────────────────────────────
+  /**
+   * URLs of the tenant's LIVE schedule / booking / membership widgets. Daphné's
+   * email line 16: "récupérer une API ou un flux pour MyWellness afin que le
+   * concierge ait toujours l'horaire actuel". A direct API integration is
+   * future work — for now we expose the URLs editable in the dashboard so MAA
+   * staff can swap them whenever their MyWellness/FLiiP setup changes.
+   *
+   * The concierge uses these URLs when:
+   *  - someone asks for the live group-class schedule → `groupClassesScheduleUrl`
+   *  - someone asks for the live pool schedule → `poolScheduleUrl`
+   *  - someone wants to buy/renew a membership → `membershipPurchaseUrl`
+   *  - someone wants to book a clinic / spa service → `serviceBookingUrl`
+   *
+   * The dashboard's tenant-side iframe preview (when Daphné/Steve embed the
+   * widget on a demo page) also uses these to show a realistic source.
+   */
+  liveSources?: {
+    /** MyWellness group-class real-time schedule widget URL. */
+    groupClassesScheduleUrl?: string | null;
+    /** Pool / aquatic schedule URL (often a PDF or MyWellness page). */
+    poolScheduleUrl?: string | null;
+    /** FLiiP — membership purchase / registration URL. */
+    membershipPurchaseUrl?: string | null;
+    /** FLiiP — service booking URL (clinic, spa, specialty courses). */
+    serviceBookingUrl?: string | null;
+    /** Generic "platform notes" the bot should mention (e.g. "MAA app for pickleball reservations"). */
+    platformNotes?: string | null;
+  };
 }
 
 export const TENANT_REGISTRY: TenantConfig[] = [
@@ -152,6 +182,16 @@ export const TENANT_REGISTRY: TenantConfig[] = [
       reservationMaxPartySize: 6,
       groupReservationsPhone: "(514) 845-8002",
       groupReservationsCapacity: "salle de conférence jusqu'à 10 personnes",
+    },
+    // Live sources — defaults copied from knowledge/maa-v2/links.json. Editable
+    // via the dashboard Settings panel so MAA staff can swap URLs without
+    // requiring a code change when their MyWellness/FLiiP setup rotates.
+    liveSources: {
+      groupClassesScheduleUrl: "https://widgets.mywellness.com/facility/ac1088953",
+      poolScheduleUrl: "https://widgets.mywellness.com/facility/ac1088953",
+      membershipPurchaseUrl: "https://clubsportifmaa.fliipapp.com/user/register/buy_membership/1#8948",
+      serviceBookingUrl: "https://clubsportifmaa.fliipapp.com/user/register/buy_service/1",
+      platformNotes: "Réservation pickleball via l'application MAA (FLiiP). Cours en groupe et horaire piscine via MyWellness.",
     },
   },
 ];

@@ -6,7 +6,7 @@ import { sendLeadNotificationEmail } from "./services/email-notifications.js";
 import { TENANT_REGISTRY, getTenant, addTenant, removeTenant, slugify, type TenantConfig } from "./admin/tenants.js";
 import { saveTenantOverride } from "./admin/tenant-overrides.js";
 import { decideTransfer } from "./admin/transfer-hours.js";
-import { summarizeLeadConversation } from "./services/lead-summary.js";
+import { summarizeLeadConversation, summarizeLeadConversationRich } from "./services/lead-summary.js";
 import { sendInvoiceEmail, createStripeCheckout, nextInvoiceNumber, buildInvoice } from "./admin/invoice.js";
 import { buildTenantHealthReport } from "./admin/health.js";
 import { loadApprovedSourceRegistry } from "@platform/config";
@@ -1623,6 +1623,7 @@ export function createServer() {
       "tunnelCtaFr", "tunnelCtaEn", "defaultLanguage",
       "transferToHumanEnabled", "transferToHumanPhone", "transferBusinessHours",
       "restaurantMenuLinks",
+      "liveSources",
     ];
 
     let changedCount = 0;
@@ -2509,10 +2510,12 @@ export function createServer() {
             { role: "user" as const, content: trimmedMessage },
           ];
           setImmediate(async () => {
-            const aiSummary = await summarizeLeadConversation(
+            const richSummary = await summarizeLeadConversationRich(
               dryConversationForSummary,
               locale ?? "fr-CA",
             ).catch(() => null);
+            const aiSummary = richSummary?.summary ??
+              (await summarizeLeadConversation(dryConversationForSummary, locale ?? "fr-CA").catch(() => null));
             try {
               await sendLeadNotificationEmail({
                 name: toNullableTrimmedString(body.callback?.name),
@@ -2522,6 +2525,10 @@ export function createServer() {
                 locale: locale ?? "fr-CA",
                 questionSummary: toNullableTrimmedString(body.callback?.questionSummary) ?? trimmedMessage,
                 aiSummary,
+                richSummary,
+                transcript: dryConversationForSummary
+                  .filter((t): t is { role: "user" | "assistant"; content: string } => t.role === "user" || t.role === "assistant")
+                  .map((t) => ({ role: t.role, content: t.content })),
                 conversationId: conversationId ?? null,
                 tenantName: tenantDisplayName,
                 notifyEmail: notifyEmailDry,
@@ -2590,10 +2597,12 @@ export function createServer() {
             { role: "user" as const, content: trimmedMessage },
           ];
           setImmediate(async () => {
-            const aiSummary = await summarizeLeadConversation(
+            const richSummary = await summarizeLeadConversationRich(
               conversationForSummary,
               locale ?? "fr-CA",
             ).catch(() => null);
+            const aiSummary = richSummary?.summary ??
+              (await summarizeLeadConversation(conversationForSummary, locale ?? "fr-CA").catch(() => null));
             try {
               await sendLeadNotificationEmail({
                 name: toNullableTrimmedString(body.callback?.name),
@@ -2603,6 +2612,10 @@ export function createServer() {
                 locale: locale ?? "fr-CA",
                 questionSummary: toNullableTrimmedString(body.callback?.questionSummary) ?? trimmedMessage,
                 aiSummary,
+                richSummary,
+                transcript: conversationForSummary
+                  .filter((t): t is { role: "user" | "assistant"; content: string } => t.role === "user" || t.role === "assistant")
+                  .map((t) => ({ role: t.role, content: t.content })),
                 conversationId: conversationId ?? null,
                 tenantName: leadTenantName,
                 notifyEmail,

@@ -154,8 +154,57 @@ function formatLinkLine(l: ReturnType<typeof loadMaaV2>["links"]["schedules"][nu
   return `  - [${l.label}](${l.url}) — for "${l.intent}" [${l.confidence}]`;
 }
 
-export function buildMaaChatSystemPromptV2(locale?: string, userMessage: string = ""): string {
-  const k = loadMaaV2();
+/**
+ * Per-tenant override URLs for live booking/schedule sources. Editable from the
+ * admin dashboard so MAA staff can rotate MyWellness/FLiiP URLs without code.
+ */
+export interface MaaPromptLiveSourceOverrides {
+  groupClassesScheduleUrl?: string | null;
+  poolScheduleUrl?: string | null;
+  membershipPurchaseUrl?: string | null;
+  serviceBookingUrl?: string | null;
+  platformNotes?: string | null;
+}
+
+function applyLiveSourceOverrides(
+  links: ReturnType<typeof loadMaaV2>["links"],
+  overrides?: MaaPromptLiveSourceOverrides,
+): ReturnType<typeof loadMaaV2>["links"] {
+  if (!overrides) return links;
+
+  const remap = (linkList: ReturnType<typeof loadMaaV2>["links"]["schedules"]) =>
+    linkList.map((l) => {
+      if (l.id === "mywellness_real_time" && overrides.groupClassesScheduleUrl) {
+        return { ...l, url: overrides.groupClassesScheduleUrl };
+      }
+      if (l.id === "pool_schedule_pdf" && overrides.poolScheduleUrl) {
+        return { ...l, url: overrides.poolScheduleUrl };
+      }
+      if (l.id === "fliip_membership" && overrides.membershipPurchaseUrl) {
+        return { ...l, url: overrides.membershipPurchaseUrl };
+      }
+      if (l.id === "fliip_service" && overrides.serviceBookingUrl) {
+        return { ...l, url: overrides.serviceBookingUrl };
+      }
+      return l;
+    });
+
+  return {
+    ...links,
+    schedules: remap(links.schedules),
+    pricing: remap(links.pricing),
+    reservations: remap(links.reservations),
+    appointments: remap(links.appointments),
+  };
+}
+
+export function buildMaaChatSystemPromptV2(
+  locale?: string,
+  userMessage: string = "",
+  liveSourceOverrides?: MaaPromptLiveSourceOverrides,
+): string {
+  const rawK = loadMaaV2();
+  const k = { ...rawK, links: applyLiveSourceOverrides(rawK.links, liveSourceOverrides) };
   const relevantSections = relevantSectionsForMessage(userMessage);
 
   const allContacts = Object.values(k.contacts.contacts);
@@ -362,13 +411,29 @@ export function buildMaaChatSystemPromptV2(locale?: string, userMessage: string 
     "Link rendering: when you cite a link, use markdown like `[Label](URL)`. The UI renders it as a polished button. Never write the URL alone in a sentence.",
     "",
 
-    "## AUTONOMY GOAL",
+    "## AUTONOMY GOAL — Daphné's #1 instruction",
     "",
-    "Daphné's instruction: 'Rendre autonome x 100 pour éviter que ce soit toujours router vers la réception ou vers l'humain. Le but est que le concierge soit 100% autonome.'",
-    "When you have a confirmed fact, GIVE IT. Don't reflexively route to reception. Only escalate when:",
-    "- Information is À valider / Daté / Contradictoire (then say 'actuellement' + propose validation)",
-    "- Topic is medical, sensitive, or contractual (then route to the right specialist + offer prise en note / AI call)",
-    "- The visitor explicitly wants to speak to a human",
+    "Daphné's instruction (verbatim): 'Rendre autonome x 100 pour éviter que ce soit toujours router vers la réception ou vers l'humain. Le but est que le concierge soit 100% autonome.'",
+    "",
+    "**HARD RULE — NEVER append a routing trailer when you have already stated a confirmed fact.**",
+    "Forbidden trailers when the rest of the reply already carries a concrete answer (price, schedule, inclusion, count):",
+    "- ❌ 'Je vous recommande de valider avec l'équipe au 514 845-2233'",
+    "- ❌ 'Pour plus de détails, je vous recommande de contacter la réception'",
+    "- ❌ 'Pour toute question spécifique, je vous invite à confirmer avec l'équipe'",
+    "- ❌ 'I recommend you contact the team at 514 845-2233'",
+    "",
+    "**WHEN to add a routing line (and only then):**",
+    "- Information is À valider / Daté / Contradictoire → say 'actuellement' + offer a single confirmation path (named person when possible, NOT generic 'l'équipe').",
+    "- Topic is medical, contractual, insurance, or rendez-vous-bound → route to the named specialist + offer prise en note OR AI call.",
+    "- Topic is a non-member access question → route specifically to **Francis Bradette, directeur des ventes** + offer a Club visit. Do not route to generic reception.",
+    "- The visitor wants something the bot CANNOT deliver itself (the MAAgazine, an event invitation, a quote, a corporate proposal, a specific staff signature, a room/court reservation) → describe it briefly, then propose routing: 'Souhaitez-vous que je transmette votre demande à [named contact]?'. The MAAgazine specifically MUST close with an offer to transmit a recipient's coordinates (name + email) to the communications team.",
+    "- The visitor explicitly asked to speak to a human, or said 'rappelez-moi' / 'call me back' / 'I want to talk to someone'.",
+    "",
+    "**WHEN to STAY autonomous (the default):**",
+    "- Confirmed prices, schedules, inclusions, counts, links, hours, addresses, restaurant menus, basic membership questions, group-class lists, history/heritage, club identity → give the answer and STOP. The visitor does not need a phone number trailer.",
+    "- If you DO close with a sentence, make it a soft upsell or a follow-up question — not a routing trailer.",
+    "",
+    "Daphné will count routing trailers in the demo. Every unnecessary trailer is a regression.",
     "",
 
     "## SOFTNESS RULE — Daphné's instruction (voice-tone.json::softnessRule)",
