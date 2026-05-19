@@ -1281,6 +1281,19 @@ function resolveShortAffirmativeFollowUp(
       : "Yes, I'd like to receive the MAAgazine. What information do you need (name, email) to send it to me or pass my request to the team?";
   }
 
+  // Restaurant context — when the bot just described Le 1881 and offered to
+  // help reserve a table, "oui svp j'aimerais réserver" means RESTAURANT
+  // reservation, not Club visit. Pivot so the bot gives LibroReserve / phone
+  // for groups instead of triggering the visit-booking template.
+  // 2026-05-19 Daphné demo bug: "oui svp kjaimerais reserver" after a Le 1881
+  // description was collapsing to "Cliquez sur le bouton pour planifier votre
+  // visite" — wildly wrong, restaurant ≠ club visit.
+  if (/\b(restaurant|le\s+1881|resto\s+1881)\b/i.test(ctx)) {
+    return fr
+      ? "Oui, j'aimerais réserver une table au restaurant Le 1881. Pouvez-vous me partager le lien de réservation en ligne, ou les coordonnées pour réserver par téléphone pour un groupe ?"
+      : "Yes, I'd like to reserve a table at Le 1881. Can you share the online reservation link, or the phone number for a group reservation?";
+  }
+
   if (/piscine|pool|swim|natation/.test(ctx))
     return fr ? "Parlez-moi de la piscine et des services inclus dans l'abonnement." : "Tell me about the pool and what's included in the membership.";
   if (/spa|massage|massothérapie|soin/.test(ctx))

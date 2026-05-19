@@ -2128,12 +2128,33 @@ export function createServer() {
     // calendly/vapi by the booking/phone intent heuristics — those would bypass the
     // service-layer safety override and re-trigger the booking template.
     const criticalIntent = detectCriticalIntent(trimmedMessage);
+
+    // Load history FIRST so the booking-intent heuristic can be context-aware.
+    // Daphné demo bug 2026-05-19: bot described Le 1881, user said "oui svp
+    // kjaimerais reserver" — heuristic fired on "reserver" → calendly →
+    // "Cliquez sur le bouton pour planifier votre visite" (WRONG, that's a
+    // CLUB visit, not a restaurant reservation). The fix: when the prior bot
+    // turn was clearly about the restaurant, the booking heuristic must back
+    // off and let the AI route to LibroReserve / phone instead.
+    const conversationHistory = await loadConversationHistory();
+    const lastAssistantTurn = [...(conversationHistory ?? [])]
+      .reverse()
+      .find((t) => t.role === "assistant");
+    const priorWasRestaurantContext = lastAssistantTurn
+      ? /\b(restaurant|le\s+1881|resto\s+1881)\b/i.test(lastAssistantTurn.content)
+      : false;
+    const priorWasMaagazineContext = lastAssistantTurn
+      ? /\bmaagazine|maa[- ]magazine|publication\s+du\s+club\b/i.test(lastAssistantTurn.content)
+      : false;
+
     const hasExplicitBookingIntent =
-      !hasCallbackPayload && !criticalIntent && looksLikeBookingIntent(trimmedMessage, locale);
+      !hasCallbackPayload &&
+      !criticalIntent &&
+      !priorWasRestaurantContext &&
+      !priorWasMaagazineContext &&
+      looksLikeBookingIntent(trimmedMessage, locale);
     const hasExplicitPhoneIntent =
       !hasCallbackPayload && !criticalIntent && looksLikePhoneIntent(trimmedMessage, locale);
-
-    const conversationHistory = await loadConversationHistory();
 
     const directCoreFactResponse = resolveDirectCoreFactResponse({
       tenantId,

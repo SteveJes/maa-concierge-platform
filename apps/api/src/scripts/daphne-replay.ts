@@ -114,6 +114,29 @@ const FLOWS: Flow[] = [
     ],
   },
   {
+    // Daphné demo bug 2026-05-19: after bot described Le 1881, user said "oui
+    // svp kjaimerais reserver" — bot collapsed to "Cliquez sur le bouton pour
+    // planifier votre visite" (Club visit template, WRONG). Restaurant
+    // reservation ≠ Club visit. The reply must point to LibroReserve / phone,
+    // NOT trigger the visit-booking button.
+    id: "restaurant-reservation-handoff",
+    label: "Restaurant: after Le 1881 desc, 'oui je veux réserver' must NOT trigger Club visit template",
+    locale: "fr-CA",
+    turns: [
+      { say: "parlez-moi du restaurant Le 1881" },
+      {
+        say: "oui svp j'aimerais réserver une table",
+        expect: {
+          mustInclude: [/(libroreserve|resto1881|reservation|r[ée]servation|514\s*845.8002|menu|1881)/i],
+          mustNotInclude: [
+            /Cliquez\s+sur\s+le\s+bouton\s+ci-dessous\s+pour\s+planifier\s+votre\s+visite/i,
+            /planifier\s+(?:votre|une)\s+visite\s+du\s+club/i,
+          ],
+        },
+      },
+    ],
+  },
+  {
     id: "spa-non-member",
     label: "Spa for a non-member — never bluntly refuse, must route warmly",
     locale: "fr-CA",
