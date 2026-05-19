@@ -135,6 +135,18 @@ function looksLikePhoneNumberQuestion(
 ): boolean {
   const normalized = normalizeIntentText(userMessage);
 
+  // 2026-05-19 demo bug: 'je voudrais me joindre à votre gym' fired this
+  // detector because of the word 'joindre'. But the visitor means JOIN
+  // (membership), not CONTACT. Same for prospect-goal phrasings.
+  // Bail out before the canned phone-number reply takes over.
+  const joinIntentSignals =
+    /\b(?:me\s+)?joindre\s+(?:a|à)\s+(?:votre|le|notre)\s+(?:gym|club|centre)\b/.test(normalized) ||
+    /\bjoin\s+(?:your|the)\s+(?:gym|club)\b/.test(normalized) ||
+    /\b(?:devenir|deveni)\s+membre\b/.test(normalized) ||
+    /\b(?:embonpoint|perdre\s+du\s+poids|remise\s+en\s+forme|me\s+remettre\s+en\s+forme|weight\s+loss|get\s+in\s+shape)\b/.test(normalized) ||
+    /\b(?:m['']?abonner|m['']?inscrire|adherer|adhérer)\b/.test(normalized);
+  if (joinIntentSignals) return false;
+
   if (isFrenchLocale(locale)) {
     return (
       hasAnyPhrase(normalized, [

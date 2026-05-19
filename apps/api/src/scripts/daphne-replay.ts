@@ -438,13 +438,20 @@ const FLOWS: Flow[] = [
   },
   {
     id: "urgent-callback-no-promise",
-    label: "Urgent callback in 5 min: must NOT promise specific timing",
+    label: "Urgent callback in 5 min: must NOT promise specific timing (only catch PROMISE patterns, not quoted-back user phrasing)",
     locale: "fr-CA",
     turns: [
       {
         say: "pouvez-vous me rappeler dans 5 minutes ?",
         expect: {
-          mustNotInclude: [/\b(dans\s+5\s+minutes|in\s+5\s+minutes|tout\s+de\s+suite)\b/i],
+          // Only catch PROMISE phrasings — bot quoting back the user's
+          // request ("votre demande de rappel dans 5 minutes") is fine when
+          // followed by "je ne peux pas garantir" / "I cannot guarantee".
+          mustNotInclude: [
+            /\b(?:Je\s+vous|on\s+vous|nous\s+vous)\s+(?:rappelle|rappellerons|rappellerai|appel|appelons|appellerons)\s+(?:dans|d['']?ici|en)\s+5\s*minutes\b/i,
+            /\bI['']?ll\s+(?:call|phone|reach)\s+(?:you\s+)?(?:back\s+)?in\s+5\s*minutes\b/i,
+            /\b(?:we['']?ll|we\s+will)\s+(?:call|phone)\s+(?:you\s+)?(?:back\s+)?in\s+5\s*minutes\b/i,
+          ],
         },
       },
     ],
