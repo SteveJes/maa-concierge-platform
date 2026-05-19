@@ -144,12 +144,17 @@ function SophieCallTooltip({ locale, canCall }: { locale: string; canCall: boole
       aria-hidden={!visible}
       style={{
         position: "absolute",
-        // Anchor the tooltip below the avatar and floated to the right so
-        // it can breathe on mobile (full chat width − avatar width) instead
-        // of being crushed into a 190 px box. Caret points UP at the
-        // phone chip.
-        top: 74,
-        left: 12,
+        // Tooltip is now a SIBLING of the portrait row inside the floating
+        // header (header padding 40/22/20), not nested in the 64 px avatar
+        // wrapper. Header layout top→bottom: padding-top 40 + brand-line
+        // ~12 + margin 16 + avatar 64 = ~132 px to the avatar bottom; chip
+        // extends 4 px below that. Place bubble at 148 to leave a ~12 px
+        // gap below the chip and aim the caret up at the icon. Stretch
+        // left/right with the header padding so the bubble has the FULL
+        // panel width and never gets crushed by shrink-to-fit.
+        top: 148,
+        left: 22,
+        right: 22,
         background: "linear-gradient(135deg, rgba(44,36,22,0.98), rgba(28,22,14,0.98))",
         border: "1px solid rgba(212,175,95,0.7)",
         borderRadius: 14,
@@ -157,10 +162,7 @@ function SophieCallTooltip({ locale, canCall }: { locale: string; canCall: boole
         fontSize: 12.5,
         color: "#f8efdd",
         whiteSpace: "normal",
-        // Allow up to the full chat-panel width minus a small inset. On
-        // mobile (panel ≈ 100vw) this gives the bubble a full readable
-        // line; on desktop it caps at ~280 px.
-        maxWidth: "min(280px, calc(100vw - 56px))",
+        boxSizing: "border-box",
         lineHeight: 1.4,
         textAlign: "left",
         fontWeight: 500,
@@ -181,14 +183,16 @@ function SophieCallTooltip({ locale, canCall }: { locale: string; canCall: boole
     >
       <span style={{ marginRight: 6 }}>📞</span>
       {msg}
-      {/* Tiny gold caret pointing UP toward the phone chip (bubble sits
-          below the avatar now so the eye flows up to the icon). */}
+      {/* Tiny gold caret pointing UP toward the phone chip. The chip sits
+          at the bottom-right of the avatar (avatar left:22 + width:64,
+          chip is at the avatar's right edge). Caret horizontal target ≈
+          56 px from the bubble's own left edge. */}
       <span
         aria-hidden="true"
         style={{
           position: "absolute",
           top: -6,
-          left: 32,
+          left: 56,
           width: 10,
           height: 10,
           background: "linear-gradient(135deg, rgba(44,36,22,0.98), rgba(28,22,14,0.98))",
@@ -1722,7 +1726,6 @@ export function ChatShell({
                 fades in for ~3.5s announcing the call-me feature, then fades
                 out so it never feels nagging. Daphné 2026-05-19 brief. */}
             <div style={{ position: "relative", flexShrink: 0 }}>
-              <SophieCallTooltip locale={locale} canCall={canTransferCurrentChatByPhone} />
             {/* Premium Sophie avatar — gold ring + soft inner glow + monogram */}
             <div
               style={{
@@ -1879,6 +1882,14 @@ export function ChatShell({
                 "linear-gradient(90deg, transparent 0%, rgba(212,175,95,0.4) 50%, transparent 100%)",
             }}
           />
+
+          {/* Call-Sophie tooltip — positioned RELATIVE TO THE FLOATING HEADER
+              (not the 64 px avatar wrapper) so it has the full chat-panel
+              width to breathe. The caret still points up at the phone chip,
+              anchored above the avatar's right edge. Fixed 2026-05-19:
+              previous nesting was capping shrink-to-fit width at ~52 px and
+              the bubble looked crushed on mobile. */}
+          <SophieCallTooltip locale={locale} canCall={canTransferCurrentChatByPhone} />
         </div>
       ) : null}
 
