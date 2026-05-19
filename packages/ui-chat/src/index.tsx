@@ -75,9 +75,10 @@ const GYM_SERVICES_EN = [
 
 /**
  * Luxurious one-shot tooltip that announces the call-Sophie feature.
- * Fades in after the chat opens, holds for ~3 s, then fades out — never
- * shown again in the same session (sessionStorage flag). Daphné's
- * 2026-05-19 brief: tell the user once, elegantly, never nag.
+ * Fades in elegantly after the chat opens, holds for ~7 s (long enough to
+ * be read without rushing the eye), then fades out. Never shown twice in
+ * the same session. Pairs with a tiny pointer caret aimed at the phone
+ * chip + a delicate sheen sweep so the visitor's eye lands on the icon.
  */
 function SophieCallTooltip({ locale, canCall }: { locale: string; canCall: boolean }) {
   const [visible, setVisible] = useState(false);
@@ -90,11 +91,14 @@ function SophieCallTooltip({ locale, canCall }: { locale: string; canCall: boole
       if (window.sessionStorage.getItem(seenKey) === "1") return;
     } catch { /* sessionStorage blocked — show anyway */ }
 
-    const fadeInTimer = setTimeout(() => setVisible(true), 900);
+    // Slower reveal cadence: 1.1s wait → 7.2s hold → 0.9s fade-out tail.
+    // Reads "deliberate" rather than "notification". Daphné 2026-05-19
+    // brief: more visibility for a winning feature, still never naggy.
+    const fadeInTimer = setTimeout(() => setVisible(true), 1100);
     const fadeOutTimer = setTimeout(() => {
       setVisible(false);
       try { window.sessionStorage.setItem(seenKey, "1"); } catch { /* ok */ }
-    }, 4400);
+    }, 8300);
 
     return () => {
       clearTimeout(fadeInTimer);
@@ -113,29 +117,48 @@ function SophieCallTooltip({ locale, canCall }: { locale: string; canCall: boole
       aria-hidden={!visible}
       style={{
         position: "absolute",
-        top: -42,
-        left: 0,
-        background: "linear-gradient(135deg, rgba(38,32,22,0.97), rgba(28,22,14,0.97))",
-        border: "1px solid rgba(212,175,95,0.55)",
+        // Anchor the tooltip above and slightly to the RIGHT of the avatar
+        // so its little caret points down at the phone chip (bottom-right
+        // corner of the avatar). Keeps the visual flow intentional.
+        top: -46,
+        left: 32,
+        background: "linear-gradient(135deg, rgba(44,36,22,0.98), rgba(28,22,14,0.98))",
+        border: "1px solid rgba(212,175,95,0.62)",
         borderRadius: 14,
-        padding: "7px 12px",
-        fontSize: 11,
+        padding: "8px 13px",
+        fontSize: 11.5,
         color: "#f8efdd",
         whiteSpace: "nowrap",
         fontWeight: 500,
         fontStyle: "italic",
         fontFamily: "Georgia, 'Times New Roman', serif",
         letterSpacing: "0.01em",
-        boxShadow: "0 6px 22px rgba(0,0,0,0.45), 0 0 0 1px rgba(212,175,95,0.18)",
+        boxShadow:
+          "0 10px 28px rgba(0,0,0,0.55), 0 0 0 1px rgba(212,175,95,0.28), 0 0 18px rgba(212,175,95,0.22)",
         opacity: visible ? 1 : 0,
         transform: visible ? "translateY(0)" : "translateY(6px)",
-        transition: "opacity 0.55s ease, transform 0.55s ease",
+        transition: "opacity 0.7s ease, transform 0.7s ease",
         pointerEvents: "none",
         zIndex: 5,
       }}
     >
       <span style={{ marginRight: 6 }}>📞</span>
       {msg}
+      {/* Tiny gold caret pointing down toward the phone chip. */}
+      <span
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          bottom: -6,
+          left: 14,
+          width: 10,
+          height: 10,
+          background: "linear-gradient(135deg, rgba(44,36,22,0.98), rgba(28,22,14,0.98))",
+          borderRight: "1px solid rgba(212,175,95,0.62)",
+          borderBottom: "1px solid rgba(212,175,95,0.62)",
+          transform: "rotate(45deg)",
+        }}
+      />
     </div>
   );
 }
@@ -1692,44 +1715,66 @@ export function ChatShell({
               </svg>
             </div>
 
-            {/* Phone chip attached to the avatar's bottom-right corner */}
+            {/* Phone chip attached to the avatar's bottom-right corner.
+                Slightly larger (34 px) + soft pulsing gold halo so it
+                reads as a premium, deliberate feature instead of a
+                decoration. The halo breathes 0.3 → 0.9 opacity over
+                ~2.4s, infinite. Daphné 2026-05-19 brief: more focus
+                without screaming. */}
             {canTransferCurrentChatByPhone ? (
-              <button
-                type="button"
-                onClick={() => { setShowInlineCallForm(true); setShowPhoneFallback(false); }}
-                title={locale === "en-CA" ? "Have Sophie call you — full conversation context" : "Faites-vous rappeler par Sophie — avec tout le contexte"}
-                aria-label={locale === "en-CA" ? "Call Sophie" : "Appeler Sophie"}
-                style={{
-                  position: "absolute",
-                  bottom: -2,
-                  right: -2,
-                  width: 28,
-                  height: 28,
-                  borderRadius: "50%",
-                  background: "radial-gradient(circle at 30% 30%, #d4af5f 0%, #b08a3a 60%, #6b4f1a 100%)",
-                  border: "2px solid #14141a",
-                  boxShadow: "0 0 0 1px rgba(212,175,95,0.55), 0 3px 10px rgba(212,175,95,0.4)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#1c1410",
-                  cursor: "pointer",
-                  padding: 0,
-                  transition: "transform 0.18s ease, box-shadow 0.18s ease",
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.12)";
-                  (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 0 1px rgba(255,225,160,0.85), 0 4px 14px rgba(212,175,95,0.55)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
-                  (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 0 1px rgba(212,175,95,0.55), 0 3px 10px rgba(212,175,95,0.4)";
-                }}
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>
-                </svg>
-              </button>
+              <div style={{ position: "absolute", bottom: -4, right: -4, width: 34, height: 34 }}>
+                {/* Outer pulsing halo — purely decorative, drawn behind the chip. */}
+                <span
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    inset: -6,
+                    borderRadius: "50%",
+                    background: "radial-gradient(circle, rgba(212,175,95,0.55) 0%, rgba(212,175,95,0) 70%)",
+                    animation: "maa-call-pulse 2.4s ease-in-out infinite",
+                    pointerEvents: "none",
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => { setShowInlineCallForm(true); setShowPhoneFallback(false); }}
+                  title={locale === "en-CA" ? "Have Sophie call you — full conversation context" : "Faites-vous rappeler par Sophie — avec tout le contexte"}
+                  aria-label={locale === "en-CA" ? "Call Sophie" : "Appeler Sophie"}
+                  style={{
+                    position: "relative",
+                    width: 34,
+                    height: 34,
+                    borderRadius: "50%",
+                    background: "radial-gradient(circle at 30% 30%, #f0d188 0%, #c89d3f 55%, #6b4f1a 100%)",
+                    border: "2px solid #14141a",
+                    boxShadow:
+                      "0 0 0 1px rgba(255,225,160,0.7), 0 4px 14px rgba(212,175,95,0.55), inset 0 1px 2px rgba(255,255,255,0.4)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#1c1410",
+                    cursor: "pointer",
+                    padding: 0,
+                    transition: "transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.12)";
+                    (e.currentTarget as HTMLButtonElement).style.boxShadow =
+                      "0 0 0 1px rgba(255,235,180,0.95), 0 6px 18px rgba(212,175,95,0.7), inset 0 1px 2px rgba(255,255,255,0.55)";
+                    (e.currentTarget as HTMLButtonElement).style.filter = "brightness(1.08)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
+                    (e.currentTarget as HTMLButtonElement).style.boxShadow =
+                      "0 0 0 1px rgba(255,225,160,0.7), 0 4px 14px rgba(212,175,95,0.55), inset 0 1px 2px rgba(255,255,255,0.4)";
+                    (e.currentTarget as HTMLButtonElement).style.filter = "brightness(1)";
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>
+                  </svg>
+                </button>
+              </div>
             ) : null}
             </div>
 
@@ -3729,6 +3774,10 @@ export function ChatShell({
           @keyframes maa-pulse-green {
             0%, 100% { box-shadow: 0 0 8px rgba(61,209,122,0.7), 0 0 0 0 rgba(61,209,122,0.5); }
             50% { box-shadow: 0 0 12px rgba(61,209,122,0.9), 0 0 0 4px rgba(61,209,122,0); }
+          }
+          @keyframes maa-call-pulse {
+            0%, 100% { opacity: 0.35; transform: scale(0.94); }
+            50% { opacity: 0.85; transform: scale(1.18); }
           }
           @keyframes maa-nudge-reveal {
             0% { transform: translateX(-22px) scale(0.97); opacity: 0; border-radius: 999px; }
