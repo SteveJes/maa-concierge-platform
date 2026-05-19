@@ -151,6 +151,428 @@ const FLOWS: Flow[] = [
       },
     ],
   },
+
+  // ──── 2026-05-19 expansion batch — proactive coverage so Daphné finds
+  // ──── nothing during her test runs. Each case here represents a real or
+  // ──── likely failure class — DO NOT remove without a replacement.
+
+  {
+    id: "membership-prices-direct",
+    label: "Pricing: must give 225/185/195/295 with 'actuellement' + soft inclusion mention",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "combien coûte l'abonnement annuel ?",
+        expect: {
+          mustInclude: [/\b225\s*\$|225\$|225\s*par\s+mois/i],
+          mustNotInclude: [/Cliquez\s+sur\s+le\s+bouton/i],
+        },
+      },
+    ],
+  },
+  {
+    id: "membership-prices-en",
+    label: "Pricing EN: must reply in English with the rate (no FR leak)",
+    locale: "en-CA",
+    turns: [
+      {
+        say: "what's the annual membership price?",
+        expect: {
+          mustInclude: [/\$\s?225|225\s*\$|225\s*(?:per|\/)\s*month/i],
+          mustNotInclude: [/\b(votre|équipe|n['']?hésitez|souhaitez-vous|bien sûr|avec plaisir)\b/i],
+        },
+      },
+    ],
+  },
+  {
+    id: "student-pricing",
+    label: "Student rate: 195 $/mois under 25 — confirm with caveat",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "j'ai 22 ans, est-ce qu'il y a un tarif étudiant ?",
+        expect: {
+          mustInclude: [/\b195\s*\$|195\$|tarif\s+[ée]tudiant/i],
+        },
+      },
+    ],
+  },
+  {
+    id: "senior-pricing",
+    label: "Senior rate: 185 $/mois 70+ — confirm",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "j'ai 72 ans, avez-vous un tarif aîné ?",
+        expect: {
+          mustInclude: [/\b185\s*\$|185\$|a[îi]n[ée]s?\b/i],
+        },
+      },
+    ],
+  },
+  {
+    id: "pool-hours-direct",
+    label: "Pool hours: autonomous answer with confirmed schedule, no '514 845-2233' trailer",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "quels sont les horaires de la piscine ?",
+        expect: {
+          mustInclude: [/\b(7|6h30|7h)|\b(20h30|20h|18h)\b/i],
+          mustNotInclude: [/Je\s+vous\s+recommande\s+de\s+valider/i],
+        },
+      },
+    ],
+  },
+  {
+    id: "pickleball-schedule",
+    label: "Pickleball: 28 timeslots, members-only, MAA app for reservation",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "j'aimerais jouer au pickleball, comment ça marche ?",
+        expect: {
+          mustInclude: [/\b(28|membre|application|app)\b/i],
+        },
+      },
+    ],
+  },
+  {
+    id: "pickleball-non-member",
+    label: "Pickleball non-member: clear answer, warm route to Francis",
+    locale: "fr-CA",
+    turns: [
+      { say: "je ne suis pas membre, est-ce que je peux jouer au pickleball ?" },
+      {
+        say: "donc seulement membres ?",
+        expect: {
+          mustInclude: [/(francis|bradette|abonnement|visite)/i],
+        },
+      },
+    ],
+  },
+  {
+    id: "yoga-included",
+    label: "Yoga: included with membership, NO à-la-carte affirmation",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "est-ce que le yoga est inclus dans l'abonnement ?",
+        expect: {
+          mustInclude: [/\b(inclus|incluse|fait\s+partie|inclus[e]?s?\s+dans)\b/i],
+          mustNotInclude: [
+            /participer\s+sans\s+être\s+membre/i,
+            /(à|a)\s+la\s+carte/i,
+            /drop[\s-]?in/i,
+          ],
+        },
+      },
+    ],
+  },
+  {
+    id: "group-classes-lead-yes",
+    label: "Group classes: must lead with 'Oui' affirmation",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "les cours de groupe sont-ils inclus avec l'abonnement ?",
+        expect: {
+          mustInclude: [/^(?:Oui|absolument)/i, /(inclus|incluse|fait\s+partie)/i],
+        },
+      },
+    ],
+  },
+  {
+    id: "restaurant-take-out",
+    label: "Restaurant take-out: must include ordering or restaurant phone",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "puis-je commander pour emporter au restaurant ?",
+        expect: {
+          mustInclude: [/clusterpos|emporter|take[\s-]?out|514\s*845.8002|1881/i],
+        },
+      },
+    ],
+  },
+  {
+    id: "restaurant-group-12",
+    label: "Restaurant group of 12: must route to group reservations phone",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "j'aimerais réserver une table pour 12 personnes au restaurant",
+        expect: {
+          mustInclude: [/514\s*845.8002|groupe|conf[ée]rence|grand[s]?\s+groupes?/i],
+        },
+      },
+    ],
+  },
+  {
+    id: "spa-massage-prices",
+    label: "Massage prices: must give 60/80/105 $ tiers",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "combien coûte un massage de 55 minutes ?",
+        expect: {
+          mustInclude: [/\b80\s*\$|80\$/i],
+        },
+      },
+    ],
+  },
+  {
+    id: "clinique-pain",
+    label: "Pain query: NO diagnosis, route to physio/sports therapy",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "j'ai mal au genou depuis une semaine",
+        expect: {
+          mustInclude: [/(physio|th[ée]rapie\s+sportive|clinique)/i],
+          mustNotInclude: [/\b(arthrite|tendinite|hernie|m[ée]niscale?|sciatique|capsulite)\b/i],
+        },
+      },
+    ],
+  },
+  {
+    id: "club-history",
+    label: "Heritage: 1881 founding, premium heritage tone",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "depuis quand existe le Club ?",
+        expect: {
+          mustInclude: [/\b1881\b/],
+        },
+      },
+    ],
+  },
+  {
+    id: "address",
+    label: "Address: 2070 Peel Montreal",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "où se trouve le Club ?",
+        expect: {
+          mustInclude: [/2070|Peel|Montr[ée]al/i],
+        },
+      },
+    ],
+  },
+  {
+    id: "phone-general",
+    label: "General phone: 514 845-2233 (no inventions)",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "quel est votre numéro de téléphone ?",
+        expect: {
+          mustInclude: [/514\s*845.2233/i],
+        },
+      },
+    ],
+  },
+  {
+    id: "language-switch-en-to-fr",
+    label: "Language switch EN→FR: subsequent reply fully French, no English leak",
+    locale: "en-CA",
+    turns: [
+      { say: "what's the membership price?" },
+      {
+        say: "désolé, je préfère continuer en français svp",
+        expect: {
+          mustNotInclude: [/\b(currently|membership|monthly|please|right|the team)\b/i],
+        },
+      },
+    ],
+  },
+  {
+    id: "language-switch-fr-to-en",
+    label: "Language switch FR→EN: subsequent reply fully English",
+    locale: "fr-CA",
+    turns: [
+      { say: "combien coûte l'abonnement ?" },
+      {
+        say: "sorry can we continue in English?",
+        expect: {
+          mustNotInclude: [/\b(votre|équipe|n['']?hésitez|souhaitez-vous|bien sûr|avec plaisir|svp|s['']?il vous pla[iî]t|actuellement)\b/i],
+        },
+      },
+    ],
+  },
+  {
+    id: "quick-info-no-form",
+    label: "Quick-info / no-form: NO booking suggestion, NO 'transmettre demande', NO visit CTA",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "je veux juste savoir vite si vous avez du pickleball, pas remplir de formulaire",
+        expect: {
+          mustNotInclude: [
+            /transmettre\s+votre\s+demande/i,
+            /planifier\s+une\s+visite/i,
+            /Cliquez\s+sur\s+le\s+bouton/i,
+            /Souhaitez-vous\s+que\s+je\s+vous\s+(?:mette|transmette|orient)/i,
+          ],
+        },
+      },
+    ],
+  },
+  {
+    id: "cancellation",
+    label: "Cancellation request: NO calendly/visit template, route appropriately",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "je veux annuler mon abonnement",
+        expect: {
+          mustNotInclude: [
+            /Cliquez\s+sur\s+le\s+bouton\s+ci-dessous\s+pour\s+planifier/i,
+            /planifier\s+(?:votre|une)\s+visite/i,
+          ],
+        },
+      },
+    ],
+  },
+  {
+    id: "urgent-callback-no-promise",
+    label: "Urgent callback in 5 min: must NOT promise specific timing",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "pouvez-vous me rappeler dans 5 minutes ?",
+        expect: {
+          mustNotInclude: [/\b(dans\s+5\s+minutes|in\s+5\s+minutes|tout\s+de\s+suite)\b/i],
+        },
+      },
+    ],
+  },
+  {
+    id: "external-price-claim",
+    label: "External price claim ($150): must NOT confirm, route to Francis or team",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "mon ami m'a dit que c'est 150$ par mois",
+        expect: {
+          mustNotInclude: [/\bbien\s+s[uû]r,?\s+(?:c['']?est|150)/i],
+        },
+      },
+    ],
+  },
+  {
+    id: "price-objection-en-justify",
+    label: "EN price objection ($225 expensive): justify with concrete inclusions list",
+    locale: "en-CA",
+    turns: [
+      {
+        say: "$225/mo is expensive, why?",
+        expect: {
+          mustInclude: [/(pool|sauna|spa|squash|class|restaurant|1881|Pilates|fitness|amenit)/i],
+        },
+      },
+    ],
+  },
+  {
+    id: "maagazine-no-forbidden-phrase",
+    label: "MAAgazine: must NOT use 'publication exclusive du Club'",
+    locale: "fr-CA",
+    turns: [
+      { say: "c'est quoi le MAAgazine ?" },
+      {
+        say: "ok merci",
+        expect: {
+          mustNotInclude: [/publication\s+exclusive\s+du\s+club/i],
+        },
+      },
+    ],
+  },
+  {
+    id: "autonomy-buanderie-no-trailer",
+    label: "Buanderie price: 25 $/mois confirmed, must NOT add '514 845-2233 valider' trailer",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "avez-vous un service de buanderie ?",
+        expect: {
+          mustInclude: [/\b25\s*\$|25\$|buanderie/i],
+          mustNotInclude: [/Je\s+vous\s+recommande\s+de\s+valider[^.]+514\s*845.2233/i],
+        },
+      },
+    ],
+  },
+  {
+    id: "explicit-team-help",
+    label: "Explicit team help: 'quelqu'un de l'équipe m'aide' → offer named handoff, not raw facts",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "j'aimerais que quelqu'un de l'équipe m'aide à choisir un programme",
+        expect: {
+          mustInclude: [/(francis|nathalie|clinique|coordonn[ée]es|nom|t[ée]l[ée]phone|courriel|transmet|contact)/i],
+        },
+      },
+    ],
+  },
+  {
+    id: "restaurant-link-button",
+    label: "Restaurant menu link: markdown link present (UI renders as button, not raw URL)",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "pouvez-vous m'envoyer le menu du restaurant ?",
+        expect: {
+          mustInclude: [/\[.+\]\(https?:\/\/|clubsportifmaa\.com|1881|libroreserve/i],
+        },
+      },
+    ],
+  },
+  {
+    id: "non-member-class-warm-route",
+    label: "Non-member asks about a class: mention Francis + explain membership tie",
+    locale: "fr-CA",
+    turns: [
+      { say: "je voudrais essayer un cours de pilates" },
+      { say: "non, je ne suis pas encore membre" },
+      {
+        say: "donc je suis intéressé pour devenir membre",
+        expect: {
+          mustInclude: [/(francis|bradette|abonnement|visite|adh[éè]sion)/i],
+        },
+      },
+    ],
+  },
+  {
+    id: "spa-mother-non-member",
+    label: "Spa with mother (non-member): warm route, NO assumption of access",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "je veux aller au spa avec ma mère, sans abonnement",
+        expect: {
+          mustInclude: [/(francis|bradette|abonnement|visite|adh[éè]sion|massoth[ée]rapie|rendez-vous)/i],
+        },
+      },
+    ],
+  },
+  {
+    id: "gym-access-unknown-membership",
+    label: "Gym access (no member declaration): qualified answer, NO visit CTA, NO 'Vous pouvez accéder'",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "puis-je m'entraîner dans la salle de musculation ?",
+        expect: {
+          mustNotInclude: [
+            /^Vous\s+pouvez\s+acc[ée]der/i,
+            /Cliquez\s+sur\s+le\s+bouton\s+ci-dessous\s+pour\s+planifier/i,
+          ],
+        },
+      },
+    ],
+  },
 ];
 
 async function postChat(message: string, locale: string, conversationId: string | null): Promise<{

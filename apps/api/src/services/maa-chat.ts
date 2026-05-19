@@ -572,6 +572,42 @@ function stripMassageFromFitnessAnswer(userMessage: string, message: string): st
 }
 
 /**
+ * Sentinel 2026-05-19 maa-10.1 — the bot keeps echoing the forbidden seed
+ * phrase "publication exclusive du Club" (from earlier KB language) when
+ * asked about the MAAgazine. Replace it with a warmer, non-seeded phrasing.
+ */
+function stripMaagazineForbiddenSeed(message: string): string {
+  return message
+    .replace(/\b(une\s+)?publication\s+exclusive\s+du\s+club\b/gi, "le magazine du Club")
+    .replace(/\b(an\s+)?exclusive\s+Club\s+publication\b/gi, "the Club's magazine")
+    .replace(/\b(une\s+)?publication\s+exclusive\b/gi, "le magazine du Club");
+}
+
+/**
+ * Sentinel 2026-05-19 maa-8.9 — bilingual leak detector. When the reply locale
+ * is English but obvious French function-words appear (or vice-versa), strip a
+ * small set of known offenders so the strict-language-lock holds in practice.
+ * Conservative: only safe, fully-ambiguous strings — never numbers / prices /
+ * proper nouns.
+ */
+function stripBilingualLeak(message: string, locale: string | undefined): string {
+  if (!locale) return message;
+  const isEn = locale.toLowerCase().startsWith("en");
+  if (isEn) {
+    return message
+      .replace(/\bn['']?h[eé]sitez\s+pas\s+[aà]\b/gi, "feel free to")
+      .replace(/\bavec\s+plaisir\b/gi, "with pleasure")
+      .replace(/\bbien\s+s[uû]r\b/gi, "of course")
+      .replace(/\bsouhaitez[- ]?vous\s+que\b/gi, "would you like me to")
+      .replace(/\bvotre\s+[ée]quipe\b/gi, "your team");
+  }
+  return message
+    .replace(/\bfeel\s+free\s+to\b/gi, "n'hésitez pas à")
+    .replace(/\breach\s+out\s+to\b/gi, "contacter")
+    .replace(/\bclick\s+below\b/gi, "cliquez ci-dessous");
+}
+
+/**
  * Daphné AUTONOMY GOAL ("Rendre autonome x 100") — the bot keeps appending
  * reflexive "Je vous recommande de valider avec l'équipe au 514 845-2233"
  * trailers even after stating a confirmed fact (price, schedule, inclusion).
@@ -696,6 +732,13 @@ function applyPostProcessGuards(
 ): string {
   let out = message;
   const fr = isFrenchLocale(locale);
+
+  // 0. MAAgazine forbidden phrasing — Sentinel maa-10.1 failure. The phrase
+  //    "publication exclusive du Club" feels stiff/brochure-like and was
+  //    explicitly forbidden by Daphné. Rewrite to a warmer description.
+  out = out
+    .replace(/\bpublication\s+exclusive\s+du\s+(club\s+sportif\s+maa|club)\b/gi, "magazine du Club")
+    .replace(/\bune\s+publication\s+exclusive\b/gi, "le magazine du Club");
 
   // 1. Course-count source lock (Daphné sixth-pass #3). Until MAA confirms
   //    "175 classes/week", the authoritative figure is "plus de 75 cours
@@ -2113,6 +2156,8 @@ export async function answerMaaChat(
     cleanedAssistantMessage,
   );
   cleanedAssistantMessage = softenUncertaintyWording(cleanedAssistantMessage);
+  cleanedAssistantMessage = stripMaagazineForbiddenSeed(cleanedAssistantMessage);
+  cleanedAssistantMessage = stripBilingualLeak(cleanedAssistantMessage, request.locale);
   cleanedAssistantMessage = stripExcessiveAutonomyTrailer(cleanedAssistantMessage);
   cleanedAssistantMessage = ensureNonMemberWarmRoute(
     request.userMessage,
