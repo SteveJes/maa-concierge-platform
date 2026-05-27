@@ -88,6 +88,31 @@ const DUBUB_SUGGESTED_EN = [
   "How long does onboarding take?",
 ];
 
+// Generic premium fallback for any tenant onboarded via the wizard that
+// hasn't yet had per-tenant nudges configured. Bilingual + industry-neutral.
+const GENERIC_NUDGES_FR = (clientName: string) => [
+  `Je peux répondre à vos questions sur les services de ${clientName} — n'hésitez pas à me demander n'importe quoi.`,
+  `Vous cherchez une information précise ? Je peux vous orienter vers le bon contact ou prendre votre demande.`,
+  `Besoin d'organiser un rendez-vous ou une rencontre ? Je peux vous aider à planifier ça.`,
+];
+const GENERIC_NUDGES_EN = (clientName: string) => [
+  `I can answer questions about ${clientName} — feel free to ask me anything.`,
+  `Looking for something specific? I can point you to the right contact or capture your request.`,
+  `Need to book an appointment or meeting? I can help schedule that.`,
+];
+const GENERIC_SUGGESTED_FR = (tunnelCta: string) => [
+  "Quels sont vos services ?",
+  "Quels sont vos horaires ?",
+  "Comment vous joindre ?",
+  tunnelCta,
+];
+const GENERIC_SUGGESTED_EN = (tunnelCta: string) => [
+  "What services do you offer?",
+  "What are your hours?",
+  "How can I reach you?",
+  tunnelCta,
+];
+
 // Hardcoded known tenants — no API call needed for these
 const KNOWN_CONFIGS: Record<string, DemoConfig> = {
   "maa": {
@@ -217,18 +242,41 @@ export default function DemoSlugPage() {
         tenantId: slug, name: siteName, websiteUrl: siteUrl, conciergeName: "Sophie",
         clientName: siteName, accentColor: "#c9a84c", accentGradient: "linear-gradient(135deg, #c9a84c, #a07830)", accentRgb: "201,168,76",
         bubbleGradient: "linear-gradient(135deg, #c9a84c 0%, #8b6010 100%)", bubbleGlow: "rgba(201,168,76,0.55)",
-        logoUrl: null, nudgesFr: MAA_NUDGES_FR, nudgesEn: MAA_NUDGES_EN,
+        logoUrl: null,
+        nudgesFr: GENERIC_NUDGES_FR(siteName),
+        nudgesEn: GENERIC_NUDGES_EN(siteName),
       });
       return;
     }
     fetch(`${API}/v1/demo-config/${slug}`)
-      .then((r) => { if (!r.ok) throw new Error("not_found"); return r.json() as Promise<{ tenantId: string; name: string; websiteUrl: string | null; conciergeName: string }>; })
+      .then((r) => { if (!r.ok) throw new Error("not_found"); return r.json() as Promise<{
+        tenantId: string; name: string; websiteUrl: string | null; conciergeName: string;
+        tunnelCtaFr?: string | null; tunnelCtaEn?: string | null;
+        accentColor?: string; accentGradient?: string; accentRgb?: string;
+        bubbleGradient?: string; bubbleGlow?: string;
+      }>; })
       .then((d) => setConfig({
-        ...d,
+        tenantId: d.tenantId,
+        name: d.name,
+        websiteUrl: d.websiteUrl,
+        conciergeName: d.conciergeName,
         clientName: d.name,
-        accentColor: "#c9a84c", accentGradient: "linear-gradient(135deg, #c9a84c, #a07830)", accentRgb: "201,168,76",
-        bubbleGradient: "linear-gradient(135deg, #c9a84c 0%, #8b6010 100%)", bubbleGlow: "rgba(201,168,76,0.55)",
-        logoUrl: null, nudgesFr: MAA_NUDGES_FR, nudgesEn: MAA_NUDGES_EN,
+        accentColor: d.accentColor ?? "#c9a84c",
+        accentGradient: d.accentGradient ?? "linear-gradient(135deg, #c9a84c, #a07830)",
+        accentRgb: d.accentRgb ?? "201,168,76",
+        bubbleGradient: d.bubbleGradient ?? "linear-gradient(135deg, #c9a84c 0%, #8b6010 100%)",
+        bubbleGlow: d.bubbleGlow ?? "rgba(201,168,76,0.55)",
+        logoUrl: null,
+        // Generic premium nudges + suggested questions tailored to the tenant name.
+        // No more MAA pickleball/spa surfacing for a brand-new tenant.
+        nudgesFr: GENERIC_NUDGES_FR(d.name),
+        nudgesEn: GENERIC_NUDGES_EN(d.name),
+        suggestedQuestionsFr: GENERIC_SUGGESTED_FR(d.tunnelCtaFr ?? "Planifier une rencontre"),
+        suggestedQuestionsEn: GENERIC_SUGGESTED_EN(d.tunnelCtaEn ?? "Schedule a meeting"),
+        nudgeLabelFr: "Conseil", nudgeLabelEn: "Tip",
+        nudgeSubLabelFr: d.name, nudgeSubLabelEn: d.name,
+        pricingCtaFr: `→ ${d.tunnelCtaFr ?? "Planifier une rencontre"}`,
+        pricingCtaEn: `→ ${d.tunnelCtaEn ?? "Schedule a meeting"}`,
       }))
       .catch(() => setNotFound(true));
   }, [slug]);

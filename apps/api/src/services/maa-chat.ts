@@ -614,6 +614,36 @@ function rewriteObsoleteMassagePricing(message: string, locale: string | undefin
   return cleaned.filter((s) => s.length > 0).join(" ").replace(/\s{2,}/g, " ").trim();
 }
 
+/**
+ * Daphné batch 2026-05-27 — Final-delivery audit gap: SPA invented hours
+ * (review category 21). Daphné explicitly flagged that "nulle part il est
+ * mentionné les horaires de spa" — no spa hours exist in the knowledge base —
+ * yet the LLM occasionally invents them. Strip any standalone "spa ... du
+ * lundi ... à 19h" pattern and replace with an honest "à confirmer auprès de
+ * la réception" line.
+ */
+function stripInventedSpaHours(message: string, locale: string | undefined): string {
+  const sentences = message.split(/(?<=[.!?])\s+/);
+  let stripped = false;
+  const cleaned = sentences.map((s) => {
+    const mentionsSpa = /\b(spa|sauna|hammam|bain\s+(?:à\s+remous|tourbillon|vapeur)|hot\s+tub|jacuzzi|steam\s+room)\b/i.test(s);
+    const hasFixedWeeklyGrid =
+      /\b(?:du\s+)?(?:lundi|mardi|mercredi|jeudi|vendredi)\s*(?:au|to)?\s*(?:vendredi|dimanche|samedi)?\s*(?:de\s+)?\d{1,2}\s*h\s*\d{0,2}\s*(?:à|to|-)\s*\d{1,2}\s*h/i.test(s) ||
+      /\b(?:open|hours?)\s+(?:from\s+)?\d{1,2}(?:am|pm|:\d{2})?\s+(?:to|until|-)\s+\d{1,2}(?:am|pm|:\d{2})?\b/i.test(s);
+    if (mentionsSpa && hasFixedWeeklyGrid) {
+      stripped = true;
+      return "";
+    }
+    return s;
+  });
+  if (!stripped) return message;
+  const fr = isFrenchLocale(locale);
+  const replacement = fr
+    ? "Les horaires précis du spa ne sont pas publiés — la réception du Club (514 845-2233, poste 0) peut vous confirmer les plages d'ouverture du jour."
+    : "Specific spa hours aren't published — Club reception ((514) 845-2233, ext. 0) can confirm today's opening times.";
+  return (cleaned.filter((s) => s.length > 0).join(" ") + " " + replacement).replace(/\s{2,}/g, " ").trim();
+}
+
 function stripFakeTransmissionClaim(
   message: string,
   locale: string | undefined,
@@ -2149,6 +2179,7 @@ export async function answerMaaChat(
     // services, but if the LLM accidentally pulls them, the guard catches it).
     dububGuardedMessage = rewriteObsoleteMassagePricing(dububGuardedMessage, request.locale);
     dububGuardedMessage = stripInventedClinicalHours(dububGuardedMessage, request.locale);
+    dububGuardedMessage = stripInventedSpaHours(dububGuardedMessage, request.locale);
 
     // Daphné batch 2026-05-27 — Bug A guard, DUBUB path. Same anti-hallucinated
     // transmission claim treatment as the MAA path below.
@@ -2408,7 +2439,14 @@ export async function answerMaaChat(
     (process.env.KNOWLEDGE_VERSION ?? "v2") === "v2" &&
     (request.tenantCode === "maa" || !request.tenantCode);
 
-  const pricingAnswer = !isDubub && !v2Enabled && !skipDeterministicHandlers && tryAnswerPricingQuestion(
+  // Final-delivery pass — wizard-tenant safety: the deterministic pricing /
+  // schedule / policy handlers below were calibrated against MAA membership
+  // tariffs and gym-domain heuristics. For ANY non-MAA tenant (DUBUB and any
+  // newly-onboarded tenant from the wizard), they would misfire — quoting
+  // 225 $/mois membership grids to a spa or law firm. Gate them.
+  const isMaaTenant = request.tenantCode === "maa" || !request.tenantCode;
+
+  const pricingAnswer = isMaaTenant && !isDubub && !v2Enabled && !skipDeterministicHandlers && tryAnswerPricingQuestion(
     resolvedUserMessage,
     searchResults,
     request.locale,
@@ -2443,7 +2481,7 @@ export async function answerMaaChat(
   // Same v2-bypass rule as pricing: let the LLM compose schedule answers
   // using v2's sources-vivantes.json (which flags the pool-hours contradiction
   // between the site and the PDF) + soft CTAs.
-  const scheduleAnswer = !isDubub && !v2Enabled && !skipDeterministicHandlers && tryAnswerScheduleQuestion(
+  const scheduleAnswer = isMaaTenant && !isDubub && !v2Enabled && !skipDeterministicHandlers && tryAnswerScheduleQuestion(
     resolvedUserMessage,
     searchResults,
   );
@@ -2474,7 +2512,7 @@ export async function answerMaaChat(
     };
   }
 
-  const policyAnswer = !isDubub && !skipDeterministicHandlers && tryAnswerPolicyQuestion(
+  const policyAnswer = isMaaTenant && !isDubub && !skipDeterministicHandlers && tryAnswerPolicyQuestion(
     resolvedUserMessage,
     searchResults,
   );
@@ -2613,6 +2651,7 @@ export async function answerMaaChat(
   // physio. Strip those at the surface.
   cleanedAssistantMessage = rewriteObsoleteMassagePricing(cleanedAssistantMessage, request.locale);
   cleanedAssistantMessage = stripInventedClinicalHours(cleanedAssistantMessage, request.locale);
+  cleanedAssistantMessage = stripInventedSpaHours(cleanedAssistantMessage, request.locale);
 
   // Daphné batch 2026-05-27 — Bug A guard. If the LLM hallucinated a
   // transmission claim, strip it and force the widget to open the lead-capture

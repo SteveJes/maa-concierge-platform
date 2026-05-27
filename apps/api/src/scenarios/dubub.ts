@@ -76,4 +76,38 @@ export const DUBUB_SCENARIOS: Scenario[] = [
     ],
     source: "Daphné batch 2026-05-27 — Bug A guard DUBUB parity (past-tense hallucination case)",
   },
+
+  // Final-delivery DUBUB completion scenarios — sales funnel quality
+  {
+    id: "dubub-final.enterprise-multi-site",
+    label: "DUBUB enterprise / multi-site qualification — route to custom plan, NOT Prestige quote",
+    tenantCode: "dubub",
+    locale: "fr-CA",
+    userMessage: "On a 5 succursales et environ 50 employés. Quel plan nous convient ?",
+    forbidPatterns: [
+      // Should NOT just quote Prestige and stop — the question asks for fit.
+      /^[^.]*\b(?:3\s*900|3900)\s*\$[^.]*\.\s*$/i,
+    ],
+    requireAnyPattern: [
+      /sur[- ]mesure|personnalis[ée]|custom|multi[- ]site|prestige|équipe\s+(?:vous\s+)?contactera|courriel|d[ée]mo/i,
+    ],
+    source: "Final-delivery DUBUB sales-funnel coverage",
+  },
+  {
+    id: "dubub-final.timeline-objection",
+    label: "DUBUB implementation timeline objection — must acknowledge + frame value",
+    tenantCode: "dubub",
+    locale: "fr-CA",
+    userMessage: "10 à 15 jours c'est trop long pour nous, vous pouvez pas faire plus vite ?",
+    requireAnyPattern: [
+      // Must engage with the concern; not dismiss it. Either acknowledge constraints
+      // or offer to discuss with the team.
+      /comprends|comprend|comprehend|accel[ée]r|rapid|équipe|d[ée]mo|prioritaire|votre\s+contexte|prendre\s+(?:un\s+)?moment/i,
+    ],
+    forbidPatterns: [
+      // Should not promise impossible speeds.
+      /\b(?:24h|24\s*heures|une\s+journée|même\s+jour|same\s+day)\b/i,
+    ],
+    source: "Final-delivery DUBUB sales-funnel coverage",
+  },
 ];

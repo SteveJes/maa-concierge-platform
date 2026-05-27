@@ -460,16 +460,17 @@ function buildCallbackSuccessMessage(
   locale: string | null,
   phone: string,
   preferredTimeText: string | null,
+  tenantName = "notre équipe",
 ): string {
   if (isFrenchLocale(locale)) {
     return preferredTimeText
-      ? `Merci - votre demande de rappel a bien été enregistrée. Un membre de l'équipe du Club Sportif MAA pourra vous rappeler au ${phone}. Plage horaire souhaitée notée : ${preferredTimeText}.`
-      : `Merci - votre demande de rappel a bien été enregistrée. Un membre de l'équipe du Club Sportif MAA pourra vous rappeler au ${phone}.`;
+      ? `Merci - votre demande de rappel a bien été enregistrée. Un membre de l'équipe de ${tenantName} pourra vous rappeler au ${phone}. Plage horaire souhaitée notée : ${preferredTimeText}.`
+      : `Merci - votre demande de rappel a bien été enregistrée. Un membre de l'équipe de ${tenantName} pourra vous rappeler au ${phone}.`;
   }
 
   return preferredTimeText
-    ? `Thanks - your callback request has been captured. A Club Sportif MAA team member can call you back at ${phone}. Preferred time noted: ${preferredTimeText}.`
-    : `Thanks - your callback request has been captured. A Club Sportif MAA team member can call you back at ${phone}.`;
+    ? `Thanks - your callback request has been captured. The ${tenantName} team can call you back at ${phone}. Preferred time noted: ${preferredTimeText}.`
+    : `Thanks - your callback request has been captured. The ${tenantName} team can call you back at ${phone}.`;
 }
 function buildCallbackFailureMessage(locale: string | null): string {
   if (isFrenchLocale(locale)) {
@@ -613,6 +614,7 @@ function buildVapiHandoffSummary(
   locale: string | null,
   recentTurns: NonNullable<MaaChatRequest["conversationHistory"]>,
   currentUserMessage: string,
+  tenantName = "",
 ): string {
   const recentUserTurns = recentTurns
     .filter((turn) => turn.role === "user")
@@ -621,9 +623,10 @@ function buildVapiHandoffSummary(
 
   const recentTopicText = recentUserTurns.join(" | ");
   const parts: string[] = [];
+  const brand = tenantName ? ` ${tenantName}` : "";
 
   if (isFrenchLocale(locale)) {
-    parts.push("Continuer la même conversation Club Sportif MAA par téléphone en français.");
+    parts.push(`Continuer la même conversation${brand} par téléphone en français.`);
     parts.push("Dernière demande de l'utilisateur : " + currentUserMessage);
     if (recentTopicText) {
       parts.push("Contexte récent : " + recentTopicText);
@@ -631,7 +634,7 @@ function buildVapiHandoffSummary(
     return parts.join(" ");
   }
 
-  parts.push("Continue the same Club Sportif MAA conversation by phone in English.");
+  parts.push(`Continue the same${brand} conversation by phone in English.`);
   parts.push("Latest user request: " + currentUserMessage);
   if (recentTopicText) {
     parts.push("Recent context: " + recentTopicText);
@@ -1704,12 +1707,26 @@ export function createServer() {
     const { slug } = request.params as { slug: string };
     const tenant = getTenant(slug) ?? TENANT_REGISTRY.find(t => slugify(t.name) === slug);
     if (!tenant) return reply.code(404).send({ error: "not_found" });
-    const conciergeName = tenant.id === "maa" ? "Sophie" : tenant.id === "dubub" ? "SophIA" : "SophIA";
+    const conciergeName = tenant.id === "maa" ? "Sophie" : tenant.id === "dubub" ? "SophIA" : (tenant.conciergeName ?? "SophIA");
+    // Final-delivery pass — surface enough fields for the demo page to render a
+    // brand-appropriate theme instead of falling back to MAA gold. Hardcoded
+    // KNOWN_CONFIGS on the web side still wins for maa/dubub for visual parity
+    // with current production; this payload feeds NEW tenants from the wizard.
     return reply.send({
       tenantId: tenant.id,
       name: tenant.name,
       websiteUrl: tenant.website ?? null,
       conciergeName,
+      tunnelCtaFr: tenant.tunnelCtaFr ?? null,
+      tunnelCtaEn: tenant.tunnelCtaEn ?? null,
+      // Neutral premium theme: dark charcoal + muted gold accent. New tenants
+      // get a polished look out of the box. The wizard can later expose an
+      // "accent color" picker that overrides this.
+      accentColor: "#c9a84c",
+      accentGradient: "linear-gradient(135deg, #c9a84c, #a07830)",
+      accentRgb: "201,168,76",
+      bubbleGradient: "linear-gradient(135deg, #c9a84c 0%, #8b6010 100%)",
+      bubbleGlow: "rgba(201,168,76,0.55)",
     });
   });
 
@@ -2252,9 +2269,15 @@ export function createServer() {
 
     let responseCitations = result.citations;
 
-    // DUBUB chat lead capture: when AI signals "done" (collected company + email), fire lead email
-    // DUBUB lead email: only fire on the actual confirmation turn (when assistant says "Notre équipe vous contacte").
-    // This prevents duplicate sends on subsequent "done" turns (e.g., "merci" after capture).
+    // DUBUB chat lead capture: when AI signals "done" (collected company + email), fire lead email.
+    // Only fires on the actual confirmation turn (when assistant says "Notre équipe vous contacte")
+    // to prevent duplicate sends on subsequent "done" turns (e.g. "merci" after capture).
+    //
+    // Final-delivery pass: Bug B parity. Previously the email fired in setImmediate so a silent
+    // Brevo failure left the visitor seeing "Notre équipe vous contacte" while no lead arrived.
+    // Now: synchronously await the send. If it fails, REWRITE the assistant message to a
+    // soft failure pattern so the visitor knows to retry or call directly. This mirrors the
+    // MAA callback Bug B fix from Phase 2 of the Daphné 2026-05-27 batch.
     if (
       tenantId === "dubub" &&
       responseFollowUpMode === "done" &&
@@ -2267,20 +2290,55 @@ export function createServer() {
       const emailMatch = allMsgText.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
       const dububTenant = getTenant("dubub");
       const dububNotifyEmail = dububTenant?.notifyEmail || process.env.LEAD_NOTIFY_EMAIL || "";
+
+      // Boot-time-style assertion logged at request time so we notice if the
+      // recipient falls back to the shared env var (DUBUB leads would land in
+      // MAA's inbox otherwise — audit finding from final-delivery review).
+      if (!dububTenant?.notifyEmail && dububNotifyEmail) {
+        request.log.warn(
+          { recipientFallback: dububNotifyEmail },
+          "DUBUB lead email recipient is falling back to shared LEAD_NOTIFY_EMAIL — set tenants[dubub].notifyEmail to prevent mis-routing",
+        );
+      }
+
       if (dububNotifyEmail && emailMatch) {
-        setImmediate(() => {
-          sendLeadNotificationEmail({
-            name: userName ?? null,
-            phone: "",
-            email: emailMatch[0],
-            preferredTime: null,
-            locale: locale ?? "fr-CA",
-            questionSummary: "Demande de démo via chat DUBUB",
-            conversationId: conversationId ?? null,
-            tenantName: dububTenant?.name ?? "DUBUB",
-            notifyEmail: dububNotifyEmail,
-          });
+        const dububEmailSent = await sendLeadNotificationEmail({
+          name: userName ?? null,
+          phone: "",
+          email: emailMatch[0],
+          preferredTime: null,
+          locale: locale ?? "fr-CA",
+          questionSummary: "Demande de démo via chat DUBUB",
+          conversationId: conversationId ?? null,
+          tenantName: dububTenant?.name ?? "DUBUB",
+          notifyEmail: dububNotifyEmail,
+        }).catch((err) => {
+          request.log.error({ err }, "DUBUB lead email threw");
+          return false;
         });
+
+        if (!dububEmailSent) {
+          // Silent Brevo failure — rewrite the LLM's "Notre équipe vous contacte"
+          // claim with a soft retry message so the visitor isn't misled.
+          const isFr = (locale ?? "fr-CA").startsWith("fr");
+          const failureMessage = isFr
+            ? "Merci pour vos coordonnées. Un problème technique a empêché l'envoi de votre demande à notre équipe. Pouvez-vous réessayer dans un instant, ou nous écrire directement à steve@dubub.com ?"
+            : "Thanks for your details. A technical issue prevented your request from reaching our team. Please try again in a moment, or email us directly at steve@dubub.com.";
+          result.assistantMessage = failureMessage;
+          responseAssistantMessage = failureMessage;
+          responseFollowUpMode = "callback";
+        }
+      } else if (dububNotifyEmail && !emailMatch) {
+        // The confirmation pattern fired but we have no captured email to send to.
+        // This is a hallucination — the LLM said "team will contact you" without
+        // actually capturing the email. Same Bug A class as MAA. Soft-rewrite.
+        const isFr = (locale ?? "fr-CA").startsWith("fr");
+        const askEmailMessage = isFr
+          ? "Pour que notre équipe puisse vous contacter, pourriez-vous me partager votre courriel professionnel ?"
+          : "So our team can reach you, could you share your work email?";
+        result.assistantMessage = askEmailMessage;
+        responseAssistantMessage = askEmailMessage;
+        responseFollowUpMode = "clarify";
       }
     }
 
@@ -2378,7 +2436,12 @@ export function createServer() {
       }
 
       const recentTurns = buildVapiRecentTurns(conversationHistory, trimmedMessage);
-      const summary = buildVapiHandoffSummary(locale, recentTurns, trimmedMessage);
+      const summary = buildVapiHandoffSummary(
+        locale,
+        recentTurns,
+        trimmedMessage,
+        getTenant(tenantId)?.name ?? "",
+      );
       const handoffToken = newUuid();
 
       vapiHandoffStore.set(handoffToken, {
@@ -2592,7 +2655,7 @@ export function createServer() {
 
         callbackPersistence.saved = emailSent;
         responseAssistantMessage = emailSent
-          ? buildCallbackSuccessMessage(locale, callbackPhone!, preferredTimeText)
+          ? buildCallbackSuccessMessage(locale, callbackPhone!, preferredTimeText, tenantDisplayName)
           : buildCallbackFailureMessage(locale);
         responseFollowUpMode = "callback";
         responseCitations = [];
@@ -2683,7 +2746,7 @@ export function createServer() {
             "Callback row created in NocoDB but lead notification email did not send (pending_retry).";
         }
         responseAssistantMessage = emailSent
-          ? buildCallbackSuccessMessage(locale, callbackPhone!, preferredTimeText)
+          ? buildCallbackSuccessMessage(locale, callbackPhone!, preferredTimeText, leadTenantName)
           : buildCallbackFailureMessage(locale);
         responseFollowUpMode = "callback";
         responseCitations = [];

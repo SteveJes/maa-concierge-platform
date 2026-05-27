@@ -9,23 +9,23 @@
   },
 
   "marqueeClubsCanada": [
-    { "city": "Toronto", "name": "Adelaide Club", "address": "1 First Canadian Place, Toronto, ON M5X 1C8", "phone": "416-367-9957", "email": "frontdesk@adelaideclub.com" },
-    { "city": "Calgary", "name": "Bankers Hall Club", "address": "402, 315 – 8 Avenue SW, Calgary, AB T2P 4K1", "phone": "403-298-4750", "email": "mzimmerman@bankershallclub.com" },
-    { "city": "Toronto", "name": "Granite Club", "address": "2350 Bayview Avenue, Toronto, ON M2L 1E4", "phone": "416-449-8713", "email": "reciprocalclubs@graniteclub.com" },
-    { "city": "Vancouver", "name": "Terminal City Club", "address": "837 West Hastings St., Vancouver, BC V6C 1B6", "phone": "604-681-4121", "email": "members@tcclub.com" },
-    { "city": "Vancouver", "name": "The Vancouver Club", "address": "915 West Hastings Street, Vancouver, BC V6C 1C6", "phone": "604-685-9321", "email": "concierge@vancouverclub.ca" },
-    { "city": "Edmonton", "name": "Royal Glenora Club", "address": "11160 River Valley Road NW, Edmonton, AB T5J 2G7", "phone": "780-482-2371", "email": "memberservices@royalglenora.com" },
-    { "city": "Montréal", "name": "Le Club Universitaire de Montréal", "phone": "514-288-0201", "email": "reception@ucmontreal.ca" },
-    { "city": "Toronto", "name": "Royal Canadian Yacht Club", "address": "141 St. George Street, Toronto, ON M5R 2L8", "phone": "416-967-7245", "email": "website@rcyc.ca" }
+    { "city": "Toronto", "name": "Adelaide Club", "address": "1 First Canadian Place, Toronto, ON M5X 1C8", "phone": "416-367-9957", "email": "frontdesk@adelaideclub.com", "website": "https://www.adelaideclub.com" },
+    { "city": "Calgary", "name": "Bankers Hall Club", "address": "402, 315 – 8 Avenue SW, Calgary, AB T2P 4K1", "phone": "403-298-4750", "email": "mzimmerman@bankershallclub.com", "website": "https://www.bankershallclub.com" },
+    { "city": "Toronto", "name": "Granite Club", "address": "2350 Bayview Avenue, Toronto, ON M2L 1E4", "phone": "416-449-8713", "email": "reciprocalclubs@graniteclub.com", "website": "https://www.graniteclub.com" },
+    { "city": "Vancouver", "name": "Terminal City Club", "address": "837 West Hastings St., Vancouver, BC V6C 1B6", "phone": "604-681-4121", "email": "members@tcclub.com", "website": "https://www.tcclub.com" },
+    { "city": "Vancouver", "name": "The Vancouver Club", "address": "915 West Hastings Street, Vancouver, BC V6C 1C6", "phone": "604-685-9321", "email": "concierge@vancouverclub.ca", "website": "https://www.vancouverclub.ca" },
+    { "city": "Edmonton", "name": "Royal Glenora Club", "address": "11160 River Valley Road NW, Edmonton, AB T5J 2G7", "phone": "780-482-2371", "email": "memberservices@royalglenora.com", "website": "https://www.royalglenora.com" },
+    { "city": "Montréal", "name": "Le Club Universitaire de Montréal", "phone": "514-288-0201", "email": "reception@ucmontreal.ca", "website": "https://www.ucmontreal.ca" },
+    { "city": "Toronto", "name": "Royal Canadian Yacht Club", "address": "141 St. George Street, Toronto, ON M5R 2L8", "phone": "416-967-7245", "email": "website@rcyc.ca", "website": "https://www.rcyc.ca" }
   ],
 
   "marqueeClubsUSA": [
-    { "city": "New York", "name": "New York Athletic Club (NYAC)", "address": "180 Central Park S, New York, NY 10019", "phone": "212-767-7000", "email": "reservation@nyac.org" },
-    { "city": "Boston", "name": "Harvard Club of Boston", "address": "374 Commonwealth Avenue, Boston, MA 02215", "phone": "617-536-1260", "email": "contact@harvardclub.com" },
-    { "city": "Los Angeles", "name": "Los Angeles Athletic Club", "address": "431 West 7th St., Los Angeles, CA 90014", "phone": "213-625-2211", "email": "laac@laac.net" },
-    { "city": "Detroit", "name": "Detroit Athletic Club", "address": "241 Madison St, Detroit, MI 48226", "phone": "313-963-9200", "email": "sean@thedac.com" },
-    { "city": "San Francisco", "name": "The Olympic Club", "address": "524 Post St., San Francisco, CA 94102", "phone": "415-345-5100", "email": "reciprocal@olyclub.com" },
-    { "city": "Bellevue (Seattle)", "name": "Bellevue Club", "address": "11200 SE 6th St, Bellevue, WA 98004", "phone": "425-455-1616", "email": "info@bellevueclub.com" }
+    { "city": "New York", "name": "New York Athletic Club (NYAC)", "address": "180 Central Park S, New York, NY 10019", "phone": "212-767-7000", "email": "reservation@nyac.org", "website": "https://www.nyac.org" },
+    { "city": "Boston", "name": "Harvard Club of Boston", "address": "374 Commonwealth Avenue, Boston, MA 02215", "phone": "617-536-1260", "email": "contact@harvardclub.com", "website": "https://www.harvardclub.com" },
+    { "city": "Los Angeles", "name": "Los Angeles Athletic Club", "address": "431 West 7th St., Los Angeles, CA 90014", "phone": "213-625-2211", "email": "laac@laac.net", "website": "https://www.laac.net" },
+    { "city": "Detroit", "name": "Detroit Athletic Club", "address": "241 Madison St, Detroit, MI 48226", "phone": "313-963-9200", "email": "sean@thedac.com", "website": "https://www.thedac.com" },
+    { "city": "San Francisco", "name": "The Olympic Club", "address": "524 Post St., San Francisco, CA 94102", "phone": "415-345-5100", "email": "reciprocal@olyclub.com", "website": "https://www.olyclub.com" },
+    { "city": "Bellevue (Seattle)", "name": "Bellevue Club", "address": "11200 SE 6th St, Bellevue, WA 98004", "phone": "425-455-1616", "email": "info@bellevueclub.com", "website": "https://www.bellevueclub.com" }
   ],
 
   "internationalCoverage": [

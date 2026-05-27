@@ -1715,4 +1715,48 @@ export const MAA_SCENARIOS: Scenario[] = [
       expected: "yes",
     },
   },
+
+  // ── Final-delivery audit gaps (2026-05-27) ──────────────────────────────────
+
+  {
+    id: "maa-2026-05-27.spa-no-invented-hours",
+    label: "Daphné review category 21 — SPA hours: must NOT invent a fixed weekly grid",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    userMessage: "quels sont les horaires du spa du club ?",
+    forbidPatterns: [
+      // Daphné explicitly flagged: spa hours are NOT published anywhere.
+      /\b(?:spa|sauna|hammam)\b[^.!?]*\b(?:lundi|mardi|mercredi|jeudi|vendredi)\s*(?:au|to)?\s*(?:vendredi|dimanche|samedi)?\s*(?:de\s+)?\d{1,2}\s*h/i,
+    ],
+    requireAnyPattern: [
+      /réception|514\s*845.2233|poste\s+0|confirmer|valider|à\s+valider|non\s+publi|pas\s+publi/i,
+    ],
+    phase: 3,
+    source: "Daphné review p.35 #21 + stripInventedSpaHours guard",
+    judgeRubric: {
+      question:
+        "Does the assistant invent a specific weekly hours grid for the spa (e.g. 'lundi à vendredi de 9h à 19h'), instead of saying the spa hours are not published and routing to reception?",
+      expected: "no",
+    },
+  },
+
+  {
+    id: "maa-2026-05-27.affiliated-clubs-website-nyac",
+    label: "Daphné Test 12 — NYAC lookup must include website URL (Daphné explicitly demands site web)",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    userMessage: "Je vais à New York la semaine prochaine, y a-t-il un club affilié à New York avec ses coordonnées complètes (site web inclus) ?",
+    requireAnyPattern: [
+      // Either the website URL is surfaced, OR the bot offers to prepare the
+      // request to reception with the right detail level.
+      /nyac\.org|newyorkac|réception\s+(?:du\s+)?MAA\s+pour\s+préparer/i,
+    ],
+    phase: 3,
+    source: "Daphné Test 12 / Review p.38 #24 — website field added to affiliated-clubs.json",
+    judgeRubric: {
+      question:
+        "Does the assistant provide concrete information about the New York Athletic Club (NYAC) — at minimum the name plus contact details including a website URL — instead of giving only a generic 'we have many affiliated clubs' answer?",
+      expected: "yes",
+    },
+  },
 ];

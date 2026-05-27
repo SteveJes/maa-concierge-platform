@@ -19,6 +19,12 @@ interface OnboardingData {
   tone: string;
   conciergeName: string;
   description: string;
+  // Per-tenant CTA copy on the primary "Plan a visit / Schedule a meeting" button.
+  // Inherited by the generic prompt builder and rendered in lead-capture buttons.
+  // Defaults work for most service businesses; medical / spa / real estate / etc.
+  // benefit from customizing ("Prendre rendez-vous" / "Réserver une visite des lieux" / etc.).
+  tunnelCtaFr: string;
+  tunnelCtaEn: string;
   // Step 3 — Knowledge Sources
   crawlerEnabled: boolean;
   crawlerUrl: string;
@@ -47,6 +53,7 @@ interface OnboardingData {
 const EMPTY: OnboardingData = {
   companyName: "", industry: "", website: "", address: "", phone: "", email: "",
   language: "fr", tone: "premium-warm", conciergeName: "Sophie", description: "",
+  tunnelCtaFr: "Planifier une rencontre", tunnelCtaEn: "Schedule a meeting",
   crawlerEnabled: true, crawlerUrl: "", pdfs: [],
   vapiEnabled: false, vapiAssistantId: "", vapiPhoneNumberId: "", openAiModel: "gpt-4o",
   bookingEnabled: false, calendlyUrl: "",
@@ -566,6 +573,15 @@ function Step2({ data, set }: { data: OnboardingData; set: <K extends keyof Onbo
           value={data.description} onChange={e => set("description", e.target.value)}
           placeholder="Club Sportif MAA est un centre de conditionnement physique premium situé au cœur de Montréal…" />
       </Field>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <Field label="Primary CTA (French)" hint="Wording on the lead-capture button — e.g. 'Planifier une visite', 'Prendre rendez-vous', 'Réserver une table'">
+          <input style={fieldStyle} value={data.tunnelCtaFr} onChange={e => set("tunnelCtaFr", e.target.value)} placeholder="Planifier une rencontre" />
+        </Field>
+        <Field label="Primary CTA (English)" hint="Same button, English copy">
+          <input style={fieldStyle} value={data.tunnelCtaEn} onChange={e => set("tunnelCtaEn", e.target.value)} placeholder="Schedule a meeting" />
+        </Field>
+      </div>
     </div>
   );
 }
