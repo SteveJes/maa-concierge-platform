@@ -310,13 +310,17 @@ const FLOWS: Flow[] = [
   },
   {
     id: "spa-massage-prices",
-    label: "Massage prices: must give 60/80/105 $ tiers",
+    label: "Massage prices: must give the authoritative 65/120/170/230 $ grid (Daphné batch 2026-05-27)",
     locale: "fr-CA",
     turns: [
       {
-        say: "combien coûte un massage de 55 minutes ?",
+        // Daphné batch 2026-05-27: the authoritative pricing is 30/60/90/120 min
+        // @ 65/120/170/230 $ (override/clinic.json::massotherapie.pricing_authoritative).
+        // The OLD canary expected 80 $ (55-minute tier from the obsolete 25/55/85 grid)
+        // which is now intentionally never emitted. Update to the new ground truth.
+        say: "combien coûte un massage de 60 minutes ?",
         expect: {
-          mustInclude: [/\b80\s*\$|80\$/i],
+          mustInclude: [/\b120\s*\$|120\$/i],
         },
       },
     ],
