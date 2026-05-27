@@ -3,6 +3,112 @@
 ## Current branch
 - `feat/maa-web-ingestion-v3`
 
+## 2026-05-19 / 2026-05-20 — Proactive QA + VAPI Custom LLM + Daphné mobile-test fixes
+
+Big stabilization batch. Daphné test-drove the chat + voice surfaces and we shipped fixes for every issue she caught, plus structural changes so the same bug class can never recur.
+
+### VAPI Custom LLM — phone Sophie now = web Sophie
+
+- New endpoint `POST /v1/vapi/llm?tenantId=<maa|dubub>` (also registered at `/v1/vapi/llm/chat/completions` because VAPI appends that path on outbound)
+- OpenAI-compatible chat.completions request + SSE streaming response
+- Routes the conversation through `answerMaaChat()` — the SAME brain web chat uses → all 12 post-process guards, RAG, member-status protocol, autonomy rules, hallucination guards apply on phone
+- Multi-tenant via query param, locale auto-detected from last user message (FR vs EN keyword count)
+- 35 ms word-by-word SSE chunking for smooth TTS feed
+- Polite fallback on error so caller never hears silence
+- VAPI dashboard flip: Provider → Custom LLM, URL → `https://api.dubub.com/v1/vapi/llm?tenantId=maa`, Model → any non-empty string. Rollback by flipping back to OpenAI provider + paste `_inbox/vapi-prompt-<tenant>-v2.txt`.
+
+### First-message + Quebec Law 25 compliance
+
+VAPI assistant-request handler now opens with: AI identity + recording disclosure + interrupt invitation in one warm sentence. Example FR:
+> "Bonjour, ici Sophie, le concierge intelligent de Club Sportif MAA. Pour la qualité du service, notre échange peut être enregistré. N'hésitez pas à m'interrompre à tout moment. Comment puis-je vous aider ?"
+
+Topic detector expanded: pickleball, squash, clinique, restaurant, MAAgazine, cirque/PowerWatts, pool, spa, etc. Ordered specific → general so a pickleball chat doesn't get hijacked by an earlier "nage" mention.
+
+### STT phonetic normalization (Daphné call → "PECO ball")
+
+`normalizePhoneticMistranscriptions` in `apps/api/src/services/maa-chat.ts` runs BEFORE the brain processes any message. Catches Azure French model mistranscriptions: pickleball → peco/pickoball/picoball/pikoball/pequeball/pickerball; MAAgazine → mae/may/ma magazine; Club Sportif MAA → MAE/MAY/MA; Espace O → espace zéro/oh/au; Francis Bradette / Nathalie Lambert / Le 1881 phonetic slips. Applied to current user message + every prior turn.
+
+### Hallucination guards (Daphné caught "$160 pool / $80 signup")
+
+Three-layer guard:
+1. New "ANTI-HALLUCINATION" prompt section lists EXACT confirmed aquatic-program prices (natation adulte 165/275, privés 50/75/90, à la carte 30) and explicitly forbids invented figures.
+2. Sentence-aware post-process guard `applyPostProcessGuards` strips invented patterns: "X $/mois pour la piscine", "tarifs variant de X à Y $/mois", "consultation initiale obligatoire de N $", "$80 frais d'inscription". Replaces with authoritative facts.
+3. New canary cases `no-invented-pool-fee`, `no-invented-signup-fee`, `aquatic-program-no-invented-prices`.
+
+### "Oui" loop fix on help offers
+
+When bot's prior turn ends with "Souhaitez-vous que je vous aide à X ?", a bare "oui" was looping back to the same message. `resolveShortAffirmativeFollowUp` now extracts the verb-object from the help offer + rewrites "oui" as explicit acceptance that contains the action. Also catches generic "Souhaitez-vous que je vous X ?" pattern. New canary case `oui-loop-aquatic-help-offer`.
+
+### Conversation-close short-circuit
+
+"ok merci" / "thanks" / "parfait" / "bye" now bypass OpenAI entirely and return a warm 1-line acknowledgement. Stops the verbatim-repetition bug where bot re-answered the original question on close.
+
+### Membership-interest detector
+
+"je voudrais me joindre à votre gym" was being misread as "joindre = contact" by `looksLikePhoneNumberQuestion`, returning a canned phone number to a prospect. Now:
+1. `core-facts.ts` bails on JOIN/membership/prospect-goal signals so the LLM gets the message
+2. New `isMembershipInterest` detector injects context demanding warm acknowledgement of goal + Francis Bradette route + Club visit offer
+3. Post-process guard rewrites any stray "Vous pouvez nous joindre au 514…" to a Francis-routing sentence
+4. Canary cases `membership-interest-embonpoint` + `membership-interest-join-direct`
+
+### Restaurant reservation ≠ Club visit
+
+After bot describes Le 1881 + user says "oui je veux réserver" was collapsing to the Club visit template. Server-side: `loadConversationHistory` now runs BEFORE the booking-intent heuristic, and the heuristic is suppressed when the prior assistant turn was about the restaurant. `resolveShortAffirmativeFollowUp` adds a restaurant pivot. Canary case `restaurant-reservation-handoff`.
+
+### MAAgazine forbidden phrase
+
+"publication exclusive du Club" was Daphné-forbidden but kept slipping. Post-process guard rewrites it to "magazine du Club". Canary case `maagazine-no-forbidden-phrase`.
+
+### 45-flow canary (was 7)
+
+`apps/api/src/scripts/daphne-replay.ts` now covers: pricing FR/EN/student/senior, pool/pickleball/yoga/group classes/massage, restaurant link/reservation/take-out/group, member protocol (5 cases), autonomy (no validate-with-team trailer), language switch FR↔EN, critical (cancellation/urgent-callback/external-price), MAAgazine, explicit-team-help, restaurant-reservation-handoff, membership-interest (×2), aquatic-program-no-invented-prices, no-invented-pool-fee, no-invented-signup-fee, phonetic-pickleball-peco, oui-loop-aquatic-help-offer, yoga-denial-not-affirmation.
+
+Throttled at 600 ms/request to avoid NocoDB 429 cascades.
+
+### Pre-demo gauntlet
+
+`apps/api/src/scripts/predemo-gauntlet.ts` + `pnpm gauntlet:prod`. Runs: typecheck → MAA intent regression → DUBUB intent regression → handoff-acceptance regression → daphne-replay canary → Sentinel scenarios (with judge) → Playwright e2e. Writes `apps/api/_predemo/REPORT-predemo-{ISO}.md` with tail logs. Exits 1 on any failure.
+
+### Deploy gate + cron
+
+- `deploy.sh` on droplet now runs the canary against prod as final step. Reports "CANARY PASS — safe to demo." or "CANARY FAILED on prod" in the deploy log.
+- New cron `0 */4 * * * /var/www/concierge/cron-canary-4h.sh` runs the 45-flow canary every 4 h (~$0.05/run), log at `/var/log/daphne-canary.log`.
+- Existing `0 4 * * * /var/www/concierge/cron-sentinel-daily.sh` still runs daily Sentinel + remediation drafter.
+
+### Lead email upgrades
+
+`summarizeLeadConversationRich` returns structured `{summary, actionItems[], topicsAsked[], suggestedNextStep}`. Email template now renders topics chips, suggested next step, AND the full conversation transcript (last 20 turns). `À FAIRE` action items intentionally HIDDEN from the email body per Steve's feedback (clients shouldn't see AI instructions to staff — data stays in Langfuse traces). Footer rebranded "Concierge IA propulsé par **DUBUB**" (was "MAA Platform").
+
+### Per-tenant live sources (dashboard-editable)
+
+New `TenantConfig.liveSources` field with `groupClassesScheduleUrl`, `poolScheduleUrl`, `membershipPurchaseUrl`, `serviceBookingUrl`, `platformNotes`. MAA defaults pre-populated from `links.json`. SettingsPanel has a new "📡 Sources vivantes" block. `buildMaaChatSystemPromptV2` accepts liveSourceOverrides and rewrites link URLs at prompt-build time → dashboard edits take effect on the next chat turn, no deploy required.
+
+### Widget UI polish (Daphné mobile screenshots)
+
+- Mobile close ✕ no longer overlaps "vous accueille" italic — moved to top:14/right:18/width:38 + floating header padding-top 22→40
+- Phone call button repositioned from top-right corner to a 34 px gold chip attached to Sophie's avatar bottom-right
+- Pulsing gold halo behind chip via `@keyframes maa-call-pulse` (0.35 ↔ 0.85 opacity, scale 0.94 ↔ 1.18, 2.4 s)
+- Luxurious tooltip "Appelez Sophie — elle connaît déjà votre demande." (FR) / "Call Sophie — she's already briefed on your request." (EN). Note: correctly worded — visitor calls Sophie, not the other way around (handoff context loads her brain before the call).
+- Tooltip lives BELOW the avatar with caret pointing up. Explicit `width: min(260px, 70vw)` because the absolute-positioned bubble's containing block (64 px avatar) was crushing text wrapping.
+- Spring entrance: cubic-bezier(0.34, 1.56, 0.64, 1) bounce.
+- Up to 5 reveals per session, spaced 32 s apart, sessionStorage key `dubub_call_tooltip_seen_v5`.
+- "Planifier une visite" green CTA now routes through `linkClickHandler` (host hook OR internal LEFT preview panel) — never opens a new tab.
+
+### Pricing decision
+
+DUBUB plans locked at Essentiel 790 / Croissance 1 790 / Prestige 3 900 $/mois + 2 950 / 5 950 / 12 500 $ implémentation. MAA will be quoted at standard Croissance pricing post-trial — no "founding partner" discount. Steve's explicit posture: DUBUB is an established product with multiple clients in the pipeline, not a beginner.
+
+### Canary status as of 2026-05-19 end-of-session
+
+- daphne-replay against prod: **45/45 PASS** (one occasional LLM-variance flake on `autonomy-buanderie-no-trailer`, cron re-runs cover it)
+- Latest commit: `02d87ee` — fix(widget): tooltip explicit width — was crushed by 64 px avatar containing block
+
+### Next session — Daphné's final batch incoming
+
+Steve has switched from Claude API to **Claude Max 20x subscription** to manage costs (had been burning ~$900/3 weeks on tokens). New Claude Code session will start fresh — all context preserved via this STATUS.md + memory files at `C:\Users\steve\.claude\projects\...\memory\` + git history + the project's CLAUDE.md.
+
+Daphné is about to send: a final consolidated prompt + PDFs + change requests to complete the MAA part. Then DUBUB tenant polish. Then onboard additional tenants.
+
 ## 2026-05-14 — UI polish + per-staff routing + VAPI regen + in-page navigation
 
 **Demo-ready batch.** Closed out the remaining UI critique from Steve plus three backlog items in one pass. All changes typecheck clean and the existing regression suite stays at 56/57 (the single failure is a pre-existing menu-link wording issue unrelated to this batch).
