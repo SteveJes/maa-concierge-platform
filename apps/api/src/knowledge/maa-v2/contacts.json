@@ -108,12 +108,13 @@
       "role": null,
       "location": "2070, rue Peel, Montréal, QC H3A 1W6",
       "phone": "514 845-8002",
-      "extension": "247",
+      "extension": null,
       "email": "info@resto1881.com",
-      "recommendationLogic": "Réservation, menu, groupes, salle de conférence, événements.",
+      "recommendationLogic": "Réservation de groupe et appels directs au restaurant. Réservations individuelles via Libro. Menu disponible via ClusterPos.",
       "confidence": "confirmed",
       "notes": [
-        "Un numéro 514 845-0002 apparaît dans une capture — à valider, ne pas utiliser tant que non confirmé."
+        "Daphné batch 2026-05-27 (review p.36, p.37): le bon numéro pour réservation de groupe est 514-845-8002 SANS poste. Le 514-845-2233 poste 247 est le numéro interne MAA (réception), pas le restaurant direct.",
+        "Un numéro 514 845-0002 apparaît dans une ancienne capture — ne pas utiliser."
       ]
     },
     "pierre_blanchet": {
@@ -151,6 +152,21 @@
       "email": null,
       "recommendationLogic": "Rôle exact à valider avant automatisation.",
       "confidence": "toValidate"
+    },
+    "valerie_de_vigne": {
+      "id": "valerie_de_vigne",
+      "department": "Boutique",
+      "name": "Valérie De Vigne",
+      "role": "Responsable de la boutique MAA",
+      "location": "Club Sportif MAA",
+      "phone": "514 845-2233",
+      "extension": null,
+      "email": null,
+      "recommendationLogic": "Boutique MAA — articles, inventaire, achats sur place.",
+      "confidence": "confirmed",
+      "notes": [
+        "Daphné batch 2026-05-27: Valérie est le bon contact pour la boutique (review p.36)."
+      ]
     }
   },
 

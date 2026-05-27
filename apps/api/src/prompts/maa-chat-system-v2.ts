@@ -13,7 +13,7 @@
  * - Links come from links.json ONLY; render as labels, never raw URLs.
  */
 import { buildSharedSafetyRules } from "./shared-safety.js";
-import { loadMaaV2, pickLocalized, type MaaV2SectionId } from "../knowledge/maa-v2/loader.js";
+import { loadMaaV2, pickLocalized, type MaaV2OverrideId, type MaaV2SectionId } from "../knowledge/maa-v2/loader.js";
 
 /**
  * Map an inbound user message to the operational sections the LLM needs in
@@ -37,9 +37,91 @@ function relevantSectionsForMessage(userMessage: string): MaaV2SectionId[] {
   return Array.from(picks);
 }
 
-function formatSectionBlock(id: MaaV2SectionId, content: unknown): string {
+/**
+ * Daphné batch 2026-05-27 — Map an inbound user message to the override
+ * layers it needs. Override content SUPERSEDES the base sections for
+ * operational fields (price / schedule / contact / source URL / valid_until).
+ * The prompt builder injects these BEFORE the base SERVICE SECTIONS with an
+ * explicit "override wins" directive.
+ */
+function relevantOverridesForMessage(userMessage: string): MaaV2OverrideId[] {
+  const m = (userMessage ?? "").toLowerCase();
+  const picks = new Set<MaaV2OverrideId>();
+  // clinic: massage, physio, therapy, FST, nutrition, nursing, medical
+  if (/\b(massage|massoth[ée]rapie|physio|physioth[ée]rapie|th[ée]rapie\s+sportive|sport\s+therap|kin[ée]si|nutritionniste|nutrition|natoropath|m[ée]dical|infirmi|mediq|FST|fascia|ost[ée]opathe?|ost[ée]opathie|wellcenter|kanevesky|avedian|d[ée]pistage|injection|pr[ée]l[èe]vement|profil\s+fertilit|spermogramme|cliniques?\s+sportives?)\b/.test(m)) picks.add("clinic");
+  // group-classes: explicit "cours en groupe" + named MyWellness-bookable classes
+  if (/\b(cours\s+(?:en\s+|de\s+)?groupe|group\s+classes?|mywellness|hiit|circuit|cardio\s+danse|essentrics|total\s+barre|spinning|boxe[- ]?fit|hyrox|athletic|total\s+sculpt|yoga\s+(?:flow|hatha|power|ashtanga)|stretch|bootcamp|MAA\s+combat|combat|aqua[- ]?hiit|aqua\s+hiit)\b/.test(m)) picks.add("group-classes");
+  // specialty-courses: cirque, natation adulte, powerwatts
+  if (/\b(cirque|aerial\s+circus|natation(?:\s+(?:adulte|ma[iî]tres?))?|powerwatts|power[- ]?watts)\b/.test(m)) picks.add("specialty-courses");
+  // sports: basketball, run club, triathlon, PT, pickleball, pool, Pilates Reformer, squash, training rooms
+  if (/\b(basketball|basket\b|club\s+de\s+course|run(?:ning)?\s+club|triathlon|entra[iî]nement\s+personnel|personal\s+training|pickleball|pickle[- ]?ball|piscine|pool|nage\s+libre|programmes?\s+aquatiques?|aquatic\s+programs?|pilates\s+reformer|pilates\s+sur\s+appareils|squash|salles?\s+d['e]?entra[iî]nement|training\s+room|gym\s+access|FTP|VAM)\b/.test(m)) picks.add("sports");
+  // restaurant: menu, 1881, table, brunch, etc.
+  if (/\b(restaurant|menu|1881|table|d[ée]jeuner|brunch|carte|libroreserve|clusterpos|commander\s+en\s+ligne|take[- ]?out|réservation\s+restaurant|reservation)\b/.test(m)) picks.add("restaurant");
+  return Array.from(picks);
+}
+
+/**
+ * Strip OBSOLETE fields from a base section when an override is active for that
+ * service. Daphné batch 2026-05-27: the old massage pricing block in
+ * sections/clinique-services.json (25/55/85 min @ 60/80/105 $) is stale and
+ * was leaking into LLM answers even with the override block above. The fix is
+ * to deep-clone and surgically remove the obsolete fields before serializing
+ * into the prompt.
+ *
+ * Driven by override metadata: any path in the override that includes
+ * `_replaces_v1_pricing` or `_daphne_correction_*` signals the corresponding
+ * base field is obsolete. For Phase 4 we hard-code the known cases (massage,
+ * triathlon dates) since auto-resolution would need more metadata than the
+ * override files currently carry.
+ */
+function scrubObsoleteSectionFields(
+  id: MaaV2SectionId,
+  content: unknown,
+  activeOverrides: Set<MaaV2OverrideId>,
+): unknown {
+  if (!activeOverrides.size) return content;
+  if (typeof content !== "object" || content === null) return content;
+
+  // Deep-clone so we don't mutate the cached loader result.
+  const cloned = JSON.parse(JSON.stringify(content)) as Record<string, unknown>;
+
+  if (id === "clinique-services" && activeOverrides.has("clinic")) {
+    // Strip the obsolete massage pricing array (25/55/85 min @ 60/80/105 $).
+    // The override `clinic.massotherapie.pricing_authoritative` is the new
+    // ground truth: 30/60/90/120 min @ 65/120/170/230 $.
+    const services = (cloned as { services?: Record<string, Record<string, unknown>> }).services;
+    if (services?.massotherapie) {
+      delete services.massotherapie.pricing;
+      services.massotherapie._note =
+        "Pricing intentionally stripped here — the OVERRIDE LAYER (override/clinic.json::massotherapie.pricing_authoritative) carries the authoritative 30/60/90/120 min @ 65/120/170/230 $ grid. NEVER cite the legacy 25/55/85 min @ 60/80/105 $ figures.";
+    }
+    // Also strip soins_infirmiers obsolete pricing note (the override has the full grid).
+    const nursing = (cloned as { soins_infirmiers_mobile_mediq?: Record<string, unknown> }).soins_infirmiers_mobile_mediq;
+    if (nursing) {
+      nursing._note_override = "See OVERRIDE LAYER (override/clinic.json::soins_infirmiers) for the authoritative ITSS combos / injections pricing grid.";
+    }
+  }
+
+  return cloned;
+}
+
+function formatSectionBlock(
+  id: MaaV2SectionId,
+  content: unknown,
+  activeOverrides: Set<MaaV2OverrideId>,
+): string {
+  const scrubbed = scrubObsoleteSectionFields(id, content, activeOverrides);
   return [
     `### Section: ${id}`,
+    "```json",
+    JSON.stringify(scrubbed, null, 2),
+    "```",
+  ].join("\n");
+}
+
+function formatOverrideBlock(id: MaaV2OverrideId, content: unknown): string {
+  return [
+    `### Override: ${id}`,
     "```json",
     JSON.stringify(content, null, 2),
     "```",
@@ -206,6 +288,9 @@ export function buildMaaChatSystemPromptV2(
   const rawK = loadMaaV2();
   const k = { ...rawK, links: applyLiveSourceOverrides(rawK.links, liveSourceOverrides) };
   const relevantSections = relevantSectionsForMessage(userMessage);
+  const relevantOverrides = relevantOverridesForMessage(userMessage).filter(
+    (id) => k.overrides[id] !== null && k.overrides[id] !== undefined,
+  );
 
   const allContacts = Object.values(k.contacts.contacts);
   const confirmedContacts = allContacts.filter((c) => c.confidence === "confirmed");
@@ -376,6 +461,43 @@ export function buildMaaChatSystemPromptV2(
     `AI-call fallback (for vague / complex / medical / contractual / high-value cases): "${pickLocalized(k.ctas._aiCallFallbackCta, locale)}"`,
     "",
 
+    // ── OVERRIDE LAYER (Daphné batch 2026-05-27) ────────────────────────────
+    // These JSON blocks SUPERSEDE the SERVICE SECTIONS below and the HOURS /
+    // PRICING summary tables above for any operational field (price /
+    // schedule / contact / source URL / valid_until / allowed_cta /
+    // primary_contact). The base sections remain authoritative for
+    // descriptive content, brand voice, and general context.
+    //
+    // Per Daphné's main prompt §3 (4-layer KB architecture): "Si une nouvelle
+    // donnée contredit l'ancienne, prioriser la nouvelle donnée pour les
+    // réponses opérationnelles, marquer l'ancienne comme obsolète."
+    //
+    // CRITICAL: When the override's `schedule_status` is REALTIME_EXTERNAL or
+    // NO_SCHEDULE_PUBLISHED, you MUST NOT invent a fixed weekly hours grid for
+    // that service. Route to the listed `primary_contact` or `source_url`.
+    //
+    // When the override's `_replaces_v1_pricing` or `_daphne_correction_*`
+    // field exists, the named LEGACY value is OBSOLETE — never quote it.
+    ...(relevantOverrides.length > 0
+      ? [
+          "## OVERRIDE LAYER — Daphné batch 2026-05-27 ground truth (THIS WINS)",
+          "",
+          "The blocks below carry the most recent operational data Daphné encoded from the 27 mai 2026 batch (clinic Apr 23 grid, May 25 → Jun 8 group classes, Apr 7 → Jun 19 specialty courses, Spring 2026 sports, restaurant menu). For any price / schedule / contact / URL / member-vs-guest field, **the override wins over everything below this block** — both the HOURS / PRICING summary tables and the SERVICE SECTIONS.",
+          "",
+          "**Rules when quoting from an override**:",
+          "- If `schedule_status: LIVE_DATED`, quote the schedule ONLY if today's date is within `valid_from`–`valid_until`. Mention the period (\"valable du {valid_from} au {valid_until}\"). NEVER claim a place is available without an API or real-time platform.",
+          "- If `schedule_status: STATIC_PUBLISHED`, quote the schedule as published reference. Tell the visitor real availability is via the `source_url` / `booking_url` / `primary_contact`.",
+          "- If `schedule_status: REALTIME_EXTERNAL`, NEVER invent a weekly grid. Route to the `source_url` / `booking_url` / `primary_contact`.",
+          "- If `schedule_status: NO_SCHEDULE_PUBLISHED`, say so naturally (\"l'horaire n'est pas publié\") and route to the `primary_contact`.",
+          "- If a key inside the override is named `_replaces_v1_pricing` or `_daphne_correction_*` or `_daphne_forbids` or `_daphne_review_*`, the named LEGACY value is OBSOLETE — never quote it.",
+          "- Always prefer `pricing_authoritative` over any other pricing array in the same file.",
+          "- For `allowed_cta` / `forbidden_cta` arrays, honor them: never propose a CTA listed in `forbidden_cta` (e.g. `visit_club` is forbidden for most service-specific questions).",
+          "",
+          ...relevantOverrides.map((id) => formatOverrideBlock(id, k.overrides[id])),
+          "",
+        ]
+      : []),
+
     // OPERATIONAL SECTIONS — only inlined when the user's message points at
     // a specific service. Each section is Daphné's structured operational
     // content (schedules, prices, contacts, rules). When a section is here,
@@ -389,7 +511,7 @@ export function buildMaaChatSystemPromptV2(
           "",
           "**OBEY embedded rules**: inside each section JSON, any field named `rule`, `_principle`, `memberRule`, `_note`, `_internalSource`, `authoritative`, `_rule`, or `responseRule` is a DIRECTIVE you MUST follow silently. Do not recite them to the visitor — apply them. If `authoritative` is set on hours/prices, ONLY quote that value (never list legacy / contradictory alternatives). If `memberRule` is set on an activity, gate access accordingly using the MEMBER-STATUS PROTOCOL above.",
           "",
-          ...relevantSections.map((id) => formatSectionBlock(id, k.sections[id])),
+          ...relevantSections.map((id) => formatSectionBlock(id, k.sections[id], new Set(relevantOverrides))),
           "",
         ]
       : []),

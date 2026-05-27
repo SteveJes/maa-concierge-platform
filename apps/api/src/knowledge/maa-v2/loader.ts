@@ -314,9 +314,40 @@ const SECTION_FILES = [
 
 export type MaaV2SectionId = (typeof SECTION_FILES)[number];
 
-let cached: (MaaV2Knowledge & { sections: Record<MaaV2SectionId, unknown> }) | null = null;
+/**
+ * Override layer files (Daphné batch 2026-05-27).
+ *
+ * Per the main prompt's section 3.2: prices/schedules/contacts here SUPERSEDE
+ * the corresponding sections/*.json content for operational answers. Base
+ * sections remain authoritative for descriptive content, brand voice, and
+ * general context.
+ *
+ * Each file carries `schedule_status`, `valid_from`, `valid_until`,
+ * `source_url`, `confidence_level` per the MaaSourceRegistryItem contract.
+ * The loader exposes them raw — the prompt builder decides which to inline
+ * based on the user message (analogous to relevantSectionsForMessage).
+ */
+const OVERRIDE_FILES = [
+  "clinic",
+  "group-classes",
+  "specialty-courses",
+  "sports",
+  "restaurant",
+] as const;
 
-export function loadMaaV2(): MaaV2Knowledge & { sections: Record<MaaV2SectionId, unknown> } {
+export type MaaV2OverrideId = (typeof OVERRIDE_FILES)[number];
+
+let cached:
+  | (MaaV2Knowledge & {
+      sections: Record<MaaV2SectionId, unknown>;
+      overrides: Record<MaaV2OverrideId, unknown>;
+    })
+  | null = null;
+
+export function loadMaaV2(): MaaV2Knowledge & {
+  sections: Record<MaaV2SectionId, unknown>;
+  overrides: Record<MaaV2OverrideId, unknown>;
+} {
   if (cached) return cached;
 
   const rules = readJson<MaaV2Rules>("rules.json");
@@ -337,6 +368,18 @@ export function loadMaaV2(): MaaV2Knowledge & { sections: Record<MaaV2SectionId,
     sections[id] = readJson<unknown>(`sections/${id}.json`);
   }
 
+  const overrides = {} as Record<MaaV2OverrideId, unknown>;
+  for (const id of OVERRIDE_FILES) {
+    try {
+      overrides[id] = readJson<unknown>(`override/${id}.json`);
+    } catch (err) {
+      // Override file missing is non-fatal — the base layer continues to serve.
+      // Log so we notice during dev / deploy, but don't crash.
+      console.warn(`[maa-v2 loader] override/${id}.json not loaded:`, err instanceof Error ? err.message : err);
+      overrides[id] = null;
+    }
+  }
+
   cached = {
     rules,
     intents: intentsRaw.intents,
@@ -351,6 +394,7 @@ export function loadMaaV2(): MaaV2Knowledge & { sections: Record<MaaV2SectionId,
     voiceTone,
     index,
     sections,
+    overrides,
   };
   return cached;
 }

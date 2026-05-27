@@ -330,6 +330,18 @@ function looksLikeBookingIntent(userMessage: string, locale: string | null): boo
     return false;
   }
 
+  // Daphné batch 2026-05-27 — xlsx rows 45, 86, 127, 155: "faut-il / ai-je
+  // besoin de / dois-je réserver pour le basketball / powerwatts / cours en
+  // groupe" was collapsing into the visit-template. These are RESERVATION
+  // questions about specific NAMED services, not visit-booking requests.
+  // The answer must come from the AI (basketball = via MAA app, PowerWatts =
+  // session-based via Nathalie, group classes = via MyWellness).
+  const serviceSpecificDaphne2026May =
+    /\b(basketball|basket\b|powerwatts|power[- ]?watts|pilates\s+reformer|pilates\s+sur\s+appareils|cours\s+(?:en\s+|de\s+)?groupe|group\s+classes?|triathlon|club\s+de\s+(?:course|triathlon)|natation(?:\s+(?:adulte|ma[iî]tres?))?|aqua[- ]?hiit|aqua\s+hiit|programmes?\s+aquatiques?|aquatic\s+programs?|entra[iî]nement\s+(?:personnel|priv[eé]|en\s+duo)|personal\s+training|cliniques?\s+(?:sportives?)?|cirque\s+a[eé]rien)\b/i;
+  if (serviceSpecificDaphne2026May.test(normalized)) {
+    return false;
+  }
+
   // Daphné's fourth pass: extended service keywords. When the user asks about
   // Technogym, sauna, illimité courses, trainers, or weight loss programs, the
   // booking template must not fire even if "réserver" / "book" appears in the
@@ -2530,56 +2542,60 @@ export function createServer() {
           : null;
 
       if (isDryRunPersistence) {
-        callbackPersistence.saved = true;
         callbackPersistence.requestId = newUuid();
-        responseAssistantMessage = buildCallbackSuccessMessage(
-          locale,
-          callbackPhone!,
-          preferredTimeText,
-        );
-        responseFollowUpMode = "callback";
-        responseCitations = [];
 
-        // Fire lead email even in dry-run (e.g. when NocoDB not configured)
+        // Daphné batch 2026-05-27 — Bug B: gate success message on actual
+        // email send. Previously fired success optimistically before the
+        // email landed in setImmediate, so a silent Brevo failure left the
+        // user hearing "C'est transmis" while staff received nothing.
+        // Now: synchronously await the send and only confirm on success.
         const tenantForEmail = getTenant(tenantId);
         const baseNotifyEmailDry = tenantForEmail?.notifyEmail || process.env.LEAD_NOTIFY_EMAIL || "";
         const notifyEmailDry = routedRecipients ?? baseNotifyEmailDry;
         const tenantDisplayName = tenantForEmail?.name ?? "Club Sportif MAA";
+
+        let emailSent = !notifyEmailDry; // no recipient configured → treat as "nothing to send"
         if (notifyEmailDry) {
           const dryConversationForSummary = [
             ...(conversationHistory ?? []),
             { role: "user" as const, content: trimmedMessage },
           ];
-          setImmediate(async () => {
+          try {
             const richSummary = await summarizeLeadConversationRich(
               dryConversationForSummary,
               locale ?? "fr-CA",
             ).catch(() => null);
             const aiSummary = richSummary?.summary ??
               (await summarizeLeadConversation(dryConversationForSummary, locale ?? "fr-CA").catch(() => null));
-            try {
-              await sendLeadNotificationEmail({
-                name: toNullableTrimmedString(body.callback?.name),
-                phone: callbackPhone!,
-                email: toNullableTrimmedString(body.callback?.email),
-                preferredTime: preferredTimeText,
-                locale: locale ?? "fr-CA",
-                questionSummary: toNullableTrimmedString(body.callback?.questionSummary) ?? trimmedMessage,
-                aiSummary,
-                richSummary,
-                transcript: dryConversationForSummary
-                  .filter((t): t is { role: "user" | "assistant"; content: string } => t.role === "user" || t.role === "assistant")
-                  .map((t) => ({ role: t.role, content: t.content })),
-                conversationId: conversationId ?? null,
-                tenantName: tenantDisplayName,
-                notifyEmail: notifyEmailDry,
-                routing: routingPayload,
-              });
-            } catch (err) {
-              request.log.error({ err }, "Lead email (dry-run) failed");
-            }
-          });
+            emailSent = await sendLeadNotificationEmail({
+              name: toNullableTrimmedString(body.callback?.name),
+              phone: callbackPhone!,
+              email: toNullableTrimmedString(body.callback?.email),
+              preferredTime: preferredTimeText,
+              locale: locale ?? "fr-CA",
+              questionSummary: toNullableTrimmedString(body.callback?.questionSummary) ?? trimmedMessage,
+              aiSummary,
+              richSummary,
+              transcript: dryConversationForSummary
+                .filter((t): t is { role: "user" | "assistant"; content: string } => t.role === "user" || t.role === "assistant")
+                .map((t) => ({ role: t.role, content: t.content })),
+              conversationId: conversationId ?? null,
+              tenantName: tenantDisplayName,
+              notifyEmail: notifyEmailDry,
+              routing: routingPayload,
+            });
+          } catch (err) {
+            request.log.error({ err }, "Lead email (dry-run) threw");
+            emailSent = false;
+          }
         }
+
+        callbackPersistence.saved = emailSent;
+        responseAssistantMessage = emailSent
+          ? buildCallbackSuccessMessage(locale, callbackPhone!, preferredTimeText)
+          : buildCallbackFailureMessage(locale);
+        responseFollowUpMode = "callback";
+        responseCitations = [];
 
         return;
       }
@@ -2615,58 +2631,62 @@ export function createServer() {
           created_at: now,
         });
 
-        callbackPersistence.saved = true;
         callbackPersistence.requestId = callbackRequestId;
-        responseAssistantMessage = buildCallbackSuccessMessage(
-          locale,
-          callbackPhone!,
-          preferredTimeText,
-        );
-        responseFollowUpMode = "callback";
-        responseCitations = [];
 
-        // Fire lead notification email in background — do not block response
+        // Daphné batch 2026-05-27 — Bug B: synchronously await email send
+        // and gate success/failure message on the actual result. Previously
+        // the email fired in setImmediate after success was already claimed.
         const tenantForLeadEmail = getTenant(tenantId);
         const baseNotifyEmail = tenantForLeadEmail?.notifyEmail || process.env.LEAD_NOTIFY_EMAIL || "";
         const notifyEmail = routedRecipients ?? baseNotifyEmail;
         const leadTenantName = tenantForLeadEmail?.name ?? "Club Sportif MAA";
+
+        let emailSent = !notifyEmail; // no recipient → treat as "nothing to send"
         if (notifyEmail) {
-          // Generate AI summary in the background, then send email. Both run
-          // off the request hot path so the user sees the success response now.
           const conversationForSummary = [
             ...(conversationHistory ?? []),
             { role: "user" as const, content: trimmedMessage },
           ];
-          setImmediate(async () => {
+          try {
             const richSummary = await summarizeLeadConversationRich(
               conversationForSummary,
               locale ?? "fr-CA",
             ).catch(() => null);
             const aiSummary = richSummary?.summary ??
               (await summarizeLeadConversation(conversationForSummary, locale ?? "fr-CA").catch(() => null));
-            try {
-              await sendLeadNotificationEmail({
-                name: toNullableTrimmedString(body.callback?.name),
-                phone: callbackPhone!,
-                email: toNullableTrimmedString(body.callback?.email),
-                preferredTime: preferredTimeText,
-                locale: locale ?? "fr-CA",
-                questionSummary: toNullableTrimmedString(body.callback?.questionSummary) ?? trimmedMessage,
-                aiSummary,
-                richSummary,
-                transcript: conversationForSummary
-                  .filter((t): t is { role: "user" | "assistant"; content: string } => t.role === "user" || t.role === "assistant")
-                  .map((t) => ({ role: t.role, content: t.content })),
-                conversationId: conversationId ?? null,
-                tenantName: leadTenantName,
-                notifyEmail,
-                routing: routingPayload,
-              });
-            } catch (err) {
-              request.log.error({ err }, "Lead email failed");
-            }
-          });
+            emailSent = await sendLeadNotificationEmail({
+              name: toNullableTrimmedString(body.callback?.name),
+              phone: callbackPhone!,
+              email: toNullableTrimmedString(body.callback?.email),
+              preferredTime: preferredTimeText,
+              locale: locale ?? "fr-CA",
+              questionSummary: toNullableTrimmedString(body.callback?.questionSummary) ?? trimmedMessage,
+              aiSummary,
+              richSummary,
+              transcript: conversationForSummary
+                .filter((t): t is { role: "user" | "assistant"; content: string } => t.role === "user" || t.role === "assistant")
+                .map((t) => ({ role: t.role, content: t.content })),
+              conversationId: conversationId ?? null,
+              tenantName: leadTenantName,
+              notifyEmail,
+              routing: routingPayload,
+            });
+          } catch (err) {
+            request.log.error({ err }, "Lead email failed");
+            emailSent = false;
+          }
         }
+
+        callbackPersistence.saved = emailSent;
+        if (!emailSent && notifyEmail) {
+          callbackPersistence.error =
+            "Callback row created in NocoDB but lead notification email did not send (pending_retry).";
+        }
+        responseAssistantMessage = emailSent
+          ? buildCallbackSuccessMessage(locale, callbackPhone!, preferredTimeText)
+          : buildCallbackFailureMessage(locale);
+        responseFollowUpMode = "callback";
+        responseCitations = [];
       } catch (error) {
         callbackPersistence.error =
           error instanceof Error ? error.message : "Unknown callback persistence error";

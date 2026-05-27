@@ -42,6 +42,8 @@
     "sentinel:generate": "tsx src/scripts/sentinel-generate.ts",
     "sentinel:generate:maa": "tsx src/scripts/sentinel-generate.ts --tenant maa",
     "sentinel:generate:dubub": "tsx src/scripts/sentinel-generate.ts --tenant dubub",
+    "expiry:check": "tsx src/scripts/check-override-expiry.ts",
+    "expiry:check:notify": "tsx src/scripts/check-override-expiry.ts --notify",
     "canary": "tsx src/scripts/daphne-replay.ts",
     "canary:prod": "tsx src/scripts/daphne-replay-prod.ts",
     "gauntlet": "tsx src/scripts/predemo-gauntlet.ts",
@@ -63,7 +65,8 @@
     "fastify": "^5.2.0",
     "langfuse": "^3.38.20",
     "stripe": "^22.1.0",
-    "unpdf": "^1.4.0"
+    "unpdf": "^1.4.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",

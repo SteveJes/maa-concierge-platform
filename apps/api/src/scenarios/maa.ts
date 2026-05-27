@@ -1263,4 +1263,456 @@ export const MAA_SCENARIOS: Scenario[] = [
       expected: "yes",
     },
   },
+
+  // ── Daphné batch 2026-05-27 — Phase 2 acceptance tests ───────────────────────
+
+  {
+    id: "maa-2026-05-27.test2.mywellness",
+    label: "Daphné Test 2 — oui after 'Souhaitez-vous le lien MyWellness ?' → must send the MyWellness URL, not visit CTA",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    history: [
+      { role: "user", content: "Pour les cours aquatiques, je dois réserver comment ?" },
+      { role: "assistant", content: "Les réservations Aqua-HIIT se font via MyWellness en temps réel. Souhaitez-vous que je vous envoie le lien MyWellness ?" },
+    ],
+    userMessage: "oui",
+    forbidFollowUpModes: ["calendly"],
+    forbidPatterns: [
+      VISIT_CTA,
+      /Cliquez sur le bouton ci-dessous pour planifier votre visite/i,
+    ],
+    requireAnyPattern: [
+      /mywellness|widgets\.mywellness\.com|ac1088953/i,
+    ],
+    requireSuppressBookingCta: true,
+    phase: 2,
+    source: "Daphné batch 2026-05-27 — main prompt Test 2",
+    judgeRubric: {
+      question:
+        "Does the assistant send the MyWellness link / URL the visitor just accepted, WITHOUT redirecting to 'planifier une visite' or changing subject?",
+      expected: "yes",
+    },
+  },
+
+  {
+    id: "maa-2026-05-27.fake-transmission.transmets",
+    label: "Daphné #7 — 'je transmets votre demande' must be stripped + form must open (not silent hallucination)",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    history: [
+      { role: "user", content: "Je veux prendre rendez-vous avec un entraîneur personnel pour la course à pied." },
+      { role: "assistant", content: "Pour prendre rendez-vous, je peux transmettre votre demande à la clinique sportive. Quels sont votre nom, téléphone et courriel ?" },
+      { role: "user", content: "daphné poirier, 438-699-0957, d.poirier.m@gmail.com" },
+    ],
+    userMessage: "transmets ma demande",
+    // The Bug A guard MUST strip any LLM-emitted "Je transmets" / "C'est transmis"
+    // and instead surface "Je prépare votre demande" + open the form.
+    forbidPatterns: [
+      /\bj['']ai\s+(bien\s+|déjà\s+)?transmis\b/i,
+      /\bvotre\s+demande\s+a\s+été\s+transmise\b/i,
+      /\bje\s+transmets\s+immédiatement\b/i,
+    ],
+    requireAnyPattern: [
+      /pr[eé]pare|prends\s+vos\s+coordonn[eé]es|formulaire|capture|callback/i,
+    ],
+    requireFollowUpMode: ["callback"],
+    phase: 2,
+    source: "Daphné batch 2026-05-27 — Review p.3 #7 (leads non fonctionnels) + Bug A guard",
+    judgeRubric: {
+      question:
+        "Does the assistant claim a transmission has already happened or is happening right now ('j'ai transmis', 'je transmets immédiatement', 'votre demande a été transmise') without the official deterministic post-form confirmation?",
+      expected: "no",
+    },
+  },
+
+  {
+    id: "maa-2026-05-27.fake-transmission.en",
+    label: "Bug A EN — 'I've forwarded your request' must be stripped",
+    tenantCode: "maa",
+    locale: "en-CA",
+    history: [
+      { role: "user", content: "I'd like to book a session with a personal trainer." },
+      { role: "assistant", content: "I can forward your request to our sports clinic. May I have your name, phone and email?" },
+      { role: "user", content: "John Smith, 514-555-0123, john@example.com" },
+    ],
+    userMessage: "go ahead and send it",
+    forbidPatterns: [
+      /\bI['']?ve\s+(forwarded|passed\s+on|sent)\s+your\s+request\b/i,
+      /\byour\s+request\s+has\s+been\s+(forwarded|sent|passed\s+on|transmitted)\b/i,
+    ],
+    requireAnyPattern: [
+      /preparing|capture|callback|form/i,
+    ],
+    requireFollowUpMode: ["callback"],
+    phase: 2,
+    source: "Daphné batch 2026-05-27 — Bug A guard EN coverage",
+  },
+
+  {
+    id: "maa-2026-05-27.pickleball-routes-to-nathalie",
+    label: "Daphné review #12 — pickleball contact must be Nathalie, NOT clinique poste 234",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    userMessage: "qui je dois contacter pour avoir plus d'info sur le pickleball ?",
+    forbidPatterns: [
+      // The single most visible bug: pickleball routed to clinic line.
+      /\bclinique\s+sportive\b.*\bpickleball\b/i,
+      /\bpickleball\b.*\bclinique\s+sportive\b/i,
+      /\bposte\s+234\b/i,
+    ],
+    requireAnyPattern: [
+      /Nathalie\s+Lambert|nlambert@clubsportifmaa\.com|poste\s+231/i,
+    ],
+    phase: 2,
+    source: "Daphné batch 2026-05-27 — Review p.28 #12",
+  },
+
+  {
+    id: "maa-2026-05-27.triathlon-spring-dates",
+    label: "Daphné review #10 — triathlon dates must be 7 avril → 19 juin 2026, not Jan→Avril",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    userMessage: "quelles sont les dates de la session pour le club de triathlon ?",
+    forbidPatterns: [
+      // Old session dates Daphné explicitly flagged as obsolete.
+      /\b12\s+janvier\s+au\s+3\s+avril\b/i,
+      /\bjanvier\s+(?:au|à|to)\s+(?:avril|april)\b/i,
+    ],
+    requireAnyPattern: [
+      /7\s+avril|19\s+juin|printemps\s+2026|spring\s+2026|Nathalie/i,
+    ],
+    phase: 2,
+    source: "Daphné batch 2026-05-27 — Review p.27 #10",
+  },
+
+  {
+    id: "maa-2026-05-27.boutique-valerie",
+    label: "Daphné review #22 — boutique contact is Valérie De Vigne",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    userMessage: "j'aimerais en savoir plus sur la boutique du club, qui je dois contacter ?",
+    requireAnyPattern: [
+      /Val[eé]rie\s+De\s+Vigne/i,
+    ],
+    forbidPatterns: [
+      // Should NOT default to Francis / Elisabeth for boutique inquiries.
+      /\bFrancis\s+Bradette\b.*\bboutique\b/i,
+    ],
+    phase: 2,
+    source: "Daphné batch 2026-05-27 — Review p.36 #22",
+  },
+
+  // ── Daphné batch 2026-05-27 — Phase 3 acceptance tests (Tests 1, 3, 5, 7-12) ──
+
+  {
+    id: "maa-2026-05-27.test1.pickleball-tariff-context",
+    label: "Daphné Test 1 — pickleball context, then 'c'est quoi les tarifs ?' must stay on pickleball not abonnement",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    history: [
+      { role: "user", content: "Je veux jouer au pickleball" },
+      { role: "assistant", content: "Le pickleball est offert au Club Sportif MAA, avec 28 créneaux par semaine pour les membres. Les joueurs apportent leurs raquettes; la location est possible à la réception." },
+    ],
+    userMessage: "c'est quoi les tarifs ?",
+    forbidPatterns: [
+      // Test 1 explicitly forbids tarifs d'abonnement general
+      /\b225\s*\$\/?mois\b|\b185\s*\$\/?mois\b|\b195\s*\$\/?mois\b|\b295\s*\$\/?mois\b/i,
+      /\bcasiers?\s+(?:pleine|demi|1\/3|1\/4)\b/i,
+      /\bbuanderie\b.*\b25\s*\$\b/i,
+    ],
+    requireAnyPattern: [
+      /pickleball|inclus\s+(?:dans|avec)\s+l'?abonnement|Nathalie\s+Lambert|nlambert|équipe|confirmer|à\s+valider/i,
+    ],
+    phase: 3,
+    source: "Daphné batch 2026-05-27 — main prompt Test 1",
+    judgeRubric: {
+      question:
+        "Given the conversation context was about pickleball, does the assistant answer the tariffs question STAYING on pickleball (saying it's included in membership / referring to Nathalie / saying tariffs to validate), WITHOUT dumping the full membership pricing grid (225/185/195/295) or locker fees?",
+      expected: "yes",
+    },
+  },
+
+  {
+    id: "maa-2026-05-27.test3.cirque-after-course",
+    label: "Daphné Test 3 — was talking about course à pied, switch to 'et le cirque aérien ?' must follow",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    history: [
+      { role: "user", content: "Je m'intéresse à votre club de course à pied" },
+      { role: "assistant", content: "Le Club de course est offert au MAA pour les membres, avec Nathalie Lambert comme contact (nlambert@clubsportifmaa.com). Plusieurs cases horaires sont disponibles chaque semaine sur l'heure du midi ou en soirée." },
+    ],
+    userMessage: "et le cirque aérien ?",
+    forbidPatterns: [
+      // Test 3: forbids continuing on running club / course à pied after topic switch
+      /\bcourse\s+à\s+pied\b|\bclub\s+de\s+course\b|\brun(?:ning)?\s+club\b/i,
+    ],
+    requireAnyPattern: [
+      /cirque\s+a[eé]rien|aerial\s+circus|Janika|Hannah|La\s+Palestra|220\s*\$|330\s*\$/i,
+    ],
+    phase: 3,
+    source: "Daphné batch 2026-05-27 — main prompt Test 3",
+  },
+
+  {
+    id: "maa-2026-05-27.test5.restaurant-commande-en-ligne",
+    label: "Daphné Test 5 — 'commander en ligne' must surface ClusterPos, NOT only Libro",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    userMessage: "je veux commander en ligne au restaurant",
+    requireAnyPattern: [
+      /clusterpos|clubsportifmaa\.clusterpos\.com|menu\s+en\s+ligne|commande\s+en\s+ligne/i,
+    ],
+    forbidPatterns: [
+      // Test 5: Libro alone is wrong — Libro is for table reservations
+      /^[^.]*\blibro\b[^.]*$/i,
+    ],
+    phase: 3,
+    source: "Daphné batch 2026-05-27 — main prompt Test 5",
+    judgeRubric: {
+      question:
+        "Does the assistant give the visitor the ClusterPos online-order link (or mention online ordering specifically) instead of redirecting them to Libro (which is for table reservations, not orders)?",
+      expected: "yes",
+    },
+  },
+
+  {
+    id: "maa-2026-05-27.test7.sports-therapy-no-invented-hours",
+    label: "Daphné Test 7 — thérapie sportive horaire: must NOT invent fixed hours; must orient via rdv + poste 234",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    userMessage: "c'est quoi les horaires pour thérapie sportive ?",
+    forbidPatterns: [
+      // Test 7: forbids any concrete published "X to Y" hours for sports therapy
+      // (none are published anywhere).
+      /\b(?:lundi|mardi|mercredi|jeudi|vendredi)\s*(?:au?|to)?\s*(?:vendredi|dimanche)?\s*(?:de\s+)?\d{1,2}\s*h\s*\d{0,2}\s*(?:à|to|-)\s*\d{1,2}\s*h/i,
+      /\bhoraires?\s+:\s*lundi/i,
+    ],
+    requireAnyPattern: [
+      /prendre\s+(?:un\s+)?rendez-vous|disponibilit[eé]s?\s+(?:par\s+)?th[eé]rapeute|poste\s+234|clinique\s+sportive|page\s+(?:de\s+)?prise/i,
+    ],
+    phase: 3,
+    source: "Daphné batch 2026-05-27 — main prompt Test 7",
+    judgeRubric: {
+      question:
+        "Does the assistant invent a fixed weekly hours grid for sports therapy (e.g. 'lundi à vendredi de 9h à 17h'), instead of explaining that availability is per therapist and bookable via the dedicated page or extension 234?",
+      expected: "no",
+    },
+  },
+
+  {
+    id: "maa-2026-05-27.test8.language-mywellness",
+    label: "Daphné Test 8 — 'guide moi vers l'horaire MyWellness' must stay in French",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    userMessage: "guide moi vers l'horaire MyWellness",
+    expectLanguage: "fr",
+    forbidPatterns: [
+      // Test 8: must NOT switch to English just because MyWellness is brand name.
+      /\b(here\s+is\s+the|please\s+visit|you\s+can\s+access|the\s+schedule\s+for|book\s+your\s+class)\b/i,
+    ],
+    requireAnyPattern: [
+      /mywellness|widgets\.mywellness\.com|consulter|horaire|temps\s+réel/i,
+    ],
+    phase: 3,
+    source: "Daphné batch 2026-05-27 — main prompt Test 8",
+  },
+
+  {
+    id: "maa-2026-05-27.test9.pilates-reformer-routing",
+    label: "Daphné Test 9 — 'réserver Pilates sur appareils' must route to Reformer + Elisabeth/MyWellness/Fliip",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    userMessage: "je veux réserver Pilates sur appareils",
+    forbidPatterns: [
+      // Test 9: must NOT collapse to Pilates de groupe (Studio Serenity) — that's a different service.
+      /\bpilates\b.*\bde\s+groupe\b/i,
+    ],
+    requireAnyPattern: [
+      /Elisabeth\s+Boutin|eboutin|MyWellness|FLiiP|Fliip|reformer|espace\s+pilates|widgets\.mywellness/i,
+    ],
+    requireSuppressBookingCta: true,
+    phase: 3,
+    source: "Daphné batch 2026-05-27 — main prompt Test 9",
+  },
+
+  {
+    id: "maa-2026-05-27.test10.massage-ask-type-or-give-general",
+    label: "Daphné Test 10 — 'combien coûte un massage' must ask type OR give confirmed general durations (60/120/170/230 $)",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    userMessage: "combien coûte un massage ?",
+    forbidPatterns: [
+      // Test 10 explicitly forbids invented prices — the OLD v2 base pricing
+      // (25min/55min/85min @ 60/80/105) is now obsolete per Daphné batch.
+      /\b25\s*minutes?\s+(?:à|@|=)?\s*60\s*\$/i,
+      /\b55\s*minutes?\s+(?:à|@|=)?\s*80\s*\$/i,
+      /\b85\s*minutes?\s+(?:à|@|=)?\s*105\s*\$/i,
+    ],
+    requireAnyPattern: [
+      // Either: ask which type of massage (correct) OR give the authoritative general durations
+      /quel\s+type\s+de\s+massage|Sué?dois|Thaï?|Tissus\s+Profonds|Ashiatsu|FLiiP|Fliip|\b65\s*\$\b|\b120\s*\$\b|\b170\s*\$\b|\b230\s*\$\b/i,
+    ],
+    phase: 3,
+    source: "Daphné batch 2026-05-27 — main prompt Test 10 + override clinic.json",
+    judgeRubric: {
+      question:
+        "Does the assistant either ask which type of massage the visitor wants, OR cite the authoritative general durations (30min/60min/90min/120min at 65/120/170/230 $), WITHOUT inventing the obsolete v2-base pricing (25/55/85min)?",
+      expected: "yes",
+    },
+  },
+
+  {
+    id: "maa-2026-05-27.test11.nursing-no-invented-prices",
+    label: "Daphné Test 11 — 'prix pour prélèvement ou IV' must NOT invent prices (not published)",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    userMessage: "quels sont vos prix pour un prélèvement sanguin ou une perfusion IV ?",
+    forbidPatterns: [
+      // Prices for prélèvement / IV / fertilité / spermogramme are NOT published.
+      // The only confirmed Mobile Mediq prices are ITSS combos (249/349/419) and injections (95/150).
+      // The bot must NOT invent a price for these specific tests.
+      /\bpr[eé]l[eè]vement\b[^.!?]{0,80}\b\d{2,3}\s*\$/i,
+      /\b(?:perfusion|IV)\b[^.!?]{0,80}\b\d{2,3}\s*\$/i,
+    ],
+    requireAnyPattern: [
+      /Mobile\s+Mediq|514\s*543[- ]2121|à\s+confirmer|prescription|mmqclientweb/i,
+    ],
+    phase: 3,
+    source: "Daphné batch 2026-05-27 — main prompt Test 11",
+  },
+
+  {
+    id: "maa-2026-05-27.test12.affiliated-clubs-by-city",
+    label: "Daphné Test 12 — 'gym affilié à New York' must return name + address + phone + email + site",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    userMessage: "y a-t-il un club affilié à New York ?",
+    forbidPatterns: [
+      // Test 12 explicitly forbids "plus de 100 clubs" as the only answer.
+      /^[^.]*\bplus\s+de\s+\d+\s+clubs?\b[^.]*\.\s*$/i,
+    ],
+    requireAnyPattern: [
+      // Must surface SOMETHING concrete: a name or contact detail or routing to confirm.
+      /NYAC|New\s+York\s+Athletic|réception|reception\s+poste|info@clubsportifmaa|confirmer|orienter/i,
+    ],
+    phase: 3,
+    source: "Daphné batch 2026-05-27 — main prompt Test 12",
+    judgeRubric: {
+      question:
+        "Does the assistant provide concrete information about an affiliated New York club (name, address, phone, email, or website), OR offer to look it up / connect the visitor with the reception, INSTEAD of giving only a generic 'we have 100+ affiliated clubs' answer?",
+      expected: "yes",
+    },
+  },
+
+  // ── Daphné batch 2026-05-27 — Phase 3 visit-CTA leak regressions (xlsx) ──
+
+  {
+    id: "maa-2026-05-27.basketball-need-reservation",
+    label: "xlsx row 127 — 'faut-il réserver pour le basketball' must NOT fire visit-template",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    userMessage: "faut-il réserver pour le basketball",
+    forbidFollowUpModes: ["calendly"],
+    forbidPatterns: [VISIT_CTA, /Cliquez sur le bouton ci-dessous pour planifier votre visite/i],
+    requireSuppressBookingCta: true,
+    requireAnyPattern: [
+      /basket|application|app\s+MAA|membre|Nathalie/i,
+    ],
+    phase: 3,
+    source: "Daphné batch 2026-05-27 — xlsx conversation_2_colonnes row 127",
+  },
+
+  {
+    id: "maa-2026-05-27.powerwatts-need-reservation",
+    label: "xlsx row 86 — 'ai-je besoin de réserver pour le powerwatts' must NOT fire visit-template",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    userMessage: "ai-je besoin de réserver pour le powerwatts",
+    forbidFollowUpModes: ["calendly"],
+    forbidPatterns: [VISIT_CTA, /Cliquez sur le bouton ci-dessous pour planifier votre visite/i],
+    requireSuppressBookingCta: true,
+    requireAnyPattern: [
+      /powerwatts|session|introduction|Nathalie|FLiiP|Fliip|PDF/i,
+    ],
+    phase: 3,
+    source: "Daphné batch 2026-05-27 — xlsx conversation_2_colonnes row 86",
+  },
+
+  {
+    id: "maa-2026-05-27.cours-groupe-need-reservation",
+    label: "xlsx row 45 — 'dois-je réserver pour un cours en groupe' must NOT fire visit-template",
+    tenantCode: "maa",
+    locale: "fr-CA",
+    userMessage: "dois-je réserver pour un cours en groupe ?",
+    forbidFollowUpModes: ["calendly"],
+    forbidPatterns: [VISIT_CTA, /Cliquez sur le bouton ci-dessous pour planifier votre visite/i],
+    requireSuppressBookingCta: true,
+    requireAnyPattern: [
+      /MyWellness|widgets\.mywellness|réserv|cours\s+en\s+groupe|inclus/i,
+    ],
+    phase: 3,
+    source: "Daphné batch 2026-05-27 — xlsx conversation_2_colonnes row 45",
+  },
+
+  // ── Daphné batch 2026-05-27 — EN parity coverage ────────────────────────────
+
+  {
+    id: "maa-2026-05-27.test1.pickleball-tariff-context-en",
+    label: "Test 1 EN parity — pickleball context, then 'what's the price?' must stay on pickleball not membership",
+    tenantCode: "maa",
+    locale: "en-CA",
+    history: [
+      { role: "user", content: "I'd like to play pickleball" },
+      { role: "assistant", content: "Pickleball is offered at Club Sportif MAA with 28 weekly time slots for members. Players bring their own paddles; rentals are available at reception." },
+    ],
+    userMessage: "what's the price?",
+    forbidPatterns: [
+      // Same as FR Test 1: must not dump the membership grid in EN
+      /\$\s*225\s*\/?(?:mo|month)\b|\$\s*185\s*\/?(?:mo|month)\b|\$\s*195\s*\/?(?:mo|month)\b|\$\s*295\s*\/?(?:mo|month)\b/i,
+      /\bfull[- ]height\s+locker\b|\bhalf[- ]locker\b/i,
+    ],
+    requireAnyPattern: [
+      /pickleball|included\s+(?:with|in)\s+(?:the\s+)?membership|Nathalie\s+Lambert|nlambert|team|confirm|to\s+validate/i,
+    ],
+    expectLanguage: "en",
+    phase: 3,
+    source: "Daphné batch 2026-05-27 — Test 1 EN parity",
+  },
+
+  {
+    id: "maa-2026-05-27.boutique-en",
+    label: "Boutique EN — 'do you have a shop?' must route to Valérie De Vigne",
+    tenantCode: "maa",
+    locale: "en-CA",
+    userMessage: "do you have a shop or pro shop at the club?",
+    requireAnyPattern: [
+      /Val[eé]rie\s+De\s+Vigne|boutique|shop/i,
+    ],
+    forbidPatterns: [
+      // EN parity for the FR boutique-valerie scenario
+      /\bFrancis\s+Bradette\b.*\b(?:shop|boutique)\b/i,
+    ],
+    expectLanguage: "en",
+    phase: 3,
+    source: "Daphné batch 2026-05-27 — Boutique EN parity",
+  },
+
+  {
+    id: "maa-2026-05-27.test5.online-order-en",
+    label: "Test 5 EN parity — 'I want to order online' must surface ClusterPos, not only Libro",
+    tenantCode: "maa",
+    locale: "en-CA",
+    userMessage: "I want to order food online from the restaurant",
+    requireAnyPattern: [
+      /clusterpos|clubsportifmaa\.clusterpos\.com|online\s+order|order\s+online/i,
+    ],
+    expectLanguage: "en",
+    phase: 3,
+    source: "Daphné batch 2026-05-27 — Test 5 EN parity",
+    judgeRubric: {
+      question:
+        "Does the assistant give the visitor the ClusterPos online-order link (or mention online ordering specifically) instead of redirecting them to Libro (which is for table reservations, not orders)?",
+      expected: "yes",
+    },
+  },
 ];

@@ -1,0 +1,147 @@
+{
+  "_source": "Daphné batch 2026-05-27 — Horaires et tarifs restaurant le 1881 MAA.pdf",
+  "_principle": "Restaurant Le 1881 — menu daté, horaires confirmés, réservations via Libro, commandes via ClusterPos.",
+  "tenant_id": "maa",
+  "last_reviewed_at": "2026-05-27",
+  "service_id": "restaurant",
+  "schedule_status": "DATED_CONTENT",
+  "source_type": "OFFICIAL_PAGE",
+  "source_url": "https://www.clubsportifmaa.com/fr/restaurant-le-1881/",
+  "reservation_url": "https://booking.libroreserve.com/2599e556a189b49/QC016934055076/seat",
+  "online_order_url": "https://clubsportifmaa.clusterpos.com/menu",
+  "valid_from": "2026-04-23",
+  "valid_until": null,
+  "confidence_level": "high",
+  "primary_contact": "restaurant_1881",
+  "phone": "514-845-8002",
+  "_daphne_correction_review_22_23": "Téléphone de réservation de groupe = 514-845-8002 SANS poste. (review 22-23). Le 514-845-2233 poste 247 est le numéro interne MAA.",
+  "email": "info@resto1881.com",
+  "allowed_cta": ["book_libro", "order_clusterpos", "call_restaurant"],
+  "forbidden_cta": ["visit_club"],
+  "included_in_membership": false,
+  "access": "Membres et non-membres / Public",
+
+  "hours": {
+    "lundi_vendredi": "07h00–22h00",
+    "samedi":          "08h00–22h00",
+    "dimanche":        "08h00–16h00"
+  },
+
+  "rules_daphne": "Quand la personne demande réservation: Libro pour table < 6 personnes, téléphone 514-845-8002 pour groupe. Quand commande en ligne: ClusterPos URL. Menu peut être daté si modifié — proposer de valider.",
+
+  "menu_a_partager": [
+    { "item": "Planche de charcuteries", "price": "22 $", "description": "Prosciutto, rosette de Lyon, saucisson, cornichons, moutarde de Dijon." },
+    { "item": "Planche de fromages",     "price": "22 $", "description": "Sélection de fromages assortis du Québec, compote d'oignon." },
+    { "item": "Nachos et guacamole d'avocat", "price": "17 $" }
+  ],
+
+  "menu_entrees": [
+    { "item": "Soupe du jour", "price": "8 $" },
+    { "item": "Calamars frits", "price": "18 $", "description": "Aïoli au safran." },
+    { "item": "Falafel", "price": "13 $", "description": "Purée d'aubergines, cornichons, tomates, persil, sauce tahini et sumac." },
+    { "item": "Frites maison", "price": "7 $" },
+    { "item": "Tartare de saumon — entrée", "price": "17 $", "description": "Échalotes, jus de lime, avocats, huile d'olive, aneth, servi avec choix de frites ou salade." },
+    { "item": "Tartare de saumon — plat", "price": "34 $" },
+    { "item": "Tartare de bœuf classique — entrée", "price": "17 $" },
+    { "item": "Tartare de bœuf classique — plat", "price": "34 $" }
+  ],
+
+  "menu_salades": [
+    { "item": "Salade maison — entrée", "price": "8 $", "description": "Mesclun, concombres, radis, tomates et vinaigrette balsamique." },
+    { "item": "Salade maison", "price": "17 $" },
+    { "item": "Salade de chèvre chaud", "price": "17 $", "description": "Laitue, tomates, betteraves, radis, pommes, noix et vinaigre de xérès." },
+    { "item": "Salade de roquette", "price": "23 $", "description": "Halloumi, tomates cerises, concombres, quinoa rouge, noix de pin, menthe." },
+    { "item": "Salade César — entrée", "price": "12 $" },
+    { "item": "Salade César", "price": "20 $" },
+    { "item": "Salade de canard", "price": "30 $", "description": "Mousseline de carottes, kale, pommes, canneberges, pacanes, oranges." }
+  ],
+
+  "menu_plats_principaux": [
+    { "item": "Burger 1881", "price": "24 $", "description": "Oignons caramélisés, champignons, fromage, sauce chipotle, servi avec frites ou salade." },
+    { "item": "Club Sandwich", "price": "25 $", "description": "Pain de campagne, poulet, bacon, tomate, laitue, mayonnaise." },
+    { "item": "Cavatelli Maison", "price": "29 $", "description": "Tomates séchées, pesto, noix de pin, pleurotes, roquette, parmesan." },
+    { "item": "Bavette de bœuf 8 oz", "price": "34 $", "description": "Sauce chimichurri, servi avec frites ou salade." },
+    { "item": "Contrefilet de bœuf 12 oz", "price": "47 $", "description": "Sauce au poivre vert du Madagascar, servi avec frites ou salade." },
+    { "item": "Short Rib de bœuf braisé", "price": "40 $", "description": "Mousseline de patate douce, légumes maison." },
+    { "item": "Poisson du jour", "price": "36 $", "description": "Selon l'arrivage." }
+  ],
+
+  "menu_desserts": [
+    { "item": "Crème brûlée", "price": "11 $" },
+    { "item": "Churros au caramel et fleur de sel", "price": "11 $" },
+    { "item": "Moelleux au chocolat", "price": "11 $" },
+    { "item": "Tarte Tatin", "price": "12 $", "description": "Crème anglaise." }
+  ],
+
+  "menu_dejeuner_brunch": [
+    { "item": "Deux œufs, pommes de terre et pain rôtis", "price": "12,50 $" },
+    { "item": "Le Classique déjeuner", "price": "19 $", "description": "Deux œufs au choix, bacon ou saucisses maison, fruits, pommes de terre, crêpes au sirop." },
+    { "item": "Sandwich déjeuner", "price": "11 $", "description": "Pain brioché, œufs brouillés, cheddar, oignons caramélisés, ciboulettes." },
+    { "item": "Sandwich 1881", "price": "12 $", "description": "Saucisses maison, pain brioché, œufs tournés, cheddar, roquette, oignons rouges." },
+    { "item": "Chakchouka", "price": "20 $", "description": "Sauce tomate, poivrons, harissa, œufs pochés." },
+    { "item": "Bagel saumon fumé", "price": "15 $", "description": "Fromage à la crème." },
+    { "item": "Toast d'avocat", "price": "20 $", "description": "Œufs pochés, pain de campagne, pommes de terre, fruits." },
+    { "item": "Grilled Cheese Signature", "price": "22 $", "description": "Pain de campagne, cheddar vieilli, compote de pommes, pommes de terre et fruits." },
+    { "item": "Parfait yogourt", "price": "11 $", "description": "Confiture de fruits rouges, granola, fruit frais." },
+    { "item": "Gaufre liégeoise", "price": "19 $", "description": "Fruits frais, crème anglaise." },
+    { "item": "Omelette jambon et fromage", "price": "22 $", "description": "Pommes de terre et fruits." },
+    { "item": "Déjeuner 1881", "price": "25 $", "description": "Écrasé de pommes de terre au gras de canard, effiloché de bœuf, œuf mollet frit." },
+    { "item": "Bénédictines au saumon fumé", "price": "24 $", "description": "Sauce hollandaise, muffin anglais, épinards. Disponible uniquement la fin de semaine." },
+    { "item": "Bagel cream cheese", "price": "6 $" },
+    { "item": "Toast confiture", "price": "6 $" },
+    { "item": "Menu enfant", "price": "12 $", "description": "Œufs ou crêpes et fruits au choix." }
+  ],
+
+  "extras_dejeuner": [
+    { "item": "Pain rôti", "price": "3 $" },
+    { "item": "Sirop d'érable", "price": "4 $" },
+    { "item": "Bagel", "price": "4 $" },
+    { "item": "Un œuf", "price": "3 $" },
+    { "item": "Pomme de terre", "price": "4 $" },
+    { "item": "Bacon ou saucisse", "price": "4 $" }
+  ],
+
+  "cafes_et_boissons": [
+    { "item": "Café filtre", "price": "3,50 $" },
+    { "item": "Americano", "price": "4,50 $" },
+    { "item": "Espresso", "price": "4 $" },
+    { "item": "Double espresso", "price": "4,50 $" },
+    { "item": "Macchiato", "price": "4 $" },
+    { "item": "Cappuccino", "price": "5 $" },
+    { "item": "Latte", "price": "6 $" },
+    { "item": "Thé", "price": "5 $" },
+    { "item": "Tisane", "price": "5 $" },
+    { "item": "Matcha", "price": "5,50 $" },
+    { "item": "Option lait végétal", "price": "0,60 $" },
+    { "item": "Jus d'orange", "price": "4,50 $" },
+    { "item": "Mimosa", "price": "15 $" }
+  ],
+
+  "smoothies": [
+    { "item": "Café Réveil Smoothie", "price": "8 $" },
+    { "item": "Narango Smoothie", "price": "8 $" },
+    { "item": "Où est Charlie Smoothie", "price": "8 $" },
+    { "item": "Danny Boy Smoothie", "price": "8 $" },
+    { "item": "Choix de Sofie Smoothie", "price": "8 $" },
+    { "item": "Bébé Singe Smoothie", "price": "8 $" },
+    { "item": "Le Monaco Smoothie", "price": "8 $" }
+  ],
+
+  "take_out": [
+    { "item": "Sandwich saucisse aubergine", "price": "16 $" },
+    { "item": "Sandwich poulet pesto", "price": "16 $" },
+    { "item": "Sandwich prosciutto chèvre", "price": "17 $" },
+    { "item": "Sandwich saumon", "price": "17 $" },
+    { "item": "Salade poulet", "price": "17 $" },
+    { "item": "Salade saumon", "price": "17 $" },
+    { "item": "Salade tofu", "price": "17 $" },
+    { "item": "Salade thon", "price": "19 $" },
+    { "item": "Pâtes arrabiata", "price": "20 $" },
+    { "item": "Poulet grillé légumes", "price": "25 $" },
+    { "item": "Saumon cari riz", "price": "20 $" },
+    { "item": "Sandwich œuf thon", "price": "12 $" },
+    { "item": "Sandwich falafel", "price": "12 $" },
+    { "item": "Sandwich gravlax", "price": "16 $" },
+    { "item": "Sandwich poulet", "price": "12 $" }
+  ]
+}

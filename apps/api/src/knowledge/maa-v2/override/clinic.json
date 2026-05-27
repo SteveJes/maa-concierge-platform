@@ -1,0 +1,193 @@
+{
+  "_source": "Daphné batch 2026-05-27 — apps/web/public/DAPHNE 27 05 2026/Horaires et tarifs clinique sportive MAA.pdf",
+  "_principle": "Prix de la grille clinique en vigueur dès le 23 avril 2026. Remplace les massage 60/80/105 hérités du v2 base.",
+  "_overrides": [
+    "sections/clinique-services.json: pricing massage 25/55/85 min → REMPLACÉ par 30/60/90/120 min",
+    "sections/clinique-services.json: nursing pricingNote → REMPLACÉ par ITSS combo 1/2/3 + injections 1/2/3/4"
+  ],
+  "tenant_id": "maa",
+  "last_reviewed_at": "2026-05-27",
+
+  "therapie_sportive": {
+    "service_id": "sports_therapy",
+    "schedule_status": "REALTIME_EXTERNAL",
+    "source_type": "PDF_SEASONAL",
+    "source_url": "https://www.clubsportifmaa.com/wp-content/uploads/2026/04/MAA_Clinic_Fees_Border_Apr23-26_Fr.pdf",
+    "booking_url": "https://www.clubsportifmaa.com/fr/therapie-sportive/",
+    "valid_from": "2026-04-23",
+    "valid_until": null,
+    "confidence_level": "high",
+    "primary_contact": "clinique_sportive",
+    "allowed_cta": ["book_via_clinic_page"],
+    "forbidden_cta": ["visit_club"],
+    "fallback_rule": "Si page indisponible, poste 234.",
+    "rules_daphne": "Aucune plage horaire publiée. Disponibilités à vérifier via prise de rendez-vous par thérapeute, ou poste 234.",
+    "tax_note": "Taxes applicables. (Physio exemptée — voir section physio.)",
+    "practitioners": [
+      { "name": "Kevin Geyson", "first_visit": "60 min — 130 $", "follow_up": "60 min — 115 $" },
+      { "name": "Daniela Solis",  "first_visit": "60 min — 130 $", "follow_up": "60 min — 115 $" },
+      { "name": "Angie West",     "first_visit": "55 min — 140 $", "follow_up": "50 min — 125 $" }
+    ],
+    "intake_rule_fr": "Valider d'abord le type de thérapie sportive voulu, puis la thérapeute. Ensuite, page → sélectionner thérapeute → prendre rdv → nouveau client → service désiré → plage horaire."
+  },
+
+  "physiotherapie": {
+    "service_id": "physiotherapy",
+    "schedule_status": "REALTIME_EXTERNAL",
+    "source_type": "PDF_SEASONAL",
+    "source_url": "https://www.clubsportifmaa.com/wp-content/uploads/2026/04/MAA_Clinic_Fees_Border_Apr23-26_Fr.pdf",
+    "booking_url": "https://www.clubsportifmaa.com/fr/physiotherapie/",
+    "valid_from": "2026-04-23",
+    "valid_until": null,
+    "confidence_level": "high",
+    "primary_contact": "clinique_sportive",
+    "allowed_cta": ["book_via_clinic_page"],
+    "forbidden_cta": ["visit_club"],
+    "fallback_rule": "Si page indisponible, poste 234.",
+    "rules_daphne": "Aucun horaire publié. Tarifs par praticien. Disponibilités à vérifier via prise de rendez-vous par thérapeute, ou poste 234.",
+    "tax_note": "PAS de taxes (physiothérapie exemptée).",
+    "practitioners": [
+      { "name": "George Demirakos",  "evaluation": "60 min — 115 $", "follow_up": "30 min — 95 $" },
+      { "name": "Isabelle Duchesne", "specialty": "Experte en haut de corps", "first_visit": "55 min — 160 $", "follow_up": "45 min — 155 $" }
+    ]
+  },
+
+  "massotherapie": {
+    "service_id": "massage",
+    "schedule_status": "REALTIME_EXTERNAL",
+    "source_type": "LIVE_LINK",
+    "source_url": "https://clubsportifmaa.fliipapp.com/user/register/buy_service/1",
+    "secondary_source_url": "https://www.clubsportifmaa.com/wp-content/uploads/2025/10/MAA_Clinic_Fees_Border_Nov1-25_Fr.pdf",
+    "booking_url": "https://clubsportifmaa.fliipapp.com/user/register/buy_service/1",
+    "valid_from": "2026-04-23",
+    "valid_until": null,
+    "confidence_level": "high",
+    "primary_contact": "clinique_sportive",
+    "allowed_cta": ["book_fliip"],
+    "forbidden_cta": ["visit_club"],
+    "fallback_rule": "Si Fliip indisponible, poste 234.",
+    "rules_daphne": "Vérifier la disponibilité sur Fliip. Demander à la personne quel type de massage et avec quelle massothérapeute. Si trop complexe, diriger vers le lien Fliip.",
+    "hours_general": "Lundi au vendredi 11h00–18h00",
+    "tax_note": "Taxes applicables.",
+    "practitioners": ["Alan Wong", "Nicoline Arlet", "Jeimy Quesada", "Julie Dionne", "Daniela Solis"],
+    "pricing_authoritative": [
+      { "duration": "30 min", "price": "65 $",  "types": ["Ashiatsu Oriental Bar Therapy", "Suédois / Swedish"] },
+      { "duration": "60 min", "price": "120 $", "types": ["Ashiatsu Oriental Bar Therapy", "Suédois / Swedish", "Thaï / Thai", "Tissus Profonds / Deep Tissue"] },
+      { "duration": "90 min", "price": "170 $", "types": ["Ashiatsu Oriental Bar Therapy", "Suédois / Swedish", "Thaï / Thai", "Tissus Profonds / Deep Tissue"] },
+      { "duration": "120 min", "price": "230 $", "types": ["Ashiatsu Oriental Bar Therapy", "Suédois / Swedish", "Thaï / Thai", "Tissus Profonds / Deep Tissue"] }
+    ],
+    "_replaces_v1_pricing": "RETIRE: 25min/60$ membre, 55min/80$, 85min/105$ — ces tarifs sont OBSOLÈTES (base v2 stale)."
+  },
+
+  "fst_etirement_fascia": {
+    "service_id": "fst",
+    "schedule_status": "REALTIME_EXTERNAL",
+    "source_type": "LIVE_LINK",
+    "source_url": "https://clubsportifmaa.fliipapp.com/user/register/buy_service/1",
+    "valid_from": "2026-04-23",
+    "valid_until": null,
+    "confidence_level": "high",
+    "primary_contact": "clinique_sportive",
+    "allowed_cta": ["book_fliip"],
+    "forbidden_cta": ["visit_club"],
+    "practitioners": ["Macy Riddell"],
+    "pricing": [
+      { "duration": "30 min", "price": "65 $", "note": "Sur capture le titre semble afficher 130 $ mais le prix indique 65 $ — à valider." },
+      { "duration": "60 min", "price": "120 $" },
+      { "duration": "90 min", "price": "170 $" }
+    ]
+  },
+
+  "nutrition_naturopathie": {
+    "service_id": "nutrition",
+    "schedule_status": "REALTIME_EXTERNAL",
+    "source_type": "OFFICIAL_PAGE",
+    "source_url": "https://www.clubsportifmaa.com/fr/nutrition/",
+    "valid_from": "2026-04-23",
+    "valid_until": null,
+    "confidence_level": "high",
+    "primary_contact": "clinique_sportive",
+    "allowed_cta": ["book_via_clinic_page"],
+    "forbidden_cta": ["visit_club", "technogym"],
+    "fallback_rule": "Si page indisponible, poste 234.",
+    "rules_daphne": "Valider d'abord le type de service (naturopathie / nutrition). Aucun horaire publié.",
+    "naturopathe": {
+      "name": "Léa Daoura",
+      "pricing": [
+        { "service": "Évaluation initiale en clinique", "price": "130 $" },
+        { "service": "Suivi en clinique",              "price": "85 $" }
+      ]
+    },
+    "nutritionniste": {
+      "name": "Justine Doyon-Blondin",
+      "pricing": [
+        { "service": "Évaluation nutritionnelle", "price": "140 $" },
+        { "service": "Suivi nutritionnel",         "price": "85 $" }
+      ]
+    },
+    "_daphne_forbids": "JAMAIS parler de Technogym dans une réponse nutrition. JAMAIS inventer 'reçu d'assurance' ou 'formulaire de santé' pour la nutrition — non documenté."
+  },
+
+  "services_medicaux": {
+    "service_id": "medical_services",
+    "schedule_status": "NO_SCHEDULE_PUBLISHED",
+    "source_type": "OFFICIAL_PAGE",
+    "source_url": "https://www.clubsportifmaa.com/fr/services-medicaux/",
+    "secondary_source_url": "https://wellcenter.ca/appointments",
+    "valid_from": "2026-04-23",
+    "valid_until": null,
+    "confidence_level": "medium",
+    "primary_contact": "clinique_sportive",
+    "allowed_cta": ["book_wellcenter", "call_clinic"],
+    "forbidden_cta": ["visit_club"],
+    "rules_daphne": "Aucun horaire ni tarif publié. Connaître les 2 médecins disponibles. Pour endométriose / hormonothérapie → router vers Dr. Avedian (hormonothérapie bio-identique).",
+    "practitioners": [
+      { "name": "Dr. Taniela Avedian", "specialty": "Médecine fonctionnelle, hormonothérapie bio-identique (BHRT)" },
+      { "name": "Dr. Michael Kanevesky", "specialty": "À valider", "booking_url": "https://wellcenter.ca/appointments" }
+    ]
+  },
+
+  "soins_infirmiers": {
+    "service_id": "nursing",
+    "schedule_status": "REALTIME_EXTERNAL",
+    "source_type": "LIVE_LINK",
+    "source_url": "https://www.clubsportifmaa.com/fr/service-soins-infirmiers/",
+    "booking_url": "https://mmqclientweb.azurewebsites.net/form/maa?culture=fr-CA",
+    "valid_from": "2026-04-23",
+    "valid_until": null,
+    "confidence_level": "high",
+    "primary_contact": "mobile_mediq",
+    "phone": "514 543-2121",
+    "allowed_cta": ["book_mobile_mediq"],
+    "forbidden_cta": ["visit_club"],
+    "rules_daphne": "Mobile Mediq, pas la clinique standard. Tarifs ITSS + injections confirmés. Prélèvements/IV/fertilité/spermogramme: prix À CONFIRMER (prescription requise).",
+    "hours": "Tous les jours 06h00–22h30",
+    "depistage_itss": [
+      { "combo": "Combo 1", "price": "249 $", "includes": ["Gonorrhée", "Chlamydia"] },
+      { "combo": "Combo 2", "price": "349 $", "includes": ["Gonorrhée", "Chlamydia", "Syphilis VDRL", "Hépatite B", "VIH"] },
+      { "combo": "Combo 3", "price": "419 $", "includes": ["Gonorrhée", "Chlamydia", "Syphilis VDRL", "Hépatite B", "Hépatite C", "VIH"] }
+    ],
+    "injections": [
+      { "option": "1", "price": "95 $",  "type": "Injection intramusculaire" },
+      { "option": "2", "price": "150 $", "type": "Injection intramusculaire + livraison médication" },
+      { "option": "3", "price": "95 $",  "type": "Injection sous-cutanée" },
+      { "option": "4", "price": "150 $", "type": "Injection sous-cutanée + livraison médication" }
+    ],
+    "service_urls": {
+      "general":   "https://mmqclientweb.azurewebsites.net/form/maa?culture=fr-CA",
+      "injection": "https://mmqclientweb.azurewebsites.net/form/index/injection?culture=fr-CA&source=MAA",
+      "iv":        "https://mmqclientweb.azurewebsites.net/form/index/iv-partial?culture=fr-CA&source=MAA",
+      "sampling":  "https://mmqclientweb.azurewebsites.net/form/index/sampling-partial?culture=fr-CA&source=MAA",
+      "fertility": "https://mmqclientweb.azurewebsites.net/form/index/fertility-partial?culture=fr-CA&source=MAA",
+      "spermogram":"https://mmqclientweb.azurewebsites.net/form/index/spermogram-partial?culture=fr-CA&source=MAA"
+    },
+    "injection_privacy_rule": "Pour les injections, la personne doit joindre sa prescription / une image du médicament DANS LE QUESTIONNAIRE PRE-RDV — JAMAIS dans la conversation chat (confidentialité)."
+  },
+
+  "_common_policies": [
+    "Formulaire de santé à la première visite (massage, clinique).",
+    "Prévoir 10 min avant la séance pour remplir le formulaire.",
+    "Reçu pour assurances disponible sur demande.",
+    "Annulation/modification sans frais: préavis de 24 h."
+  ]
+}

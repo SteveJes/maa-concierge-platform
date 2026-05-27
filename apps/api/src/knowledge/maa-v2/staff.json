@@ -126,7 +126,7 @@
       "role": "Équipe restaurant",
       "department": "Restaurant",
       "phone": "514 845-8002",
-      "extension": "247",
+      "extension": null,
       "realEmail": "info@resto1881.com",
       "routingTriggers": [
         "réservation restaurant",
@@ -153,14 +153,27 @@
         "casiers / buanderie"
       ],
       "isFallback": true
+    },
+    {
+      "id": "valerie_de_vigne",
+      "name": "Valérie De Vigne",
+      "role": "Responsable de la boutique MAA",
+      "department": "Boutique",
+      "phone": "514 845-2233",
+      "extension": null,
+      "realEmail": null,
+      "_realEmailMissing": true,
+      "routingTriggers": [
+        "boutique",
+        "inventaire boutique",
+        "articles boutique",
+        "achats sur place",
+        "vêtements MAA",
+        "accessoires"
+      ],
+      "leadFallback": "reception_poste_0"
     }
   ],
 
-  "missingContacts": [
-    {
-      "name": "Valérie Devigne",
-      "role": "Directrice boutique MAA",
-      "note": "Aucune coordonnée trouvée dans la base — à demander à MAA."
-    }
-  ]
+  "missingContacts": []
 }

@@ -1,0 +1,151 @@
+{
+  "_source": "Daphné batch 2026-05-27 — Tarifs et horaires Cours de spécialités MAA.pdf",
+  "_principle": "Trois services LIVE_DATED valides 7 avril → 19 juin 2026 (sauf PowerWatts 27 avril → 19 juin). Tarifs et horaires confirmés.",
+  "tenant_id": "maa",
+  "last_reviewed_at": "2026-05-27",
+
+  "cirque_aerien": {
+    "service_id": "aerial_circus",
+    "schedule_status": "LIVE_DATED",
+    "source_type": "PDF_SEASONAL",
+    "source_url": "https://www.clubsportifmaa.com/wp-content/uploads/2026/03/MAA_Aerial-Circus_Spring2026.pdf",
+    "valid_from": "2026-04-07",
+    "valid_until": "2026-06-19",
+    "session_duration_weeks": 11,
+    "confidence_level": "high",
+    "primary_contact": "nathalie_lambert",
+    "primary_email": "nlambert@clubsportifmaa.com",
+    "allowed_cta": ["see_pdf", "contact_nathalie"],
+    "forbidden_cta": ["visit_club"],
+    "access": "Membres et non-membres",
+    "included_in_membership": false,
+
+    "schedule": [
+      { "day": "Mardi", "time": "17:30–19:00", "course": "Cirque aérien intermédiaire", "max_participants": 10, "instructor": "Janika" },
+      { "day": "Mardi", "time": "19:00–20:30", "course": "Cirque aérien tous niveaux",   "max_participants": 10, "instructor": "Janika" },
+      { "day": "Jeudi", "time": "17:30–18:30", "course": "Cirque aérien tous niveaux",   "max_participants": 10, "instructor": "Hannah" }
+    ],
+
+    "pricing": {
+      "session_duration": "90 minutes",
+      "tax": "Taxes en sus",
+      "members":     { "session": "220 $", "per_class": "20 $" },
+      "non_members": { "session": "330 $", "per_class": "30 $" },
+      "drop_in":     "40 $",
+      "sessions_per_year": 4
+    },
+
+    "rules": [
+      "S'inscrire à une session complète dans une case horaire précise (progression de contenu).",
+      "Deux groupes: débutants et intermédiaires.",
+      "Intermédiaire: avoir déjà fait du cirque aérien au MAA ou ailleurs.",
+      "Ni remboursable ni transférable à une session future.",
+      "Cours manqués reprenables dans d'autres cases horaires durant la session, selon places."
+    ],
+
+    "safety_info": "Appareils sur têtes pivotantes à 20 pieds de hauteur. Bases enseignées sur plusieurs appareils, ensuite spécialisation par préférence."
+  },
+
+  "natation_adulte": {
+    "service_id": "adult_swimming",
+    "schedule_status": "LIVE_DATED",
+    "source_type": "PDF_SEASONAL",
+    "source_url": "https://www.clubsportifmaa.com/wp-content/uploads/2026/03/MAA_Piscine_Programmme_Spring2026.pdf",
+    "valid_from": "2026-04-07",
+    "valid_until": "2026-06-19",
+    "session_duration_weeks": 11,
+    "confidence_level": "high",
+    "primary_contact": "nathalie_lambert",
+    "primary_email": "nlambert@clubsportifmaa.com",
+    "non_member_contact": "francis_bradette",
+    "non_member_email": "fbradette@clubsportifmaa.com",
+    "allowed_cta": ["see_pdf", "contact_nathalie"],
+    "forbidden_cta": ["visit_club"],
+    "access": "Réservé aux membres. Non-membres → Francis Bradette.",
+    "included_in_membership": false,
+
+    "schedule_groupe": [
+      { "day": "Mardi",    "time": "17:30–18:30", "instructor": "Élisabeth" },
+      { "day": "Mercredi", "time": "18:30–19:30", "instructor": "Élisabeth" }
+    ],
+    "schedule_natation_maitres_et_triathlon": [
+      { "day": "Mardi",    "time": "07:00–08:00", "instructor": "Isabelle" },
+      { "day": "Mercredi", "time": "17:30–18:30", "instructor": "Pierre" },
+      { "day": "Jeudi",    "time": "07:00–08:00", "instructor": "Isabelle" }
+    ],
+
+    "pricing_cours_groupe": {
+      "max_participants": 8,
+      "tax": "Taxes en sus",
+      "1x_per_week": { "session": "165 $", "per_class": "15 $" },
+      "2x_per_week": { "session": "275 $", "per_class": "12,50 $" }
+    },
+    "pricing_cours_prive": {
+      "audience": "Adultes et enfants",
+      "30_min": "50 $",
+      "45_min": "75 $",
+      "60_min": "90 $",
+      "drop_in": "30 $",
+      "tax": "Taxes en sus"
+    },
+    "pricing_maitres_triathlon": {
+      "1x_per_week": { "session": "165 $", "per_class": "15 $", "spots": 12 },
+      "2x_per_week": { "session": "275 $", "per_class": "12,50 $", "spots": 12 }
+    },
+
+    "rules": [
+      "Cours non utilisés ni remboursables ni transférables.",
+      "Possible de reprendre un cours manqué dans une autre case durant la session."
+    ]
+  },
+
+  "powerwatts": {
+    "service_id": "powerwatts",
+    "schedule_status": "LIVE_DATED",
+    "source_type": "PDF_SEASONAL",
+    "source_url": "https://www.clubsportifmaa.com/wp-content/uploads/2026/04/MAA_PowerWatts_Hiver-Spring2026.pdf",
+    "valid_from": "2026-04-27",
+    "valid_until": "2026-06-19",
+    "session_duration_weeks": 8,
+    "confidence_level": "high",
+    "primary_contact": "nathalie_lambert",
+    "primary_email": "nlambert@clubsportifmaa.com",
+    "allowed_cta": ["see_pdf", "contact_nathalie"],
+    "forbidden_cta": ["visit_club"],
+    "access": "Membres et non-membres",
+    "included_in_membership": false,
+
+    "schedule": [
+      { "day": "Mardi",    "time": "12:00–13:00", "instructor": "Manon" },
+      { "day": "Mardi",    "time": "17:30–18:30", "instructor": "Frank" },
+      { "day": "Mercredi", "time": "07:00–08:00", "instructor": "Frank" },
+      { "day": "Jeudi",    "time": "12:00–13:00", "instructor": "Manon" },
+      { "day": "Jeudi",    "time": "17:30–18:30", "instructor": "Frank" }
+    ],
+
+    "pricing": {
+      "tax": "Taxes en sus",
+      "session_duration": "8 semaines",
+      "members": {
+        "1x_per_week": { "session": "240 $", "per_class": "30 $" },
+        "2x_per_week": { "session": "400 $", "per_class": "25 $" },
+        "drop_in": "45 $"
+      },
+      "non_members": {
+        "1x_per_week": { "session": "320 $", "per_class": "40 $" },
+        "2x_per_week": { "session": "560 $", "per_class": "35 $" },
+        "drop_in": "50 $"
+      },
+      "intro_class_mandatory": { "members": "65 $", "non_members": "65 $", "note": "Frais appliqués au paiement de la session si la personne s'inscrit ensuite." }
+    },
+
+    "rules": [
+      "Paiement avant le début de la session.",
+      "Minimum 2 participants par cours pour maintenir l'horaire.",
+      "Inscriptions ni remboursables ni transférables à une autre session ou studio PowerWatts.",
+      "Souliers Speedplay obligatoires (cales Speedplay X Model)."
+    ],
+
+    "description": "PowerWatts: expérience cycliste en studio (8 vélos) où chacun s'entraîne à sa propre intensité. Les entraîneurs évaluent puissance/positionnement/technique et établissent les intensités cibles."
+  }
+}

@@ -504,6 +504,138 @@ function stripDuplicateRestaurantSeparation(message: string): string {
 }
 
 /**
+ * Daphné batch 2026-05-27 — Bug A: the LLM hallucinates first-person transmission
+ * claims ("je transmets votre demande", "j'ai bien transmis", "votre demande a été
+ * transmise") during chat turns where no `body.callback` form was submitted, so no
+ * lead email actually fires. Daphné: "elle confirme qu'elle a bien transmis la
+ * demande, c'est faux on ne reçoit rien."
+ *
+ * Strategy: detect first-person assertions of CURRENT or PAST transmission, rewrite
+ * to a "Je prépare votre demande" wording that invites the lead-capture form. The
+ * caller flips followUpMode to "callback" when this guard fires, so the widget
+ * actually opens the form. The deterministic post-form success message in
+ * server.ts (buildCallbackSuccessMessage) is the ONLY place that may claim
+ * successful transmission, and only after the email send returns true.
+ *
+ * Patterns covered (FR + EN):
+ *   - "je transmets" / "je vais transmettre" / "je transmettrai"
+ *   - "j'ai bien transmis" / "j'ai transmis votre demande"
+ *   - "votre demande a été transmise" / "demande transmise"
+ *   - "I'm forwarding" / "I've forwarded" / "your request has been forwarded"
+ *   - "I'll pass on" / "I've passed on"
+ *
+ * NEVER rewrites OFFERS like "Souhaitez-vous que je transmette ?" (interrogative,
+ * future-conditional) — those are correct.
+ */
+const FAKE_TRANSMISSION_PATTERNS: ReadonlyArray<RegExp> = [
+  // FR — first-person present/past/imminent
+  /\bje\s+(?:vais\s+|vais\s+(?:immédiatement|sur-le-champ|tout\s+de\s+suite|maintenant)\s+)?transmettre\b[^.!?]*[.!?]/giu,
+  /\bje\s+transmets\s+(?:immédiatement|sur-le-champ|tout\s+de\s+suite|maintenant|votre|ta|cette|la)\b[^.!?]*[.!?]/giu,
+  /\bj['']ai\s+(?:bien\s+|déjà\s+|immédiatement\s+)?transmis\b[^.!?]*[.!?]/giu,
+  /\bvotre\s+demande\s+(?:a\s+été|sera|est)\s+(?:bien\s+)?transmise\b[^.!?]*[.!?]/giu,
+  /\bdemande\s+(?:a\s+été|est)\s+transmise\s+à\b[^.!?]*[.!?]/giu,
+  /\bje\s+transmets\s+votre\s+demande\b[^.!?]*[.!?]/giu,
+  // FR — same fake-confirmation feel via alternate verbs
+  /\bvotre\s+demande\s+(?:[^.!?]{0,80}?\s+)?a\s+(?:bien\s+)?été\s+(?:prise?\s+(?:en\s+note|en\s+compte|en\s+main)|notée|enregistrée|reçue)\b[^.!?]*[.!?]/giu,
+  /\bj['']ai\s+(?:bien\s+)?(?:not[eé]|enregistr[eé])\s+(?:votre|ta|cette|la)\b[^.!?]*[.!?]/giu,
+  /\b(?:notre|l['']?\s*)équipe\s+(?:vous\s+)?(?:rappellera|contactera|recontactera|reviendra\s+vers\s+vous)\s+(?:prochainement|sous\s+peu|dans\s+les\s+plus\s+brefs\s+délais|rapidement)\b[^.!?]*[.!?]/giu,
+  /\b(?:un\s+membre\s+de\s+|l['']?\s*équipe\s+(?:de\s+)?)?(?:la\s+)?(?:clinique\s+sportive|équipe\s+concernée)\s+vous\s+contactera\s+(?:prochainement|sous\s+peu)\b[^.!?]*[.!?]/giu,
+  // EN
+  /\bI['']?m\s+forwarding\s+(?:your|the)\s+request\b[^.!?]*[.!?]/giu,
+  /\b(?:I['']?ve|I\s+have)\s+(?:forwarded|passed\s+on|sent|noted|recorded|registered)\s+your\s+(?:request|details?|info(?:rmation)?|coordinates?)\b[^.!?]*[.!?]/giu,
+  /\byour\s+(?:request|details?|info(?:rmation)?)\s+(?:[^.!?]{0,80}?)?\s*has\s+been\s+(?:forwarded|sent|passed\s+on|transmitted|noted|recorded|registered)\b[^.!?]*[.!?]/giu,
+  /\b(?:someone|a\s+member|a\s+representative)\s+from\s+(?:the|our)\s+(?:team|sports?\s+clinic|clinic)\s+will\s+(?:contact|reach\s+out\s+to|call|get\s+back\s+to)\s+you\b[^.!?]*[.!?]/giu,
+  /\b(?:our|the)\s+team\s+will\s+(?:contact|reach\s+out|get\s+back)\s+(?:to\s+)?you\s+(?:shortly|soon|in\s+the\s+next)\b[^.!?]*[.!?]/giu,
+];
+
+const PREPARE_REPLACEMENT_FR =
+  "Je prépare votre demande. Pour que je puisse la transmettre officiellement au bon contact, j'aurais besoin de votre nom complet, un numéro où vous rejoindre et votre courriel.";
+const PREPARE_REPLACEMENT_EN =
+  "I'm preparing your request. To send it to the right contact, I'll need your full name, a phone number to reach you and your email.";
+
+/**
+ * Daphné batch 2026-05-27 Phase 4 — belt-and-suspenders guard for the
+ * sports-therapy / physio invented weekly grid. Even after the OVERRIDE LAYER
+ * prompt block tells the LLM "REALTIME_EXTERNAL: never invent a fixed weekly
+ * grid", at temperature 0.3 the model still leaks the generic clinic hours
+ * (lundi-vendredi 9h-19h, sam-dim 11h-15h) onto sports therapy and physio
+ * answers. Strip those sentences when they show up alongside therapy keywords.
+ */
+function stripInventedClinicalHours(message: string, locale: string | undefined): string {
+  const fr = isFrenchLocale(locale);
+  const sentences = message.split(/(?<=[.!?])\s+/);
+  let stripped = false;
+  const cleaned = sentences.map((s) => {
+    const mentionsTherapy = /\b(th[eé]rapie\s+sportive|sport\s+therap|physioth[eé]rapie|physiotherap|nutrition(?:niste)?)\b/i.test(s);
+    const hasFixedWeeklyGrid =
+      /\b(?:du\s+)?(?:lundi|mardi|mercredi|jeudi|vendredi)\s*(?:au|to)?\s*(?:vendredi|dimanche)?\s*(?:de\s+)?\d{1,2}\s*h\s*\d{0,2}\s*(?:à|to|-)\s*\d{1,2}\s*h/i.test(s) ||
+      /\bmonday\s*(?:to|through)\s*friday\s*(?:from\s+)?\d{1,2}(?:am|pm|:\d{2})?\s*(?:to|-)\s*\d{1,2}(?:am|pm|:\d{2})?\b/i.test(s);
+    if (mentionsTherapy && hasFixedWeeklyGrid) {
+      stripped = true;
+      return "";
+    }
+    return s;
+  });
+  if (!stripped) return message;
+  const replacement = fr
+    ? "Les horaires varient selon le ou la thérapeute — la prise de rendez-vous se fait via la page du service (sélection du thérapeute → prendre un rendez-vous) ou en appelant la clinique sportive au 514 845-2233, poste 234."
+    : "Hours vary by therapist — bookings go through the service page (pick a therapist → book an appointment) or by calling the sports clinic at (514) 845-2233, ext. 234.";
+  return (cleaned.filter((s) => s.length > 0).join(" ") + " " + replacement).replace(/\s{2,}/g, " ").trim();
+}
+
+/**
+ * Daphné batch 2026-05-27 Phase 4 — rewrite the OBSOLETE massage pricing grid
+ * (25/55/85 min @ 60/80/105 $) to the AUTHORITATIVE grid (30/60/90/120 min @
+ * 65/120/170/230 $) per override/clinic.json::massotherapie.pricing_authoritative.
+ * Triggers only when the legacy duration+price combination is present.
+ */
+function rewriteObsoleteMassagePricing(message: string, locale: string | undefined): string {
+  // Detect the legacy grid signature: any of the old durations paired with the old prices.
+  const legacyGridSignature =
+    /\b25\s*minutes?\b[^.!?]{0,40}\b60\s*\$|\b55\s*minutes?\b[^.!?]{0,40}\b80\s*\$|\b85\s*minutes?\b[^.!?]{0,40}\b105\s*\$/i;
+  if (!legacyGridSignature.test(message)) return message;
+
+  const fr = isFrenchLocale(locale);
+  const replacement = fr
+    ? "Actuellement, les tarifs de massothérapie au Club Sportif MAA (taxes en sus) sont : 30 minutes à 65 $, 60 minutes à 120 $, 90 minutes à 170 $, 120 minutes à 230 $. Plusieurs types sont disponibles : Suédois, Ashiatsu, Thaï, Tissus profonds. Réservation via FLiiP (clubsportifmaa.fliipapp.com) ou clinique poste 234."
+    : "Currently, massage rates at Club Sportif MAA (taxes extra) are: 30 minutes at $65, 60 minutes at $120, 90 minutes at $170, 120 minutes at $230. Several types are available: Swedish, Ashiatsu, Thai, Deep Tissue. Book through FLiiP (clubsportifmaa.fliipapp.com) or sports clinic ext. 234.";
+
+  // Split into sentences, replace any sentence carrying the legacy signature with the new grid (once).
+  const sentences = message.split(/(?<=[.!?])\s+/);
+  let inserted = false;
+  const cleaned = sentences.map((s) => {
+    if (legacyGridSignature.test(s)) {
+      if (inserted) return "";
+      inserted = true;
+      return replacement;
+    }
+    return s;
+  });
+  return cleaned.filter((s) => s.length > 0).join(" ").replace(/\s{2,}/g, " ").trim();
+}
+
+function stripFakeTransmissionClaim(
+  message: string,
+  locale: string | undefined,
+): { message: string; rewrote: boolean } {
+  let rewrote = false;
+  let out = message;
+  for (const re of FAKE_TRANSMISSION_PATTERNS) {
+    if (re.test(out)) {
+      rewrote = true;
+      out = out.replace(re, "").replace(/\s{2,}/g, " ").trim();
+    }
+  }
+  if (!rewrote) return { message, rewrote: false };
+
+  const replacement = isFrenchLocale(locale) ? PREPARE_REPLACEMENT_FR : PREPARE_REPLACEMENT_EN;
+  // Append the prepare-mode wording so the user understands what's needed next.
+  // If the stripped message is empty, the replacement carries the whole turn.
+  const stitched = out ? `${out} ${replacement}` : replacement;
+  return { message: stitched.replace(/\s{2,}/g, " ").trim(), rewrote: true };
+}
+
+/**
  * Daphné seventh-pass Rule 5: replace robotic uncertainty wording with
  * warmer phrasings. Applied gently — only the most common templates the
  * model overuses get rewritten. Tenant-agnostic.
@@ -1010,6 +1142,15 @@ export function deriveSuppressBookingCta(userMessage: string, followUpMode: MaaF
     /\b(menus?|buanderie|buandrie|laundry|lavage|pickleball|pickle[- ]?ball|pickball|pickelball|cirque|circus|sauna|squash|piscine|pool|spa|massages?|massoth[eé]rapie|physioth[eé]rapie|nutritionniste|forfaits?\s+(?:spa|m[eè]re|noel|f[eê]te|d[eé]tente)|salles?\s+d['e]?entra[iî]nement|cr[eé]neau|booker)\b/i;
   if (serviceKeywords.test(userMessage)) return true;
 
+  // Daphné batch 2026-05-27 — xlsx rows 45, 86, 127, 155: "faut-il réserver
+  // pour basketball / powerwatts / cours en groupe" leaked the visit CTA
+  // because these service names weren't in serviceKeywords. Mirror the same
+  // list as the looksLikeBookingIntent escape so the widget hides the CTA on
+  // these reservation-modality questions too.
+  const serviceKeywordsDaphne2026May =
+    /\b(basketball|basket\b|powerwatts|power[- ]?watts|pilates\s+reformer|pilates\s+sur\s+appareils|cours\s+(?:en\s+|de\s+)?groupe|group\s+classes?|triathlon|club\s+de\s+(?:course|triathlon)|natation(?:\s+(?:adulte|ma[iî]tres?))?|aqua[- ]?hiit|aqua\s+hiit|programmes?\s+aquatiques?|aquatic\s+programs?|entra[iî]nement\s+(?:personnel|priv[eé]|en\s+duo)|personal\s+training|cliniques?\s+sportives?|cirque\s+a[eé]rien|boutique\b)\b/i;
+  if (serviceKeywordsDaphne2026May.test(userMessage)) return true;
+
   return false;
 }
 
@@ -1173,6 +1314,16 @@ export function detectServiceRouting(
       contactId: "mobile_mediq",
       contactName: "Mobile Mediq",
       departmentLabel: "Soins infirmiers (partenaire)",
+    };
+  }
+
+  // Boutique (Daphné batch 2026-05-27 review p.36 #22 — Valérie De Vigne)
+  if (/\b(boutique|articles?\s+(?:de\s+)?(?:maa|du\s+club)|v[êe]tements?\s+(?:de\s+)?maa|accessoires?\s+(?:du\s+club|maa)|shop|store|merch|merchandise|apparel|gift\s+shop|pro\s+shop)\b/.test(m)) {
+    return {
+      intent: "boutique",
+      contactId: "valerie_de_vigne",
+      contactName: "Valérie De Vigne",
+      departmentLabel: "Boutique",
     };
   }
 
@@ -1352,6 +1503,36 @@ function resolveShortAffirmativeFollowUp(
 
   const ctx = lastAssistant.content.toLowerCase();
   const fr = isFrenchLocale(locale);
+
+  // Daphné batch 2026-05-27 — ActionContract (Test 2). When the prior assistant
+  // turn offered a specific platform LINK ("Souhaitez-vous que je vous envoie le
+  // lien MyWellness ?"), "oui" must result in the bot actually emitting THAT
+  // exact URL on the next turn — never re-asking, never substituting "visite du
+  // club". Detect the offered platform + bind to its canonical URL, then rewrite
+  // the user message to a directive that names the URL explicitly. The LLM
+  // echoes it faithfully because it's literally in the prompt.
+  const linkOfferRe = /(?:envoie(?:r|rai)?|donne(?:r|rai)?|partage(?:r|rai)?|fournis(?:se|sez|sez|rai)?|transmette?(?:r|rai)?|envoyer?)\s+(?:le\s+|the\s+)?lien\s+([\w-]+)|(?:send|share|forward|give)\s+(?:you\s+)?the\s+([\w-]+)\s+link/i;
+  const linkOfferMatch = lastAssistant.content.match(linkOfferRe);
+  if (linkOfferMatch) {
+    const rawPlatform = (linkOfferMatch[1] ?? linkOfferMatch[2] ?? "").toLowerCase();
+    const platformUrlMap: Record<string, { label: string; url: string }> = {
+      mywellness:   { label: "MyWellness — cours en temps réel",    url: "https://widgets.mywellness.com/facility/ac1088953" },
+      wellness:     { label: "MyWellness — cours en temps réel",    url: "https://widgets.mywellness.com/facility/ac1088953" },
+      fliip:        { label: "FLiiP — réservation",                  url: "https://clubsportifmaa.fliipapp.com/user/register/buy_service/1" },
+      libro:        { label: "Libro — réservation restaurant",      url: "https://booking.libroreserve.com/2599e556a189b49/QC016934055076/seat" },
+      libroreserve: { label: "Libro — réservation restaurant",      url: "https://booking.libroreserve.com/2599e556a189b49/QC016934055076/seat" },
+      clusterpos:   { label: "Menu / commande en ligne Le 1881",    url: "https://clubsportifmaa.clusterpos.com/menu" },
+      mediq:        { label: "Mobile Mediq — soins infirmiers",     url: "https://mmqclientweb.azurewebsites.net/form/maa?culture=fr-CA" },
+      "mobile":     { label: "Mobile Mediq — soins infirmiers",     url: "https://mmqclientweb.azurewebsites.net/form/maa?culture=fr-CA" },
+      wellcenter:   { label: "Wellcenter — Dr Kanevesky",           url: "https://wellcenter.ca/appointments" },
+    };
+    const entry = platformUrlMap[rawPlatform];
+    if (entry) {
+      return fr
+        ? `Oui, envoyez-moi le lien ${entry.label} : ${entry.url}. N'ouvrez pas la visite du club et ne changez pas de sujet — donnez-moi ce lien exact en format cliquable [${entry.label}](${entry.url}).`
+        : `Yes, send me the ${entry.label} link: ${entry.url}. Do not switch to the club visit and do not change topics — give me this exact link as a clickable [${entry.label}](${entry.url}).`;
+    }
+  }
 
   // Daphné fifth-pass #8/#9 + 2026-05-18 demo bug: if the previous assistant
   // message offered to ROUTE / CONNECT the visitor to a staff member (Nathalie,
@@ -1963,13 +2144,27 @@ export async function answerMaaChat(
     );
     dububGuardedMessage = fixBrokenGrammarSubject(dububGuardedMessage, request.userName);
     dububGuardedMessage = softenUncertaintyWording(dububGuardedMessage);
+    // Daphné batch 2026-05-27 Phase 4 — clinical-hours and old-massage-pricing
+    // guards apply universally (DUBUB doesn't normally discuss MAA clinic
+    // services, but if the LLM accidentally pulls them, the guard catches it).
+    dububGuardedMessage = rewriteObsoleteMassagePricing(dububGuardedMessage, request.locale);
+    dububGuardedMessage = stripInventedClinicalHours(dububGuardedMessage, request.locale);
+
+    // Daphné batch 2026-05-27 — Bug A guard, DUBUB path. Same anti-hallucinated
+    // transmission claim treatment as the MAA path below.
+    const dububTransmissionResult = stripFakeTransmissionClaim(
+      dububGuardedMessage,
+      request.locale,
+    );
+    dububGuardedMessage = dububTransmissionResult.message;
+    const dububFinalMode = dububTransmissionResult.rewrote ? "callback" : dububSafeMode;
 
     return {
       assistantMessage: dububGuardedMessage,
-      followUpMode: dububSafeMode,
+      followUpMode: dububFinalMode,
       citations: [],
       retrieval: { query: resolvedUserMessage, chunkCount: 0, resultCount: 0 },
-      suppressBookingCta: deriveSuppressBookingCta(request.userMessage, dububSafeMode),
+      suppressBookingCta: deriveSuppressBookingCta(request.userMessage, dububFinalMode),
       usage: (openAiResult as typeof openAiResult & { _usage?: { model: string; inputTokens: number; outputTokens: number } })._usage,
     };
   }
@@ -2158,6 +2353,34 @@ export async function answerMaaChat(
     ? "MEMBERSHIP INTEREST DETECTED. The visitor is expressing interest in becoming a member of Club Sportif MAA (often with a stated goal — weight loss, fitness, getting in shape, etc.). You MUST: (1) acknowledge their goal WARMLY in one short sentence (not robotic, not generic), (2) describe ONE or TWO relevant Club facilities (50,000 sq ft training floor + cardio/strength rooms, indoor 25m pool, 75+ weekly group classes including yoga/spinning/HIIT, certified trainers, on-site sports clinic), (3) propose connecting them to **Francis Bradette, Directeur des ventes** OR offer a Club visit so they can see the space and discuss options. NEVER reply with just a phone number — that's the worst possible answer to a prospect. NEVER use the word 'joindre' in the sense of 'contact us at...' — the visitor used 'joindre' to mean JOIN (become a member). Set followUpMode: 'clarify'."
     : undefined;
 
+  // Daphné batch 2026-05-27 — Test 1 + Review p.6 #4: when the user asks a
+  // bare topic-relative question ("c'est quoi les tarifs", "et l'horaire ?",
+  // "comment réserver", "qui je contacte") AND the prior assistant turn was
+  // about a TIER 1 service (pickleball, basketball, powerwatts, etc.), the
+  // bot MUST stay on that service — never dump the abonnement pricing grid or
+  // generic club info. This is conversation-context preservation per Daphné's
+  // main prompt section 5 ("Règle critique").
+  const lastAssistantTurn = [...conversationHistory].reverse().find((t) => t.role === "assistant");
+  const lastAssistantText = lastAssistantTurn?.content ?? "";
+  const userMessageHasNoServiceName =
+    !/\b(abonnement|membership|adh[eé]sion|club\s+sportif|maa|piscine|pool|spa|sauna|massage|physio|nutrition|restaurant|menu|salle|gym|m['']?inscrire|devenir\s+membre|join|become\s+a\s+member|visite|tour|fitness\s+room|workout\s+room|reception|front\s+desk)\b/i.test(request.userMessage) &&
+    request.userMessage.trim().split(/\s+/).length <= 10;
+  const userMessageIsBareTopicQuery =
+    // FR
+    /\b(c['']?est\s+quoi\s+(?:les\s+|le\s+)?(?:tarif|prix)|tarif|prix|horaire|heure|comment\s+(?:on\s+)?r[eé]serv|qui\s+(?:est|je\s+(?:dois\s+)?contact)|et\s+l['']?horaire|et\s+les\s+tarif)\b/i.test(request.userMessage) ||
+    // EN
+    /\b(what(?:['']?s|\s+are|\s+is)\s+the\s+(?:price|cost|fee|rate|schedule|hours)|how\s+(?:do\s+I|can\s+I|to)\s+(?:book|reserve|register|sign\s+up)|who\s+(?:do\s+I|should\s+I|to)\s+contact|how\s+much|when\s+(?:is|are|does|do))\b/i.test(request.userMessage);
+
+  const TIER1_SERVICE_KEYWORDS = /(pickleball|pickelball|pickball|pickle[- ]?ball|basketball|basket\b|powerwatts|power[- ]?watts|pilates\s+(?:reformer|sur\s+appareils)|cirque\s+a[eé]rien|aerial\s+circus|triathlon|natation\s+(?:adulte|ma[iî]tres?)|aqua[- ]?hiit|squash|fitness\s+a[eé]rien|club\s+de\s+(?:course|triathlon)|fitness\s+aerien)/i;
+  const priorTurnService = lastAssistantText.match(TIER1_SERVICE_KEYWORDS)?.[0];
+  const topicContinuityContext =
+    priorTurnService &&
+    userMessageIsBareTopicQuery &&
+    userMessageHasNoServiceName &&
+    conversationHistory.length > 0
+      ? `TOPIC CONTINUITY (Daphné batch 2026-05-27 Test 1). The prior assistant turn was about **${priorTurnService}**. The user's current bare question (about tariff/schedule/booking/contact) MUST be answered in the CONTEXT of ${priorTurnService}. You MUST NOT: (a) dump the full membership pricing grid (225/185/195/295 $/mois), (b) list locker fees / laundry / generic inclusions, (c) describe other services, (d) suggest a club visit. You MUST: (1) answer the question SPECIFICALLY for ${priorTurnService} (e.g. for tariff: is it included? what are the session prices? who confirms?); (2) if no specific data, route to the right contact for ${priorTurnService} (Nathalie Lambert for sports / pool / pickleball / basketball / cirque / triathlon / powerwatts; Elisabeth Boutin for Pilates Reformer; Yvon Provençal for squash). Stay TIGHT on the active topic.`
+      : undefined;
+
   // Compose all available context fragments for the AI call. Multiple safety
   // contexts can apply at once (e.g. cancellation_policy + included-question
   // is rare but possible). Concatenate so the AI sees every relevant rule.
@@ -2172,6 +2395,7 @@ export async function answerMaaChat(
     gymAccessMembershipUnknownContext,
     explicitTeamHelpContext,
     membershipInterestContext,
+    topicContinuityContext,
   ]
     .filter((s): s is string => typeof s === "string" && s.length > 0)
     .join("\n\n") || undefined;
@@ -2382,6 +2606,36 @@ export async function answerMaaChat(
     request.locale,
   );
 
+  // Daphné batch 2026-05-27 Phase 4 — belt-and-suspenders for the OVERRIDE
+  // LAYER. Even with the override block in the prompt + obsolete fields
+  // scrubbed from the base section, the LLM occasionally still leaks the old
+  // massage grid or invents a clinic-wide weekly schedule for sports therapy /
+  // physio. Strip those at the surface.
+  cleanedAssistantMessage = rewriteObsoleteMassagePricing(cleanedAssistantMessage, request.locale);
+  cleanedAssistantMessage = stripInventedClinicalHours(cleanedAssistantMessage, request.locale);
+
+  // Daphné batch 2026-05-27 — Bug A guard. If the LLM hallucinated a
+  // transmission claim, strip it and force the widget to open the lead-capture
+  // form so a REAL transmission can occur. The deterministic
+  // buildCallbackSuccessMessage in server.ts is the only place that may
+  // confirm transmission, and only after Brevo returns success.
+  const fakeTransmissionResult = stripFakeTransmissionClaim(
+    cleanedAssistantMessage,
+    request.locale,
+  );
+  cleanedAssistantMessage = fakeTransmissionResult.message;
+  if (fakeTransmissionResult.rewrote) {
+    finalFollowUpMode = "callback";
+  }
+
+  // Daphné batch 2026-05-27 — ActionContract suppression. When the user just
+  // accepted a specific platform link in the prior turn (resolveShortAffirmativeFollowUp
+  // rewrote "oui" to the link-send directive), the visit CTA must NOT appear
+  // below the sent link — the user accepted MyWellness, not a club tour.
+  const actionContractFired =
+    /N['']?ouvrez pas la visite du club|Do not switch to the club visit/i.test(resolvedUserMessage);
+  const computedSuppress = deriveSuppressBookingCta(request.userMessage, finalFollowUpMode);
+
   return {
     assistantMessage: cleanedAssistantMessage,
     followUpMode: finalFollowUpMode,
@@ -2392,7 +2646,7 @@ export async function answerMaaChat(
       resultCount: searchResults.length,
     },
     routing: serviceRouting,
-    suppressBookingCta: deriveSuppressBookingCta(request.userMessage, finalFollowUpMode),
+    suppressBookingCta: actionContractFired || computedSuppress,
     usage: usageData ? {
       model: usageData.model,
       inputTokens: usageData.inputTokens,

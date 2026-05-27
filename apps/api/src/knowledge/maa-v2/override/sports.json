@@ -1,0 +1,343 @@
+{
+  "_source": "Daphné batch 2026-05-27 — Tarifs et horaires sports et entraînements MAA (1).pdf",
+  "_principle": "Sports + entraînements opérationnels. Inclut horaires basketball/pickleball/pool (STATIC), triathlon LIVE_DATED, entraînement personnel via Fliip (REALTIME), Pilates Reformer LIVE_DATED.",
+  "tenant_id": "maa",
+  "last_reviewed_at": "2026-05-27",
+
+  "basketball": {
+    "service_id": "basketball",
+    "schedule_status": "STATIC_PUBLISHED",
+    "source_type": "OFFICIAL_PAGE",
+    "source_url": "https://www.clubsportifmaa.com/fr/entrainement/basketball/",
+    "valid_from": null,
+    "valid_until": null,
+    "confidence_level": "high",
+    "primary_contact": "nathalie_lambert",
+    "primary_email": "nlambert@clubsportifmaa.com",
+    "allowed_cta": ["contact_nathalie", "open_official_page"],
+    "forbidden_cta": ["visit_club"],
+    "_daphne_forbidden_visit_cta": "Le bouton 'Planifier une visite' ne doit JAMAIS apparaître sur une question basketball (review #8).",
+    "included_in_membership": true,
+    "access": "À valider: membres seulement ou aussi non-membres.",
+
+    "schedule": [
+      { "day": "Lundi",    "time": "19:00–21:00" },
+      { "day": "Vendredi", "time": "19:00–21:00" },
+      { "day": "Samedi",   "time": "17:00–18:30" },
+      { "day": "Dimanche", "time": "15:00–18:30" }
+    ]
+  },
+
+  "club_de_course": {
+    "service_id": "running_club",
+    "schedule_status": "NO_SCHEDULE_PUBLISHED",
+    "source_type": "OFFICIAL_PAGE",
+    "source_url": "https://www.clubsportifmaa.com/fr/entrainement/club-de-course/",
+    "valid_from": null,
+    "valid_until": null,
+    "confidence_level": "medium",
+    "primary_contact": "nathalie_lambert",
+    "primary_email": "nlambert@clubsportifmaa.com",
+    "non_member_contact": "francis_bradette",
+    "non_member_email": "fbradette@clubsportifmaa.com",
+    "allowed_cta": ["contact_nathalie"],
+    "forbidden_cta": ["visit_club"],
+    "fallback_rule": "PDF site ne fonctionne pas. Orienter vers Nathalie.",
+    "included_in_membership": false,
+    "access": "Réservé aux membres. Non-membres → Francis Bradette.",
+
+    "schedule_known": "Plusieurs cases horaires chaque semaine, midi ou soirée. Aucun détail précis fiable."
+  },
+
+  "club_triathlon": {
+    "service_id": "triathlon",
+    "schedule_status": "LIVE_DATED",
+    "source_type": "PDF_SEASONAL",
+    "source_url": "https://www.clubsportifmaa.com/fr/entrainement/club-de-triathlon/",
+    "secondary_source_url": "https://www.clubsportifmaa.com/wp-content/uploads/2026/03/MAA_Piscine_Programmme_Spring2026.pdf",
+    "valid_from": "2026-04-07",
+    "valid_until": "2026-06-19",
+    "session_duration_weeks": 11,
+    "confidence_level": "high",
+    "primary_contact": "nathalie_lambert",
+    "primary_email": "nlambert@clubsportifmaa.com",
+    "non_member_contact": "francis_bradette",
+    "non_member_email": "fbradette@clubsportifmaa.com",
+    "allowed_cta": ["see_pdf", "contact_nathalie"],
+    "forbidden_cta": ["visit_club"],
+    "fallback_rule": "PDF du site triathlon ne fonctionne pas. Utiliser le PDF piscine printemps.",
+    "_daphne_correction_review_10": "REMPLACE: anciennes dates '12 janvier au 3 avril' du base v2 — OBSOLÈTES.",
+    "included_in_membership": false,
+    "access": "Réservé aux membres. Non-membres → Francis Bradette.",
+
+    "schedule_natation_maitres_triathlon": [
+      { "day": "Mardi",    "time": "07:00–08:00", "instructor": "Isabelle" },
+      { "day": "Mercredi", "time": "17:30–18:30", "instructor": "Pierre" },
+      { "day": "Jeudi",    "time": "07:00–08:00", "instructor": "Isabelle" }
+    ],
+
+    "pricing": {
+      "tax": "Taxes en sus",
+      "1x_per_week": { "session": "165 $", "per_class": "15 $", "spots": 12 },
+      "2x_per_week": { "session": "275 $", "per_class": "12,50 $", "spots": 12 }
+    },
+
+    "inclus_avec_club_triathlon": [
+      "Sessions de calcul du FTP pour le vélo",
+      "Sessions de calcul du VAM pour la course"
+    ],
+    "_daphne_review_10": "Daphné a explicitement signalé que FTP+VAM sont compris (review pt #10).",
+
+    "extras": {
+      "plan_personnalise_triathlon": "30 $ / semaine",
+      "entrainement_prive_sur_rdv": {
+        "30_min": "50 $",
+        "45_min": "75 $",
+        "60_min": "90 $"
+      }
+    }
+  },
+
+  "entrainement_personnel": {
+    "service_id": "personal_training",
+    "schedule_status": "REALTIME_EXTERNAL",
+    "source_type": "LIVE_LINK",
+    "source_url": "https://clubsportifmaa.fliipapp.com/user/register/buy_service/1",
+    "valid_from": "2026-04-23",
+    "valid_until": null,
+    "confidence_level": "high",
+    "primary_contact": "francis_bradette",
+    "primary_email": "fbradette@clubsportifmaa.com",
+    "allowed_cta": ["book_fliip", "contact_francis"],
+    "forbidden_cta": ["visit_club"],
+    "fallback_rule": "Si Fliip indisponible, Francis.",
+    "_daphne_correction_review_11": "REMPLACE: la base v2 disait 'tarifs non publiés'. Tarifs SONT publiés via Fliip.",
+    "included_in_membership": false,
+
+    "schedule_general": [
+      { "days": "Lundi, mercredi",          "time": "06:00–19:00" },
+      { "days": "Mardi, jeudi, vendredi, samedi, dimanche", "time": "06:00–21:00" }
+    ],
+
+    "rules_daphne": "Vérifier disponibilité sur Fliip. Demander si la personne veut un entraîneur en particulier + service désiré. Si trop complexe, diriger vers le lien Fliip.",
+
+    "session_standard": {
+      "duration": "60 minutes",
+      "single": { "price": "90 $", "payment": "paiement unique" },
+      "package_6":  { "price": "510 $",   "payment": "paiement unique" },
+      "package_15_payment_1": { "price": "1 275 $", "payment": "1 paiement par mois" },
+      "package_15_payment_2": { "price": "637,50 $", "payment": "2 paiements par mois" }
+    },
+
+    "session_duo": {
+      "_note": "Daphné review #11: Entraînements en duo SONT disponibles. La base v2 disait le contraire.",
+      "duration": "60 minutes",
+      "people": 2,
+      "single":      { "price": "140 $", "payment": "paiement unique" },
+      "single_xpert": { "price": "150 $", "payment": "paiement unique" },
+      "package_5":   { "price": "700 $", "payment": "1 paiement par mois" }
+    },
+
+    "session_xpert_solo": {
+      "duration": "60 minutes",
+      "package_6":  { "price": "600 $",   "payment": "paiement unique" },
+      "package_15_payment_1": { "price": "1 500 $", "payment": "1 paiement par mois" },
+      "package_15_payment_2": { "price": "750 $",    "payment": "2 paiements par mois" }
+    }
+  },
+
+  "pickleball": {
+    "service_id": "pickleball",
+    "schedule_status": "STATIC_PUBLISHED",
+    "source_type": "OFFICIAL_PAGE",
+    "source_url": "https://www.clubsportifmaa.com/fr/entrainement/pickleball/",
+    "valid_from": null,
+    "valid_until": null,
+    "confidence_level": "high",
+    "primary_contact": "nathalie_lambert",
+    "primary_email": "nlambert@clubsportifmaa.com",
+    "_daphne_correction_review_12": "REMPLACE: la base v2 routait pickleball vers 'clinique sportive poste 234' — FAUX. C'est Nathalie Lambert.",
+    "allowed_cta": ["contact_nathalie", "book_via_maa_app"],
+    "forbidden_cta": ["visit_club"],
+    "included_in_membership": true,
+    "access": "Membres seulement. Joueurs apportent raquettes et balles. Location à la réception possible.",
+
+    "schedule_28_slots_per_week": {
+      "Lundi":    ["07:00–11:00", "14:00–17:00"],
+      "Mardi":    ["07:00–12:00", "12:00–14:00", "14:00–17:00"],
+      "Mercredi": ["07:00–11:00", "14:00–17:00", "20:00–21:00"],
+      "Jeudi":    ["07:00–12:00", "12:00–14:00", "14:00–17:00", "20:00–21:00"],
+      "Vendredi": ["07:00–11:00", "14:00–17:00", "17:00–19:00"],
+      "Samedi":   ["07:00–11:00", "11:00–14:00", "14:00–17:00"],
+      "Dimanche": ["07:00–11:00", "11:00–14:00", "14:00–15:00"]
+    },
+
+    "rules_daphne": "Tarifs spécifiques au pickleball: non publiés au-delà de l'inclusion dans l'abonnement. Si demande de tarif, ne PAS basculer vers tarifs d'abonnement — rester sur pickleball + Nathalie."
+  },
+
+  "programmation_aquatique_et_piscine": {
+    "service_id": "pool",
+    "schedule_status": "LIVE_DATED",
+    "source_type": "PDF_SEASONAL",
+    "source_url": "https://www.clubsportifmaa.com/wp-content/uploads/2026/04/MAA_Piscine_Pool_Printemps2026_04-07-26.pdf",
+    "secondary_source_url": "https://www.clubsportifmaa.com/wp-content/uploads/2026/03/MAA_Piscine_Programmme_Spring2026.pdf",
+    "live_link": "https://widgets.mywellness.com/facility/ac1088953",
+    "valid_from": "2026-04-07",
+    "valid_until": "2026-06-19",
+    "confidence_level": "high",
+    "primary_contact": "nathalie_lambert",
+    "reception_contact": "reception_poste_0",
+    "reception_email": "infomaa@clubsportifmaa.com",
+    "non_member_contact": "francis_bradette",
+    "allowed_cta": ["see_pdf", "contact_nathalie", "mywellness_book"],
+    "forbidden_cta": ["visit_club"],
+    "included_in_membership": false,
+    "access": "Réservé aux membres. Non-membres → Francis Bradette.",
+    "_to_validate": "À valider: 7h00 ou 6h30 le matin? PDF indique 6h30 lun-ven, 7h00 sam-dim.",
+
+    "hours_pool": {
+      "lundi_vendredi": "06h30–20h30",
+      "samedi_dimanche": "07h00–18h00"
+    },
+
+    "aqua_hiit_live_dated_may25_jun8": [
+      { "day": "Lundi 1 juin", "time": "17:30–18:25", "instructor": "Laverquant Jean-Yves" },
+      { "day": "Lundi 8 juin", "time": "17:30–18:25", "instructor": "Laverquant Jean-Yves" }
+    ],
+
+    "schedule_by_day": {
+      "Lundi": [
+        { "time": "06:30–17:25", "activity": "Nage libre" },
+        { "time": "17:30–18:25", "activity": "Aqua-HIIT", "instructor": "Jennifer", "access": "Pas d'accès piscine pendant ce créneau" }
+      ],
+      "Mardi": [
+        { "time": "06:30–06:55", "activity": "Nage libre" },
+        { "time": "07:00–08:00", "activity": "Natation maîtres", "instructor": "Isabelle", "access": "Pas d'accès piscine pendant ce créneau" },
+        { "time": "08:05–17:25", "activity": "Nage libre" },
+        { "time": "17:30–18:30", "activity": "Natation adulte", "instructor": "Élisabeth", "access": "Un seul corridor disponible" },
+        { "time": "18:30–20:30", "activity": "Nage libre" }
+      ],
+      "Mercredi": [
+        { "time": "06:30–17:25", "activity": "Nage libre" },
+        { "time": "17:30–18:30", "activity": "Natation maîtres", "instructor": "Pierre", "access": "Pas d'accès piscine pendant ce créneau" },
+        { "time": "18:30–19:30", "activity": "Natation adulte", "instructor": "Élisabeth", "access": "Un seul corridor disponible" },
+        { "time": "19:35–20:30", "activity": "Nage libre" }
+      ],
+      "Jeudi": [
+        { "time": "06:30–06:55", "activity": "Nage libre" },
+        { "time": "07:00–08:00", "activity": "Natation maîtres", "instructor": "Isabelle", "access": "Pas d'accès piscine pendant ce créneau" },
+        { "time": "08:05–11:55", "activity": "Nage libre" },
+        { "time": "12:00–13:00", "activity": "Aqua-HIIT", "instructor": "Caroline", "access": "Pas d'accès piscine pendant ce créneau" },
+        { "time": "13:05–20:30", "activity": "Nage libre" }
+      ],
+      "Vendredi": [
+        { "time": "06:30–20:30", "activity": "Nage libre" }
+      ],
+      "Samedi": [
+        { "time": "07:00–18:00", "activity": "Nage libre" }
+      ],
+      "Dimanche": [
+        { "time": "07:00–18:00", "activity": "Nage libre" }
+      ]
+    }
+  },
+
+  "salles_entrainement": {
+    "service_id": "training_rooms",
+    "schedule_status": "STATIC_PUBLISHED",
+    "source_type": "OFFICIAL_PAGE",
+    "source_url": "https://www.clubsportifmaa.com/fr/entrainement/salles-dentrainement/",
+    "valid_from": null,
+    "valid_until": null,
+    "confidence_level": "high",
+    "primary_contact": "francis_bradette",
+    "primary_email": "fbradette@clubsportifmaa.com",
+    "allowed_cta": ["contact_francis"],
+    "forbidden_cta": ["visit_club"],
+    "included_in_membership": true,
+    "access": "À valider: accès non-membres ?",
+    "no_reservation_needed": true,
+    "no_time_restriction": true,
+
+    "description": "Centre de conditionnement physique avec équipements modernes: cardio, musculation, fonctionnel, HIIT, poids du corps.",
+    "size_sqft": "Plus de 5 000 pi² (section principale)",
+    "_daphne_review_14_correction": "REMPLACE confusion 5 000 vs 50 000 pi² — la section principale est 5 000 pi². Le club total est 50 000 pi².",
+    "ceiling_height": "Plus de 20 pieds",
+    "second_floor_section": "Entraînement fonctionnel — turf, racks, barres de suspension, équipements poids du corps, espaces HIIT."
+  },
+
+  "squash": {
+    "service_id": "squash",
+    "schedule_status": "UNKNOWN",
+    "source_type": "OFFICIAL_PAGE",
+    "source_url": "https://www.clubsportifmaa.com/fr/entrainement/squash/",
+    "valid_from": null,
+    "valid_until": null,
+    "confidence_level": "low",
+    "primary_contact": "yvon_provencal",
+    "primary_phone": "514 845-2233 poste 227",
+    "allowed_cta": ["contact_yvon"],
+    "forbidden_cta": ["visit_club"],
+    "included_in_membership": false,
+    "access": "À valider: membres et/ou non-membres ?",
+    "rules_daphne": "Horaires, tarifs, disponibilités, accès membre/non-membre tous à valider. Orienter vers Yvon Provençal poste 227."
+  },
+
+  "pilates_reformer": {
+    "service_id": "pilates_reformer",
+    "schedule_status": "LIVE_DATED",
+    "source_type": "PDF_SEASONAL",
+    "source_url": "https://www.clubsportifmaa.com/wp-content/uploads/2026/04/MAA_Pilates_Reformer_Horaire-Schedule_May4-26.pdf",
+    "secondary_source_url": "https://www.clubsportifmaa.com/wp-content/uploads/2026/04/MAA_Pilates_Reformer_Flyer_Jan9-26.pdf",
+    "live_link": "https://widgets.mywellness.com/facility/ac1088953",
+    "booking_url": "https://clubsportifmaa.fliipapp.com/user/register/buy_product/1#",
+    "valid_from": "2026-05-25",
+    "valid_until": "2026-06-08",
+    "confidence_level": "high",
+    "primary_contact": "elisabeth_boutin",
+    "primary_email": "eboutin@clubsportifmaa.com",
+    "allowed_cta": ["see_pdf", "book_mywellness", "book_fliip", "contact_elisabeth"],
+    "forbidden_cta": ["visit_club"],
+    "included_in_membership": false,
+    "access": "Membres et non-membres",
+    "duration": "50 à 60 minutes",
+    "location": "Espace Pilates — 4 reformers, chaises, tables trapézoïdales",
+
+    "description": "Studio réservé à l'entraînement privé et aux cours en petit groupe sur appareils Pilates, avec instructeur expert. Maximum 4 places par cours.",
+
+    "pricing": {
+      "tax": "Taxes en sus",
+      "forfait_6_cours": {
+        "members":     { "price": "240 $", "per_class": "40 $" },
+        "non_members": { "price": "270 $", "per_class": "45 $" }
+      },
+      "forfait_mensuel_illimite_members_only": "160 $",
+      "drop_in": { "price": "50 $", "transferable_to_6_pack": true },
+      "missed_class_fee": "10 $ + taxes (absence sans préavis)",
+      "private_with_instructor": {
+        "_note": "Avec Angie West, Fabiola Moreira, Nicolas Wilhem, Chantal Dauphinais, Erin Flynn ou Elizabeth Harris",
+        "50_min": "120 $"
+      }
+    },
+
+    "schedule_pdf_dès_4_mai_2026": {
+      "Lundi":    [{ "time": "07h30–08h20", "instructor": "Angie" }, { "time": "12h00–12h50", "instructor": "Angie" }, { "time": "13h00–13h50", "instructor": "Erin" }],
+      "Mardi":    [{ "time": "07h30–08h20", "instructor": "Angie" }, { "time": "17h30–18h20", "instructor": "Chantal" }],
+      "Mercredi": [{ "time": "10h00–10h50", "instructor": "Fabiola" }, { "time": "12h00–12h50", "instructor": "Fabiola" }, { "time": "13h00–13h50", "instructor": "Fabiola" }, { "time": "18h00–18h50", "instructor": "Nicolas" }],
+      "Jeudi":    [{ "time": "07h30–08h20", "instructor": "Angie" }, { "time": "12h00–12h50", "instructor": "Angie" }, { "time": "17h30–18h20", "instructor": "Elizabeth H." }],
+      "Vendredi": [{ "time": "07h30–08h20", "instructor": "Angie" }, { "time": "11h00–11h50", "instructor": "Chantal" }],
+      "Samedi":   [{ "time": "11h00–11h50", "instructor": "Elizabeth H." }],
+      "Dimanche": [{ "time": "10h00–10h50", "instructor": "Erin" }]
+    },
+
+    "rules": [
+      "Horaires sujets à changement selon le nombre de participants.",
+      "Possible d'ouvrir plus de plages si demande suffisante.",
+      "Seulement 4 places par cours.",
+      "Crédits doivent être utilisés durant la période prévue.",
+      "Cours privés sur demande pendant les heures d'ouverture du Club.",
+      "Crédits non utilisés ni remboursables ni transférables après 6 mois.",
+      "Port de bas avec adhérence recommandé (hygiène)."
+    ]
+  }
+}

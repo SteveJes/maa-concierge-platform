@@ -37,5 +37,8 @@ apps/api/src/scenarios/generated/
 # Inbox — raw source documents from tenants (PDFs, emails, notes) before extraction
 apps/api/_inbox/
 
+# Local PDF-expiry cron output (Daphné batch 2026-05-27 §9B.7)
+apps/api/_alerts/
+
 # Cost tracking — daily OpenAI usage JSONL files (rotated by day)
 apps/api/_costs/

@@ -187,6 +187,85 @@
       "confidence": "confirmed"
     },
     {
+      "id": "mobile_mediq_injection",
+      "label": "Mobile Mediq — injection",
+      "url": "https://mmqclientweb.azurewebsites.net/form/index/injection?culture=fr-CA&source=MAA",
+      "intent": "rendez-vous injection",
+      "confidence": "confirmed"
+    },
+    {
+      "id": "mobile_mediq_iv",
+      "label": "Mobile Mediq — perfusion IV",
+      "url": "https://mmqclientweb.azurewebsites.net/form/index/iv-partial?culture=fr-CA&source=MAA",
+      "intent": "rendez-vous IV",
+      "confidence": "confirmed"
+    },
+    {
+      "id": "mobile_mediq_sampling",
+      "label": "Mobile Mediq — prélèvement",
+      "url": "https://mmqclientweb.azurewebsites.net/form/index/sampling-partial?culture=fr-CA&source=MAA",
+      "intent": "rendez-vous prélèvement",
+      "confidence": "confirmed"
+    },
+    {
+      "id": "mobile_mediq_fertility",
+      "label": "Mobile Mediq — profil fertilité",
+      "url": "https://mmqclientweb.azurewebsites.net/form/index/fertility-partial?culture=fr-CA&source=MAA",
+      "intent": "rendez-vous fertilité",
+      "confidence": "confirmed"
+    },
+    {
+      "id": "mobile_mediq_spermogram",
+      "label": "Mobile Mediq — spermogramme",
+      "url": "https://mmqclientweb.azurewebsites.net/form/index/spermogram-partial?culture=fr-CA&source=MAA",
+      "intent": "rendez-vous spermogramme",
+      "confidence": "confirmed"
+    },
+    {
+      "id": "wellcenter_appointments",
+      "label": "Wellcenter — prise de rendez-vous Dr Michael Kanevesky",
+      "url": "https://wellcenter.ca/appointments",
+      "intent": "rendez-vous services médicaux",
+      "confidence": "confirmed",
+      "note": "Daphné batch 2026-05-27: ajouté pour services médicaux."
+    },
+    {
+      "id": "fliip_personal_training",
+      "label": "FLiiP — entraînement personnel / duo / Xpert",
+      "url": "https://clubsportifmaa.fliipapp.com/user/register/buy_service/1",
+      "intent": "réserver entraînement personnel",
+      "confidence": "confirmed",
+      "note": "Même URL que fliip_service; alias pour intent personal training."
+    },
+    {
+      "id": "fliip_pilates_reformer_buy",
+      "label": "FLiiP — achat produit (Pilates Reformer)",
+      "url": "https://clubsportifmaa.fliipapp.com/user/register/buy_product/1#",
+      "intent": "réserver pilates reformer",
+      "confidence": "confirmed"
+    },
+    {
+      "id": "instructors_page",
+      "label": "MAA — instructeurs",
+      "url": "https://www.clubsportifmaa.com/fr/experts/instructeurs/",
+      "intent": "voir instructeurs",
+      "confidence": "confirmed"
+    },
+    {
+      "id": "personal_trainers_page",
+      "label": "MAA — entraîneurs personnels",
+      "url": "https://www.clubsportifmaa.com/fr/experts/entraineurs-personnels/",
+      "intent": "voir entraîneurs personnels",
+      "confidence": "confirmed"
+    },
+    {
+      "id": "club_trainers_page",
+      "label": "MAA — entraîneurs du club",
+      "url": "https://www.clubsportifmaa.com/fr/experts/entraineurs-de-clubs/",
+      "intent": "voir entraîneurs du club",
+      "confidence": "confirmed"
+    },
+    {
       "id": "sport_therapy",
       "label": "Thérapie sportive — page",
       "url": "https://www.clubsportifmaa.com/fr/therapie-sportive/",

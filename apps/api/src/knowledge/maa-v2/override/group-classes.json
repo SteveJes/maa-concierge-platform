@@ -1,0 +1,235 @@
+{
+  "_source": "Daphné batch 2026-05-27 — Horaires cours en groupe MAA.pdf",
+  "_principle": "Horaire LIVE_DATED MyWellness 25 mai → 8 juin 2026. Le PDF est le repère STATIC_PUBLISHED; pour réservation, toujours MyWellness en direct.",
+
+  "tenant_id": "maa",
+  "service_id": "group_classes",
+  "schedule_status": "LIVE_DATED",
+  "source_type": "LIVE_LINK",
+  "source_url": "https://widgets.mywellness.com/facility/ac1088953",
+  "secondary_source_url": "https://www.clubsportifmaa.com/wp-content/uploads/2026/05/MAA_CoursEnGroupe_HoraireClassifications_2070Peel_May19-26.pdf",
+  "booking_url": "https://widgets.mywellness.com/facility/ac1088953",
+  "valid_from": "2026-05-25",
+  "valid_until": "2026-06-08",
+  "last_reviewed_at": "2026-05-27",
+  "confidence_level": "high",
+  "primary_contact": "nathalie_lambert",
+  "fallback_contact": "reception_poste_0",
+  "allowed_cta": ["mywellness_book", "see_pdf"],
+  "forbidden_cta": ["visit_club"],
+  "fallback_rule": "Si MyWellness indisponible, référer au PDF cours en groupe (lien secondary_source_url) et Nathalie.",
+  "membership_access": "À valider : accès seulement aux membres ou aussi aux non-membres.",
+  "_daphne_rule": "Si horaires vivants pas dispo → PDF. Le concierge doit pouvoir CITER un cours précis quand demandé.",
+
+  "schedule_live_dated_may25_to_jun8_2026": {
+    "HIIT Circuit — Zone X": [
+      { "day": "Mardi 26 mai",  "slots": [{ "time": "07:00–08:00", "instructor": "Calderon Luigi" }, { "time": "12:00–13:00", "instructor": "Williams Jonathan" }, { "time": "17:30–18:30", "instructor": "Blondiaux Laura" }] },
+      { "day": "Jeudi 28 mai",  "slots": [{ "time": "12:05–13:00", "instructor": "Blondiaux Laura" }] },
+      { "day": "Vendredi 29 mai", "slots": [{ "time": "07:00–08:00", "instructor": "Blondiaux Laura" }] },
+      { "day": "Samedi 30 mai",  "slots": [{ "time": "11:00–12:00", "instructor": "Vachon Guillaume" }] },
+      { "day": "Dimanche 31 mai", "slots": [{ "time": "09:10–10:05", "instructor": "Lambert Nathalie" }] },
+      { "day": "Lundi 1 juin",  "slots": [{ "time": "17:30–18:30", "instructor": "Blondiaux Laura" }] },
+      { "day": "Mardi 2 juin",   "slots": [{ "time": "07:00–08:00", "instructor": "Calderon Luigi" }, { "time": "12:00–13:00", "instructor": "Williams Jonathan" }, { "time": "17:30–18:30", "instructor": "Blondiaux Laura" }] },
+      { "day": "Jeudi 4 juin",   "slots": [{ "time": "12:05–13:00", "instructor": "Blondiaux Laura" }] },
+      { "day": "Vendredi 5 juin", "slots": [{ "time": "07:00–08:00", "instructor": "Blondiaux Laura" }] },
+      { "day": "Samedi 6 juin",  "slots": [{ "time": "11:00–12:00", "instructor": "Vachon Guillaume" }] },
+      { "day": "Dimanche 7 juin", "slots": [{ "time": "09:10–10:05", "instructor": "Calderon Luigi" }] },
+      { "day": "Lundi 8 juin",   "slots": [{ "time": "17:30–18:30", "instructor": "Blondiaux Laura" }] }
+    ],
+    "Pilates (groupe) — Studio Serenity": [
+      { "day": "Mardi 26 mai",  "slots": [{ "time": "11:00–11:55", "instructor": "Dauphinais Chantal" }] },
+      { "day": "Jeudi 28 mai",  "slots": [{ "time": "12:05–13:05", "instructor": "Dauphinais Chantal" }] },
+      { "day": "Samedi 30 mai",  "slots": [{ "time": "11:45–12:45", "instructor": "Caro Dahlia" }] },
+      { "day": "Dimanche 31 mai", "slots": [{ "time": "11:15–12:15", "instructor": "Flynn Erin" }] },
+      { "day": "Lundi 1 juin",  "slots": [{ "time": "17:30–18:30", "instructor": "Flynn Erin" }] },
+      { "day": "Mardi 2 juin",   "slots": [{ "time": "11:00–11:55", "instructor": "Comba Anamaria" }] },
+      { "day": "Jeudi 4 juin",   "slots": [{ "time": "12:05–13:05", "instructor": "Savoie Isabelle" }] },
+      { "day": "Samedi 6 juin",  "slots": [{ "time": "11:45–12:45", "instructor": "Caro Dahlia" }] },
+      { "day": "Dimanche 7 juin", "slots": [{ "time": "11:15–12:15", "instructor": "Comba Anamaria" }] },
+      { "day": "Lundi 8 juin",   "slots": [{ "time": "17:30–18:30", "instructor": "Flynn Erin" }] }
+    ],
+    "Force 50 — Studio Tempo": [
+      { "day": "Mardi 26 mai", "slots": [{ "time": "12:00–12:50", "instructor": "Lambert Nathalie" }] },
+      { "day": "Mardi 2 juin", "slots": [{ "time": "12:00–12:50", "instructor": "Lambert Nathalie" }] }
+    ],
+    "Run/Jog Intervals — Extérieur": [
+      { "day": "Mardi 26 mai",  "slots": [{ "time": "12:00–13:00", "instructor": "Boutin Elisabeth" }] },
+      { "day": "Samedi 30 mai", "slots": [{ "time": "09:00–10:00", "instructor": "Boutin Elisabeth" }] },
+      { "day": "Mardi 2 juin",  "slots": [{ "time": "12:00–13:00", "instructor": "Boutin Elisabeth" }] },
+      { "day": "Samedi 6 juin", "slots": [{ "time": "09:00–10:00", "instructor": "Boutin Elisabeth" }] }
+    ],
+    "Essentrics — Studio Serenity": [
+      { "day": "Mardi 26 mai",   "slots": [{ "time": "12:05–13:05", "instructor": "Yegoyan Vahé" }] },
+      { "day": "Mercredi 27 mai", "slots": [{ "time": "11:00–11:55", "instructor": "Montalvo Sumara" }, { "time": "17:30–18:25", "instructor": "Montalvo Sumara" }] },
+      { "day": "Vendredi 29 mai", "slots": [{ "time": "11:00–11:55", "instructor": "Hurlburt Stephanie" }] },
+      { "day": "Samedi 30 mai",  "slots": [{ "time": "09:30–10:25", "instructor": "Yegoyan Vahé" }] },
+      { "day": "Lundi 1 juin",   "slots": [{ "time": "16:30–17:25", "instructor": "Montalvo Sumara" }] },
+      { "day": "Mardi 2 juin",    "slots": [{ "time": "12:05–13:05", "instructor": "Yegoyan Vahé" }] },
+      { "day": "Mercredi 3 juin", "slots": [{ "time": "11:00–11:55", "instructor": "Montalvo Sumara" }, { "time": "17:30–18:25", "instructor": "Montalvo Sumara" }] },
+      { "day": "Vendredi 5 juin", "slots": [{ "time": "11:00–11:55", "instructor": "Hurlburt Stephanie" }] },
+      { "day": "Samedi 6 juin",   "slots": [{ "time": "09:30–10:25", "instructor": "Yegoyan Vahé" }] },
+      { "day": "Lundi 8 juin",    "slots": [{ "time": "16:30–17:25", "instructor": "Montalvo Sumara" }] }
+    ],
+    "Cardio Danse — Studio Tempo": [
+      { "day": "Mardi 26 mai",   "slots": [{ "time": "17:30–18:25", "instructor": "Arreguin Uriel" }] },
+      { "day": "Mercredi 27 mai", "slots": [{ "time": "17:30–18:25", "instructor": "Comba Anamaria" }] },
+      { "day": "Jeudi 28 mai",   "slots": [{ "time": "12:05–13:05", "instructor": "Arreguin Uriel" }, { "time": "17:30–18:25", "instructor": "Arreguin Uriel" }] },
+      { "day": "Samedi 30 mai",  "slots": [{ "time": "10:30–11:30", "instructor": "Comba Anamaria" }] },
+      { "day": "Mardi 2 juin",    "slots": [{ "time": "17:30–18:25", "instructor": "Arreguin Uriel" }] },
+      { "day": "Mercredi 3 juin", "slots": [{ "time": "17:30–18:25", "instructor": "Comba Anamaria" }] },
+      { "day": "Jeudi 4 juin",    "slots": [{ "time": "12:05–13:05", "instructor": "Arreguin Uriel" }, { "time": "17:30–18:25", "instructor": "Arreguin Uriel" }] },
+      { "day": "Samedi 6 juin",   "slots": [{ "time": "10:30–11:30", "instructor": "Comba Anamaria" }] }
+    ],
+    "Yoga Power — Studio Serenity": [
+      { "day": "Mardi 26 mai", "slots": [{ "time": "17:30–18:25", "instructor": "Vachon Guillaume" }] },
+      { "day": "Mardi 2 juin", "slots": [{ "time": "17:30–18:25", "instructor": "Vachon Guillaume" }] }
+    ],
+    "Spinning Power Ride — Espace Vélo City": [
+      { "day": "Mardi 26 mai",   "slots": [{ "time": "18:00–18:45", "instructor": "Singelis Anthony E" }] },
+      { "day": "Vendredi 29 mai", "slots": [{ "time": "12:10–12:55", "instructor": "Lambert Nathalie" }] },
+      { "day": "Dimanche 31 mai", "slots": [{ "time": "10:30–11:30", "instructor": "Lambert Nathalie" }] },
+      { "day": "Mardi 2 juin",   "slots": [{ "time": "18:00–18:45", "instructor": "Singelis Anthony E" }] },
+      { "day": "Vendredi 5 juin", "slots": [{ "time": "12:10–12:55", "instructor": "Singelis Anthony E" }] },
+      { "day": "Dimanche 7 juin", "slots": [{ "time": "10:30–11:30", "instructor": "Calderon Luigi" }] }
+    ],
+    "Spinning Endurance Ride — Espace Vélo City": [
+      { "day": "Mercredi 27 mai", "slots": [{ "time": "07:15–08:00", "instructor": "Calderon Luigi" }] },
+      { "day": "Jeudi 28 mai",   "slots": [{ "time": "12:10–12:55", "instructor": "Laroche Mathieu" }] },
+      { "day": "Samedi 30 mai",  "slots": [{ "time": "10:00–11:15", "instructor": "Singelis Anthony E" }] },
+      { "day": "Mercredi 3 juin", "slots": [{ "time": "07:15–08:00", "instructor": "Calderon Luigi" }] },
+      { "day": "Jeudi 4 juin",   "slots": [{ "time": "12:10–12:55", "instructor": "Bérubé Noémie" }] },
+      { "day": "Samedi 6 juin",  "slots": [{ "time": "10:00–11:15", "instructor": "Singelis Anthony E" }] }
+    ],
+    "Spinning Intervals — Espace Vélo City": [
+      { "day": "Mercredi 27 mai", "slots": [{ "time": "12:10–12:55", "instructor": "Moustafina Ekaterina" }, { "time": "17:30–18:15", "instructor": "Singelis Anthony E" }] },
+      { "day": "Lundi 1 juin",   "slots": [{ "time": "12:10–12:55", "instructor": "Lambert Nathalie" }] },
+      { "day": "Mercredi 3 juin", "slots": [{ "time": "12:10–12:55", "instructor": "Moustafina Ekaterina" }, { "time": "17:30–18:15", "instructor": "Singelis Anthony E" }] },
+      { "day": "Lundi 8 juin",   "slots": [{ "time": "12:10–12:55", "instructor": "Calderon Luigi" }] }
+    ],
+    "Spinning Beat Ride — Espace Vélo City": [
+      { "day": "Jeudi 28 mai", "slots": [{ "time": "17:45–18:30", "instructor": "Laroche Mathieu" }] },
+      { "day": "Jeudi 4 juin", "slots": [{ "time": "17:45–18:30", "instructor": "Laroche Mathieu" }] }
+    ],
+    "Boxe-Fit — L'Arène": [
+      { "day": "Mercredi 27 mai", "slots": [{ "time": "12:10–13:00", "instructor": "Battisti Sofia" }, { "time": "18:00–19:00", "instructor": "Jean-Charles Harry" }] },
+      { "day": "Vendredi 29 mai", "slots": [{ "time": "12:10–13:00", "instructor": "Battisti Sofia" }] },
+      { "day": "Samedi 30 mai",  "slots": [{ "time": "11:00–12:00", "instructor": "Battisti Sofia" }] },
+      { "day": "Lundi 1 juin",   "slots": [{ "time": "12:10–13:00", "instructor": "Jean-Charles Harry" }] },
+      { "day": "Mercredi 3 juin", "slots": [{ "time": "12:10–13:00", "instructor": "Battisti Sofia" }, { "time": "18:00–19:00", "instructor": "Jean-Charles Harry" }] },
+      { "day": "Vendredi 5 juin", "slots": [{ "time": "12:10–13:00", "instructor": "Battisti Sofia" }] },
+      { "day": "Samedi 6 juin",  "slots": [{ "time": "11:00–12:00", "instructor": "Battisti Sofia" }] },
+      { "day": "Lundi 8 juin",   "slots": [{ "time": "12:10–13:00", "instructor": "Jean-Charles Harry" }] }
+    ],
+    "Boxe-Fit Avancé — L'Arène": [
+      { "day": "Mardi 26 mai", "slots": [{ "time": "18:00–19:00", "instructor": "Jean-Charles Harry" }] },
+      { "day": "Mardi 2 juin", "slots": [{ "time": "18:00–19:00", "instructor": "Jean-Charles Harry" }] }
+    ],
+    "Stretch It Up!": [
+      { "day": "Mardi 26 mai",  "slots": [{ "time": "18:30–19:30", "instructor": "Arreguin Uriel", "studio": "Studio Tempo" }] },
+      { "day": "Jeudi 28 mai",  "slots": [{ "time": "11:00–11:55", "instructor": "Arreguin Uriel", "studio": "Studio Serenity" }] },
+      { "day": "Lundi 1 juin",  "slots": [{ "time": "11:00–11:55", "instructor": "Arreguin Uriel", "studio": "Studio Serenity" }] },
+      { "day": "Mardi 2 juin",   "slots": [{ "time": "18:30–19:30", "instructor": "Arreguin Uriel", "studio": "Studio Tempo" }] },
+      { "day": "Jeudi 4 juin",   "slots": [{ "time": "11:00–11:55", "instructor": "Arreguin Uriel", "studio": "Studio Serenity" }] },
+      { "day": "Lundi 8 juin",   "slots": [{ "time": "11:00–11:55", "instructor": "Arreguin Uriel", "studio": "Studio Serenity" }] }
+    ],
+    "Ballet — Studio Serenity": [
+      { "day": "Mardi 26 mai", "slots": [{ "time": "18:35–20:00", "instructor": "Uvarov Andrey" }] },
+      { "day": "Mardi 2 juin", "slots": [{ "time": "18:35–20:00", "instructor": "Uvarov Andrey" }] }
+    ],
+    "Hyrox Workout — Zone X": [
+      { "day": "Mercredi 27 mai", "slots": [{ "time": "12:00–13:00", "instructor": "Blondiaux Laura" }, { "time": "18:30–19:30", "instructor": "Blondiaux Laura" }] },
+      { "day": "Mercredi 3 juin", "slots": [{ "time": "12:00–13:00", "instructor": "Blondiaux Laura" }, { "time": "18:30–19:30", "instructor": "Blondiaux Laura" }] }
+    ],
+    "Total Barre — Studio Serenity": [
+      { "day": "Mercredi 27 mai", "slots": [{ "time": "12:10–13:00", "instructor": "Arreguin Uriel" }, { "time": "18:35–19:25", "instructor": "Comba Anamaria" }] },
+      { "day": "Jeudi 28 mai",   "slots": [{ "time": "17:30–18:25", "instructor": "Comba Anamaria" }] },
+      { "day": "Vendredi 29 mai", "slots": [{ "time": "17:30–18:30", "instructor": "Freedman Carrie" }] },
+      { "day": "Samedi 30 mai",  "slots": [{ "time": "10:35–11:35", "instructor": "Caro Dahlia" }] },
+      { "day": "Lundi 1 juin",   "slots": [{ "time": "10:00–10:55", "instructor": "Montalvo Sumara" }, { "time": "18:35–19:25", "instructor": "Pislis Niki" }] },
+      { "day": "Mercredi 3 juin", "slots": [{ "time": "12:10–13:00", "instructor": "Arreguin Uriel" }, { "time": "18:35–19:25", "instructor": "Comba Anamaria" }] },
+      { "day": "Jeudi 4 juin",   "slots": [{ "time": "17:30–18:25", "instructor": "Dao Christina" }] },
+      { "day": "Vendredi 5 juin", "slots": [{ "time": "17:30–18:30", "instructor": "Freedman Carrie" }] },
+      { "day": "Samedi 6 juin",  "slots": [{ "time": "10:35–11:35", "instructor": "Caro Dahlia" }] },
+      { "day": "Lundi 8 juin",   "slots": [{ "time": "10:00–10:55", "instructor": "Montalvo Sumara" }, { "time": "18:35–19:25", "instructor": "Pislis Niki" }] }
+    ],
+    "Athletic Workout — Zone X": [
+      { "day": "Mercredi 27 mai", "slots": [{ "time": "17:30–18:25", "instructor": "Blondiaux Laura" }] },
+      { "day": "Jeudi 28 mai",   "slots": [{ "time": "07:00–08:00", "instructor": "Calderon Luigi" }] },
+      { "day": "Samedi 30 mai",  "slots": [{ "time": "09:30–10:30", "instructor": "Vachon Guillaume" }] },
+      { "day": "Mercredi 3 juin", "slots": [{ "time": "17:30–18:25", "instructor": "Blondiaux Laura" }] },
+      { "day": "Jeudi 4 juin",   "slots": [{ "time": "07:00–08:00", "instructor": "Calderon Luigi" }] },
+      { "day": "Samedi 6 juin",  "slots": [{ "time": "09:30–10:30", "instructor": "Vachon Guillaume" }] }
+    ],
+    "Total Sculpt — Studio Tempo": [
+      { "day": "Mercredi 27 mai", "slots": [{ "time": "18:30–19:30", "instructor": "Singelis Anthony E" }] },
+      { "day": "Vendredi 29 mai", "slots": [{ "time": "17:30–18:15", "instructor": "Ferjani Jihene" }] },
+      { "day": "Samedi 30 mai",  "slots": [{ "time": "09:30–10:25", "instructor": "Comba Anamaria" }, { "time": "11:35–12:30", "instructor": "Singelis Anthony E" }] },
+      { "day": "Dimanche 31 mai", "slots": [{ "time": "10:00–11:00", "instructor": "Comba Anamaria" }] },
+      { "day": "Lundi 1 juin",   "slots": [{ "time": "12:15–13:00", "instructor": "Comba Anamaria" }, { "time": "17:30–18:25", "instructor": "Pislis Niki" }] },
+      { "day": "Mercredi 3 juin", "slots": [{ "time": "18:30–19:30", "instructor": "Singelis Anthony E" }] },
+      { "day": "Vendredi 5 juin", "slots": [{ "time": "17:30–18:15", "instructor": "Ferjani Jihene" }] },
+      { "day": "Samedi 6 juin",  "slots": [{ "time": "09:30–10:25", "instructor": "Comba Anamaria" }, { "time": "11:35–12:30", "instructor": "Singelis Anthony E" }] },
+      { "day": "Dimanche 7 juin", "slots": [{ "time": "10:00–11:00", "instructor": "Comba Anamaria" }] },
+      { "day": "Lundi 8 juin",   "slots": [{ "time": "12:15–13:00", "instructor": "Comba Anamaria" }, { "time": "17:30–18:25", "instructor": "Pislis Niki" }] }
+    ],
+    "Yoga Flow — Studio Serenity": [
+      { "day": "Jeudi 28 mai",  "slots": [{ "time": "07:00–08:00", "instructor": "Danielyan Stella" }] },
+      { "day": "Vendredi 29 mai", "slots": [{ "time": "12:05–13:05", "instructor": "Papas Ari" }] },
+      { "day": "Dimanche 31 mai", "slots": [{ "time": "10:00–11:00", "instructor": "Danielyan Stella" }] },
+      { "day": "Jeudi 4 juin",   "slots": [{ "time": "07:00–08:00", "instructor": "Danielyan Stella" }] },
+      { "day": "Vendredi 5 juin", "slots": [{ "time": "12:05–13:05", "instructor": "Papas Ari" }] },
+      { "day": "Dimanche 7 juin", "slots": [{ "time": "10:00–11:00", "instructor": "Danielyan Stella" }] }
+    ],
+    "MAA Combat — Studio Tempo": [
+      { "day": "Jeudi 28 mai", "slots": [{ "time": "18:30–19:30", "instructor": "Ferjani Jihene" }] },
+      { "day": "Jeudi 4 juin", "slots": [{ "time": "18:30–19:30", "instructor": "Ferjani Jihene" }] }
+    ],
+    "Bootcamp — La Palestra": [
+      { "day": "Vendredi 29 mai", "slots": [{ "time": "12:00–13:00", "instructor": "Blondiaux Laura" }] },
+      { "day": "Lundi 1 juin",   "slots": [{ "time": "17:30–18:30", "instructor": "Williams Jonathan" }] },
+      { "day": "Vendredi 5 juin", "slots": [{ "time": "12:00–13:00", "instructor": "Blondiaux Laura" }] },
+      { "day": "Lundi 8 juin",   "slots": [{ "time": "17:30–18:30", "instructor": "Williams Jonathan" }] }
+    ],
+    "Yoga Hatha — Studio Serenity": [
+      { "day": "Lundi 1 juin", "slots": [{ "time": "07:00–08:00", "instructor": "Calderon Luigi" }] },
+      { "day": "Lundi 8 juin", "slots": [{ "time": "07:00–08:00", "instructor": "Calderon Luigi" }] }
+    ],
+    "Ashtanga Yoga — Studio Serenity": [
+      { "day": "Lundi 1 juin", "slots": [{ "time": "12:00–13:00", "instructor": "Papas Ari" }] },
+      { "day": "Lundi 8 juin", "slots": [{ "time": "12:00–13:00", "instructor": "Papas Ari" }] }
+    ],
+    "MAA Force — Zone X": [
+      { "day": "Lundi 1 juin", "slots": [{ "time": "12:00–13:00", "instructor": "Williams Jonathan" }] },
+      { "day": "Lundi 8 juin", "slots": [{ "time": "12:00–13:00", "instructor": "Williams Jonathan" }] }
+    ],
+    "Aqua HIIT — L'Espace O": [
+      { "day": "Lundi 1 juin", "slots": [{ "time": "17:30–18:25", "instructor": "Laverquant Jean-Yves" }] },
+      { "day": "Lundi 8 juin", "slots": [{ "time": "17:30–18:25", "instructor": "Laverquant Jean-Yves" }] }
+    ],
+    "Steps & Sculpt — Studio Tempo": [
+      { "day": "Mercredi 27 mai", "slots": [{ "time": "12:15–13:00", "instructor": "Ferjani Jihene" }] },
+      { "day": "Mercredi 3 juin", "slots": [{ "time": "12:15–13:00", "instructor": "Pislis Niki" }] }
+    ],
+    "Flex & Mobi 30 — Studio Tempo": [
+      { "day": "Mercredi 27 mai", "slots": [{ "time": "13:05–13:35", "instructor": "Blondiaux Laura" }] },
+      { "day": "Vendredi 29 mai", "slots": [{ "time": "13:05–13:35", "instructor": "Blondiaux Laura" }] },
+      { "day": "Mercredi 3 juin", "slots": [{ "time": "13:05–13:35", "instructor": "Blondiaux Laura" }] },
+      { "day": "Vendredi 5 juin", "slots": [{ "time": "13:05–13:35", "instructor": "Blondiaux Laura" }] }
+    ],
+    "Step It Up! — Studio Tempo": [
+      { "day": "Vendredi 29 mai", "slots": [{ "time": "12:15–13:00", "instructor": "Ferjani Jihene" }] },
+      { "day": "Vendredi 5 juin", "slots": [{ "time": "12:15–13:00", "instructor": "Ferjani Jihene" }] }
+    ]
+  },
+
+  "classification_par_studio": {
+    "Serenity":   ["Essentrics (Débutant)", "Pilates (Débutant)", "Stretch It Up! (Débutant)", "Yoga Ashtanga (Tous niveaux)", "Yoga Flow (Tous niveaux)", "Yoga Hatha (Débutant)", "Yoga Power (Intermédiaire)", "Total Barre (Tous niveaux)", "Ballet (Intermédiaire)"],
+    "La Palestra": ["Bootcamp (Intermédiaire)"],
+    "Zone X":     ["Athletic Workout (Intermédiaire)", "HIIT Circuit (Intermédiaire)", "HYROX Workout (Avancé)", "MAA Force (Tous niveaux)"],
+    "Vélo City":  ["Beat Ride (Tous niveaux)", "Endurance Ride (Intermédiaire)", "Intervals (Tous niveaux)", "Power Ride (Tous niveaux)"],
+    "Tempo":      ["Flex & Mobi (Débutant)", "Force 50 (Tous niveaux)", "Total Sculpt (Tous niveaux)", "Cardio Danse (Tous niveaux)", "Step It Up! (Intermédiaire)", "Sculpt & Step (Tous niveaux)", "MAA Combat (Intermédiaire)", "Stretch It Up! (Débutant)", "Bootcamp (Intermédiaire)"],
+    "L'Arène":    ["Boxe-Fit (Tous niveaux)"],
+    "Espace O":   ["Aqua HIIT (Tous niveaux)"],
+    "Extérieur":  ["Ent. de course (Tous niveaux)"]
+  }
+}
