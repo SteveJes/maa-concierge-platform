@@ -17,6 +17,8 @@ import {
   isPricingQuestion,
   tryAnswerPricingQuestion,
 } from "./maa-pricing.js";
+import { tryAnswerClinicPricing } from "./maa-deterministic-clinic.js";
+import { resolveActiveContext, buildActiveContextDirective } from "./maa-conversation-state.js";
 import {
   isScheduleQuestion,
   tryAnswerScheduleQuestion,
@@ -698,23 +700,53 @@ function fixNutritionAnsweredAsMassage(userMessage: string, message: string, loc
     : "For nutrition at Club Sportif MAA (taxes extra): naturopath Léa Daoura offers an initial in-clinic assessment at $130 and follow-ups at $85. Dietitian Justine Doyon-Blondin offers a nutrition assessment at $140 and follow-ups at $85. No fixed hours are published — booking is via the nutrition page (clubsportifmaa.com/fr/nutrition/) or the clinic at (514) 845-2233, ext. 234.";
 }
 
+/**
+ * Daphné batch 8 (2026-05-28) Correctifs #6 — MEDICAL PRUDENCE.
+ *
+ * REVERSAL of the prior over-correction. The 27-May fix made the bot too
+ * affirmative: it prescribed "Dr Avedian + bio-identical hormone therapy" as
+ * THE option for endometriosis / weight-loss / "nutrition intégrative". Daphné:
+ * "il ne doit pas affirmer qu'un médecin ou un traitement est adapté à une
+ * condition précise."
+ *
+ * New behaviour, split by intent:
+ *   (a) Literal DIRECTORY question ("qui sont vos médecins" / "who are the
+ *       doctors") → naming the public doctors is fine (it's a directory).
+ *   (b) A described CONDITION (endométriose, perte de poids, hormonal, etc.)
+ *       → NEVER assert a doctor/treatment fits it. If the reply did, strip the
+ *       prescriptive sentence and replace with a neutral clinic-orientation.
+ */
 function surfaceMedicalPractitioners(userMessage: string, message: string, locale: string | undefined): string {
-  // No \b anchors — accented chars (médecin) break \b without the `u` flag.
-  // Substring match is correct for intent detection.
-  const asksDoctors = /(m[ée]decin|m[ée]decine|doctor|services?\s+m[eé]dic|medical\s+service|endom[eé]triose|endometriosis|hormono|hormonal|gyn[ée]colog|bio[- ]?identique|m[ée]nopause|fertilit)/i.test(userMessage);
-  if (!asksDoctors) return message;
-  // Already names a doctor? Don't double up.
-  if (/(Avedian|Kanevesky)/i.test(message)) return message;
-  // The asksDoctors gate is sufficient: if the visitor asks who the doctors are
-  // (or describes a hormonal/medical condition) and the reply hasn't named them,
-  // surface the public directory. The prior hedge-phrase gate let EN phrasings
-  // ("does not specify", "contacting the clinic") slip through — dropped it.
-
   const fr = isFrenchLocale(locale);
-  const addendum = fr
-    ? " Côté médical, le Club compte notamment le Dr Taniela Avedian (médecine fonctionnelle et hormonothérapie bio-identique) et le Dr Michael Kanevesky. Pour une condition comme l'endométriose ou un suivi hormonal, le Dr Avedian est la bonne ressource. Détails et prise de rendez-vous : https://www.clubsportifmaa.com/fr/services-medicaux/ ou la clinique au 514 845-2233, poste 234."
-    : " On the medical side, the Club's doctors include Dr Taniela Avedian (functional medicine and bio-identical hormone therapy) and Dr Michael Kanevesky. For a condition like endometriosis or hormonal follow-up, Dr Avedian is the right resource. Details and booking: https://www.clubsportifmaa.com/fr/services-medicaux/ or the clinic at (514) 845-2233, ext. 234.";
-  return (message.replace(/\s+$/, "") + addendum).replace(/\s{2,}/g, " ").trim();
+  const um = (userMessage ?? "").toLowerCase();
+
+  const isDirectoryQuestion =
+    /(qui\s+(?:sont|est)\s+(?:vos|les)?\s*m[eé]decin|who\s+(?:are|is)\s+the\s+doctor|liste\s+(?:des\s+)?m[eé]decin|vos\s+m[eé]decins)/i.test(um);
+  const describesCondition =
+    /(endom[eé]triose|endometriosis|perte\s+de\s+poids|weight\s+loss|hormonal|hormono|m[eé]nopause|fertilit|douleur|blessure|condition|sympt|maladie|diagnos|traitement|soigner|gu[eé]rir)/i.test(um);
+
+  // (b) Condition described → STRIP any prescriptive doctor/treatment sentence.
+  if (describesCondition && !isDirectoryQuestion) {
+    const prescriptive = /\b(?:le\s+|la\s+|dr\.?\s+|dre\.?\s+)?avedian\b[^.!?]*[.!?]|hormonoth[eé]rapie\s+bio[- ]?identique[^.!?]*[.!?]|m[eé]decine\s+fonctionnelle[^.!?]*[.!?]|bio[- ]?identical\s+hormone[^.!?]*[.!?]|nutrition\s+int[eé]grative[^.!?]*[.!?]/gi;
+    if (prescriptive.test(message)) {
+      const stripped = message.replace(prescriptive, "").replace(/\s{2,}/g, " ").trim();
+      const neutral = fr
+        ? "Pour une condition de santé précise, je ne peux pas déterminer quel service ou professionnel vous convient. La clinique du Club peut vous orienter vers la bonne ressource et confirmer si le service est approprié à votre situation — 514 845-2233, poste 234, ou la page services médicaux : https://www.clubsportifmaa.com/fr/services-medicaux/."
+        : "For a specific health condition, I can't determine which service or professional is right for you. The Club's clinic can point you to the right resource and confirm whether the service fits your situation — 514 845-2233, ext. 234, or the medical-services page: https://www.clubsportifmaa.com/fr/services-medicaux/.";
+      return (stripped ? `${stripped} ${neutral}` : neutral).replace(/\s{2,}/g, " ").trim();
+    }
+    return message;
+  }
+
+  // (a) Directory question → ensure the public doctors are named (no condition fit).
+  if (isDirectoryQuestion && !/(Avedian|Kanevesky)/i.test(message)) {
+    const addendum = fr
+      ? " Côté médical, le Club compte notamment la Dre Taniela Avedian et le Dr Michael Kanevesky. Pour leurs services et la prise de rendez-vous : https://www.clubsportifmaa.com/fr/services-medicaux/ ou la clinique au 514 845-2233, poste 234."
+      : " On the medical side, the Club's doctors include Dr Taniela Avedian and Dr Michael Kanevesky. For their services and booking: https://www.clubsportifmaa.com/fr/services-medicaux/ or the clinic at 514 845-2233, ext. 234.";
+    return (message.replace(/\s+$/, "") + addendum).replace(/\s{2,}/g, " ").trim();
+  }
+
+  return message;
 }
 
 /**
@@ -725,9 +757,12 @@ function surfaceMedicalPractitioners(userMessage: string, message: string, local
 function stripHallucinatedNutritionIntegrative(message: string, locale: string | undefined): string {
   if (!/\bnutrition\s+int[ée]grative\b/i.test(message)) return message;
   const fr = isFrenchLocale(locale);
+  // Daphné batch 8 #6 — neutral clinic orientation, NOT a prescription. The
+  // earlier version routed to "Dr Avedian + hormonothérapie bio-identique"
+  // which is exactly the over-affirmation Daphné flagged. Keep it neutral.
   const replacement = fr
-    ? "Pour une condition médicale spécifique, la clinique du Club peut vous orienter vers le bon spécialiste — Dr Avedian propose notamment l'hormonothérapie bio-identique et la médecine fonctionnelle. Vous pouvez appeler la clinique au 514 845-2233, poste 234, pour une orientation personnalisée."
-    : "For a specific medical condition, the Club's clinic can direct you to the right specialist — Dr Avedian offers bio-identical hormone therapy and functional medicine. You can call the clinic at (514) 845-2233, ext. 234, for personalized guidance.";
+    ? "Pour un accompagnement alimentaire, le Club offre des services de nutrition (naturopathie et nutrition clinique). La clinique peut vous orienter vers la bonne professionnelle — 514 845-2233, poste 234."
+    : "For dietary support, the Club offers nutrition services (naturopathy and clinical nutrition). The clinic can point you to the right professional — 514 845-2233, ext. 234.";
   // Replace the entire "nutrition intégrative" sentence with the routing.
   const sentences = message.split(/(?<=[.!?])\s+/);
   let inserted = false;
@@ -2349,7 +2384,20 @@ export async function answerMaaChat(
   // can route the email to that staff member rather than a generic inbox.
   // Pass conversationHistory so a bare "oui" answer can still infer the
   // routing target from the previous bot turn.
-  const serviceRouting = detectServiceRouting(request.userMessage, conversationHistory);
+  // Daphné batch 8 #1/#7 — resolve the ACTIVE conversation context (service +
+  // department) deterministically and let it OVERRIDE the heuristic routing.
+  // This is what stops "oui" after triathlon from routing to the restaurant.
+  const activeContext = resolveActiveContext(conversationHistory, request.userMessage);
+  const heuristicRouting = detectServiceRouting(request.userMessage, conversationHistory);
+  const serviceRouting: MaaChatRouting | undefined =
+    activeContext.activeDepartment && (activeContext.currentMessageIsBareFollowUp || !heuristicRouting)
+      ? {
+          intent: activeContext.activeService ?? "general",
+          contactId: activeContext.activeDepartment,
+          contactName: activeContext.departmentName ?? "Réception",
+          departmentLabel: activeContext.departmentLabel ?? "Réception",
+        }
+      : heuristicRouting;
 
   // Daphné fourth pass: "is X included?" / specific-service questions must also bypass
   // deterministic handlers, because the pricing handler kept hijacking them and
@@ -2513,7 +2561,13 @@ export async function answerMaaChat(
   // Compose all available context fragments for the AI call. Multiple safety
   // contexts can apply at once (e.g. cancellation_policy + included-question
   // is rare but possible). Concatenate so the AI sees every relevant rule.
+  // Daphné batch 8 #1/#7 — the active-context lock directive. This supersedes
+  // the narrow topicContinuityContext (TIER1-only) with a full service+department
+  // lock derived from resolveActiveContext. Placed FIRST so it has priority.
+  const activeContextDirective = buildActiveContextDirective(activeContext, request.locale);
+
   const composedExtraContext = [
+    activeContextDirective,
     intentSafetyContextEarly,
     includedQuestionContext,
     multiIntentContext,
@@ -2543,6 +2597,32 @@ export async function answerMaaChat(
   // newly-onboarded tenant from the wizard), they would misfire — quoting
   // 225 $/mois membership grids to a spa or law firm. Gate them.
   const isMaaTenant = request.tenantCode === "maa" || !request.tenantCode;
+
+  // Daphné batch 8 (2026-05-28) Correctifs #3 — DETERMINISTIC clinic pricing.
+  // Massage/therapy/physio/nutrition/nursing prices were unstable across turns
+  // because the LLM sampled+mixed grids. Take the LLM out of the loop entirely:
+  // return the ONE authoritative answer (verified against the Apr 23 2026 grid).
+  // Runs even with v2 enabled — stability beats tone for clinic prices.
+  const clinicPricing = isMaaTenant && !isDubub && !skipDeterministicHandlers
+    ? tryAnswerClinicPricing(resolvedUserMessage, request.locale)
+    : null;
+  if (clinicPricing) {
+    const clinicDept: Record<string, MaaChatRouting> = {
+      massage: { intent: "clinique_spa", contactId: "clinique_sportive", contactName: "Clinique sportive MAA", departmentLabel: "Clinique sportive" },
+      sports_therapy: { intent: "clinique_spa", contactId: "clinique_sportive", contactName: "Clinique sportive MAA", departmentLabel: "Clinique sportive" },
+      physiotherapy: { intent: "clinique_spa", contactId: "clinique_sportive", contactName: "Clinique sportive MAA", departmentLabel: "Clinique sportive" },
+      nutrition: { intent: "clinique_spa", contactId: "clinique_sportive", contactName: "Clinique sportive MAA", departmentLabel: "Clinique sportive" },
+      nursing: { intent: "soins_infirmiers", contactId: "mobile_mediq", contactName: "Mobile Mediq", departmentLabel: "Soins infirmiers (partenaire)" },
+    };
+    return {
+      assistantMessage: clinicPricing.assistantMessage,
+      followUpMode: clinicPricing.followUpMode,
+      citations: [],
+      retrieval: { query: searchQuery, chunkCount: searchableChunks.length, resultCount: searchResults.length },
+      routing: clinicDept[clinicPricing.service],
+      suppressBookingCta: true, // clinic pricing → never show the visit CTA
+    };
+  }
 
   const pricingAnswer = isMaaTenant && !isDubub && !v2Enabled && !skipDeterministicHandlers && tryAnswerPricingQuestion(
     resolvedUserMessage,
