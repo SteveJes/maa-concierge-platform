@@ -666,6 +666,30 @@ function stripInventedSpaHours(message: string, locale: string | undefined): str
  * hormonal condition AND (b) the reply hedges (doesn't already name Avedian).
  * It APPENDS the directory info — it never strips the no-diagnosis safety opener.
  */
+/**
+ * Daphné batch 2026-05-27 final-delivery — nutrition query answered as massage.
+ * The clinic override leads with the massotherapie block (most detailed pricing),
+ * so when a visitor asks "tarifs nutrition" the LLM reliably anchors on massage
+ * pricing and ignores the nutrition practitioners. Daphné review #18 wants the
+ * nutrition prices (Léa Daoura 130/85 $, Justine Doyon-Blondin 140/85 $).
+ *
+ * Guard: if the user asked about NUTRITION and the reply is about massotherapie
+ * (massage pricing/durations) without naming a nutrition practitioner, replace
+ * with the authoritative nutrition answer.
+ */
+function fixNutritionAnsweredAsMassage(userMessage: string, message: string, locale: string | undefined): string {
+  const asksNutrition = /\b(nutrition|nutritionniste|naturopath|di[eé]t[eé]ti|alimentaire|manger\s+mieux|perte\s+de\s+poids\s+nutrition)\b/i.test(userMessage);
+  if (!asksNutrition) return message;
+  const isAboutMassage = /\bmassoth[eé]rapie|\bmassages?\b|Su[eé]dois|Ashiatsu|Tissus\s+profonds|Tha[iï]/i.test(message);
+  const namesNutritionPro = /\b(L[eé]a\s+Daoura|Justine\s+Doyon|Doyon-Blondin|naturopath|nutritionniste)\b/i.test(message);
+  if (!isAboutMassage || namesNutritionPro) return message;
+
+  const fr = isFrenchLocale(locale);
+  return fr
+    ? "Pour la nutrition au Club Sportif MAA (taxes en sus) : la naturopathe Léa Daoura offre une évaluation initiale en clinique à 130 $ et un suivi à 85 $. La nutritionniste Justine Doyon-Blondin offre une évaluation nutritionnelle à 140 $ et un suivi à 85 $. Aucun horaire n'est publié — la prise de rendez-vous se fait via la page nutrition (clubsportifmaa.com/fr/nutrition/) ou la clinique au 514 845-2233, poste 234."
+    : "For nutrition at Club Sportif MAA (taxes extra): naturopath Léa Daoura offers an initial in-clinic assessment at $130 and follow-ups at $85. Dietitian Justine Doyon-Blondin offers a nutrition assessment at $140 and follow-ups at $85. No fixed hours are published — booking is via the nutrition page (clubsportifmaa.com/fr/nutrition/) or the clinic at (514) 845-2233, ext. 234.";
+}
+
 function surfaceMedicalPractitioners(userMessage: string, message: string, locale: string | undefined): string {
   const asksDoctors = /\b(m[ée]decins?|m[ée]decine|doctors?|services?\s+m[eé]dic|endom[eé]triose|hormono|hormonal|gyn[ée]colog|bio[- ]?identique|m[ée]nopause|fertilit[ée])\b/i.test(userMessage);
   if (!asksDoctors) return message;
@@ -2716,6 +2740,7 @@ export async function answerMaaChat(
   cleanedAssistantMessage = stripInventedClinicalHours(cleanedAssistantMessage, request.locale);
   cleanedAssistantMessage = stripInventedSpaHours(cleanedAssistantMessage, request.locale);
   cleanedAssistantMessage = stripHallucinatedNutritionIntegrative(cleanedAssistantMessage, request.locale);
+  cleanedAssistantMessage = fixNutritionAnsweredAsMassage(request.userMessage, cleanedAssistantMessage, request.locale);
   cleanedAssistantMessage = surfaceMedicalPractitioners(request.userMessage, cleanedAssistantMessage, request.locale);
 
   // Daphné batch 2026-05-27 — Bug A guard. If the LLM hallucinated a
