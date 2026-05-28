@@ -121,10 +121,22 @@ export function resolveActiveContext(
   let active: MaaServiceDef | null = currentService;
 
   // Bare follow-up OR no service in current message → look back through history.
+  // PRIORITY: the USER's stated intent is the source of truth. Walk USER turns
+  // first (most-recent-first) — the bot's own replies often mention several
+  // services ("abonnement", "1881", etc.) and would otherwise hijack the active
+  // service. Only fall back to assistant turns if no user turn named a service.
   if (!active || isBare) {
     for (let i = history.length - 1; i >= 0; i--) {
+      if (history[i]!.role !== "user") continue;
       const found = detectService(history[i]!.content);
       if (found) { active = found; break; }
+    }
+    if (!active) {
+      for (let i = history.length - 1; i >= 0; i--) {
+        if (history[i]!.role !== "assistant") continue;
+        const found = detectService(history[i]!.content);
+        if (found) { active = found; break; }
+      }
     }
   }
 
