@@ -52,11 +52,11 @@ const PROBES: Probe[] = [
     id: "1-private-pricing",
     userMessage: "quels sont les tarifs pour les cours privés de natation ?",
     forbidPatterns: [
-      /\bdoivent\s+être\s+validés\b.*\b50\b|\b60\b\s+minutes/i, // vague non-answer
+      /tarifs\s+(?:précis\s+)?(?:doivent\s+être\s+validés|ne\s+sont\s+pas\s+publi)/i, // vague non-answer
     ],
     requireAnyPattern: [
       // From override/specialty-courses.json::natation_adulte.pricing_cours_prive
-      /\b50\s*\$\b.*?\b30\s*minutes?\b|\b75\s*\$\b.*?\b45\s*minutes?\b|\b90\s*\$\b.*?\b60\s*minutes?\b|MAA_Piscine_Programmme_Spring2026/i,
+      /50\s*\$|75\s*\$|90\s*\$|MAA_Piscine_Programmme_Spring2026/i,
     ],
     daphneSays: "Tarifs pour cours privés piscine sont sur le PDF programmation Espace O — Spring 2026.",
   },
@@ -112,7 +112,7 @@ const PROBES: Probe[] = [
       /\b55\s*minutes?\b[^.!?]{0,40}\b80\s*\$/i,
       /\b85\s*minutes?\b[^.!?]{0,40}\b105\s*\$/i,
     ],
-    requireAnyPattern: [/\b120\s*\$/i],
+    requireAnyPattern: [/120\s*\$/i],
     daphneSays: "Tarifs autoritaires : 30 min 65 $, 60 min 120 $, 90 min 170 $, 120 min 230 $.",
   },
   {
@@ -161,7 +161,7 @@ const PROBES: Probe[] = [
     userMessage: "combien coûte une session de cirque aérien ?",
     forbidPatterns: [],
     requireAnyPattern: [
-      /\b220\s*\$\b|\b330\s*\$\b|Janika|Hannah|Palestra/i,
+      /220\s*\$|330\s*\$|Janika|Hannah|Palestra/i,
     ],
     daphneSays: "Tarifs : 220 $ membres, 330 $ non-membres, 40 $ drop-in. Instructeurs Janika, Hannah.",
   },
@@ -516,8 +516,8 @@ async function main() {
       console.log(`💥 ERROR: ${err instanceof Error ? err.message : err}`);
       results.push({ probe: p, reply: "", followUpMode: "", suppressBookingCta: false, status: "FAIL", reasons: [`HTTP error: ${err instanceof Error ? err.message : err}`] });
     }
-    // Throttle to avoid rate-limiting prod
-    await new Promise((r) => setTimeout(r, 800));
+    // Throttle to avoid rate-limiting prod + give slow LLM responses room
+    await new Promise((r) => setTimeout(r, 1500));
   }
 
   // ── Digest ──

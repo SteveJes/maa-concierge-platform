@@ -141,6 +141,7 @@
     "allowed_cta": ["book_wellcenter", "call_clinic"],
     "forbidden_cta": ["visit_club"],
     "rules_daphne": "Aucun horaire ni tarif publié. Connaître les 2 médecins disponibles. Pour endométriose / hormonothérapie → router vers Dr. Avedian (hormonothérapie bio-identique).",
+    "naming_rule": "Les noms des médecins sont PUBLICS (affichés sur clubsportifmaa.com/fr/services-medicaux/). Quand le visiteur demande 'qui sont les médecins', NOMME Dr Avedian et Dr Kanevesky avec leur spécialité. Nommer un médecin du répertoire public n'est PAS un avis médical — seul l'AVIS médical (diagnostic, traitement) est interdit. Ne JAMAIS répondre 'les noms ne sont pas précisés' — ils le sont, ici.",
     "practitioners": [
       { "name": "Dr. Taniela Avedian", "specialty": "Médecine fonctionnelle, hormonothérapie bio-identique (BHRT)" },
       { "name": "Dr. Michael Kanevesky", "specialty": "À valider", "booking_url": "https://wellcenter.ca/appointments" }
