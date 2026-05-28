@@ -5,6 +5,49 @@
 
 ---
 
+## 2026-05-28 — Batch 8: real conversation-state machine (replaced the guard band-aids)
+
+Daphné's batch 8 (`Correctifs MAA 8.pdf` + annotated 48-turn conversation) showed the
+regex-guard approach was failing in her live multi-turn tests. Read every pixel (rendered
+all PDFs to PNG via unpdf+@napi-rs/canvas) + the annotated conversation. Built the
+architecture instead of more guards.
+
+### Shipped (deployed, branch feat/maa-web-ingestion-v3)
+- **`maa-conversation-state.ts`** — `resolveActiveContext()` locks active service + owning
+  department from history (USER turns prioritized — the stated intent is truth). Drives a
+  hard prompt directive + lead routing. `buildActiveContextDirective()` forbids the visit
+  CTA unless membership/visite intent.
+- **`maa-deterministic-clinic.ts`** — `tryAnswerClinicPricing()` returns the ONE authoritative
+  answer for massage/therapy/physio/nutrition/nursing (bypasses the LLM so it can't mix
+  grids). Massage = flat 65/120/170/230, NO member/guest split (verified pixel-by-pixel).
+- **`tryAnswerIncludedServicePricing()`** — pickleball/basketball/group-classes "tarifs" →
+  deterministic "inclus dans l'abonnement, voir Nathalie" (no LLM, no abonnement-grid dump).
+- **Medical prudence (REVERSED my 27-May over-correction)** — for a described condition
+  (endometriosis, weight loss, hormonal), STRIP prescriptive "Dr Avedian + hormonothérapie"
+  → neutral clinic orientation. Doctors named ONLY for the literal directory question.
+- **`daphne-batch8-gate.ts`** — multi-turn replay of the 10 key failure sequences.
+
+### Honest test status — the key finding
+Gate runs vary **9/10 then 7/10 with different failures**. That variance IS the signal:
+- **Deterministic paths are STABLE and pass every run**: massage price stability, clinic
+  pricing, medical prudence, weight-loss (no medical push), Pilates-no-visit, group-classes
+  context, doctors-directory, EN swedish follow-up.
+- **LLM-dependent bare-"oui" follow-ups still DRIFT** (~30% of runs): "oui" after triathlon
+  and "oui pour accéder à la plateforme" sometimes pull generic club-overview content
+  ("fondé en 1881, plateaux d'entraînement…") instead of executing the offered action. The
+  context directive helps but the LLM doesn't obey it 100%, and RAG injects generic chunks
+  on vague input.
+
+### The remaining fix (NOT yet built) — ActionContract
+To make bare "oui" deterministic: persist the exact action the bot OFFERED last turn
+(send_link{url} / collect_lead{department} / give_contact) and EXECUTE it without the LLM
+when the user affirms. This removes the LLM from the drift-prone path entirely. It's the
+last structural piece from Daphné's original §12 (ActionContract) that isn't done.
+
+Commits: c673329, 713264b, 8adbebc, 5181adf, ce9d5e0.
+
+---
+
 ## 2026-05-28 — Post-delivery hardening (Steve caught the Pilates miss → built a real prod gate)
 
 Steve test-drove prod after the "delivery" and immediately found the bot giving a
