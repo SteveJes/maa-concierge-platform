@@ -2153,20 +2153,32 @@ export function createServer() {
       }
 
       try {
-        const rows = await listMessagesByConversationUuid(conversationId, 8);
+        // Resilience guard (2026-05-28): NocoDB throttles (429) under load and
+        // nocoRequest retries with backoff for up to ~40s. That history load is
+        // on the request hot path, so a throttled NocoDB would hang the user's
+        // reply for 40-60s → nginx 504. History is a context nice-to-have, not
+        // essential for a single turn (the in-memory buffer already covers rapid
+        // follow-ups). Race the load against a 4s timeout and degrade gracefully
+        // to no-history rather than blocking the visitor.
+        const rows = await Promise.race([
+          listMessagesByConversationUuid(conversationId, 8),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("history-load-timeout")), 4000),
+          ),
+        ]);
 
         return rows.map((row) => ({
           role: row.role,
           content: row.content,
         }));
       } catch (error) {
-        request.log.error(
+        request.log.warn(
           {
-            err: error,
+            err: error instanceof Error ? error.message : error,
             tenantId,
             conversationId,
           },
-          "Failed to load conversation history",
+          "Conversation history load failed or timed out — answering without history",
         );
 
         return [];
