@@ -678,7 +678,11 @@ function stripInventedSpaHours(message: string, locale: string | undefined): str
  * with the authoritative nutrition answer.
  */
 function fixNutritionAnsweredAsMassage(userMessage: string, message: string, locale: string | undefined): string {
-  const asksNutrition = /\b(nutrition|nutritionniste|naturopath|di[eé]t[eé]ti|alimentaire|manger\s+mieux|perte\s+de\s+poids\s+nutrition|[ée]valuation\s+nutritionnelle)\b/i.test(userMessage);
+  // NOTE: no \b anchors — in JS regex without the `u` flag, \b does not treat
+  // accented chars (é, è) as word characters, so \bnutrition\b fails on
+  // "nutritionnelle" and \b[ée]valuation fails before "é". Substring match is
+  // correct here (intent detection wants broad matching).
+  const asksNutrition = /(nutrition|nutritionniste|naturopath|di[eé]t[eé]ti|alimentaire|manger\s+mieux|[ée]valuation\s+nutritionnelle)/i.test(userMessage);
   if (!asksNutrition) return message;
   const isAboutMassage = /\bmassoth[eé]rapie|\bmassages?\b|Su[eé]dois|Ashiatsu|Tissus\s+profonds|Tha[iï]/i.test(message);
   // xlsx row 226: "évaluation Technogym gratuite, valeur 180 $" — pure hallucination
@@ -695,17 +699,16 @@ function fixNutritionAnsweredAsMassage(userMessage: string, message: string, loc
 }
 
 function surfaceMedicalPractitioners(userMessage: string, message: string, locale: string | undefined): string {
-  const asksDoctors = /\b(m[ée]decins?|m[ée]decine|doctors?|services?\s+m[eé]dic|endom[eé]triose|hormono|hormonal|gyn[ée]colog|bio[- ]?identique|m[ée]nopause|fertilit[ée])\b/i.test(userMessage);
+  // No \b anchors — accented chars (médecin) break \b without the `u` flag.
+  // Substring match is correct for intent detection.
+  const asksDoctors = /(m[ée]decin|m[ée]decine|doctor|services?\s+m[eé]dic|medical\s+service|endom[eé]triose|endometriosis|hormono|hormonal|gyn[ée]colog|bio[- ]?identique|m[ée]nopause|fertilit)/i.test(userMessage);
   if (!asksDoctors) return message;
   // Already names a doctor? Don't double up.
-  if (/\b(Avedian|Kanevesky)\b/i.test(message)) return message;
-  // Only fire when the reply hedges OR routes generically without the doctors.
-  // FR + EN hedge patterns (EN parity — prod replay caught EN-doctors slipping).
-  const hedges =
-    /\bnoms?\s+(?:sp[eé]cifiques?|pr[eé]cis)\s+(?:des\s+m[ée]decins?\s+)?(?:disponibles?\s+)?ne\s+sont\s+pas\b|\bne\s+(?:dispose|connais|vois)\s+pas\b|physioth[eé]rapie|th[eé]rapie\s+sportive|nutrition/i.test(message) ||
-    /\b(?:names?\s+(?:of\s+)?(?:the\s+)?doctors?\s+(?:are|is)\s+not|do\s+not\s+have|don['']?t\s+have|not\s+specified|not\s+listed|contact\s+the\s+(?:sports\s+)?clinic)\b/i.test(message) ||
-    /\bphysiotherapy|sports\s+therapy|massage\s+therapy\b/i.test(message);
-  if (!hedges) return message;
+  if (/(Avedian|Kanevesky)/i.test(message)) return message;
+  // The asksDoctors gate is sufficient: if the visitor asks who the doctors are
+  // (or describes a hormonal/medical condition) and the reply hasn't named them,
+  // surface the public directory. The prior hedge-phrase gate let EN phrasings
+  // ("does not specify", "contacting the clinic") slip through — dropped it.
 
   const fr = isFrenchLocale(locale);
   const addendum = fr
