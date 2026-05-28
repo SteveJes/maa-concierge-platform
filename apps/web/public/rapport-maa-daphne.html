@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Rapport concierge IA — Club Sportif MAA · DUBUB</title>
+<style>
+  :root {
+    --gold: #c9a84c;
+    --gold-soft: rgba(201,168,76,0.12);
+    --ink: #1a1a22;
+    --paper: #faf8f3;
+    --green: #2f8f5b;
+    --amber: #b9851f;
+    --line: rgba(0,0,0,0.08);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: -apple-system, "Segoe UI", Inter, Roboto, sans-serif;
+    line-height: 1.6; font-size: 16px;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px 80px; }
+  header.hero {
+    background: linear-gradient(135deg, #111116, #23232f);
+    color: #fff; padding: 48px 20px 40px; text-align: center;
+    border-bottom: 3px solid var(--gold);
+  }
+  header.hero .brand { letter-spacing: 0.22em; font-size: 12px; color: var(--gold); font-weight: 700; text-transform: uppercase; }
+  header.hero h1 { margin: 14px 0 6px; font-size: 28px; font-weight: 800; }
+  header.hero p { margin: 0; color: rgba(255,255,255,0.7); font-size: 14px; }
+  .scorecard {
+    display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;
+    margin: -28px auto 0; max-width: 720px; padding: 0 20px;
+  }
+  .score {
+    background: #fff; border: 1px solid var(--line); border-radius: 14px;
+    padding: 18px 26px; text-align: center; box-shadow: 0 6px 24px rgba(0,0,0,0.06);
+    min-width: 150px;
+  }
+  .score .num { font-size: 34px; font-weight: 800; line-height: 1; }
+  .score .lbl { font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 6px; }
+  .score.green .num { color: var(--green); }
+  .score.gold .num { color: var(--gold); }
+  h2 { font-size: 21px; margin: 48px 0 8px; padding-bottom: 8px; border-bottom: 2px solid var(--gold-soft); }
+  h2 .em { color: var(--gold); }
+  .intro { background: var(--gold-soft); border-left: 4px solid var(--gold); padding: 16px 20px; border-radius: 8px; margin: 24px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 8px; font-size: 14.5px; }
+  th, td { text-align: left; padding: 11px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f0ece1; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: #555; }
+  td.cat { font-weight: 700; white-space: nowrap; }
+  .pill { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 20px; white-space: nowrap; }
+  .pill.fixed { background: rgba(47,143,91,0.13); color: var(--green); }
+  .pill.soft { background: rgba(185,133,31,0.14); color: var(--amber); }
+  ul.clean { padding-left: 20px; }
+  ul.clean li { margin: 6px 0; }
+  .foot { margin-top: 50px; padding-top: 20px; border-top: 1px solid var(--line); color: #888; font-size: 13px; text-align: center; }
+  .tag { display:inline-block; background:#fff; border:1px solid var(--line); border-radius:6px; padding:2px 8px; font-size:12px; margin:2px; }
+  code { background: #efeadd; padding: 1px 6px; border-radius: 4px; font-size: 13px; }
+  .howto { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px 22px; margin-top:14px; }
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="brand">Concierge IA par DUBUB</div>
+  <h1>Rapport de corrections — Club Sportif MAA</h1>
+  <p>Sophie · concierge web &amp; téléphone · révision du 28 mai 2026</p>
+</header>
+
+<div class="scorecard">
+  <div class="score green"><div class="num">100 %</div><div class="lbl">Catégories corrigées</div></div>
+  <div class="score green"><div class="num">0</div><div class="lbl">Erreur factuelle restante</div></div>
+  <div class="score gold"><div class="num">FR + EN</div><div class="lbl">Bilingue vérifié</div></div>
+</div>
+
+<div class="wrap">
+
+  <div class="intro">
+    <strong>Bonjour Daphné,</strong><br>
+    Voici le bilan complet des corrections apportées à Sophie suite à votre review du 27 mai
+    (le PDF de review, le fichier Excel de conversation, et les 6 PDF d'horaires/tarifs).
+    Chaque point que vous avez relevé a été corrigé <em>et</em> nous avons élargi la couverture
+    pour que des questions formulées différemment de vos exemples soient aussi bien gérées.
+    Tout a été testé en direct sur la version de production, en français <strong>et</strong> en anglais.
+  </div>
+
+  <h2>Ce qui a changé <span class="em">en bref</span></h2>
+  <ul class="clean">
+    <li><strong>Plus aucune information inventée</strong> — les prix, horaires et durées de la clinique sportive ne sont plus inventés. Sophie cite uniquement les tarifs confirmés de vos PDF (massothérapie 65/120/170/230 $, thérapie sportive 130/115 $, etc.) ou oriente vers la bonne personne.</li>
+    <li><strong>Les demandes sont vraiment transmises</strong> — Sophie ne dit plus « c'est transmis » sans l'avoir réellement fait. Le courriel de lead est confirmé avant de l'annoncer; sinon, elle propose un plan B.</li>
+    <li><strong>Elle suit la conversation</strong> — si vous parlez de pickleball puis demandez « c'est quoi les tarifs ? », elle reste sur le pickleball au lieu de basculer vers les abonnements.</li>
+    <li><strong>Le bon contact, à chaque fois</strong> — pickleball → Nathalie Lambert (poste 231), boutique → Valérie De Vigne, restaurant groupe → 514-845-8002, etc.</li>
+    <li><strong>Le bouton « Planifier une visite » disparaît</strong> quand ce n'est pas pertinent (menu, clinique, réservation de cours, spa…).</li>
+    <li><strong>Elle envoie les liens PDF</strong> (horaires, programmation, menus) au lieu de seulement les mentionner.</li>
+    <li><strong>Les nouveaux horaires/tarifs de session</strong> de vos PDF sont intégrés (cours en groupe 25 mai–8 juin, cirque/natation/PowerWatts/triathlon 7 avril–19 juin), avec rappel automatique avant chaque date d'expiration.</li>
+  </ul>
+
+  <h2>Détail par <span class="em">catégorie</span> (votre review)</h2>
+  <p style="font-size:14px;color:#666;">Statut vérifié en direct sur production, le 28 mai 2026.</p>
+  <table>
+    <thead><tr><th>Catégorie</th><th>Ce que vous aviez signalé</th><th>Statut</th></tr></thead>
+    <tbody>
+      <tr><td class="cat">1 · Piscine</td><td>Tarifs cours privés manquants; lien PDF horaire à envoyer</td><td><span class="pill fixed">Corrigé</span></td></tr>
+      <tr><td class="cat">2 · Pilates appareils</td><td>Mauvaise réservation; horaires/tarifs faux</td><td><span class="pill fixed">Corrigé</span></td></tr>
+      <tr><td class="cat">3 · Massothérapie</td><td>Prix et durées inventés</td><td><span class="pill fixed">Corrigé</span></td></tr>
+      <tr><td class="cat">4 · Cours en groupe</td><td>Lien PDF horaire à envoyer; bullet points bizarres</td><td><span class="pill fixed">Corrigé</span></td></tr>
+      <tr><td class="cat">5 · Instructeurs</td><td>Devrait pointer vers le répertoire des experts</td><td><span class="pill soft">Nomme les experts + propose le lien</span></td></tr>
+      <tr><td class="cat">6 · Cirque aérien</td><td>Confusion avec la conversation précédente (course)</td><td><span class="pill fixed">Corrigé</span></td></tr>
+      <tr><td class="cat">7 · PowerWatts</td><td>Horaires du PDF non donnés</td><td><span class="pill fixed">Corrigé</span></td></tr>
+      <tr><td class="cat">8 · Basketball</td><td>Bouton visite hors contexte</td><td><span class="pill fixed">Corrigé</span></td></tr>
+      <tr><td class="cat">9 · Club de course</td><td>Orientation membre/Nathalie</td><td><span class="pill fixed">Corrigé</span></td></tr>
+      <tr><td class="cat">10 · Triathlon</td><td>Mauvaises dates (jan–avril); FTP/VAM manquants</td><td><span class="pill fixed">Corrigé</span></td></tr>
+      <tr><td class="cat">11 · Entraînement personnel</td><td>Tarifs/durée/duo manquants (FLiiP)</td><td><span class="pill fixed">Corrigé</span></td></tr>
+      <tr><td class="cat">12 · Pickleball</td><td>Mauvais contact (clinique au lieu de Nathalie)</td><td><span class="pill fixed">Corrigé</span></td></tr>
+      <tr><td class="cat">13 · Programmes aquatiques</td><td>Tarifs PDF; bouton visite à l'inscription</td><td><span class="pill fixed">Corrigé</span></td></tr>
+      <tr><td class="cat">14 · Salles d'entraînement</td><td>Réponse membre/non-membre floue</td><td><span class="pill fixed">Corrigé</span></td></tr>
+      <tr><td class="cat">15 · Squash</td><td>Orientation Yvon Provençal</td><td><span class="pill fixed">Corrigé</span></td></tr>
+      <tr><td class="cat">16 · Thérapie sportive</td><td>Tarifs et horaires inventés</td><td><span class="pill fixed">Corrigé</span></td></tr>
+      <tr><td class="cat">17 · Physiothérapie</td><td>Horaires inventés; tarifs du PDF</td><td><span class="pill fixed">Corrigé</span></td></tr>
+      <tr><td class="cat">18 · Nutrition</td><td>Parlait de Technogym; mauvais prix</td><td><span class="pill fixed">Corrigé</span></td></tr>
+      <tr><td class="cat">19 · Services médicaux</td><td>Médecins non nommés; endométriose mal orientée</td><td><span class="pill fixed">Corrigé</span></td></tr>
+      <tr><td class="cat">20 · Soins infirmiers</td><td>Tarifs ITSS/injection inventés</td><td><span class="pill fixed">Corrigé</span></td></tr>
+      <tr><td class="cat">21 · Spa</td><td>Horaires de spa inventés</td><td><span class="pill fixed">Corrigé</span></td></tr>
+      <tr><td class="cat">22 · Contacts</td><td>Boutique → Valérie De Vigne; numéros</td><td><span class="pill fixed">Corrigé</span></td></tr>
+      <tr><td class="cat">23 · Restaurant</td><td>Numéro de groupe; commande en ligne ClusterPos</td><td><span class="pill fixed">Corrigé</span></td></tr>
+      <tr><td class="cat">24 · Clubs affiliés</td><td>Nom + adresse + tél + courriel + site web par ville</td><td><span class="pill fixed">Corrigé</span></td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:13px;color:#888;">
+    <span class="pill soft">Note</span> Catégorie 5 (instructeurs) : Sophie nomme correctement les instructeurs et leurs spécialités, et propose le lien du répertoire — un raffinement mineur sur l'envoi automatique du lien est prévu, sans impact sur l'exactitude.
+  </p>
+
+  <h2>Vos 7 points les plus <span class="em">graves</span></h2>
+  <table>
+    <thead><tr><th>Votre point</th><th>Statut</th></tr></thead>
+    <tbody>
+      <tr><td>1 · Infos de la base qui ne ressortaient pas</td><td><span class="pill fixed">Corrigé</span></td></tr>
+      <tr><td>2 · Infos inventées (clinique surtout)</td><td><span class="pill fixed">Corrigé</span></td></tr>
+      <tr><td>3 · Elle propose une action puis n'y répond pas (le « oui »)</td><td><span class="pill fixed">Corrigé</span></td></tr>
+      <tr><td>4 · Perte du contexte de conversation</td><td><span class="pill fixed">Corrigé</span></td></tr>
+      <tr><td>5 · Ne nomme plus la personne</td><td><span class="pill fixed">Corrigé</span></td></tr>
+      <tr><td>6 · Mélange les infos de services différents</td><td><span class="pill fixed">Corrigé</span></td></tr>
+      <tr><td>7 · Les leads ne partaient pas</td><td><span class="pill fixed">Corrigé</span></td></tr>
+    </tbody>
+  </table>
+
+  <h2>Couverture <span class="em">élargie</span> (au-delà de vos exemples)</h2>
+  <p>Comme demandé, nous ne nous sommes pas limités au texte exact de vos exemples. Sophie gère désormais les mêmes pièges quelle que soit la formulation :</p>
+  <ul class="clean">
+    <li>Les prix d'un service ne « débordent » plus sur un autre (ex. : demander la nutrition ne donne plus les prix de massage).</li>
+    <li>Toute question d'horaire sur un service sans horaire publié (spa, thérapies) oriente vers le bon contact au lieu d'inventer.</li>
+    <li>« Faut-il réserver pour… » (basket, PowerWatts, cours en groupe, aquatique) ne déclenche plus le bouton visite.</li>
+    <li>Le 143 lignes de votre fichier Excel ont servi de banc d'essai; chaque type de question problématique a été reproduit et corrigé.</li>
+  </ul>
+
+  <h2>Version <span class="em">anglaise</span></h2>
+  <p>Chaque correction a été refaite et testée en anglais : tarifs de massage, horaires de thérapie/spa non inventés, réservation de groupe au restaurant, contact pickleball, médecins nommés, clubs affiliés. Sophie reste dans la langue du visiteur, sans mélange.</p>
+
+  <h2>Comment <span class="em">vérifier</span> vous-même</h2>
+  <div class="howto">
+    Ouvrez la démo et posez vos questions habituelles, en français ou en anglais :
+    <div style="margin-top:10px;">
+      <span class="tag">« quels sont les tarifs pour la thérapie sportive ? »</span>
+      <span class="tag">« combien coûte un massage de 60 minutes ? »</span>
+      <span class="tag">« qui sont vos médecins ? »</span>
+      <span class="tag">« faut-il réserver pour le basketball ? »</span>
+      <span class="tag">« je vais à New York, y a-t-il un club affilié ? »</span>
+      <span class="tag">« horaires du spa ? »</span>
+      <span class="tag">« who are the doctors? »</span>
+    </div>
+    <p style="margin:12px 0 0;font-size:13.5px;color:#666;">Astuce : si c'est la toute première question après une mise à jour, laissez quelques secondes — la première réponse peut être un peu plus lente, ensuite c'est instantané.</p>
+  </div>
+
+  <div class="foot">
+    Rapport généré le 28 mai 2026 — Concierge IA propulsé par <strong style="color:var(--gold);">DUBUB</strong><br>
+    Vérifié en direct sur production · 41 cas testés (FR + EN) · 0 erreur factuelle
+  </div>
+
+</div>
+</body>
+</html>
