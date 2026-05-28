@@ -426,6 +426,200 @@ const PROBES: Probe[] = [
     ],
     daphneSays: "Doit nommer NYAC + adresse + téléphone + email + site web.",
   },
+
+  // ── Cross-cutting cases from the full XLSX transcript (rows 200-284) ─────────
+  // These span multiple categories and test angles Daphné's per-category text
+  // didn't spell out but that the transcript exposed.
+
+  {
+    category: 16,
+    categoryLabel: "THÉRAPIE SPORTIVE",
+    id: "16b-prices-not-massage",
+    userMessage: "quels sont les tarifs pour une séance de thérapie sportive ?",
+    forbidPatterns: [
+      // xlsx row 215: bot gave MASSAGE prices (60/80/105 or 65/120/170/230) for therapy
+      /\b60\s*\$\s*pour\s*25\s*minutes|\b80\s*\$\s*pour\s*55\s*minutes|\b105\s*\$\s*pour\s*85\s*minutes/i,
+      /\b25\s*minutes?\b[^.!?]{0,30}\b65\s*\$|\b90\s*minutes?\b[^.!?]{0,30}\b170\s*\$/i,
+    ],
+    requireAnyPattern: [
+      // Authoritative therapy prices: Geyson/Solis 130/115, Angie 140/125
+      /\b130\s*\$|\b115\s*\$|\b140\s*\$|\b125\s*\$|Geyson|Solis|Angie\s+West|poste\s+234|prendre\s+rendez/i,
+    ],
+    daphneSays: "Tarifs thérapie sportive = Geyson/Solis 130/115 $, Angie 140/125 $ — JAMAIS les prix de massage.",
+  },
+  {
+    category: 17,
+    categoryLabel: "PHYSIOTHÉRAPIE",
+    id: "17-prices-not-massage",
+    userMessage: "quels sont les tarifs pour la physiothérapie ?",
+    forbidPatterns: [
+      /\b60\s*\$\s*pour\s*25\s*minutes|\b80\s*\$\s*pour\s*55\s*minutes|\b105\s*\$\s*pour\s*85\s*minutes/i,
+    ],
+    requireAnyPattern: [
+      // Demirakos 115/95, Duchesne 160/155, or honest "varie selon le praticien" + poste 234
+      /\b115\s*\$|\b95\s*\$|\b160\s*\$|\b155\s*\$|Demirakos|Duchesne|varient?\s+selon|poste\s+234/i,
+    ],
+    daphneSays: "Tarifs physio = Demirakos 115/95 $, Duchesne 160/155 $, ou honnêtement 'varie selon le praticien' + poste 234. Pas de prix massage.",
+  },
+  {
+    category: 18,
+    categoryLabel: "NUTRITION",
+    id: "18b-no-technogym-eval",
+    userMessage: "quels sont les prix pour une évaluation nutritionnelle ?",
+    forbidPatterns: [
+      /technogym/i, // xlsx row 226: "L'évaluation Technogym est gratuite, valeur 180 $"
+      /\b180\s*\$/i,
+      /\b60\s*\$\s*pour\s*25\s*minutes/i, // massage prices
+    ],
+    requireAnyPattern: [
+      /\b130\s*\$|\b140\s*\$|\b85\s*\$|L[eé]a\s+Daoura|Justine|Doyon-Blondin|poste\s+234/i,
+    ],
+    daphneSays: "Évaluation nutritionnelle = Justine Doyon-Blondin 140 $ ou naturopathe 130 $. JAMAIS 'évaluation Technogym 180 $'.",
+  },
+  {
+    category: 20,
+    categoryLabel: "SOINS INFIRMIERS",
+    id: "20c-itss-not-massage-prices",
+    userMessage: "quels sont vos tarifs pour le dépistage ITSS ?",
+    forbidPatterns: [
+      // xlsx row 235: bot gave massage prices 60/80/105 for ITSS
+      /\b60\s*\$\s*pour\s*25\s*minutes|\b80\s*\$\s*pour\s*55\s*minutes|\b105\s*\$\s*pour\s*85\s*minutes/i,
+    ],
+    requireAnyPattern: [
+      /\b249\s*\$|\b349\s*\$|\b419\s*\$|combo/i,
+    ],
+    daphneSays: "Tarifs ITSS = combos 249/349/419 $. JAMAIS les prix de massage 60/80/105.",
+  },
+  {
+    category: 13,
+    categoryLabel: "PROGRAMMES AQUATIQUES",
+    id: "13b-reservation-no-visit-cta",
+    userMessage: "faut-il réserver ou s'inscrire pour les programmes aquatiques ?",
+    forbidPatterns: [
+      /planifier\s+une\s+visite|Cliquez\s+sur\s+le\s+bouton\s+ci-dessous\s+pour\s+planifier/i,
+    ],
+    requireAnyPattern: [
+      /Nathalie|MyWellness|widgets\.mywellness|membre|inscription|réserv/i,
+    ],
+    daphneSays: "xlsx row 202: réservation programmes aquatiques ne doit PAS déclencher le bouton visite.",
+  },
+  {
+    category: 23,
+    categoryLabel: "RESTAURANT",
+    id: "23b-phone-no-poste-247",
+    userMessage: "quel numéro pour réserver une table de groupe au restaurant 1881 ?",
+    forbidPatterns: [
+      // xlsx row 249/266: "514 845-8002, poste 247" — the 8002 has NO poste
+      /514\s*845.8002\s*,?\s*poste\s*247/i,
+    ],
+    requireAnyPattern: [
+      /514\s*845.8002/i,
+    ],
+    daphneSays: "Groupe restaurant = 514-845-8002 (SANS poste). Le poste 247 appartient au 514-845-2233, pas au 8002.",
+  },
+
+  // ── EN parity probes — every critical fix must hold in English ──────────────
+  {
+    category: 3,
+    categoryLabel: "MASSAGE (EN)",
+    id: "EN-massage-pricing",
+    locale: "en-CA",
+    userMessage: "how much is a 60-minute massage?",
+    forbidPatterns: [
+      /\b25\s*min[^.!?]{0,20}\$?\s*60|\b55\s*min[^.!?]{0,20}\$?\s*80|\b85\s*min[^.!?]{0,20}\$?\s*105/i,
+    ],
+    requireAnyPattern: [/\$?\s*120/i],
+    daphneSays: "EN parity: 60-min massage = $120 (new grid), never the old 25/55/85 min grid.",
+  },
+  {
+    category: 16,
+    categoryLabel: "SPORTS THERAPY (EN)",
+    id: "EN-therapy-no-invented-hours",
+    locale: "en-CA",
+    userMessage: "what are the hours for sports therapy?",
+    forbidPatterns: [
+      /monday\s*(?:to|through|-)\s*friday\s*(?:from\s*)?\d{1,2}\s*(?:am|pm|:)/i,
+      /\b9\s*(?:am|h)?\s*(?:to|-)\s*(?:7|19)\b/i,
+    ],
+    requireAnyPattern: [
+      /therapist|by\s+appointment|book|ext\.?\s*234|clinic/i,
+    ],
+    daphneSays: "EN parity: never invent fixed weekly hours for sports therapy.",
+  },
+  {
+    category: 21,
+    categoryLabel: "SPA (EN)",
+    id: "EN-spa-no-invented-hours",
+    locale: "en-CA",
+    userMessage: "what are the spa hours?",
+    forbidPatterns: [
+      /\bspa\b[^.!?]{0,40}\bmonday\s*(?:to|through|-)\s*friday\s*(?:from\s*)?\d{1,2}/i,
+    ],
+    requireAnyPattern: [
+      /not\s+published|reception|ext\.?\s*0|confirm/i,
+    ],
+    daphneSays: "EN parity: spa hours are not published, route to reception.",
+  },
+  {
+    category: 23,
+    categoryLabel: "RESTAURANT GROUP (EN)",
+    id: "EN-restaurant-group-no-visit",
+    locale: "en-CA",
+    userMessage: "I'd like to book a table for a group of 12 at restaurant 1881",
+    forbidPatterns: [
+      /schedule\s+a\s+visit|click\s+the\s+button\s+below\s+to\s+schedule/i,
+    ],
+    requireAnyPattern: [/514\s*845.8002|libro|group|phone/i],
+    daphneSays: "EN parity: restaurant group reservation must NOT fire the club-visit template.",
+  },
+  {
+    category: 19,
+    categoryLabel: "DOCTORS (EN)",
+    id: "EN-doctors-named",
+    locale: "en-CA",
+    userMessage: "who are the doctors available at the club?",
+    forbidPatterns: [],
+    requireAnyPattern: [
+      /Avedian|Kanevesky|services-medicaux/i,
+    ],
+    daphneSays: "EN parity: name Dr Avedian + Dr Kanevesky.",
+  },
+  {
+    category: 12,
+    categoryLabel: "PICKLEBALL (EN)",
+    id: "EN-pickleball-contact",
+    locale: "en-CA",
+    userMessage: "who should I contact for pickleball info?",
+    forbidPatterns: [
+      /sports\s+clinic|ext\.?\s*234/i,
+    ],
+    requireAnyPattern: [/Nathalie\s+Lambert|nlambert|ext\.?\s*231/i],
+    daphneSays: "EN parity: pickleball contact = Nathalie Lambert, not the clinic.",
+  },
+  {
+    category: 8,
+    categoryLabel: "BASKETBALL (EN)",
+    id: "EN-basketball-no-visit",
+    locale: "en-CA",
+    userMessage: "do I need to reserve for basketball?",
+    forbidPatterns: [
+      /schedule\s+a\s+visit|click\s+the\s+button\s+below\s+to\s+schedule/i,
+    ],
+    requireAnyPattern: [/basket|app|member|Nathalie/i],
+    daphneSays: "EN parity: basketball reservation question must NOT fire the visit template.",
+  },
+  {
+    category: 24,
+    categoryLabel: "AFFILIATED CLUBS (EN)",
+    id: "EN-nyac",
+    locale: "en-CA",
+    userMessage: "I'm traveling to New York, is there an affiliated club there?",
+    forbidPatterns: [
+      /^[^.]*\bmore\s+than\s+\d+\s+clubs?\b[^.]*\.\s*$/i,
+    ],
+    requireAnyPattern: [/NYAC|New\s+York\s+Athletic|nyac\.org/i],
+    daphneSays: "EN parity: name NYAC with contact details.",
+  },
 ];
 
 const PROD_URL = "https://api.dubub.com";
