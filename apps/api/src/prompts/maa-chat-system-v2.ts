@@ -47,14 +47,20 @@ function relevantSectionsForMessage(userMessage: string): MaaV2SectionId[] {
 function relevantOverridesForMessage(userMessage: string): MaaV2OverrideId[] {
   const m = (userMessage ?? "").toLowerCase();
   const picks = new Set<MaaV2OverrideId>();
-  // clinic: massage, physio, therapy, FST, nutrition, nursing, medical
-  if (/\b(massage|massoth[ée]rapie|physio|physioth[ée]rapie|th[ée]rapie\s+sportive|sport\s+therap|kin[ée]si|nutritionniste|nutrition|natoropath|m[ée]dical|infirmi|mediq|FST|fascia|ost[ée]opathe?|ost[ée]opathie|wellcenter|kanevesky|avedian|d[ée]pistage|injection|pr[ée]l[èe]vement|profil\s+fertilit|spermogramme|cliniques?\s+sportives?)\b/.test(m)) picks.add("clinic");
-  // group-classes: explicit "cours en groupe" + named MyWellness-bookable classes
-  if (/\b(cours\s+(?:en\s+|de\s+)?groupe|group\s+classes?|mywellness|hiit|circuit|cardio\s+danse|essentrics|total\s+barre|spinning|boxe[- ]?fit|hyrox|athletic|total\s+sculpt|yoga\s+(?:flow|hatha|power|ashtanga)|stretch|bootcamp|MAA\s+combat|combat|aqua[- ]?hiit|aqua\s+hiit)\b/.test(m)) picks.add("group-classes");
+  // clinic: massage, physio, therapy, FST, nutrition, nursing, medical, médecin, endométriose, hormono
+  if (/\b(massage|massoth[ée]rapie|physio|physioth[ée]rapie|th[ée]rapie\s+sportive|sport\s+therap|kin[ée]si|nutritionniste|nutrition|natoropath|m[ée]dical|m[ée]decin|m[ée]decine|doctor|infirmi|mediq|FST|fascia|ost[ée]opathe?|ost[ée]opathie|wellcenter|kanevesky|avedian|d[ée]pistage|injection|pr[ée]l[èe]vement|profil\s+fertilit|spermogramme|cliniques?\s+sportives?|endom[eé]triose|hormono|hormonal|reproductive|gyn[ée]colog|fonctionnelle|bio[- ]?identique)\b/.test(m)) picks.add("clinic");
+  // group-classes: explicit "cours en groupe" + named MyWellness-bookable classes.
+  // Pilates is BOTH a group class (Studio Serenity, ~1 slot/week) and Pilates Reformer
+  // (its own studio, multiple slots/day, override sports.json). Both overrides fire on
+  // bare "pilates" so the LLM has both contexts to disambiguate from.
+  if (/\b(cours\s+(?:en\s+|de\s+)?groupe|group\s+classes?|mywellness|hiit|circuit|cardio\s+danse|essentrics|total\s+barre|spinning|boxe[- ]?fit|hyrox|athletic|total\s+sculpt|yoga\s+(?:flow|hatha|power|ashtanga)|stretch|bootcamp|MAA\s+combat|combat|aqua[- ]?hiit|aqua\s+hiit|pilates)\b/.test(m)) picks.add("group-classes");
   // specialty-courses: cirque, natation adulte, powerwatts
   if (/\b(cirque|aerial\s+circus|natation(?:\s+(?:adulte|ma[iî]tres?))?|powerwatts|power[- ]?watts)\b/.test(m)) picks.add("specialty-courses");
-  // sports: basketball, run club, triathlon, PT, pickleball, pool, Pilates Reformer, squash, training rooms
-  if (/\b(basketball|basket\b|club\s+de\s+course|run(?:ning)?\s+club|triathlon|entra[iî]nement\s+personnel|personal\s+training|pickleball|pickle[- ]?ball|piscine|pool|nage\s+libre|programmes?\s+aquatiques?|aquatic\s+programs?|pilates\s+reformer|pilates\s+sur\s+appareils|squash|salles?\s+d['e]?entra[iî]nement|training\s+room|gym\s+access|FTP|VAM)\b/.test(m)) picks.add("sports");
+  // sports: basketball, run club, triathlon, PT, pickleball, pool, Pilates Reformer, squash, training rooms.
+  // "pilates" alone fires the sports override (Pilates Reformer is the primary Pilates context at MAA);
+  // "cours privé" / "private session" pattern also catches the Pilates Reformer use case
+  // ("horaires pour demain pour les pilates en cours privés" — Steve's screenshot 2026-05-27).
+  if (/\b(basketball|basket\b|club\s+de\s+course|run(?:ning)?\s+club|triathlon|entra[iî]nement\s+personnel|personal\s+training|pickleball|pickle[- ]?ball|piscine|pool|nage\s+libre|programmes?\s+aquatiques?|aquatic\s+programs?|pilates|squash|salles?\s+d['e]?entra[iî]nement|training\s+room|gym\s+access|FTP|VAM|cours\s+priv[eé]s?|cours\s+privées?|private\s+(?:session|class|course)|s[ée]ance\s+priv[eé]e?|Elisabeth\s+Boutin|eboutin)\b/.test(m)) picks.add("sports");
   // restaurant: menu, 1881, table, brunch, etc.
   if (/\b(restaurant|menu|1881|table|d[ée]jeuner|brunch|carte|libroreserve|clusterpos|commander\s+en\s+ligne|take[- ]?out|réservation\s+restaurant|reservation)\b/.test(m)) picks.add("restaurant");
   return Array.from(picks);
@@ -492,6 +498,11 @@ export function buildMaaChatSystemPromptV2(
           "- If a key inside the override is named `_replaces_v1_pricing` or `_daphne_correction_*` or `_daphne_forbids` or `_daphne_review_*`, the named LEGACY value is OBSOLETE — never quote it.",
           "- Always prefer `pricing_authoritative` over any other pricing array in the same file.",
           "- For `allowed_cta` / `forbidden_cta` arrays, honor them: never propose a CTA listed in `forbidden_cta` (e.g. `visit_club` is forbidden for most service-specific questions).",
+          // Final-delivery hardening (2026-05-27 prod replay findings)
+          "- **PDF / source URL surfacing**: when the override has a `source_url` AND the visitor asks for a schedule, price grid, menu, or any document, INCLUDE the URL in your reply as a markdown link (e.g. `[Horaire piscine](https://...)`). Daphné explicitly requires the PDF/source link to be sent, not just mentioned.",
+          "- **Inclusion-list questions**: when the visitor asks 'qu'est-ce qui est inclus dans le X' for a SPECIFIC program (triathlon, cirque, PowerWatts, abonnement, etc.), list ONLY that program's specific inclusions — never recite generic Club inclusions (gym, pool, group classes) as the answer. For Club de triathlon specifically: FTP (vélo) + VAM (course) + natation maîtres are explicitly listed as program inclusions in the override.",
+          "- **Practitioner directory surfacing**: when the visitor asks 'qui sont les médecins / les instructeurs / les entraîneurs', name the practitioners listed in the override's `practitioners` array AND surface the directory URL when one is in `links.json`.",
+          "- **Override pricing is authoritative**: NEVER invent prices for a service that has an override entry. If the override pricing exists, quote it verbatim. If the override says `_pricingNote` or `to_confirm`, do NOT invent a number — route to the primary_contact.",
           "",
           ...relevantOverrides.map((id) => formatOverrideBlock(id, k.overrides[id])),
           "",

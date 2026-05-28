@@ -369,8 +369,8 @@ function looksLikeBookingIntent(userMessage: string, locale: string | null): boo
   // a different flow entirely (LibroReserve / phone) — let the AI describe
   // that flow instead of triggering the visit-booking template.
   const isRestaurantTableReservation =
-    /\b(table|tables)\b/i.test(normalized) &&
-    /\b(restaurant|1881|le 1881)\b/i.test(normalized);
+    /\b(table|tables|groupe|group|réserver?\s+pour\s+\d+|reserve\s+for\s+\d+|événement\s+priv|private\s+event|brunch|d[ée]jeuner|d[iî]ner|reservation\s+(?:au\s+|du\s+)?restaurant)\b/i.test(normalized) &&
+    /\b(restaurant|1881|le 1881|le\s+resto)\b/i.test(normalized);
   if (isRestaurantTableReservation) {
     return false;
   }

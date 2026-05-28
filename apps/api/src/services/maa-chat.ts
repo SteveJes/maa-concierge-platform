@@ -623,14 +623,23 @@ function rewriteObsoleteMassagePricing(message: string, locale: string | undefin
  * la réception" line.
  */
 function stripInventedSpaHours(message: string, locale: string | undefined): string {
+  // Daphné batch 2026-05-27 — final-delivery hardening: the prior per-sentence
+  // check missed cases where the LLM mentioned the spa in one sentence and the
+  // hours in the next (Steve's screenshot 2026-05-27 spa probe). Switch to
+  // whole-message detection: if ANY sentence mentions spa AND ANY sentence has
+  // a weekly hours grid, strip the hours sentence(s).
+  const mentionsSpaAnywhere = /\b(spa|sauna|hammam|bain\s+(?:à\s+remous|tourbillon|vapeur)|hot\s+tub|jacuzzi|steam\s+room)\b/i.test(message);
+  if (!mentionsSpaAnywhere) return message;
+
   const sentences = message.split(/(?<=[.!?])\s+/);
   let stripped = false;
   const cleaned = sentences.map((s) => {
-    const mentionsSpa = /\b(spa|sauna|hammam|bain\s+(?:à\s+remous|tourbillon|vapeur)|hot\s+tub|jacuzzi|steam\s+room)\b/i.test(s);
     const hasFixedWeeklyGrid =
       /\b(?:du\s+)?(?:lundi|mardi|mercredi|jeudi|vendredi)\s*(?:au|to)?\s*(?:vendredi|dimanche|samedi)?\s*(?:de\s+)?\d{1,2}\s*h\s*\d{0,2}\s*(?:à|to|-)\s*\d{1,2}\s*h/i.test(s) ||
-      /\b(?:open|hours?)\s+(?:from\s+)?\d{1,2}(?:am|pm|:\d{2})?\s+(?:to|until|-)\s+\d{1,2}(?:am|pm|:\d{2})?\b/i.test(s);
-    if (mentionsSpa && hasFixedWeeklyGrid) {
+      /\b(?:open|hours?|heures?\s+d['']?ouverture)\s+(?:sont\s+)?(?:du\s+)?(?:from\s+)?\d{1,2}(?:am|pm|:\d{2}|\s*h)?\s+(?:to|until|à|-)\s+\d{1,2}(?:am|pm|:\d{2}|\s*h)?\b/i.test(s) ||
+      // Also catch "Les heures d'ouverture sont du lundi au vendredi de 9 h à 19 h"
+      /\b(?:heures?\s+d['']?ouverture|opening\s+hours?)\s+(?:sont|are)\s+(?:du|from)\s+(?:lundi|monday)/i.test(s);
+    if (hasFixedWeeklyGrid) {
       stripped = true;
       return "";
     }
@@ -642,6 +651,31 @@ function stripInventedSpaHours(message: string, locale: string | undefined): str
     ? "Les horaires précis du spa ne sont pas publiés — la réception du Club (514 845-2233, poste 0) peut vous confirmer les plages d'ouverture du jour."
     : "Specific spa hours aren't published — Club reception ((514) 845-2233, ext. 0) can confirm today's opening times.";
   return (cleaned.filter((s) => s.length > 0).join(" ") + " " + replacement).replace(/\s{2,}/g, " ").trim();
+}
+
+/**
+ * Daphné batch 2026-05-27 final-delivery — strip the LLM's "nutrition
+ * intégrative" hallucination. That's NOT a MAA service. The bot was using it
+ * when asked about endometriosis. Replace with the correct routing.
+ */
+function stripHallucinatedNutritionIntegrative(message: string, locale: string | undefined): string {
+  if (!/\bnutrition\s+int[ée]grative\b/i.test(message)) return message;
+  const fr = isFrenchLocale(locale);
+  const replacement = fr
+    ? "Pour une condition médicale spécifique, la clinique du Club peut vous orienter vers le bon spécialiste — Dr Avedian propose notamment l'hormonothérapie bio-identique et la médecine fonctionnelle. Vous pouvez appeler la clinique au 514 845-2233, poste 234, pour une orientation personnalisée."
+    : "For a specific medical condition, the Club's clinic can direct you to the right specialist — Dr Avedian offers bio-identical hormone therapy and functional medicine. You can call the clinic at (514) 845-2233, ext. 234, for personalized guidance.";
+  // Replace the entire "nutrition intégrative" sentence with the routing.
+  const sentences = message.split(/(?<=[.!?])\s+/);
+  let inserted = false;
+  const cleaned = sentences.map((s) => {
+    if (/\bnutrition\s+int[ée]grative\b/i.test(s)) {
+      if (inserted) return "";
+      inserted = true;
+      return replacement;
+    }
+    return s;
+  });
+  return cleaned.filter((s) => s.length > 0).join(" ").replace(/\s{2,}/g, " ").trim();
 }
 
 function stripFakeTransmissionClaim(
@@ -2652,6 +2686,7 @@ export async function answerMaaChat(
   cleanedAssistantMessage = rewriteObsoleteMassagePricing(cleanedAssistantMessage, request.locale);
   cleanedAssistantMessage = stripInventedClinicalHours(cleanedAssistantMessage, request.locale);
   cleanedAssistantMessage = stripInventedSpaHours(cleanedAssistantMessage, request.locale);
+  cleanedAssistantMessage = stripHallucinatedNutritionIntegrative(cleanedAssistantMessage, request.locale);
 
   // Daphné batch 2026-05-27 — Bug A guard. If the LLM hallucinated a
   // transmission claim, strip it and force the widget to open the lead-capture
