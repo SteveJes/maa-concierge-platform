@@ -654,6 +654,35 @@ function stripInventedSpaHours(message: string, locale: string | undefined): str
 }
 
 /**
+ * Daphné batch 2026-05-27 final-delivery — surface the MAA doctors when the
+ * visitor asks who they are or describes a hormonal/gynecological condition.
+ * The base section's "confidentialité médicale stricte" rule keeps the LLM
+ * from naming Dr Avedian / Dr Kanevesky even though they're a PUBLIC directory
+ * (clubsportifmaa.com/fr/services-medicaux/). Daphné review #19: "Elle devrait
+ * connaître les 2 médecins du club, ils sont mentionnés clairement sur le site."
+ *
+ * Naming a doctor from the public directory is NOT medical advice. This guard
+ * fires only when (a) the user asked about doctors / medical services / a
+ * hormonal condition AND (b) the reply hedges (doesn't already name Avedian).
+ * It APPENDS the directory info — it never strips the no-diagnosis safety opener.
+ */
+function surfaceMedicalPractitioners(userMessage: string, message: string, locale: string | undefined): string {
+  const asksDoctors = /\b(m[ée]decins?|m[ée]decine|doctors?|services?\s+m[eé]dic|endom[eé]triose|hormono|hormonal|gyn[ée]colog|bio[- ]?identique|m[ée]nopause|fertilit[ée])\b/i.test(userMessage);
+  if (!asksDoctors) return message;
+  // Already names a doctor? Don't double up.
+  if (/\b(Avedian|Kanevesky)\b/i.test(message)) return message;
+  // Only fire when the reply hedges OR routes generically without the doctors.
+  const hedges = /\bnoms?\s+(?:sp[eé]cifiques?|pr[eé]cis)\s+(?:des\s+m[ée]decins?\s+)?(?:disponibles?\s+)?ne\s+sont\s+pas\b|\bne\s+(?:dispose|connais|vois)\s+pas\b|physioth[eé]rapie|th[eé]rapie\s+sportive|nutrition/i.test(message);
+  if (!hedges) return message;
+
+  const fr = isFrenchLocale(locale);
+  const addendum = fr
+    ? " Côté médical, le Club compte notamment le Dr Taniela Avedian (médecine fonctionnelle et hormonothérapie bio-identique) et le Dr Michael Kanevesky. Pour une condition comme l'endométriose ou un suivi hormonal, le Dr Avedian est la bonne ressource. Détails et prise de rendez-vous : https://www.clubsportifmaa.com/fr/services-medicaux/ ou la clinique au 514 845-2233, poste 234."
+    : " On the medical side, the Club's doctors include Dr Taniela Avedian (functional medicine and bio-identical hormone therapy) and Dr Michael Kanevesky. For a condition like endometriosis or hormonal follow-up, Dr Avedian is the right resource. Details and booking: https://www.clubsportifmaa.com/fr/services-medicaux/ or the clinic at (514) 845-2233, ext. 234.";
+  return (message.replace(/\s+$/, "") + addendum).replace(/\s{2,}/g, " ").trim();
+}
+
+/**
  * Daphné batch 2026-05-27 final-delivery — strip the LLM's "nutrition
  * intégrative" hallucination. That's NOT a MAA service. The bot was using it
  * when asked about endometriosis. Replace with the correct routing.
@@ -2687,6 +2716,7 @@ export async function answerMaaChat(
   cleanedAssistantMessage = stripInventedClinicalHours(cleanedAssistantMessage, request.locale);
   cleanedAssistantMessage = stripInventedSpaHours(cleanedAssistantMessage, request.locale);
   cleanedAssistantMessage = stripHallucinatedNutritionIntegrative(cleanedAssistantMessage, request.locale);
+  cleanedAssistantMessage = surfaceMedicalPractitioners(request.userMessage, cleanedAssistantMessage, request.locale);
 
   // Daphné batch 2026-05-27 — Bug A guard. If the LLM hallucinated a
   // transmission claim, strip it and force the widget to open the lead-capture
