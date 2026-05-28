@@ -5,6 +5,49 @@
 
 ---
 
+## 2026-05-28 — Post-delivery hardening (Steve caught the Pilates miss → built a real prod gate)
+
+Steve test-drove prod after the "delivery" and immediately found the bot giving a
+generic "6h-22h" answer for Pilates private-session hours instead of the actual
+Reformer schedule. Root cause: my Sentinel suite only tested patterns *I* wrote —
+it never replayed Daphné's full review against prod. Fixed that gap structurally.
+
+### New gate: `daphne-review-replay.ts`
+A 29-probe harness covering all 24 of Daphné's review categories. Each probe uses
+her exact phrasing and checks the response against the specific bug she flagged
+(forbid patterns + require patterns). Runs against prod or local, writes a
+per-category digest to `_alerts/`. This is now the real "did we fix what Daphné
+flagged" gate — run it before showing her anything: `pnpm.cmd --filter @platform/api exec tsx src/scripts/daphne-review-replay.ts`.
+
+### Bugs the replay caught that the Sentinel suite missed (all fixed + deployed)
+1. **Pilates private sessions** (Steve's screenshot) — "pilates en cours privés" never loaded the sports override (matcher required "pilates reformer"/"sur appareils"). Bare "pilates" + "cours privé" now fire it. Bot now cites the actual Reformer schedule + Elisabeth Boutin.
+2. **Restaurant group reservation** — "réserver pour un groupe de 12 au restaurant 1881" collapsed into the visit template. `looksLikeBookingIntent` restaurant escape now matches groupe / réserver pour N / événement privé / brunch / dîner.
+3. **SPA invented hours** — guard was per-sentence and missed cases where "spa" and the invented "lundi-vendredi 9h-19h" were in different sentences. Now whole-message scan.
+4. **Médecins not named** — clinic override matcher only had "médical" not "médecin"; and the medical-caution rules made the LLM refuse to name doctors. Added matcher terms + a deterministic `surfaceMedicalPractitioners` guard that appends Dr Avedian + Dr Kanevesky + the services-medicaux URL when the visitor asks who the doctors are or describes a hormonal condition.
+5. **Endometriosis routing** — now routes to Dr Avedian (bio-identical hormone therapy) instead of generic physio/massage.
+6. **Triathlon** — was hallucinating 180/300 $ prices and omitting FTP/VAM inclusions; override directive strengthened (inclusion-list questions list only that program's specifics; never invent prices for a service with an override entry).
+7. **Nutrition pricing returned massage prices** — the clinic override leads with massage (most detailed pricing) so the LLM anchored on it. `fixNutritionAnsweredAsMassage` guard replaces with Léa Daoura / Justine Doyon-Blondin pricing.
+8. **"Nutrition intégrative" hallucination** — stripped (not a real MAA service).
+9. **Pool / cours-groupe PDF links** — override directive now requires emitting the source_url as a markdown link when the visitor asks for a schedule/price/menu.
+
+### Final prod replay result (warm): **28 PASS / 1 soft WARN / 0 FAIL**
+- The 1 WARN is cat 5 (instructor directory): bot names instructors with specialties and *offers* the link rather than including it inline. Helpful answer, just not the URL up front — acceptable, not a bug.
+- 45-flow canary: 44-45/45 (single rotating LLM flake).
+
+### Known infra item (NOT a content bug): cold-start
+The first request to a freshly-restarted/idle API can take >60s and hit the nginx
+60s timeout, cascading 502/504 to the next few requests until the backlog drains.
+Cause: single-process `fork_mode` on the 2vCPU droplet + large prompt + RAG. The
+boot warmup (`warmupSearchableChunks` + 50-min re-warm in [index.ts](apps/api/src/index.ts)) keeps
+steady-state healthy; the cold cascade only bites in the deploy window or after a
+long idle. **Mitigation for demos: don't deploy right before showing Daphné, and
+send one throwaway message to warm the API first.** A proper fix (cluster mode /
+bigger droplet / boot-blocking warmup) is an infra task, not a content fix.
+
+Commits this round: `bef0352`, `281f253`, `4e4689a`, `cf31916`.
+
+---
+
 ## 2026-05-27 — OFFICIAL DELIVERY — final audit + multi-tenant readiness pass
 
 After landing the Daphné 4-phase batch + deploy, ran a comprehensive completeness audit
