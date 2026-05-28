@@ -151,6 +151,44 @@ export function resolveActiveContext(
 }
 
 /**
+ * Daphné batch 8 #1 — DETERMINISTIC answer for "tarifs?" when the active service
+ * is a sport INCLUDED in the membership (pickleball, basketball, group classes,
+ * run club). The LLM kept dumping the full abonnement grid here; this takes it
+ * out of the loop. Returns null when not applicable.
+ */
+const INCLUDED_IN_MEMBERSHIP = new Set([
+  "pickleball", "basketball", "cours_en_groupe", "club_de_course", "salles_entrainement",
+]);
+
+export function tryAnswerIncludedServicePricing(
+  ctx: MaaActiveContext,
+  currentUserMessage: string,
+  locale: string | undefined,
+): { assistantMessage: string; followUpMode: "clarify" } | null {
+  if (!ctx.activeService || !INCLUDED_IN_MEMBERSHIP.has(ctx.activeService)) return null;
+  // Only when the message is a bare price question (no new service named).
+  const m = (currentUserMessage ?? "").toLowerCase();
+  const asksPrice = /(tarif|prix|co[uû]te?|combien|cost|price|how\s+much)/i.test(m);
+  if (!asksPrice || ctx.currentMessageNamesService) return null;
+
+  const fr = !locale || locale.startsWith("fr");
+  const label: Record<string, { fr: string; en: string }> = {
+    pickleball: { fr: "Le pickleball", en: "Pickleball" },
+    basketball: { fr: "Le basketball", en: "Basketball" },
+    cours_en_groupe: { fr: "Les cours en groupe", en: "Group classes" },
+    club_de_course: { fr: "Le club de course", en: "The run club" },
+    salles_entrainement: { fr: "L'accès aux salles d'entraînement", en: "Training-room access" },
+  };
+  const svcLabel = label[ctx.activeService]!;
+  return {
+    followUpMode: "clarify",
+    assistantMessage: fr
+      ? `${svcLabel.fr} est inclus dans l'abonnement annuel — il n'y a pas de tarif séparé pour cette activité. Pour les détails d'accès ou de réservation, ${ctx.departmentName ?? "Nathalie Lambert"} est la personne-ressource. Souhaitez-vous ses coordonnées ?`
+      : `${svcLabel.en} is included with the annual membership — there's no separate fee for it. For access or booking details, ${ctx.departmentName ?? "Nathalie Lambert"} is the right contact. Would you like their details?`,
+  };
+}
+
+/**
  * Build the hard prompt directive that locks the LLM onto the active context.
  * Injected into the system prompt's extra-context block.
  */

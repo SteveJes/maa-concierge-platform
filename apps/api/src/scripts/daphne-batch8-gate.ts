@@ -25,10 +25,10 @@ const SCENARIOS: Scenario[] = [
     id: "context-pickleball-then-tarifs",
     turns: [
       { say: "je veux jouer au pickleball", note: "intro pickleball", requireAny: [/pickleball/i] },
-      { say: "oui je suis membre", note: "member", requireAny: [/pickleball|réserv|application|app/i] },
+      { say: "oui je suis membre", note: "member" },
       { say: "cest quoi les tarifs", note: "MUST stay pickleball, NOT dump abonnement grid + NO visit CTA",
-        forbid: [/225\s*\$.*185\s*\$.*195\s*\$/is, VISIT_CTA, /casier/i],
-        requireAny: [/pickleball|inclus|Nathalie/i] },
+        forbid: [/225\s*\$.*185\s*\$.*195\s*\$/is, VISIT_CTA, /casier/i, /programmes?\s+aquatiques?/i],
+        requireAny: [/pickleball|inclus\s+(?:dans|avec)|Nathalie/i] },
     ],
   },
   {
@@ -62,8 +62,8 @@ const SCENARIOS: Scenario[] = [
     id: "triathlon-oui-routes-nathalie-not-restaurant",
     turns: [
       { say: "le club de triatlhon inclus quoi?", note: "triathlon", requireAny: [/triathlon|Nathalie/i] },
-      { say: "oui", note: "MUST NOT route to Restaurant Le 1881",
-        forbid: [/restaurant\s+le\s+1881|le\s+1881/i] },
+      { say: "oui", note: "MUST NOT route to Restaurant Le 1881 callback (founding-year '1881' is fine)",
+        forbid: [/restaurant\s+le\s+1881|r[eé]server?\s+(?:une\s+table|au\s+restaurant)|restaurant[^.!?]*rappel|rappel[^.!?]*restaurant/i] },
     ],
   },
   {

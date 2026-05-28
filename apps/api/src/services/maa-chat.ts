@@ -18,7 +18,7 @@ import {
   tryAnswerPricingQuestion,
 } from "./maa-pricing.js";
 import { tryAnswerClinicPricing } from "./maa-deterministic-clinic.js";
-import { resolveActiveContext, buildActiveContextDirective } from "./maa-conversation-state.js";
+import { resolveActiveContext, buildActiveContextDirective, tryAnswerIncludedServicePricing } from "./maa-conversation-state.js";
 import {
   isScheduleQuestion,
   tryAnswerScheduleQuestion,
@@ -2603,6 +2603,23 @@ export async function answerMaaChat(
   // because the LLM sampled+mixed grids. Take the LLM out of the loop entirely:
   // return the ONE authoritative answer (verified against the Apr 23 2026 grid).
   // Runs even with v2 enabled — stability beats tone for clinic prices.
+  // Daphné batch 8 #1 — DETERMINISTIC included-service pricing. When the active
+  // service is a membership-included sport and the user asks bare "tarifs", the
+  // LLM kept dumping the abonnement grid. Answer deterministically instead.
+  const includedPricing = isMaaTenant && !isDubub && !skipDeterministicHandlers
+    ? tryAnswerIncludedServicePricing(activeContext, request.userMessage, request.locale)
+    : null;
+  if (includedPricing) {
+    return {
+      assistantMessage: includedPricing.assistantMessage,
+      followUpMode: includedPricing.followUpMode,
+      citations: [],
+      retrieval: { query: searchQuery, chunkCount: searchableChunks.length, resultCount: searchResults.length },
+      routing: serviceRouting,
+      suppressBookingCta: true,
+    };
+  }
+
   const clinicPricing = isMaaTenant && !isDubub && !skipDeterministicHandlers
     ? tryAnswerClinicPricing(resolvedUserMessage, request.locale)
     : null;
