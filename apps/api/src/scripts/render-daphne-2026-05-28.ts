@@ -39,9 +39,15 @@ async function renderPdf(absPath: string, filename: string): Promise<void> {
   const total = (await getDocumentProxy(new Uint8Array(fileBuf))).numPages;
   for (let pageNum = 1; pageNum <= total; pageNum++) {
     // Fresh copy per render — pdfjs transfers/detaches the underlying buffer.
+    // Local-only tooling: @napi-rs/canvas is not a prod dependency. The
+    // specifier is held in a variable so tsc doesn't try to resolve it during
+    // the prod typecheck/build (the module is present only on dev machines
+    // where this render script is run). Install it with:
+    //   pnpm --filter @platform/api add -D @napi-rs/canvas
+    const canvasPkg = "@napi-rs/canvas";
     const png = await renderPageAsImage(new Uint8Array(fileBuf), pageNum, {
       scale: 2.5,
-      canvasImport: () => import("@napi-rs/canvas") as never,
+      canvasImport: () => import(/* @vite-ignore */ canvasPkg) as never,
     });
     const outPath = path.join(OUT_DIR, `${base}-p${String(pageNum).padStart(2, "0")}.png`);
     await fs.writeFile(outPath, Buffer.from(png));
