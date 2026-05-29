@@ -211,6 +211,26 @@ Failure modes (each violation = one entry):
 - WALL_OF_TEXT: the assistant dumps a long list/menu of items+prices when a clickable link is the expected premium answer. (A short membership price summary is fine; a 15+-line menu dump is not.)
 - REPETITION: the assistant repeats essentially the same paragraph on consecutive turns instead of advancing.
 
+CALIBRATION EXAMPLES (use these to set strictness — they show what is and isn't a violation):
+
+CORRECT behaviors — NEVER flag these as violations:
+- "Je peux aussi prendre vos coordonnées ici." (lead capture)
+- "Pour vous rappeler, j'aurais besoin de votre nom, votre téléphone et votre courriel." (lead capture)
+- "Je peux transmettre votre demande à Francis Bradette." (transmit to staff)
+- "Voici le lien : [Massothérapie](https://clubsportifmaa.fliipapp.com/user/register/buy_service/1)" (link delivery)
+- "Je ne peux pas envoyer de courriel, mais je vous partage le lien directement ici." (correct refusal)
+- "514 845-2233, poste 234" (real clinic phone)
+- "fbradette@clubsportifmaa.com" (real public staff email)
+- "60 minutes 120 $" for massage (matches ground truth)
+
+WRONG behaviors — DO flag these:
+- "Je vais vous envoyer le menu à votre adresse stevejes@gmail.com" → FALSE_CAPABILITY
+- "Voici le courriel : info@resto1881.com" (NOT in ground truth) → HALLUCINATION
+- "90 minutes 105 $" for massage (canonical is 90→170, this contradicts ground truth) → HALLUCINATION
+- Gives club street address (2070 Peel) when user asked "à l'adresse email" → MISROUTE
+- Pickleball question gets the membership grid dump → MISROUTE / WALL_OF_TEXT
+- "Cliquez sur le bouton pour planifier votre visite" when discussing massage/nutrition → MISROUTE
+
 Return JSON ONLY:
 { "pass": boolean, "violations": [ { "turn": <user-turn number, 1-based>, "rule": "<one of the codes>", "evidence": "<short quote from the assistant>", "severity": "high" | "low" } ] }
 "pass" is false ONLY if there is at least one HIGH-severity violation. Be precise; do not invent violations; when unsure, do not flag.`;
@@ -234,14 +254,30 @@ async function chat(messages: Array<{ role: string; content: string }>, jsonMode
 }
 
 async function askBot(message: string, locale: string, conversationId: string | null): Promise<{ reply: string; conversationId: string | null }> {
-  const res = await fetch(`${BASE}/v1/tenants/maa/chat`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(conversationId ? { message, locale, conversationId } : { message, locale }),
-  });
-  if (!res.ok) throw new Error(`bot HTTP ${res.status}`);
-  const d = (await res.json()) as { assistantMessage?: string; conversationId?: string };
-  return { reply: d.assistantMessage ?? "", conversationId: d.conversationId ?? conversationId };
+  const body = conversationId ? { message, locale, conversationId } : { message, locale };
+  const RETRY_STATUS = new Set([502, 503, 504]);
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      const res = await fetch(`${BASE}/v1/tenants/maa/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (RETRY_STATUS.has(res.status)) {
+        lastError = new Error(`bot HTTP ${res.status}`);
+        await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+        continue;
+      }
+      if (!res.ok) throw new Error(`bot HTTP ${res.status}`);
+      const d = (await res.json()) as { assistantMessage?: string; conversationId?: string };
+      return { reply: d.assistantMessage ?? "", conversationId: d.conversationId ?? conversationId };
+    } catch (e) {
+      lastError = e;
+      await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("bot request failed after retries");
 }
 
 async function nextUserMessage(persona: Persona, transcript: Array<{ role: string; content: string }>): Promise<string> {
@@ -290,7 +326,8 @@ async function runPersona(persona: Persona): Promise<{ pass: boolean; violations
     const { reply, conversationId } = await askBot(userMsg, persona.locale ?? "fr-CA", cid);
     cid = conversationId;
     transcript.push({ role: "assistant", content: reply });
-    await new Promise((r) => setTimeout(r, 900));
+    // Throttle: 2.5s between turns so 24 personas don't tip the 2-vCPU droplet.
+    await new Promise((r) => setTimeout(r, 2500));
   }
   const verdict = await judge(transcript, persona.checklist);
   return { ...verdict, transcript };

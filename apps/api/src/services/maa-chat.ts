@@ -707,7 +707,12 @@ function fixNutritionAnsweredAsMassage(userMessage: string, message: string, loc
   // for a nutrition-pricing question. Treat technogym/180$ in a nutrition context
   // the same as the massage bleed: replace with the authoritative nutrition answer.
   const isTechnogymHallucination = /\btechnogym\b/i.test(message) || /\b180\s*\$/.test(message);
-  const namesNutritionPro = /\b(L[eé]a\s+Daoura|Justine\s+Doyon|Doyon-Blondin|naturopath|nutritionniste)\b/i.test(message);
+  // Narrow: only treat as "already a correct nutrition answer" if it names the
+  // ACTUAL nutritionists (Léa Daoura, Justine Doyon-Blondin). Generic words
+  // like "nutritionniste"/"naturopathe" can co-occur with the massage bleed
+  // (the bot says "voici la nutritionniste… [then 5 lines of massothérapie]"),
+  // and we want to fix THAT case too. Found on prod by the adversarial sim.
+  const namesNutritionPro = /\b(L[eé]a\s+Daoura|Justine\s+Doyon|Doyon-Blondin)\b/i.test(message);
   if ((!isAboutMassage && !isTechnogymHallucination) || (namesNutritionPro && !isTechnogymHallucination)) return message;
 
   const fr = isFrenchLocale(locale);
@@ -736,8 +741,12 @@ function surfaceMedicalPractitioners(userMessage: string, message: string, local
   const fr = isFrenchLocale(locale);
   const um = (userMessage ?? "").toLowerCase();
 
+  // Broadened: catches "quels médecins / quels sont vos médecins", "noms des médecins",
+  // "médecins du club", "what doctors do you have", in addition to the original
+  // "qui sont vos médecins". Adversarial sim found that "quels médecins sont
+  // disponibles" missed the original regex and the bot refused to name them.
   const isDirectoryQuestion =
-    /(qui\s+(?:sont|est)\s+(?:vos|les)?\s*m[eé]decin|who\s+(?:are|is)\s+the\s+doctor|liste\s+(?:des\s+)?m[eé]decin|vos\s+m[eé]decins)/i.test(um);
+    /(qui\s+(?:sont|est)\s+(?:vos|les)?\s*m[eé]decin|who\s+(?:are|is)\s+the\s+doctor|liste\s+(?:des\s+)?m[eé]decin|vos\s+m[eé]decins|quels?\s+(?:sont\s+)?(?:vos|les)?\s*m[eé]decins?|what\s+doctors|noms?\s+(?:des|de\s+vos)\s+m[eé]decins|m[eé]decins?\s+(?:du|au)\s+club)/i.test(um);
   const describesCondition =
     /(endom[eé]triose|endometriosis|perte\s+de\s+poids|weight\s+loss|hormonal|hormono|m[eé]nopause|fertilit|douleur|blessure|condition|sympt|maladie|diagnos|traitement|soigner|gu[eé]rir)/i.test(um);
 
@@ -1219,6 +1228,42 @@ function applyPostProcessGuards(
       .replace(/[^.!?]*\b(?:pr[eé]avis|avis)\s+de\s+24\s*(?:h|heures?)[^.!?]*[.!?]/giu, "")
       .replace(/\s{2,}/g, " ")
       .trim();
+  }
+
+  // 6e. Comprehensive massage-grid hallucination guard (canonical: 30→65,
+  //     60→120, 90→170, 120→230). Catches ANY wrong duration↔price pair in
+  //     massage context — e.g. "90 minutes ... 105 $" (the prod phrasings
+  //     replay caught this, where the LLM glued the legacy 105 $ to the
+  //     wrong duration). When a wrong pair is found, strip the bad sentence
+  //     and append the canonical line.
+  const MASSAGE_GRID: Record<string, number> = { "30": 65, "60": 120, "90": 170, "120": 230 };
+  const massageContextForGrid =
+    /\b(massage|massoth[eé]rapie|su[eé]dois|ashiatsu|tha[iï]|tissus\s+profonds?|deep\s+tissue)\b/i.test(out) &&
+    !/\b(th[eé]rapie\s+sportive|physioth[eé]rapie|physio\b|nutrition|m[eé]decin)\b/i.test(out);
+  if (massageContextForGrid) {
+    const gridSentences = out.split(/(?<=[.!?])\s+/);
+    let gridStripped = false;
+    const cleanedGrid = gridSentences.map((s) => {
+      const pairRe = /\b(30|60|90|120)\s*(?:minutes?|min)\b[^.!?]{0,60}\b(\d{2,3})\s*\$|\b(\d{2,3})\s*\$[^.!?]{0,60}\b(30|60|90|120)\s*(?:minutes?|min)\b/gi;
+      let m: RegExpExecArray | null;
+      let wrong = false;
+      while ((m = pairRe.exec(s)) !== null) {
+        const mins = m[1] ?? m[4]!;
+        const price = parseInt(m[2] ?? m[3]!, 10);
+        if (MASSAGE_GRID[mins] !== undefined && MASSAGE_GRID[mins] !== price) {
+          wrong = true;
+          break;
+        }
+      }
+      if (wrong) { gridStripped = true; return ""; }
+      return s;
+    });
+    if (gridStripped) {
+      out = cleanedGrid.filter((s) => s.length > 0).join(" ").replace(/\s{2,}/g, " ").trim();
+      out += fr
+        ? " Actuellement, les tarifs de massothérapie (taxes en sus) sont : 30 minutes à 65 $, 60 minutes à 120 $, 90 minutes à 170 $, 120 minutes à 230 $. Réservation via FLiiP (clubsportifmaa.fliipapp.com)."
+        : " Currently, massage rates (taxes extra): 30 minutes at $65, 60 minutes at $120, 90 minutes at $170, 120 minutes at $230. Booking via FLiiP (clubsportifmaa.fliipapp.com).";
+    }
   }
 
   // 7. Nursing (Mobile Mediq) hours hallucination. Hours are 6h-22h30; the LLM

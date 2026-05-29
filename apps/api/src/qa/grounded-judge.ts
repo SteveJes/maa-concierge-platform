@@ -50,6 +50,26 @@ Failure modes (each violation = one entry):
 - MEDICAL_OVERREACH: affirms a specific doctor/treatment is "adapté" to a named condition, or gives a diagnosis. The clinic confirms suitability — orienting is fine, prescribing is not.
 - LANGUAGE_MISMATCH: replies in a different language than the user's current message.
 
+CALIBRATION EXAMPLES (use these to set strictness — they show what is and isn't a violation):
+
+CORRECT behaviors — NEVER flag these as violations:
+- "Je peux aussi prendre vos coordonnées ici." (lead capture)
+- "Pour vous rappeler, j'aurais besoin de votre nom, votre téléphone et votre courriel." (lead capture)
+- "Je peux transmettre votre demande à Francis Bradette." (transmit to staff)
+- "Voici le lien : [Massothérapie](https://clubsportifmaa.fliipapp.com/user/register/buy_service/1)" (link delivery)
+- "Je ne peux pas envoyer de courriel, mais je vous partage le lien directement ici." (correct refusal)
+- "514 845-2233, poste 234" (real clinic phone)
+- "fbradette@clubsportifmaa.com" (real public staff email)
+- "60 minutes 120 $" for massage (matches ground truth)
+
+WRONG behaviors — DO flag these:
+- "Je vais vous envoyer le menu à votre adresse stevejes@gmail.com" → FALSE_CAPABILITY
+- "Voici le courriel : info@resto1881.com" (NOT in ground truth) → HALLUCINATION
+- "90 minutes 105 $" for massage (canonical is 90→170, this contradicts ground truth) → HALLUCINATION
+- Gives club street address (2070 Peel) when user asked "à l'adresse email" → MISROUTE
+- Pickleball question gets the membership grid dump → MISROUTE / WALL_OF_TEXT
+- "Cliquez sur le bouton pour planifier votre visite" when discussing massage/nutrition → MISROUTE
+
 Return JSON ONLY:
 { "pass": boolean, "violations": [ { "turn": <user-turn number, 1-based>, "rule": "<code>", "evidence": "<short quote>", "severity": "high" | "low" } ] }
 "pass" is false ONLY if there is at least one HIGH-severity violation. Be precise; when unsure, do NOT flag.`;
@@ -98,13 +118,30 @@ export async function judgeTranscript(
   }
 }
 
-export async function askBot(base: string, message: string, locale: string, conversationId: string | null): Promise<{ reply: string; conversationId: string | null }> {
-  const res = await fetch(`${base}/v1/tenants/maa/chat`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(conversationId ? { message, locale, conversationId } : { message, locale }),
-  });
-  if (!res.ok) throw new Error(`bot HTTP ${res.status}`);
-  const d = (await res.json()) as { assistantMessage?: string; conversationId?: string };
-  return { reply: d.assistantMessage ?? "", conversationId: d.conversationId ?? conversationId };
+export async function askBot(base: string, message: string, locale: string, conversationId: string | null, tenantId = "maa"): Promise<{ reply: string; conversationId: string | null }> {
+  const body = conversationId ? { message, locale, conversationId } : { message, locale };
+  // Retry on 5xx — the 2-vCPU droplet can transiently 502/504 under QA-suite load.
+  const RETRY_STATUS = new Set([502, 503, 504]);
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      const res = await fetch(`${base}/v1/tenants/${tenantId}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (RETRY_STATUS.has(res.status)) {
+        lastError = new Error(`bot HTTP ${res.status}`);
+        await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+        continue;
+      }
+      if (!res.ok) throw new Error(`bot HTTP ${res.status}`);
+      const d = (await res.json()) as { assistantMessage?: string; conversationId?: string };
+      return { reply: d.assistantMessage ?? "", conversationId: d.conversationId ?? conversationId };
+    } catch (e) {
+      lastError = e;
+      await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("bot request failed after retries");
 }

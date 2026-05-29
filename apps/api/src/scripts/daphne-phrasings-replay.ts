@@ -61,7 +61,7 @@ async function main(): Promise<void> {
     } catch (e) {
       console.error(`turn "${q}" → ERROR ${e instanceof Error ? e.message : e}`);
     }
-    await new Promise((r) => setTimeout(r, 800));
+    await new Promise((r) => setTimeout(r, 2000));
   }
 
   // Judge in overlapping windows so the judge keeps local context without
