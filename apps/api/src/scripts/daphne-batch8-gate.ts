@@ -107,6 +107,14 @@ const SCENARIOS: Scenario[] = [
         forbid: [VISIT_CTA] },
     ],
   },
+  {
+    id: "nonmember-pickleball-routes-francis",
+    turns: [
+      { say: "je ne suis pas membre, est-ce que je peux jouer au pickleball ?", note: "non-member intro", requireAny: [/membre/i] },
+      { say: "donc seulement membres ?", note: "MUST route a non-member to Francis (abonnement/visite), NOT Nathalie",
+        requireAny: [/francis|bradette|abonnement|adh[eé]sion|visite/i] },
+    ],
+  },
 ];
 
 // Reuse ONE conversationId per scenario — the server carries context server-side

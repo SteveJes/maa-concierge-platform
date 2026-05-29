@@ -69,6 +69,18 @@ question lists several ("…la plateforme d'entraînement, à la piscine…"), `
 can latch onto a service from that assistant question. Doesn't occur in real flows (the user
 names the service first; the widget keeps context). Revisit only if it shows up in prod.
 
+### Post-deploy canary follow-up (2 flows the canary flagged)
+- **`pickleball-non-member` — FIXED.** A non-member asking about pickleball was routed to
+  Nathalie (program owner) instead of Francis Bradette (memberships). The activeContext
+  machine over-locked the department. Now `resolveActiveContext` detects membership stance
+  and, for a declared non-member on a member-only service (pickleball/basketball/natation/
+  squash/group-classes/etc.), routes to Francis + allows the visit CTA — matching Daphné's
+  transcript rows 40-42. Gate scenario `nonmember-pickleball-routes-francis` added (11/11 local).
+- **`autonomy-buanderie-no-trailer` — NOTED, not fixed.** The bot adds a "valider au
+  514 845-2233" trailer on the *confirmed* 25 $/mois laundry price instead of stating it
+  plainly. Pre-existing grounding hedge, unrelated to batch 8; low severity (safe, just
+  over-cautious). Follow-up: let the confirmed buanderie fee answer without the validate trailer.
+
 ### Coverage map vs. Correctifs MAA 8 (all 9)
 1. Context after short replies — state machine + conversationId continuity ✅
 2. "Schedule a tour" CTA only for visite/abonnement — `buildActiveContextDirective` + `allowsVisitCta` ✅

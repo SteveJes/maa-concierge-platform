@@ -86,6 +86,8 @@ export interface MaaActiveContext {
   currentMessageIsBareFollowUp: boolean;
   /** True when the current message DOES name a (possibly new) service. */
   currentMessageNamesService: boolean;
+  /** True when the visit CTA is appropriate (membership/visite, OR a non-member on a member-only service). */
+  allowsVisitCta: boolean;
 }
 
 const BARE_FOLLOWUP_RE =
@@ -101,6 +103,38 @@ export function detectService(text: string): MaaServiceDef | null {
     if (def.re.test(t)) return def;
   }
   return null;
+}
+
+/**
+ * Services that are reserved to members. For a declared NON-MEMBER, leads on
+ * these must route to Francis Bradette (membership/visite) — NOT the program
+ * owner — because the visitor must JOIN before they can use the service. This
+ * matches Daphné's transcript (rows 40-42: non-member natation/pickleball →
+ * Francis Bradette, "options d'adhésion ou une visite").
+ */
+const MEMBER_RESTRICTED = new Set<string>([
+  "pickleball", "basketball", "powerwatts", "cirque_aerien", "triathlon",
+  "club_de_course", "natation", "cours_en_groupe", "squash", "salles_entrainement",
+]);
+
+const NON_MEMBER_RE =
+  /\b(?:je\s+ne\s+suis\s+pas\s+(?:encore\s+)?membre|pas\s+(?:encore\s+)?membre|non[- ]membre|sans\s+(?:être\s+)?abonnement|i['']?m\s+not\s+a\s+member|not\s+(?:yet\s+)?a\s+member|non[- ]member)\b/i;
+const MEMBER_DECLARED_RE =
+  /\b(?:je\s+suis\s+(?:déjà\s+|bien\s+)?membre|oui\s+je\s+suis\s+membre|mon\s+abonnement|en\s+tant\s+que\s+membre|i['']?m\s+a\s+member|my\s+membership)\b/i;
+
+export type MembershipStance = "member" | "non_member" | "unknown";
+
+/** Scan current + history (most-recent-first) for an explicit membership stance. */
+export function detectMembershipStance(
+  history: Array<{ role: "user" | "assistant"; content: string }>,
+  currentUserMessage: string,
+): MembershipStance {
+  const turns = [currentUserMessage ?? "", ...history.filter((t) => t.role === "user").map((t) => t.content).reverse()];
+  for (const t of turns) {
+    if (MEMBER_DECLARED_RE.test(t)) return "member";
+    if (NON_MEMBER_RE.test(t)) return "non_member";
+  }
+  return "unknown";
 }
 
 /**
@@ -148,17 +182,29 @@ export function resolveActiveContext(
       departmentLabel: null,
       currentMessageIsBareFollowUp: isBare,
       currentMessageNamesService: currentService !== null,
+      allowsVisitCta: false,
     };
   }
 
-  const dept = DEPARTMENT_LABEL[active.department];
+  // Non-member asking about a member-only service → route leads to Francis
+  // Bradette (membership/visite), not the program owner. The visitor must join
+  // first, so the visit CTA is appropriate here. Daphné transcript rows 40-42.
+  let effectiveDepartment = active.department;
+  let allowsVisitCta = active.allowsVisitCta === true;
+  if (MEMBER_RESTRICTED.has(active.service) && detectMembershipStance(history, trimmed) === "non_member") {
+    effectiveDepartment = "francis_bradette";
+    allowsVisitCta = true;
+  }
+
+  const dept = DEPARTMENT_LABEL[effectiveDepartment];
   return {
     activeService: active.service,
-    activeDepartment: active.department,
+    activeDepartment: effectiveDepartment,
     departmentName: dept.name,
     departmentLabel: dept.label,
     currentMessageIsBareFollowUp: isBare,
     currentMessageNamesService: currentService !== null,
+    allowsVisitCta,
   };
 }
 
@@ -210,8 +256,9 @@ export function buildActiveContextDirective(ctx: MaaActiveContext, locale: strin
   const svc = ctx.activeService;
   const deptName = ctx.departmentName;
 
-  // Only membership/visit services may use the "Planifier une visite" CTA.
-  const visitAllowed = MAA_SERVICE_REGISTRY.find((d) => d.service === svc)?.allowsVisitCta === true;
+  // Visit CTA is allowed for membership/visite intent, AND when a non-member
+  // asks about a member-only service (joining is the path forward).
+  const visitAllowed = ctx.allowsVisitCta;
 
   const lines: string[] = [];
   lines.push(
