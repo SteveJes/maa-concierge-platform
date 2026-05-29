@@ -19,7 +19,7 @@ const groundTruth = `CONFIRMED FACTS (these are REAL — never call them halluci
 - Natation adultes: 165 $ (1x/sem), 275 $ (2x/sem); privé 50/75/90 $; essai 30 $.
 - PowerWatts: 240/320 $ (1x), 400/560 $ (2x), drop-in 45/50 $, intro 65 $. Cirque aérien 90min: 220/330 $, drop-in 40 $.
 - Triathlon: includes FTP (bike) + VAM (run) calculation sessions. Current session spring 2026 (7 avril → 19 juin).
-- Restaurant Le 1881: groups 514-845-8002; reservations <6 via Libro; order online via ClusterPos; menus are PDFs.
+- Restaurant Le 1881: groups 514-845-8002; reservations <6 via Libro; order online via ClusterPos; menus are PDFs. The restaurant has NO public email address — any "info@resto1881.com" / "info@restaurant1881.com" / "contact@..." for the restaurant is a HALLUCINATION. Contact = phone only.
 - Staff (public, OK to give): Nathalie Lambert nlambert@ (sports programs), Francis Bradette fbradette@ poste 239 (memberships/visits), Elisabeth Boutin eboutin@ (Pilates reformer), Yvon Provençal (squash), Valérie De Vigne (boutique), all @clubsportifmaa.com.
 - Phones: reception/club 514-845-2233; sports clinic poste 234; restaurant groups 514-845-8002. REAL — never call a phone a hallucination.
 - SCHEDULES ARE DYNAMIC: real-time via MyWellness/FLiiP/dated PDFs. A dated/seasonal schedule WITH "actuellement" + the live link/PDF is CORRECT, not a hallucination.

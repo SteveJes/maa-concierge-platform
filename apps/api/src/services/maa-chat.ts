@@ -636,7 +636,7 @@ function rewriteObsoleteMassagePricing(message: string, locale: string | undefin
  * lundi ... à 19h" pattern and replace with an honest "à confirmer auprès de
  * la réception" line.
  */
-function stripInventedSpaHours(message: string, locale: string | undefined): string {
+function stripInventedSpaHours(message: string, locale: string | undefined, userMessage?: string): string {
   // Daphné batch 2026-05-27 — final-delivery hardening: the prior per-sentence
   // check missed cases where the LLM mentioned the spa in one sentence and the
   // hours in the next (Steve's screenshot 2026-05-27 spa probe). Switch to
@@ -664,11 +664,20 @@ function stripInventedSpaHours(message: string, locale: string | undefined): str
     return s;
   });
   if (!stripped) return message;
+  // 2026-05-29 (Steve): only ANNOUNCE "hours not published" when the visitor
+  // actually asked about hours. A feature/description question ("comment est le
+  // sauna ?") should just have the invented hours removed silently — appending
+  // a "hours aren't published" line out of nowhere reads as defensive noise.
+  const userAsksHours = userMessage
+    ? /\b(horaire|heure|ouvert|fermeture|disponibilit|jusqu|hours?|open|close|when\s+(?:does|do|is|are)|what\s+time)/i.test(userMessage)
+    : true; // backward compat: when no userMessage given, keep prior behavior
   const fr = isFrenchLocale(locale);
+  const stripped_only = cleaned.filter((s) => s.length > 0).join(" ").replace(/\s{2,}/g, " ").trim();
+  if (!userAsksHours) return stripped_only;
   const replacement = fr
     ? "Les horaires précis du spa ne sont pas publiés — la réception du Club (514 845-2233, poste 0) peut vous confirmer les plages d'ouverture du jour."
     : "Specific spa hours aren't published — Club reception ((514) 845-2233, ext. 0) can confirm today's opening times.";
-  return (cleaned.filter((s) => s.length > 0).join(" ") + " " + replacement).replace(/\s{2,}/g, " ").trim();
+  return (stripped_only + " " + replacement).replace(/\s{2,}/g, " ").trim();
 }
 
 /**
@@ -1206,6 +1215,40 @@ function applyPostProcessGuards(
       .replace(/\s+([.,;!?])/g, "$1")
       .trim();
   }
+
+  // 5c. HALLUCINATED CONTACT EMAIL guard (Steve 2026-05-29 live demo). The LLM
+  //     keeps inventing plausible-sounding contact emails — "info@resto1881.com",
+  //     "info@clubsportifmaa.com", "contact@..." — when none exist in the KB.
+  //     The ONLY real MAA contact emails are specific staff @clubsportifmaa.com
+  //     addresses (nlambert, fbradette, eboutin, etc.). Two-pass strip:
+  //       (a) Kill any address at a known-fabricated restaurant domain.
+  //       (b) Strip "par courriel à <addr>" / "contacter à <addr>" / "by email
+  //           at <addr>" recommendation phrases when <addr> is NOT on the
+  //           @clubsportifmaa.com / @dubub.com allowlist. Bare visitor-echo
+  //           emails (e.g. "votre courriel est X") are NOT touched.
+  // PASS 1 (wrapper + email TOGETHER): strip the whole "ou par courriel à <X>"
+  // / "écrire à <X>" / "contacter à <X>" phrase when <X> is NOT on the allowlist.
+  // The `|à` alternative catches the bare "à <email>" wrapper (after "514 845-8002 à info@...")
+  // so PASS 2's bare-email strip can't leave a dangling "à" orphan.
+  const RECOMMEND_EMAIL_RE = /(?:\s*(?:,\s*)?(?:ou\s+|et\s+)?(?:par\s+(?:courriel|e[- ]?mail|mail)\s+(?:à|au)|écrir(?:e|ez)\s+(?:un\s+(?:courriel|e[- ]?mail)\s+)?à|contact(?:er|ez)?\s+(?:par\s+(?:courriel|e[- ]?mail|mail)\s+)?à|joindre\s+(?:par\s+(?:courriel|e[- ]?mail|mail)\s+)?à|by\s+e[- ]?mail\s+at|via\s+e[- ]?mail\s+at|à)\s+)([a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,})/gi;
+  out = out.replace(RECOMMEND_EMAIL_RE, (match, email: string) =>
+    /@(?:clubsportifmaa\.com|dubub\.com)$/i.test(email) ? match : "",
+  );
+  // PASS 2 (fallback bare emails): kill any address at a known-fabricated
+  // restaurant domain, or "info@clubsportifmaa.com" (no such public mailbox).
+  out = out
+    .replace(/\s*[a-z0-9._%+-]+@(?:resto1881|restaurant1881|le1881|cafe1881)\.[a-z.]{2,}/gi, "")
+    .replace(/\s*info@clubsportifmaa\.com/gi, "");
+  // PASS 3 (orphan-wrapper cleanup): if PASS 2 stripped a bare email, the
+  // surrounding "ou par courriel à" / "ou écrire à" prefix may dangle.
+  // Scoped to the email-recommendation phrases ONLY — never strips a bare "à"
+  // (that's a legitimate French preposition like "à Montréal").
+  out = out
+    .replace(/\s*(?:,\s*)?(?:ou\s+|et\s+)?(?:par\s+(?:courriel|e[- ]?mail|mail)(?:\s+(?:à|au))?|écrir(?:e|ez)\s+(?:un\s+(?:courriel|e[- ]?mail)\s+)?à|contact(?:er|ez)?\s+par\s+(?:courriel|e[- ]?mail|mail)(?:\s+(?:à|au))?|joindre\s+par\s+(?:courriel|e[- ]?mail|mail)(?:\s+(?:à|au))?)\s*(?=[.,;:!?]|$)/gi, "")
+    .replace(/\s+([.,;:!?])/g, "$1")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s*\(\s*\)\s*/g, " ")
+    .trim();
 
   // 6c. The HTTP layer (resolveBookingFollowUp) is the SOLE source of the visit
   //     template. The LLM sometimes recites the phrase itself (it's in training
@@ -2472,7 +2515,7 @@ export async function answerMaaChat(
     // services, but if the LLM accidentally pulls them, the guard catches it).
     dububGuardedMessage = rewriteObsoleteMassagePricing(dububGuardedMessage, request.locale);
     dububGuardedMessage = stripInventedClinicalHours(dububGuardedMessage, request.locale);
-    dububGuardedMessage = stripInventedSpaHours(dububGuardedMessage, request.locale);
+    dububGuardedMessage = stripInventedSpaHours(dububGuardedMessage, request.locale, request.userMessage);
 
     // Daphné batch 2026-05-27 — Bug A guard, DUBUB path. Same anti-hallucinated
     // transmission claim treatment as the MAA path below.
@@ -3047,7 +3090,7 @@ export async function answerMaaChat(
   // physio. Strip those at the surface.
   cleanedAssistantMessage = rewriteObsoleteMassagePricing(cleanedAssistantMessage, request.locale);
   cleanedAssistantMessage = stripInventedClinicalHours(cleanedAssistantMessage, request.locale);
-  cleanedAssistantMessage = stripInventedSpaHours(cleanedAssistantMessage, request.locale);
+  cleanedAssistantMessage = stripInventedSpaHours(cleanedAssistantMessage, request.locale, request.userMessage);
   cleanedAssistantMessage = stripHallucinatedNutritionIntegrative(cleanedAssistantMessage, request.locale);
   cleanedAssistantMessage = fixNutritionAnsweredAsMassage(request.userMessage, cleanedAssistantMessage, request.locale);
   cleanedAssistantMessage = surfaceMedicalPractitioners(request.userMessage, cleanedAssistantMessage, request.locale);

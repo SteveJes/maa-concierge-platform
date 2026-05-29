@@ -510,7 +510,7 @@ function renderInline(text: string, onPreviewLink?: (url: string) => void): Reac
         <a
           key={`tel-${start}`}
           href={`tel:${tel}`}
-          style={{ color: "#1a6e3c", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(26,110,60,0.3)" }}
+          style={{ color: "var(--accent)", fontWeight: 600, textDecoration: "none", borderBottom: "1px solid rgba(212,175,95,0.35)" }}
         >
           {raw}
         </a>
