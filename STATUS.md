@@ -5,6 +5,33 @@
 
 ---
 
+## 2026-05-29 — Full client-style stabilization pass (zero-error target)
+
+Goal: concierge fully operational, tested the way the client (Daphné) actually uses it.
+
+### Shipped today (deployed)
+- `59cd8c1` — deterministic `send_link` ActionContract (Correctif #5): link delivered on "oui", no callback-coordinate detour.
+- `80a6a34` — non-member on a member-only service routes to **Francis Bradette** (memberships/visit), not the program owner (Daphné transcript rows 40-42).
+- `e17b5a6` — `maa-deterministic-facts.ts`: confirmed **buanderie 25 $/mois** (no hedge trailer) + **restaurant menu** canonical links (no improvised dishes).
+- `c8302b6` — membership monthly price (225/185/195/295 $) always carries a **confirm-with-Francis** hedge (post-process guard; runs only on the LLM path, skips if already hedged).
+
+### Root cause corrected
+The batch-8 "drift" was a **broken gate** (fresh conversationId per turn + server ignores body history → contextless turns). Fixed to reuse one conversationId per scenario, mirroring the real widget. State machine was working in prod all along.
+
+### Verification (all on prod, api.dubub.com / clients.dubub.com/demo/maa)
+- **daphne-replay canary: 45/45**, stable across 3 deploys ("CANARY PASS — safe to demo").
+- **batch-8 multi-turn gate: 11/11** on prod (incl. send_link, non-member routing).
+- **Playwright client-UI suite (live demo, Desktop Chrome): 0 hard failures** — 19 clean passes + 2 flaky-passed (#2 specific-availability, #4 external-price). Those 2 are LLM phrasing variance on *safe* answers (bot clarifies / refuses to validate); they pass on Playwright retry, not user-visible errors.
+- MAA intent regression: stale single-turn assertions only (#206 pickleball now authoritative); not concierge errors.
+
+### Deferred (Steve's call)
+- **Real-time schedule fetching** (MyWellness/FLiiP) — MyWellness is a JS SPA (no data in HTML). Deferred; team will request an official API. Keep safe hedge+redirect meanwhile. See [[project-dynamic-schedules]].
+
+### Known tooling papercut
+- `pnpm e2e:daphne:prod` fails on Windows (Unix env-var prefix). Run via bash: `PLAYWRIGHT_BASE_URL=https://clients.dubub.com/demo/maa npx playwright test e2e/daphne-regression.spec.ts --project="Desktop Chrome"`. Fix later with cross-env.
+
+---
+
 ## 2026-05-28 — Batch 8: real conversation-state machine (replaced the guard band-aids)
 
 Daphné's batch 8 (`Correctifs MAA 8.pdf` + annotated 48-turn conversation) showed the
