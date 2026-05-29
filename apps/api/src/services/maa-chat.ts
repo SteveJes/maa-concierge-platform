@@ -1129,6 +1129,20 @@ function applyPostProcessGuards(
       : "I can't make a diagnosis. For pain or injury, the Club's clinical team — physiotherapy or sports therapy — can be a good starting point. A trainer can then support you on prevention and exercise. The team will confirm the most appropriate service for your situation. Would you like me to pass on your request?";
   }
 
+  // 4. Membership-price confirm hedge (Daphné sources-vivantes rule: membership
+  //    prices are 'confirmed' but final conditions must be confirmed with Francis
+  //    Bradette). When the reply states a membership MONTHLY price (225/185/195/
+  //    295 $) but carries no confirm/validate hedge, append the orientation —
+  //    never just assert a price as final. Only the membership grid prices are
+  //    matched (lockers/buanderie are 25-75 $ and are handled deterministically).
+  const statesMembershipPrice = /\b(?:225|185|195|295)\s*\$\s*(?:par\s+mois|\/\s*mois|month)/i.test(out);
+  const alreadyHedged = /\b(?:confirm|à\s+partir\s+de|selon\s+(?:ma\s+base|les)|peuvent\s+varier|à\s+valider|Francis|conditions\s+finales)\b/i.test(out);
+  if (statesMembershipPrice && !alreadyHedged) {
+    out = out.trimEnd() + (fr
+      ? " Je vous recommande de confirmer les tarifs et conditions finales avec Francis Bradette, directeur des ventes."
+      : " I'd recommend confirming the final rates and conditions with Francis Bradette, our Director of Sales.");
+  }
+
   return out;
 }
 
