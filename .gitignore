@@ -12,6 +12,8 @@ dist
 # Track the shared subagent definitions — Steve + Daphné rely on them.
 !.claude/agents/
 !.claude/agents/**
+# Track the shared permissions allowlist; settings.local.json stays per-user.
+!.claude/settings.json
 
 # Next.js / Turbo / build artifacts
 .next/
