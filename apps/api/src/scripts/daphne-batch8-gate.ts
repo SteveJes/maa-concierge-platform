@@ -7,7 +7,7 @@
  *
  * Usage: cd apps/api && npx tsx src/scripts/daphne-batch8-gate.ts [--local]
  */
-const BASE = process.argv.includes("--local") ? "http://localhost:3001" : "https://api.dubub.com";
+const BASE = process.argv.includes("--local") ? (process.env.LOCAL_API ?? "http://localhost:4000") : "https://api.dubub.com";
 
 interface Turn {
   say: string;
@@ -109,31 +109,34 @@ const SCENARIOS: Scenario[] = [
   },
 ];
 
-async function send(message: string, locale: string, history: Array<{ role: "user" | "assistant"; content: string }>): Promise<string> {
+// Reuse ONE conversationId per scenario — the server carries context server-side
+// (in-memory buffer + NocoDB) keyed by conversationId, exactly like the real
+// widget. It does NOT read conversationHistory from the body, so threading our
+// own history was a no-op (every turn was contextless). First turn sends no
+// conversationId; the server mints one and we reuse it for the rest of the turns.
+async function send(message: string, locale: string, conversationId: string | null): Promise<{ reply: string; conversationId: string | null }> {
   const res = await fetch(`${BASE}/v1/tenants/maa/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, locale, conversationId: `b8gate-${Date.now()}-${Math.random().toString(36).slice(2)}`, conversationHistory: history }),
+    body: JSON.stringify(conversationId ? { message, locale, conversationId } : { message, locale }),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const d = (await res.json()) as { assistantMessage?: string; reply?: string };
-  return d.assistantMessage ?? d.reply ?? "";
+  const d = (await res.json()) as { assistantMessage?: string; reply?: string; conversationId?: string };
+  return { reply: d.assistantMessage ?? d.reply ?? "", conversationId: d.conversationId ?? conversationId };
 }
 
 async function main(): Promise<void> {
   console.log(`\nDaphné batch 8 multi-turn gate → ${BASE}\n`);
   let pass = 0, fail = 0;
   for (const sc of SCENARIOS) {
-    const history: Array<{ role: "user" | "assistant"; content: string }> = [];
+    let convId: string | null = null;
     let scenarioOk = true;
     const failNotes: string[] = [];
     for (const turn of sc.turns) {
       const locale = turn.locale ?? "fr-CA";
       let reply = "";
-      try { reply = await send(turn.say, locale, history); }
+      try { const r = await send(turn.say, locale, convId); reply = r.reply; convId = r.conversationId; }
       catch (e) { scenarioOk = false; failNotes.push(`"${turn.say}" → ERROR ${e instanceof Error ? e.message : e}`); break; }
-      history.push({ role: "user", content: turn.say });
-      history.push({ role: "assistant", content: reply });
       for (const re of turn.forbid ?? []) {
         if (re.test(reply)) { scenarioOk = false; failNotes.push(`[${turn.note}] FORBID matched ${re.source}\n      reply: ${reply.slice(0, 220)}`); }
       }

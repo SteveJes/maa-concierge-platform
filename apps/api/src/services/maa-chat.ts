@@ -19,6 +19,7 @@ import {
 } from "./maa-pricing.js";
 import { tryAnswerClinicPricing } from "./maa-deterministic-clinic.js";
 import { resolveActiveContext, buildActiveContextDirective, tryAnswerIncludedServicePricing } from "./maa-conversation-state.js";
+import { tryAnswerSendLink } from "./maa-action-contract.js";
 import {
   isScheduleQuestion,
   tryAnswerScheduleQuestion,
@@ -2597,6 +2598,25 @@ export async function answerMaaChat(
   // newly-onboarded tenant from the wizard), they would misfire — quoting
   // 225 $/mois membership grids to a spa or law firm. Gate them.
   const isMaaTenant = request.tenantCode === "maa" || !request.tenantCode;
+
+  // Daphné batch 8 (2026-05-28) Correctifs #5 — DETERMINISTIC link delivery.
+  // When the user asks for the platform/booking link (or says "oui" to a link
+  // offer), emit the exact canonical link for the active service instead of
+  // looping back to ask for callback coordinates. Removes the LLM from the
+  // drift-prone "oui pour accéder à la plateforme" → "oui" path (rows 18→19).
+  const sendLink = isMaaTenant && !isDubub && !skipDeterministicHandlers
+    ? tryAnswerSendLink(activeContext, request.userMessage, lastAssistantText, request.locale)
+    : null;
+  if (sendLink) {
+    return {
+      assistantMessage: sendLink.assistantMessage,
+      followUpMode: sendLink.followUpMode,
+      citations: [],
+      retrieval: { query: searchQuery, chunkCount: searchableChunks.length, resultCount: searchResults.length },
+      routing: serviceRouting,
+      suppressBookingCta: true,
+    };
+  }
 
   // Daphné batch 8 (2026-05-28) Correctifs #3 — DETERMINISTIC clinic pricing.
   // Massage/therapy/physio/nutrition/nursing prices were unstable across turns

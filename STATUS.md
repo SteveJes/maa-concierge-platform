@@ -27,24 +27,58 @@ architecture instead of more guards.
   → neutral clinic orientation. Doctors named ONLY for the literal directory question.
 - **`daphne-batch8-gate.ts`** — multi-turn replay of the 10 key failure sequences.
 
-### Honest test status — the key finding
-Gate runs vary **9/10 then 7/10 with different failures**. That variance IS the signal:
-- **Deterministic paths are STABLE and pass every run**: massage price stability, clinic
-  pricing, medical prudence, weight-loss (no medical push), Pilates-no-visit, group-classes
-  context, doctors-directory, EN swedish follow-up.
-- **LLM-dependent bare-"oui" follow-ups still DRIFT** (~30% of runs): "oui" after triathlon
-  and "oui pour accéder à la plateforme" sometimes pull generic club-overview content
-  ("fondé en 1881, plateaux d'entraînement…") instead of executing the offered action. The
-  context directive helps but the LLM doesn't obey it 100%, and RAG injects generic chunks
-  on vague input.
-
-### The remaining fix (NOT yet built) — ActionContract
-To make bare "oui" deterministic: persist the exact action the bot OFFERED last turn
-(send_link{url} / collect_lead{department} / give_contact) and EXECUTE it without the LLM
-when the user affirms. This removes the LLM from the drift-prone path entirely. It's the
-last structural piece from Daphné's original §12 (ActionContract) that isn't done.
-
 Commits: c673329, 713264b, 8adbebc, 5181adf, ce9d5e0.
+
+---
+
+## 2026-05-29 — Batch 8 follow-up: the "drift" was a BROKEN GATE, not the bot
+
+### Root cause of the 9/10↔7/10 variance (this was the real bug)
+The `daphne-batch8-gate.ts` harness sent a **fresh `conversationId` on every turn** and
+passed its own `conversationHistory` in the request body. But the server
+(`loadConversationHistory` in server.ts) **does not read `conversationHistory` from the
+body** — it carries context server-side via the in-memory buffer + NocoDB, keyed by
+`conversationId` (exactly like the real widget, which reuses one `conversationId` for the
+whole session). So **every gate turn was contextless** → `resolveActiveContext` saw no
+history → `activeService` was always null → deterministic handlers couldn't fire → the LLM
+answered each "oui" from scratch and drifted. The variance was the test, not the product.
+
+**Fix:** the gate now reuses ONE `conversationId` per scenario (first turn mints it, rest
+reuse it), matching the widget. Local result: **3 consecutive runs at 10/10** (was the
+unstable 7–9/10). The deterministic state machine was working in prod all along — the gate
+just never exercised it.
+
+### Built: deterministic `send_link` ActionContract (`maa-action-contract.ts`) — Correctif #5
+`tryAnswerSendLink(ctx, msg, lastAssistant, locale)` runs before the LLM. When the active
+service has a canonical booking/platform URL AND the user either asks for the link or says
+"oui" to a link offer, it emits the EXACT link (no LLM, no callback-coordinate detour). A
+follow-up "oui" after a link was delivered confirms the next step instead of regressing to
+"give me your name/phone/email". Verified live: "massage suédois" → "oui pour accéder à la
+plateforme" → emits the Massothérapie FLiiP link (routed to Clinique sportive); next "oui"
+→ "le lien ci-dessus vous mène à la réservation" (no coordinate request). Closes rows 18→19.
+
+### Correctif #9 (FTP/VAM "possibly invented") — NOT a bug, left as-is
+FTP/VAM IS in the knowledge base (`override/sports.json` → `inclus_avec_club_triathlon`:
+"Sessions de calcul du FTP/VAM"), and Daphné herself confirmed it in an earlier review
+(`_daphne_review_10`). The bot's answer was grounded. No suppression added — flagging it as
+a false alarm so we don't remove correct, sourced content.
+
+### Known minor edge case (low risk, documented not fixed)
+If a conversation has NO user turn that ever named a service but the bot's own clarifying
+question lists several ("…la plateforme d'entraînement, à la piscine…"), `resolveActiveContext`
+can latch onto a service from that assistant question. Doesn't occur in real flows (the user
+names the service first; the widget keeps context). Revisit only if it shows up in prod.
+
+### Coverage map vs. Correctifs MAA 8 (all 9)
+1. Context after short replies — state machine + conversationId continuity ✅
+2. "Schedule a tour" CTA only for visite/abonnement — `buildActiveContextDirective` + `allowsVisitCta` ✅
+3. Massage price stability — `tryAnswerClinicPricing` (deterministic) ✅
+4. Pilates reformer ≠ visit funnel — service registry → Elisabeth Boutin ✅
+5. Links executed on "oui" — `tryAnswerSendLink` (deterministic) ✅ (NEW)
+6. Medical prudence — `surfaceMedicalPractitioners` reversal ✅
+7. Department routing (restaurant/clinic/sports/etc.) — service registry + active dept ✅
+8. Repetition / pass-to-action — link delivery + included-pricing short-circuit reduce loops ✅ (partial)
+9. FTP/VAM "invented" — false alarm, sourced ✅ (no change)
 
 ---
 
