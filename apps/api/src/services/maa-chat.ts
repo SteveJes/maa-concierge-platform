@@ -20,7 +20,7 @@ import {
 import { tryAnswerClinicPricing } from "./maa-deterministic-clinic.js";
 import { resolveActiveContext, buildActiveContextDirective, tryAnswerIncludedServicePricing } from "./maa-conversation-state.js";
 import { tryAnswerSendLink } from "./maa-action-contract.js";
-import { tryAnswerLaundry, tryAnswerRestaurantMenu } from "./maa-deterministic-facts.js";
+import { tryAnswerLaundry, tryAnswerRestaurantMenu, tryAnswerExpertsDirectory } from "./maa-deterministic-facts.js";
 import {
   isScheduleQuestion,
   tryAnswerScheduleQuestion,
@@ -2622,7 +2622,8 @@ export async function answerMaaChat(
   const deterministicFact =
     isMaaTenant && !isDubub && intentSafetyContextEarly === undefined
       ? tryAnswerLaundry(request.userMessage, request.locale) ??
-        tryAnswerRestaurantMenu(request.userMessage, activeContext.activeService, request.locale)
+        tryAnswerRestaurantMenu(request.userMessage, activeContext.activeService, request.locale) ??
+        tryAnswerExpertsDirectory(request.userMessage, request.locale)
       : null;
   if (deterministicFact) {
     return {

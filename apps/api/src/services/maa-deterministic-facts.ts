@@ -71,3 +71,46 @@ export function tryAnswerRestaurantMenu(
 
   return { followUpMode: "clarify", assistantMessage: lines.join("\n") };
 }
+
+/**
+ * "où puis-je voir la liste des instructeurs ?" / "vos entraîneurs personnels"
+ * Daphné Review #5 (p.23): the concierge must point to the official experts pages
+ * so the visitor can click each person for their VERIFIED profile — safer than
+ * the LLM naming instructors + specialties (which it sometimes invents).
+ */
+export function tryAnswerExpertsDirectory(
+  userMessage: string,
+  locale: string | undefined,
+): { assistantMessage: string; followUpMode: "clarify" } | null {
+  const m = userMessage ?? "";
+  const mentionsExpert = /\b(instructeurs?|instructors?|entra[iî]neurs?|trainers?|coachs?)\b/i.test(m);
+  const wantsList =
+    /\b(liste|voir|consulter|o[uù]\s+(?:puis|peux|trouver)|qui\s+sont|tous\s+les|toutes\s+les|sp[eé]cialit|specialties|list|see|view|profils?|noms?)\b/i.test(m) ||
+    /\bqui\s+(?:sont|est)\b/i.test(m);
+  if (!mentionsExpert || !wantsList) return null;
+
+  const fr = isFr(locale);
+  let label: string;
+  let url: string;
+  let noun: string;
+  if (/\bpersonnels?\b|\bpersonal\b/i.test(m)) {
+    label = fr ? "Entraîneurs personnels MAA" : "MAA personal trainers";
+    url = "https://www.clubsportifmaa.com/fr/experts/entraineurs-personnels/";
+    noun = fr ? "entraîneurs personnels" : "personal trainers";
+  } else if (/\bdu\s+club\b|\bclub\s+trainers?\b/i.test(m)) {
+    label = fr ? "Entraîneurs du club MAA" : "MAA club trainers";
+    url = "https://www.clubsportifmaa.com/fr/experts/entraineurs-de-clubs/";
+    noun = fr ? "entraîneurs du club" : "club trainers";
+  } else {
+    label = fr ? "Instructeurs MAA" : "MAA instructors";
+    url = "https://www.clubsportifmaa.com/fr/experts/instructeurs/";
+    noun = fr ? "instructeurs" : "instructors";
+  }
+
+  return {
+    followUpMode: "clarify",
+    assistantMessage: fr
+      ? `Avec plaisir — vous pouvez voir tous nos ${noun} et leurs spécialités ici : [${label}](${url}). Cliquez sur une personne pour consulter son profil détaillé. Souhaitez-vous que je vous oriente vers une spécialité en particulier ?`
+      : `With pleasure — you can see all our ${noun} and their specialties here: [${label}](${url}). Click on a person to view their detailed profile. Would you like me to point you toward a particular specialty?`,
+  };
+}
