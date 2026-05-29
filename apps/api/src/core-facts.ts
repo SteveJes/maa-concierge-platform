@@ -184,6 +184,20 @@ function looksLikeLocationQuestion(
 ): boolean {
   const normalized = normalizeIntentText(userMessage);
 
+  // Guard: "adresse email / courriel", "email address", or any message that
+  // contains an actual email address must NEVER trip the street-address
+  // detector. The substring "adresse"/"address" inside "adresse email" / "email
+  // address" was short-circuiting to the club's physical address (2070 Peel).
+  // NOTE: substring (not \b) — normalizeIntentText strips the apostrophe so
+  // "à l'adresse" becomes "ladresse", and \badresse\b would miss it (same word-
+  // boundary trap the rest of this file hit with accents).
+  if (
+    (/(?:adresse|address)/.test(normalized) && /(?:e[- ]?mail|email|courriel|\bmail\b)/.test(normalized)) ||
+    /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(userMessage)
+  ) {
+    return false;
+  }
+
   if (isFrenchLocale(locale)) {
     // Guard: short messages mentioning clothing / dress code must never trip
     // the address detector. "dress" Levenshtein-distance 2 from "adresse"

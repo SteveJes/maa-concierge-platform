@@ -162,11 +162,12 @@ export function tryAnswerSendLink(
 
 function resolveLink(service: string, msg: string, last: string): ServiceLink | null {
   if (service === "restaurant") {
-    const wantsOrder = /\b(command|order|en\s+ligne|menu|emporter|take\s*out|livraison|delivery)\b/i.test(`${msg} ${last}`);
+    const wantsOrder = /\b(command|order|en\s+ligne|emporter|take\s*out|livraison|delivery|clusterpos)\b/i.test(`${msg} ${last}`);
     const wantsReserve = /\b(r[eé]serv|reserve|table|booking|libro)\b/i.test(`${msg} ${last}`);
     if (wantsOrder && !wantsReserve) return RESTAURANT_ORDER;
-    if (wantsReserve) return RESTAURANT_RESERVE;
-    return RESTAURANT_ORDER;
+    // Default to RESERVATION (Libro) — it's the safer "send me the link" target
+    // for the restaurant; "commande en ligne" must be explicitly requested.
+    return RESTAURANT_RESERVE;
   }
   return SERVICE_LINK[service] ?? null;
 }

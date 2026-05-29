@@ -33,43 +33,69 @@ export function tryAnswerLaundry(
   };
 }
 
-/** "pouvez-vous m'envoyer le menu du restaurant ?" / "le menu du 1881" */
+/**
+ * Restaurant menu requests → always deliver LINKS (never a wall of dishes, never
+ * an "I'll email it to you" false promise). Daphné Review p.37: she praised the
+ * link-based menu answer. Fires on any menu/carte/pdf request in restaurant
+ * context, including specific menus ("menu du midi", "menu principal"), a
+ * "version pdf" follow-up, or an email-delivery request (which we honestly
+ * decline — the concierge cannot email, it shares the link in chat).
+ */
 export function tryAnswerRestaurantMenu(
   userMessage: string,
   activeService: string | null,
   locale: string | undefined,
 ): { assistantMessage: string; followUpMode: "clarify" } | null {
   const m = userMessage ?? "";
-  const mentionsMenu = /\bmenu\b|carte\s+(?:des\s+vins|du\s+restaurant)/i.test(m);
   const restaurantContext =
     activeService === "restaurant" || /\b(restaurant|le\s+1881|resto|1881)\b/i.test(m);
-  // Only fire when the visitor is clearly asking to SEE/RECEIVE the menu (not,
-  // e.g., "le menu change-t-il ?" handled fine by the LLM) — require a request verb
-  // or a bare "menu du restaurant".
-  const asksForMenu =
-    mentionsMenu &&
-    restaurantContext &&
-    /\b(envoyer?|envoie|montre[rz]?|voir|consulter|avoir|donne[rz]?|partage[rz]?|acc[eé]der|c['']?est\s+quoi|quel)\b|m['']?envoyer|le\s+menu\s+du\s+restaurant/i.test(m);
-  if (!asksForMenu) return null;
+  if (!restaurantContext) return null;
+
+  const mentionsMenu = /\bmenus?\b|carte\s+des\s+vins|version\s+pdf/i.test(m);
+  // A request to see/receive/select the menu — verbs, delivery words, or a
+  // specific menu name. Excludes pure musings ("le menu change-t-il souvent ?").
+  const isRequest =
+    /\b(envoyer?|envoie|envoyez|montre[rz]?|voir|consulter|avoir|donne[rz]?|partage[rz]?|acc[eé]der|recevoir|c['']?est\s+quoi|quel|aimerais|veux|voudrais|svp|s['']?il\s+vous\s+pla[iî]t|please|send|show|see|view)\b/i.test(m) ||
+    /\b(pdf|courriel|e[- ]?mail|email|version)\b/i.test(m) ||
+    /\b(midi|d[eî]ner|d[eé]jeuner|principal|soir|souper|vins)\b/i.test(m) ||
+    /\ble\s+menu\b/i.test(m);
+  // In restaurant context, an email/PDF delivery request (e.g. "oui par email à
+  // X svp", "envoyez-le moi par courriel") is almost always about the menu —
+  // the restaurant's only deliverable. Fire even without the word "menu" so the
+  // LLM can't invent an email address or claim it will email the document.
+  const restaurantDeliveryRequest =
+    /\b(?:par\s+(?:e[- ]?mail|email|courriel)|version\s+pdf|le\s+pdf)\b/i.test(m) ||
+    /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(m);
+  if (!((mentionsMenu && isRequest) || restaurantDeliveryRequest)) return null;
 
   const fr = isFr(locale);
-  const lines = fr
+  const wantsEmail = /\b(courriel|e[- ]?mail|email)\b/i.test(m);
+
+  const links = fr
     ? [
-        "Avec plaisir — voici les menus du Restaurant Le 1881 :",
         "- [Menu principal](https://www.clubsportifmaa.com/wp-content/uploads/2025/10/1881_Menu1_Fr_Oct2025.pdf)",
         "- [Menu déjeuner](https://www.clubsportifmaa.com/wp-content/uploads/2025/10/1881_Menu2_Fr_Oct2025.pdf)",
         "- [Carte des vins](https://www.clubsportifmaa.com/wp-content/uploads/2023/09/1881_Menu_CarteDesVins.pdf)",
-        "Vous pouvez aussi [commander en ligne](https://clubsportifmaa.clusterpos.com/menu). Souhaitez-vous de l'aide pour réserver une table ?",
       ]
     : [
-        "With pleasure — here are the Restaurant Le 1881 menus:",
         "- [Main menu](https://www.clubsportifmaa.com/wp-content/uploads/2025/10/1881_Menu1_Fr_Oct2025.pdf)",
         "- [Lunch menu](https://www.clubsportifmaa.com/wp-content/uploads/2025/10/1881_Menu2_Fr_Oct2025.pdf)",
         "- [Wine list](https://www.clubsportifmaa.com/wp-content/uploads/2023/09/1881_Menu_CarteDesVins.pdf)",
-        "You can also [order online](https://clubsportifmaa.clusterpos.com/menu). Would you like help reserving a table?",
       ];
 
-  return { followUpMode: "clarify", assistantMessage: lines.join("\n") };
+  const intro = wantsEmail
+    ? (fr
+        ? "Je ne peux pas envoyer de courriel, mais je vous partage les menus du Restaurant Le 1881 directement ici — il suffit de cliquer :"
+        : "I can't send emails, but here are the Restaurant Le 1881 menus right here — just click:")
+    : (fr
+        ? "Avec plaisir — voici les menus du Restaurant Le 1881 :"
+        : "With pleasure — here are the Restaurant Le 1881 menus:");
+
+  const outro = fr
+    ? "Vous pouvez aussi [commander en ligne](https://clubsportifmaa.clusterpos.com/menu). Souhaitez-vous de l'aide pour réserver une table ?"
+    : "You can also [order online](https://clubsportifmaa.clusterpos.com/menu). Would you like help reserving a table?";
+
+  return { followUpMode: "clarify", assistantMessage: [intro, ...links, outro].join("\n") };
 }
 
 /**

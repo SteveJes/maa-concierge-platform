@@ -595,8 +595,18 @@ function stripInventedClinicalHours(message: string, locale: string | undefined)
  */
 function rewriteObsoleteMassagePricing(message: string, locale: string | undefined): string {
   // Detect the legacy grid signature: any of the old durations paired with the old prices.
-  const legacyGridSignature =
-    /\b25\s*minutes?\b[^.!?]{0,40}\b60\s*\$|\b55\s*minutes?\b[^.!?]{0,40}\b80\s*\$|\b85\s*minutes?\b[^.!?]{0,40}\b105\s*\$/i;
+  // Match either order: "25 minutes à 60 $" OR "60 $ pour 25 minutes" — the LLM
+  // emits both. The legacy grid signature is any two of the (duration, price)
+  // pairs co-occurring in the same sentence.
+  const legacyPair = (mins: number, price: number) =>
+    new RegExp(
+      `\\b${mins}\\s*minutes?\\b[^.!?]{0,40}\\b${price}\\s*\\$|\\b${price}\\s*\\$[^.!?]{0,40}\\b${mins}\\s*minutes?\\b`,
+      "i",
+    );
+  const legacyGridSignature = new RegExp(
+    [legacyPair(25, 60), legacyPair(55, 80), legacyPair(85, 105)].map((r) => r.source).join("|"),
+    "i",
+  );
   if (!legacyGridSignature.test(message)) return message;
 
   const fr = isFrenchLocale(locale);
@@ -632,7 +642,7 @@ function stripInventedSpaHours(message: string, locale: string | undefined): str
   // hours in the next (Steve's screenshot 2026-05-27 spa probe). Switch to
   // whole-message detection: if ANY sentence mentions spa AND ANY sentence has
   // a weekly hours grid, strip the hours sentence(s).
-  const mentionsSpaAnywhere = /\b(spa|sauna|hammam|bain\s+(?:à\s+remous|tourbillon|vapeur)|hot\s+tub|jacuzzi|steam\s+room)\b/i.test(message);
+  const mentionsSpaAnywhere = /\b(spa|sauna|hammam|bain\s+(?:à\s+remous|tourbillon|vapeur)|hot\s+tub|jacuzzi|steam\s+room|salle\s+de\s+d[eé]tente)\b/i.test(message);
   if (!mentionsSpaAnywhere) return message;
 
   const sentences = message.split(/(?<=[.!?])\s+/);
@@ -642,7 +652,11 @@ function stripInventedSpaHours(message: string, locale: string | undefined): str
       /\b(?:du\s+)?(?:lundi|mardi|mercredi|jeudi|vendredi)\s*(?:au|to)?\s*(?:vendredi|dimanche|samedi)?\s*(?:de\s+)?\d{1,2}\s*h\s*\d{0,2}\s*(?:à|to|-)\s*\d{1,2}\s*h/i.test(s) ||
       /\b(?:open|hours?|heures?\s+d['']?ouverture)\s+(?:sont\s+)?(?:du\s+)?(?:from\s+)?\d{1,2}(?:am|pm|:\d{2}|\s*h)?\s+(?:to|until|à|-)\s+\d{1,2}(?:am|pm|:\d{2}|\s*h)?\b/i.test(s) ||
       // Also catch "Les heures d'ouverture sont du lundi au vendredi de 9 h à 19 h"
-      /\b(?:heures?\s+d['']?ouverture|opening\s+hours?)\s+(?:sont|are)\s+(?:du|from)\s+(?:lundi|monday)/i.test(s);
+      /\b(?:heures?\s+d['']?ouverture|opening\s+hours?)\s+(?:sont|are)\s+(?:du|from)\s+(?:lundi|monday)/i.test(s) ||
+      // 2026-05-29 — adversarial sim caught: "9 h à 19 h en semaine, 11 h à 15 h les fins de semaine"
+      // (summary form, not day-by-day). Match an hours range followed by en semaine / weekday / weekend / fin de semaine.
+      /\b\d{1,2}\s*h(?:\s*\d{2})?\s*(?:à|to|-)\s*\d{1,2}\s*h(?:\s*\d{2})?\s+(?:en\s+semaine|on\s+weekdays?|le\s+(?:week-?end|weekend)|les?\s+fins?\s+de\s+semaine|weekends?)\b/i.test(s) ||
+      /\b(?:en\s+semaine|on\s+weekdays?|le\s+(?:week-?end|weekend)|les?\s+fins?\s+de\s+semaine)\s+(?:de\s+)?\d{1,2}\s*h(?:\s*\d{2})?\s*(?:à|to|-)\s*\d{1,2}\s*h/i.test(s);
     if (hasFixedWeeklyGrid) {
       stripped = true;
       return "";
@@ -1141,6 +1155,91 @@ function applyPostProcessGuards(
     out = out.trimEnd() + (fr
       ? " Je vous recommande de confirmer les tarifs et conditions finales avec Francis Bradette, directeur des ventes."
       : " I'd recommend confirming the final rates and conditions with Francis Bradette, our Director of Sales.");
+  }
+
+  // 5. FALSE EMAIL-CAPABILITY guard. The concierge CANNOT send emails to the
+  //    visitor — it shares clickable links in chat (lead capture emails the
+  //    TEAM, not the visitor). The LLM sometimes offers "je vous envoie le menu
+  //    par courriel à <adresse>" and then can't deliver. Neutralize any
+  //    offer/promise to email a document/menu/info TO the visitor.
+  const emailOfferFr =
+    /(?:souhaitez[- ]vous\s+(?:que\s+je\s+(?:vous\s+)?)?|je\s+(?:peux|vais|pourrai[s]?)\s+(?:vous\s+)?|nous\s+(?:pouvons|allons)\s+(?:vous\s+)?)?(?:envoyer?|envoie[rz]?|transmettre|faire\s+parvenir|exp[eé]dier|recevoir)\s+[^.!?]*?\b(?:par\s+(?:courriel|e[- ]?mail|email|mail)|à\s+(?:l['']?adresse\s+(?:courriel|e[- ]?mail|email)|votre\s+(?:adresse\s+)?(?:courriel|e[- ]?mail|email))|à\s+[a-z0-9._%+-]+@[a-z0-9.-]+)[^.!?]*[.!?]/giu;
+  const emailOfferEn =
+    /\bI\s+(?:can|will|could|would)\s+(?:send|e[- ]?mail|email|forward)\s+[^.!?]*?\b(?:by\s+(?:e[- ]?mail|email)|to\s+your\s+(?:e[- ]?mail|email)|to\s+[a-z0-9._%+-]+@[a-z0-9.-]+)[^.!?]*[.!?]/giu;
+  if (emailOfferFr.test(out) || emailOfferEn.test(out)) {
+    out = out.replace(emailOfferFr, "").replace(emailOfferEn, "").replace(/\s{2,}/g, " ").trim();
+    out = out + (fr
+      ? " Je ne peux pas envoyer de courriel, mais je vous partage le lien directement ici."
+      : " I can't send emails, but I'll share the link with you right here.");
+  }
+
+  // 6b. Obsolete triathlon / natation-maîtres dates (Daphné review #10). The
+  //     "12 janvier au 3 avril" range is OBSOLETE; the current session is
+  //     7 avril → 19 juin 2026. Replace any leaked old range.
+  out = out.replace(
+    /\b(?:du\s+)?(?:lundi\s+)?12\s+janvier\s+(?:au|à|jusqu['']?au)\s+(?:vendredi\s+)?3\s+avril(?:\s+\d{4})?/gi,
+    fr ? "actuellement (session printemps 2026, du 7 avril au 19 juin)" : "currently (spring 2026 session, April 7 to June 19)",
+  );
+
+  // 6. Massage has NO member/guest price split (Daphné Correctifs #3 — the
+  //    "85 $ pour les invités" was wrong; massage is a flat 65/120/170/230).
+  //    Scoped to massage context ONLY — sports therapy / physio legitimately
+  //    DO have a member/guest split, so we must not touch those. Strip any
+  //    guest-price clause and the now-redundant "pour les membres" qualifier.
+  const isMassageContext = /\b(massage|massoth[eé]rapie|su[eé]dois|ashiatsu|tha[iï]|tissus\s+profonds?|deep\s+tissue)\b/i.test(out) &&
+    !/\b(th[eé]rapie\s+sportive|physioth[eé]rapie|physio\b)\b/i.test(out);
+  if (isMassageContext && /(?:\binvit[ée]s?\b|\bpour\s+les\s+membres\b|\$\s+for\s+(?:members?|guests?))/i.test(out)) {
+    out = out
+      .replace(/[,;]?\s*(?:et\s+)?\d{2,3}\s*\$\s*(?:pour\s+)?(?:les\s+)?invit[ée]s?\b/gi, "")
+      .replace(/\s*pour\s+les\s+membres\b/gi, "")
+      .replace(/\$\s+for\s+(?:guests?|visitors?|members?)\b/gi, "")
+      .replace(/\s{2,}/g, " ")
+      .replace(/\s+([.,;!?])/g, "$1")
+      .trim();
+  }
+
+  // 6c. The HTTP layer (resolveBookingFollowUp) is the SOLE source of the visit
+  //     template. The LLM sometimes recites the phrase itself (it's in training
+  //     data + prior demo transcripts), which leaks it into non-visit answers
+  //     where the suppression flag would otherwise hide it. Strip it always.
+  out = out
+    .replace(/Cliquez\s+sur\s+le\s+bouton\s+ci[- ]?dessous\s+pour\s+planifier\s+votre\s+visite[^.!?]*[.!?]/giu, "")
+    .replace(/Click\s+(?:the\s+)?button\s+below\s+to\s+(?:plan|schedule)\s+(?:your\s+)?(?:visit|tour)[^.!?]*[.!?]/giu, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+  // 6d. Nutrition: the LLM keeps inventing "formulaire de santé obligatoire" and
+  //     "préavis de 24 heures" for nutrition appointments (Daphné review #18:
+  //     those policies are NOT in the KB). Strip when in nutrition context.
+  const isNutritionContext = /\b(nutrition|nutritionniste|naturopath|di[eé]t[eé]ti)\b/i.test(out) &&
+    !/\b(massoth[eé]rapie|massage|physio|th[eé]rapie\s+sportive)\b/i.test(out);
+  if (isNutritionContext) {
+    out = out
+      .replace(/[^.!?]*\bformulaire\s+de\s+sant[eé][^.!?]*[.!?]/giu, "")
+      .replace(/[^.!?]*\b(?:pr[eé]avis|avis)\s+de\s+24\s*(?:h|heures?)[^.!?]*[.!?]/giu, "")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+  }
+
+  // 7. Nursing (Mobile Mediq) hours hallucination. Hours are 6h-22h30; the LLM
+  //    sometimes invents "lundi-vendredi 9h-19h, weekend 11h-15h" (the spa-style
+  //    grid). Replace any inconsistent weekly grid in nursing/Mobile-Mediq/ITSS
+  //    context with the correct line.
+  const isNursingContext = /\b(soins?\s+infirmiers?|infirmi[eè]re|mobile\s+mediq|\bitss\b|d[eé]pistage|nursing|nurse)\b/i.test(out);
+  const hasInventedHours =
+    /\b(?:du\s+)?lundi\s+(?:au|to)\s+vendredi\s+(?:de\s+)?\d{1,2}\s*h/i.test(out) ||
+    /\b\d{1,2}\s*h\s*(?:à|to|-)\s*\d{1,2}\s*h\s+(?:en\s+semaine|on\s+weekdays?)/i.test(out);
+  const hasCorrectNursingHours = /\b6\s*h\s*(?:à|to|-)\s*22\s*h\s*30/i.test(out);
+  if (isNursingContext && hasInventedHours && !hasCorrectNursingHours) {
+    out = out
+      .split(/(?<=[.!?])\s+/)
+      .map((s) => (/\b(?:du\s+)?lundi\s+(?:au|to)\s+vendredi\s+(?:de\s+)?\d{1,2}\s*h|\b\d{1,2}\s*h\s*(?:à|to|-)\s*\d{1,2}\s*h\s+(?:en\s+semaine|on\s+weekdays?|le\s+(?:week-?end|weekend)|les?\s+fins?\s+de\s+semaine)/i.test(s) ? "" : s))
+      .filter((s) => s.length > 0)
+      .join(" ")
+      .trim();
+    out += fr
+      ? " Les soins infirmiers Mobile Mediq sont offerts de 6 h à 22 h 30."
+      : " Mobile Mediq nursing hours are 6 a.m. to 10:30 p.m.";
   }
 
   return out;
@@ -2930,6 +3029,18 @@ export async function answerMaaChat(
     /N['']?ouvrez pas la visite du club|Do not switch to the club visit/i.test(resolvedUserMessage);
   const computedSuppress = deriveSuppressBookingCta(request.userMessage, finalFollowUpMode);
 
+  // Daphné Correctif #2 + review categories (nutrition, nursing, spa, massage,
+  // pilates, powerwatts, sports therapy, physio, restaurant…): when the ACTIVE
+  // service is not a membership/visite intent, the visit-booking template must
+  // NEVER fire. Force followUpMode off 'calendly' AND suppress the CTA so the
+  // HTTP layer's resolveBookingFollowUp() can't overwrite the answer with
+  // "Cliquez sur le bouton ci-dessous pour planifier votre visite".
+  const activeServiceForbidsVisit =
+    activeContext.activeService != null && activeContext.allowsVisitCta !== true;
+  if (activeServiceForbidsVisit && finalFollowUpMode === "calendly") {
+    finalFollowUpMode = "clarify";
+  }
+
   return {
     assistantMessage: cleanedAssistantMessage,
     followUpMode: finalFollowUpMode,
@@ -2940,7 +3051,7 @@ export async function answerMaaChat(
       resultCount: searchResults.length,
     },
     routing: serviceRouting,
-    suppressBookingCta: actionContractFired || computedSuppress,
+    suppressBookingCta: actionContractFired || computedSuppress || activeServiceForbidsVisit,
     usage: usageData ? {
       model: usageData.model,
       inputTokens: usageData.inputTokens,
