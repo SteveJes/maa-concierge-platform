@@ -76,10 +76,13 @@ names the service first; the widget keeps context). Revisit only if it shows up 
   and, for a declared non-member on a member-only service (pickleball/basketball/natation/
   squash/group-classes/etc.), routes to Francis + allows the visit CTA — matching Daphné's
   transcript rows 40-42. Gate scenario `nonmember-pickleball-routes-francis` added (11/11 local).
-- **`autonomy-buanderie-no-trailer` — NOTED, not fixed.** The bot adds a "valider au
-  514 845-2233" trailer on the *confirmed* 25 $/mois laundry price instead of stating it
-  plainly. Pre-existing grounding hedge, unrelated to batch 8; low severity (safe, just
-  over-cautious). Follow-up: let the confirmed buanderie fee answer without the validate trailer.
+- **`autonomy-buanderie-no-trailer` — FIXED (2026-05-29).** Deterministic `tryAnswerLaundry`
+  states the confirmed 25 $/mois plainly, no validate trailer.
+- **`restaurant-link` / `restaurant-link-button` — FIXED (2026-05-29).** Deterministic
+  `tryAnswerRestaurantMenu` returns the canonical menu links (main / déjeuner / wine / order
+  online) instead of the LLM improvising dish prices or forgetting the link. Both in the new
+  `maa-deterministic-facts.ts`, gated to fire even when the included-question path matched
+  (that path produced the hedge) but a critical safety intent still wins.
 
 ### Coverage map vs. Correctifs MAA 8 (all 9)
 1. Context after short replies — state machine + conversationId continuity ✅

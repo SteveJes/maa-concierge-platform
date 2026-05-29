@@ -20,6 +20,7 @@ import {
 import { tryAnswerClinicPricing } from "./maa-deterministic-clinic.js";
 import { resolveActiveContext, buildActiveContextDirective, tryAnswerIncludedServicePricing } from "./maa-conversation-state.js";
 import { tryAnswerSendLink } from "./maa-action-contract.js";
+import { tryAnswerLaundry, tryAnswerRestaurantMenu } from "./maa-deterministic-facts.js";
 import {
   isScheduleQuestion,
   tryAnswerScheduleQuestion,
@@ -2598,6 +2599,27 @@ export async function answerMaaChat(
   // newly-onboarded tenant from the wizard), they would misfire — quoting
   // 225 $/mois membership grids to a spa or law firm. Gate them.
   const isMaaTenant = request.tenantCode === "maa" || !request.tenantCode;
+
+  // Confirmed-fact answers (2026-05-29) — buanderie price + restaurant menu links.
+  // These were LLM-flaky (hedged on a confirmed 25 $/mois, or omitted the menu
+  // link / improvised dish prices). Answer deterministically. They fire even when
+  // the included-question path matched (that path is what produced the hedge),
+  // but a critical safety intent still wins.
+  const deterministicFact =
+    isMaaTenant && !isDubub && intentSafetyContextEarly === undefined
+      ? tryAnswerLaundry(request.userMessage, request.locale) ??
+        tryAnswerRestaurantMenu(request.userMessage, activeContext.activeService, request.locale)
+      : null;
+  if (deterministicFact) {
+    return {
+      assistantMessage: deterministicFact.assistantMessage,
+      followUpMode: deterministicFact.followUpMode,
+      citations: [],
+      retrieval: { query: searchQuery, chunkCount: searchableChunks.length, resultCount: searchResults.length },
+      routing: serviceRouting,
+      suppressBookingCta: true,
+    };
+  }
 
   // Daphné batch 8 (2026-05-28) Correctifs #5 — DETERMINISTIC link delivery.
   // When the user asks for the platform/booking link (or says "oui" to a link
