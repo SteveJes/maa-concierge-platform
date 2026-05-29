@@ -24,6 +24,19 @@ The batch-8 "drift" was a **broken gate** (fresh conversationId per turn + serve
 - **Playwright client-UI suite (live demo, Desktop Chrome): 0 hard failures** — 19 clean passes + 2 flaky-passed (#2 specific-availability, #4 external-price). Those 2 are LLM phrasing variance on *safe* answers (bot clarifies / refuses to validate); they pass on Playwright retry, not user-visible errors.
 - MAA intent regression: stale single-turn assertions only (#206 pickleball now authoritative); not concierge errors.
 
+### Both-batches audit (27 05 + 28 05) — final prod state
+Re-read all 38 pages of Review MAA v2 (24 categories) + Correctifs MAA 8 (9 bugs). Every
+automated gate green on prod:
+- **27 05 review-replay (24 categories, 43 probes): 43 PASS / 0 WARN / 0 FAIL** (instructors
+  link WARN fixed via `tryAnswerExpertsDirectory`, deployed db3a3f4).
+- **28 05 batch-8 gate: 11/11**.
+- **canary (45 flows): 45/45**.
+- **Playwright client UI: 0 hard failures**.
+- **LEADS FUNCTIONAL** (Review #7, the big one): controlled test lead → droplet log
+  `[email] Lead notification sent to steve@dubub.com,daphne@dubub.com`. Web path awaits the
+  Brevo send synchronously and gates the success message on the real result.
+- PDF schedule/price/reservation links are included (review-replay pdf-link probes pass).
+
 ### Deferred (Steve's call)
 - **Real-time schedule fetching** (MyWellness/FLiiP) — MyWellness is a JS SPA (no data in HTML). Deferred; team will request an official API. Keep safe hedge+redirect meanwhile. See [[project-dynamic-schedules]].
 
