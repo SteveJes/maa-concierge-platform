@@ -57,7 +57,7 @@ export const MAA_SERVICE_REGISTRY: MaaServiceDef[] = [
   { service: "soins_infirmiers", department: "mobile_mediq", re: /soins?\s+infirmiers?|infirmi[eè]re|mobile\s+mediq|d[eé]pistage|itss|injection|pr[eé]l[eè]vement|spermogramme/i },
   { service: "spa", department: "clinique_sportive", re: /\bspa\b|sauna|hammam|bain\s+(?:vapeur|tourbillon|à\s+remous)/i },
   { service: "restaurant", department: "restaurant_1881", re: /restaurant|le\s+1881|resto|menu|table|d[eé]jeuner|brunch|commander\s+en\s+ligne/i },
-  { service: "entrainement_personnel", department: "francis_bradette", re: /entra[iî]nement\s+(?:personnel|priv[eé]|en\s+duo)|personal\s+training|entra[iî]neur\s+priv/i },
+  { service: "entrainement_personnel", department: "francis_bradette", re: /entra[iî]nement\s+(?:personnel|priv[eé]|en\s+duo)|entra[iî]neurs?(?!\s+(?:du\s+club|de\s+(?:la\s+)?club))|personal\s+training|\btrainer\b|\bcoach(?:ing)?\b/i },
   { service: "salles_entrainement", department: "francis_bradette", re: /salles?\s+d['e]?entra[iî]nement|gym\s+access|training\s+room|musculation/i },
   { service: "boutique", department: "valerie_de_vigne", re: /boutique|pro\s+shop|merch|v[eê]tements?\s+(?:du\s+club|maa)/i },
   { service: "clubs_affilies", department: "reception_poste_0", re: /clubs?\s+affili|reciprocal|r[eé]ciproque|club\s+partenaire/i },
