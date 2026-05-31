@@ -2890,10 +2890,28 @@ export async function answerMaaChat(
   // link / improvised dish prices). Answer deterministically. They fire even when
   // the included-question path matched (that path is what produced the hedge),
   // but a critical safety intent still wins.
+  // Restaurant open/closed-NOW: this DETERMINISTIC, real-time answer should
+  // fire even when intentSafetyContextEarly === "holiday_hours" — the
+  // realtime-open detector also catches "is the restaurant open right now?"
+  // (which is the exact case the deterministic handler was built for). The
+  // hardcoded restaurant grid is the most authoritative answer we can give.
+  const restaurantOpenNow = isMaaTenant && !isDubub
+    ? tryAnswerRestaurantOpenNow(request.userMessage, request.locale)
+    : null;
+  if (restaurantOpenNow) {
+    return {
+      assistantMessage: restaurantOpenNow.assistantMessage,
+      followUpMode: restaurantOpenNow.followUpMode,
+      citations: [],
+      retrieval: { query: searchQuery, chunkCount: searchableChunks.length, resultCount: searchResults.length },
+      routing: serviceRouting,
+      suppressBookingCta: true,
+    };
+  }
+
   const deterministicFact =
     isMaaTenant && !isDubub && intentSafetyContextEarly === undefined
       ? tryAnswerLaundry(request.userMessage, request.locale) ??
-        tryAnswerRestaurantOpenNow(request.userMessage, request.locale) ??
         tryAnswerRestaurantMenu(request.userMessage, activeContext.activeService, request.locale) ??
         tryAnswerExpertsDirectory(request.userMessage, request.locale) ??
         tryAnswerVisitForArea(request.userMessage, lastAssistantText, request.locale) ??
