@@ -366,18 +366,21 @@ interface RestaurantStatus {
 
 function computeRestaurantStatus(nowOverride?: Date): RestaurantStatus {
   const now = nowOverride ?? new Date();
-  // Convert to Montreal local time.
-  const mtlStr = now.toLocaleString("en-US", {
+  // Resolve Montreal-local weekday + HH:MM via Intl.DateTimeFormat parts to
+  // avoid locale-string format drift (en-US sometimes returns "Sunday 17:56"
+  // without the comma we previously assumed).
+  const fmt = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/Montreal",
     weekday: "long",
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
   });
-  const dayLabelEn = mtlStr.split(",")[0]!.trim().toLowerCase();
-  const timePart = mtlStr.split(",")[1]!.trim();
-  const [hh, mm] = timePart.split(":").map((s) => parseInt(s, 10));
-  const minutes = hh! * 60 + mm!;
+  const parts = fmt.formatToParts(now);
+  const dayLabelEn = (parts.find((p) => p.type === "weekday")?.value ?? "Sunday").toLowerCase();
+  const hh = parseInt(parts.find((p) => p.type === "hour")?.value ?? "0", 10);
+  const mm = parseInt(parts.find((p) => p.type === "minute")?.value ?? "0", 10);
+  const minutes = hh * 60 + mm;
 
   const FR_DAY: Record<string, string> = {
     monday: "lundi", tuesday: "mardi", wednesday: "mercredi", thursday: "jeudi",
@@ -415,11 +418,11 @@ function computeRestaurantStatus(nowOverride?: Date): RestaurantStatus {
 
   return {
     isOpen,
-    todayLabel: FR_DAY[dayLabelEn]!,
+    todayLabel: FR_DAY[dayLabelEn] ?? dayLabelEn,
     todayHoursFr: hoursFr,
     todayHoursEn: hoursEn,
     nowFr: `${hh}h${String(mm).padStart(2, "0")}`,
-    nowEn: timePart,
+    nowEn: `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`,
     nextOpenFr,
     nextOpenEn,
   };
