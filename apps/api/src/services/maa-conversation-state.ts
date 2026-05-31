@@ -227,7 +227,12 @@ export function tryAnswerIncludedServicePricing(
   // Only when the message is a bare price question (no new service named).
   const m = (currentUserMessage ?? "").toLowerCase();
   const asksPrice = /(tarif|prix|co[uû]te?|combien|cost|price|how\s+much)/i.test(m);
-  if (!asksPrice || ctx.currentMessageNamesService) return null;
+  // 2026-05-31 (Steve live): the handler over-fired on "c'est combien pour
+  // louer les raquettes ?" — the visitor wasn't asking the SPORT price, they
+  // were asking the price of a specific item (racket rental, ball, equipment,
+  // training course, etc.). Skip so the LLM/RAG can answer the actual sub-ask.
+  const asksSpecificItem = /\b(louer|location|rental|raquette|balle|équipement|equipement|equipment|chaussure|cadenas|servietes?|t-?shirt|carte|guest\s+pass|invit[eé])/i.test(m);
+  if (!asksPrice || ctx.currentMessageNamesService || asksSpecificItem) return null;
 
   const fr = !locale || locale.startsWith("fr");
   const label: Record<string, { fr: string; en: string }> = {

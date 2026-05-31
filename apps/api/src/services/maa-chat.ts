@@ -1216,6 +1216,22 @@ function applyPostProcessGuards(
       .trim();
   }
 
+  // 5d. AWKWARD THIRD-PERSON HEDGING phrasing (Steve 2026-05-31 live demo).
+  //     "Le Club Sportif MAA ne mentionne pas de cours de tennis dans sa
+  //     programmation actuelle" reads as the bot speaking ABOUT the club
+  //     instead of FOR it, and the hedge "ne mentionne pas" sounds like maybe
+  //     we do offer it but the bot just doesn't know. Rewrite to direct:
+  //     "n'offre pas … actuellement".
+  out = out
+    .replace(
+      /\b(Le\s+Club\s+(?:Sportif\s+)?MAA|Le\s+Club|MAA|Notre\s+club)\s+ne\s+mentionne\s+pas\s+(?:de\s+|d['']?)?([^.!?]+?)(?:\s+dans\s+(?:sa|ses|son|notre|nos|le|la)[^.!?]*?)?(?=[.!?])/gi,
+      "$1 n'offre pas $2 actuellement",
+    )
+    .replace(
+      /\b(MAA|the\s+Club|Club\s+Sportif\s+MAA)\s+(?:doesn['']?t|does\s+not)\s+mention\s+(?:any\s+)?([^.!?]+?)(?:\s+in\s+(?:its|our|the)[^.!?]*?)?(?=[.!?])/gi,
+      "$1 doesn't offer $2",
+    );
+
   // 5c. HALLUCINATED CONTACT EMAIL guard (Steve 2026-05-29 live demo). The LLM
   //     keeps inventing plausible-sounding contact emails — "info@resto1881.com",
   //     "info@clubsportifmaa.com", "contact@..." — when none exist in the KB.
