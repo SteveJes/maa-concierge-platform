@@ -15,10 +15,15 @@
     "@platform/config": "workspace:*",
     "@platform/schemas": "workspace:*",
     "@platform/ui-chat": "workspace:*",
+    "@tailwindcss/postcss": "^4.3.0",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.17.0",
     "next": "^15.3.0",
     "posthog-js": "^1.372.9",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "recharts": "^3.8.1",
+    "tailwindcss": "4"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
