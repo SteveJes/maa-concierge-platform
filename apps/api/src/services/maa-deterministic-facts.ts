@@ -251,6 +251,24 @@ export function tryAnswerBoutiqueBrand(
 }
 
 /**
+ * Group-classes schedule (2026-05-31 schedule stress).
+ *
+ * WHY: Bot keeps inventing specific class+time+instructor combinations:
+ * "HIIT Circuit vendredi 18h35", "Spinning Intervals 17h30-18h15", etc. The
+ * REAL group-class schedule lives in MyWellness (live) + a monthly PDF. Just
+ * deliver both links — the visitor will get the authoritative answer.
+ *
+ * Fires on any group-class keyword (yoga, HIIT, spinning, pilates, danse,
+ * boxe, barre, essentrics, bootcamp, aqua, cours en groupe) when paired
+ * with a schedule intent or specific-day/time question.
+ */
+const GROUP_CLASS_KEYWORDS_RE =
+  /\b(cours\s+(?:en\s+|de\s+)?groupe|group\s+class(?:es)?|yoga|spinning|spin\b|hiit|bootcamp|cardio\s+danse|essentrics|barre\b|boxe.?fit|boxing\s+fit|zumba|aqua[- ]?hiit|aqua\s+hiit|aqua\s+gym|aquagym|danse\b|dance\s+class)\b/i;
+
+const SPECIFIC_DAY_OR_TIME_RE =
+  /\b(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|monday|tuesday|wednesday|thursday|friday|saturday|sunday|aujourd['']?hui|today|demain|tomorrow|ce\s+soir|tonight|ce\s+matin|this\s+morning|\d{1,2}\s*h\s*\d{0,2}|\d{1,2}\s*(?:am|pm))\b/i;
+
+/**
  * Dynamic-schedule services (2026-05-31 schedule stress).
  *
  * WHY: For services where the schedule lives in a dated PDF (cirque aérien,
@@ -470,6 +488,26 @@ export function tryAnswerRestaurantOpenNow(
  * answer is to route to Nathalie Lambert (programmation sportive) for the
  * current schedule and access conditions (members-only sport).
  */
+export function tryAnswerGroupClassesSchedule(
+  userMessage: string,
+  locale: string | undefined,
+): { assistantMessage: string; followUpMode: "clarify" } | null {
+  const m = (userMessage ?? "").trim();
+  if (m.length === 0 || m.length > 240) return null;
+  if (!GROUP_CLASS_KEYWORDS_RE.test(m)) return null;
+  if (!SCHEDULE_INTENT_RE.test(m) && !SPECIFIC_DAY_OR_TIME_RE.test(m)) return null;
+  if (/\b(tarif|prix|co[uû]te?|combien|cost|price|how\s+much|inclus|included)\b/i.test(m)) return null;
+  if (/\bpilates\s+(?:reformer|sur\s+appareils)\b|\breformer\b/i.test(m)) return null;
+
+  const fr = isFr(locale);
+  return {
+    followUpMode: "clarify",
+    assistantMessage: fr
+      ? "L'horaire des cours en groupe vit en temps réel sur MyWellness — c'est la source la plus fiable pour vérifier un cours précis, un instructeur ou un moment, et pour réserver sa place. Voici les deux liens : [Horaire MyWellness — temps réel](https://widgets.mywellness.com/facility/ac1088953) et [Horaire des cours en groupe PDF](https://www.clubsportifmaa.com/wp-content/uploads/2026/05/MAA_CoursEnGroupe_HoraireClassifications_2070Peel_May05-26.pdf). Souhaitez-vous que je vous oriente vers Nathalie Lambert (Programmation sportive) pour une question précise ?"
+      : "The group-class schedule lives in real time on MyWellness — that's the most reliable source for a specific class, instructor, or time, and for booking your spot. Two links: [MyWellness — real-time schedule](https://widgets.mywellness.com/facility/ac1088953) and [Group-class schedule PDF](https://www.clubsportifmaa.com/wp-content/uploads/2026/05/MAA_CoursEnGroupe_HoraireClassifications_2070Peel_May05-26.pdf). Want me to connect you with Nathalie Lambert (Sports programming) for a specific question?",
+  };
+}
+
 export function tryAnswerBasketballSchedule(
   userMessage: string,
   locale: string | undefined,

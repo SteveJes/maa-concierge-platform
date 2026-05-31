@@ -20,7 +20,7 @@ import {
 import { tryAnswerClinicPricing } from "./maa-deterministic-clinic.js";
 import { resolveActiveContext, buildActiveContextDirective, tryAnswerIncludedServicePricing } from "./maa-conversation-state.js";
 import { tryAnswerSendLink } from "./maa-action-contract.js";
-import { tryAnswerLaundry, tryAnswerRestaurantMenu, tryAnswerExpertsDirectory, tryAnswerVisitForArea, tryAnswerBoutiqueBrand, tryAnswerDynamicScheduleService, tryAnswerBasketballSchedule, tryAnswerRestaurantOpenNow } from "./maa-deterministic-facts.js";
+import { tryAnswerLaundry, tryAnswerRestaurantMenu, tryAnswerExpertsDirectory, tryAnswerVisitForArea, tryAnswerBoutiqueBrand, tryAnswerDynamicScheduleService, tryAnswerBasketballSchedule, tryAnswerRestaurantOpenNow, tryAnswerGroupClassesSchedule } from "./maa-deterministic-facts.js";
 import {
   isScheduleQuestion,
   tryAnswerScheduleQuestion,
@@ -1793,7 +1793,7 @@ function buildIntentSafetyContext(userMessage: string): string | undefined {
     case "executive_contact":
       return "CRITICAL INTENT: User is asking for direct EXECUTIVE/OWNER contact. You MUST NOT disclose a direct phone, extension, or email for any owner/president/director. Do NOT begin with 'Bien sûr' as if you will give the contact. Say clearly: 'Je ne peux pas fournir de numéro direct de direction ici. Je peux toutefois transmettre votre demande à l'équipe appropriée.' Use followUpMode: 'callback'.";
     case "holiday_hours":
-      return "CRITICAL: This is a HOLIDAY HOURS question. Do NOT answer with regular hours. Explain hours vary by date and zone. Ask which zone/service (gym, pool, spa, classes) and recommend calling (514) 845-2233, ext. 234 to confirm. Use followUpMode: 'clarify'.";
+      return "CRITICAL: This is a HOLIDAY-HOURS or REALTIME-OPEN question (holiday by name like Saint-Jean / Canada Day / Noël, or 'right now', 'still open', 'currently open', 'encore ouvert'). Do NOT recite the regular weekly hours grid as if it applied today — holiday and real-time states OVERRIDE the published grid. Required posture: (1) Explain briefly that hours vary by day and by zone (gym, pool, spa, restaurant, classes); (2) Recommend confirming TODAY's specifics by calling reception at (514) 845-2233, ext. 0 — NOT ext. 234 (that's the clinic). (3) NEVER invent specific times for a holiday or for 'right now'. Use followUpMode: 'clarify'.";
     case "privacy":
       return "PRIVACY QUESTION: Answer cautiously. Do NOT make absolute guarantees about data security. Explicitly tell the user not to share sensitive information in chat — examples: banking details (données bancaires), passwords (mots de passe), personal documents. Use followUpMode: 'done'.";
     case "identity":
@@ -2917,6 +2917,7 @@ export async function answerMaaChat(
         tryAnswerVisitForArea(request.userMessage, lastAssistantText, request.locale) ??
         tryAnswerBoutiqueBrand(request.userMessage, request.locale) ??
         tryAnswerBasketballSchedule(request.userMessage, request.locale) ??
+        tryAnswerGroupClassesSchedule(request.userMessage, request.locale) ??
         tryAnswerDynamicScheduleService(request.userMessage, request.locale)
       : null;
   if (deterministicFact) {
