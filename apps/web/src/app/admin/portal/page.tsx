@@ -9,6 +9,7 @@ import { LeadsAreaChart, IntentBarChart, LanguagePieChart } from "../../../compo
 import {
   LayoutDashboard, MessageSquare, Users, Sparkles, Settings as SettingsIcon,
   Phone, Mail, TrendingUp, Activity, Globe, Zap, ExternalLink,
+  DollarSign, Clock, Target, PhoneCall,
 } from "lucide-react";
 
 const NAV = [
@@ -77,12 +78,20 @@ export default function PortalOverview() {
           }
         />
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* KPI row */}
+          {/* KPI row — primary */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Stat label="Conversations 7j" value="248" delta={{ value: "+18 %", direction: "up" }} icon={<MessageSquare size={18} />} />
-            <Stat label="Leads capturés" value="46"  delta={{ value: "+9 %",  direction: "up" }} icon={<Users size={18} />} />
+            <Stat label="Nouveaux leads" value="46"  delta={{ value: "+9 %",  direction: "up" }} icon={<Users size={18} />} />
+            <Stat label="Valeur pipeline" value="11 040 $" delta={{ value: "+2 160 $", direction: "up" }} icon={<DollarSign size={18} />} />
+            <Stat label="Valeur moy. par lead" value="240 $" delta={{ value: "+12 $", direction: "up" }} icon={<Target size={18} />} />
+          </div>
+
+          {/* KPI row — secondary */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Stat label="Qualité Sentinel" value="94 %" delta={{ value: "+2 pts", direction: "up" }} icon={<Activity size={18} />} />
             <Stat label="Réponse moyenne" value="1.4 s" delta={{ value: "-0.3 s", direction: "up" }} icon={<TrendingUp size={18} />} />
+            <Stat label="Appels VAPI 7j" value="38" delta={{ value: "+6", direction: "up" }} icon={<PhoneCall size={18} />} />
+            <Stat label="Heures économisées" value="62 h" delta={{ value: "+9 h", direction: "up" }} icon={<Clock size={18} />} />
           </div>
 
           {/* Charts row */}
