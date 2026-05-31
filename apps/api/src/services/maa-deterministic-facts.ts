@@ -140,3 +140,112 @@ export function tryAnswerExpertsDirectory(
       : `With pleasure — you can see all our ${noun} and their specialties here: [${label}](${url}). Click on a person to view their detailed profile. Would you like me to point you toward a particular specialty?`,
   };
 }
+
+/**
+ * Visit-clarifying-question follow-up (2026-05-31, Steve live).
+ *
+ * WHY: When the bot asks "souhaitez-vous visiter en tant que futur membre ou
+ * pour découvrir un service spécifique comme le spa, la piscine, les cours ?"
+ * and the user answers "pour le spa svp" / "pour la piscine svp" / etc., the
+ * LLM was dropping the VISIT intent and dumping a brochure for the named
+ * service (long massotherapy price list, pool-area description, etc.). The
+ * user wanted a *focused visit*, not a service brochure.
+ *
+ * This handler detects that exact pattern (prior assistant turn = visit-or-
+ * service clarifying question + current message names a service area) and
+ * emits a short lead-capture reply that books a focused visit through Francis
+ * Bradette.
+ */
+const VISIT_AREA_RE =
+  /\b(spa|sauna|hammam|piscine|pool|cours|classes?|salles?\s+d['e]?entra[iî]nement|gym|musculation|squash|pickleball|basket|restaurant|le\s+1881|cliniqu|massage|tennis|terrasse)\b/i;
+
+const PRIOR_VISIT_QUESTION_RE =
+  /(souhaitez[- ]vous|voulez[- ]vous|would\s+you\s+like|do\s+you\s+want)[^.?!]*\b(visite[r]?|visit|tour|d[eé]couvrir|discover)\b[^.?!]*\?/i;
+
+const PRIOR_VISIT_BRANCHES_RE =
+  /\b(?:adh[eé]sion|membership|membre[s]?|future[s]?\s+membre[s]?|prospective\s+member|service\s+sp[eé]cifique|specific\s+service|d[eé]couvrir\s+un\s+service|discover\s+a\s+(?:specific\s+)?service)\b/i;
+
+export function tryAnswerVisitForArea(
+  userMessage: string,
+  lastAssistantText: string | undefined,
+  locale: string | undefined,
+): { assistantMessage: string; followUpMode: "callback" } | null {
+  const u = (userMessage ?? "").trim();
+  const a = (lastAssistantText ?? "").trim();
+  if (!u || !a) return null;
+  // Prior assistant turn must have asked the visit-or-service clarifying question.
+  if (!PRIOR_VISIT_QUESTION_RE.test(a) || !PRIOR_VISIT_BRANCHES_RE.test(a)) return null;
+  // Current message must be short and name a service area, without explicitly
+  // declaring "membership" (which would route to the abonnement flow instead).
+  if (u.length > 120) return null;
+  if (/\b(adh[eé]sion|abonnement|membership|m['e]?abonner|devenir\s+membre|become\s+a\s+member)\b/i.test(u)) return null;
+  const m = VISIT_AREA_RE.exec(u);
+  if (!m) return null;
+
+  const fr = isFr(locale);
+  const area = m[0]!.toLowerCase();
+  const areaLabelFr: Record<string, string> = {
+    spa: "le spa", sauna: "le spa", hammam: "le spa", piscine: "la piscine",
+    pool: "la piscine", cours: "les cours", classes: "les cours",
+    squash: "le squash", pickleball: "le pickleball", basket: "le basketball",
+    restaurant: "le restaurant", "le 1881": "le Restaurant Le 1881",
+    cliniqu: "la clinique sportive", massage: "la clinique (massothérapie)",
+    tennis: "le tennis", terrasse: "la terrasse",
+  };
+  const areaLabelEn: Record<string, string> = {
+    spa: "the spa", sauna: "the spa", hammam: "the spa", piscine: "the pool",
+    pool: "the pool", cours: "group classes", classes: "group classes",
+    squash: "squash", pickleball: "pickleball", basket: "basketball",
+    restaurant: "the restaurant", cliniqu: "the sports clinic",
+    massage: "the clinic (massage)", tennis: "tennis", terrasse: "the terrace",
+  };
+  const labelFr = areaLabelFr[area] ?? "cet espace";
+  const labelEn = areaLabelEn[area] ?? "this area";
+
+  return {
+    followUpMode: "callback",
+    assistantMessage: fr
+      ? `Avec plaisir — je peux organiser une visite axée sur ${labelFr}. Laissez-moi votre nom, votre courriel et un moment qui vous convient, et Francis Bradette (Abonnements / visites) vous écrira pour confirmer le rendez-vous.`
+      : `With pleasure — I can arrange a visit focused on ${labelEn}. Share your name, your email, and a time that works for you, and Francis Bradette (Memberships / visits) will write to confirm.`,
+  };
+}
+
+/**
+ * Boutique brand/product inquiry (2026-05-31, Steve live).
+ *
+ * WHY: "vendez-vous du lululemon ?" got "Le Club n'offre pas Lululemon
+ * actuellement. Souhaitez-vous que je vous mette en contact avec elle ?" —
+ * a self-contradicting lead-capture loop. The honest answer is: the pro shop
+ * carries mostly MAA-branded apparel/accessories, and the current selection
+ * changes; the reception (514 845-2233, poste 0) can confirm with Valérie De
+ * Vigne directly. No lead capture — phone routing.
+ */
+const BOUTIQUE_QUERY_RE =
+  /\b(vend(?:ez|s|ent)|carry|carrying|carries|do\s+you\s+(?:sell|have|carry|stock)|avez[- ]vous|y\s+a[- ]t[- ]il|est[- ]ce\s+que\s+vous\s+(?:vendez|avez)|sell)\b/i;
+
+const BOUTIQUE_SUBJECT_RE =
+  /\b(boutique|pro\s*shop|lululemon|nike|adidas|under\s+armour|new\s+balance|asics|reebok|on\s+running|hoka|puma|brooks|saucony|hokas?|prot[eé]ines?|protein\s+powder|supplements?|suppl[eé]ments?|vitamines?|maillots?\s+de\s+bain|bouteille[s]?\s+d['e]?eau|water\s+bottles?|raquettes?(?!\s+(?:de\s+location|à\s+louer))|chaussures?|shoes?|t[- ]?shirts?|short[s]?|legging[s]?|sac[s]?\s+de\s+sport|gym\s+bags?|accessoires?|articles?|v[eê]tements?|apparel|merch|merchandise|gear)\b/i;
+
+const BOUTIQUE_CLUB_LOGO_RE =
+  /\b(maa|du\s+club|club\s+sportif|logot[eé]|club[- ]branded|club\s+logo)\b/i;
+
+export function tryAnswerBoutiqueBrand(
+  userMessage: string,
+  locale: string | undefined,
+): { assistantMessage: string; followUpMode: "callback" } | null {
+  const m = (userMessage ?? "").trim();
+  if (m.length === 0 || m.length > 220) return null;
+  if (!BOUTIQUE_QUERY_RE.test(m)) return null;
+  if (!BOUTIQUE_SUBJECT_RE.test(m)) return null;
+  // If the visitor is asking about logoed MAA gear specifically, that's a
+  // legitimate "yes we carry it" question — let the LLM/RAG answer.
+  if (BOUTIQUE_CLUB_LOGO_RE.test(m)) return null;
+
+  const fr = isFr(locale);
+  return {
+    followUpMode: "callback",
+    assistantMessage: fr
+      ? "Le pro shop du Club Sportif MAA propose surtout des articles aux couleurs du club (vêtements et accessoires logotés MAA) — la sélection des marques externes change selon les arrivages, je préfère ne pas inventer ce qui s'y trouve aujourd'hui. La réception au (514) 845-2233, poste 0, peut confirmer la sélection actuelle avec Valérie De Vigne, responsable de la boutique."
+      : "The Club Sportif MAA pro shop carries primarily MAA-branded apparel and accessories — the selection of outside brands varies with each shipment, so I'd rather not guess at what's in stock today. Reception at (514) 845-2233 ext. 0 can confirm the current selection with Valérie De Vigne, the boutique manager.",
+  };
+}
