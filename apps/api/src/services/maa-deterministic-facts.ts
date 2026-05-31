@@ -336,6 +336,127 @@ export function tryAnswerDynamicScheduleService(
 }
 
 /**
+ * Restaurant Le 1881 — currently open or closed? (2026-05-31, Steve live.)
+ *
+ * WHY: Bot was telling users on Sunday at 17h30 that the restaurant was
+ * "actuellement ouvert selon ses heures habituelles" — but the restaurant
+ * closes at 16h on Sundays. The visitor literally said "ça dit que c'est
+ * fermé" (the website shows it as closed) and the bot disagreed. Hours are
+ * firm enough to answer deterministically:
+ *   Mon–Fri 7h–22h, Sat 8h–22h, Sun 8h–16h.
+ *
+ * Triggers only when the visitor asks about right-now state — "ouvert
+ * maintenant", "still open", "ça dit que c'est fermé", "open right now", etc.
+ */
+const RESTAURANT_CONTEXT_RE =
+  /\b(restaurant|le\s+1881|resto(?!s)|1881)\b/i;
+const REALTIME_OPEN_QUERY_RE =
+  /\b(ouvert|ferm[eé]|open|closed|encore\s+ouvert|still\s+open|right\s+now|maintenant|en\s+ce\s+moment|currently|present|pr[eé]sentement|c['']?est\s+ferm[eé]|cest\s+ferm|its?\s+closed)\b/i;
+
+interface RestaurantStatus {
+  isOpen: boolean;
+  todayLabel: string;
+  todayHoursFr: string;
+  todayHoursEn: string;
+  nowFr: string;
+  nowEn: string;
+  nextOpenFr: string;
+  nextOpenEn: string;
+}
+
+function computeRestaurantStatus(nowOverride?: Date): RestaurantStatus {
+  const now = nowOverride ?? new Date();
+  // Convert to Montreal local time.
+  const mtlStr = now.toLocaleString("en-US", {
+    timeZone: "America/Montreal",
+    weekday: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const dayLabelEn = mtlStr.split(",")[0]!.trim().toLowerCase();
+  const timePart = mtlStr.split(",")[1]!.trim();
+  const [hh, mm] = timePart.split(":").map((s) => parseInt(s, 10));
+  const minutes = hh! * 60 + mm!;
+
+  const FR_DAY: Record<string, string> = {
+    monday: "lundi", tuesday: "mardi", wednesday: "mercredi", thursday: "jeudi",
+    friday: "vendredi", saturday: "samedi", sunday: "dimanche",
+  };
+
+  // Hours: mon-fri 7h-22h (420-1320), sat 8h-22h (480-1320), sun 8h-16h (480-960).
+  let openMin = 7 * 60, closeMin = 22 * 60;
+  let hoursFr = "7h à 22h", hoursEn = "7am to 10pm";
+  if (dayLabelEn === "saturday") {
+    openMin = 8 * 60; closeMin = 22 * 60;
+    hoursFr = "8h à 22h"; hoursEn = "8am to 10pm";
+  } else if (dayLabelEn === "sunday") {
+    openMin = 8 * 60; closeMin = 16 * 60;
+    hoursFr = "8h à 16h"; hoursEn = "8am to 4pm";
+  }
+  const isOpen = minutes >= openMin && minutes < closeMin;
+
+  // Next open: if currently closed and before today's open → today opens at X.
+  // If past today's close → tomorrow at tomorrow's open.
+  let nextOpenFr: string, nextOpenEn: string;
+  if (!isOpen && minutes < openMin) {
+    nextOpenFr = `aujourd'hui à ${Math.floor(openMin / 60)}h`;
+    nextOpenEn = `today at ${Math.floor(openMin / 60)}am`;
+  } else {
+    const order = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+    const idx = order.indexOf(dayLabelEn);
+    const nextDayEn = order[(idx + 1) % 7]!;
+    const nextDayFr = FR_DAY[nextDayEn]!;
+    let nextOpen = 7 * 60;
+    if (nextDayEn === "saturday" || nextDayEn === "sunday") nextOpen = 8 * 60;
+    nextOpenFr = `demain (${nextDayFr}) à ${Math.floor(nextOpen / 60)}h`;
+    nextOpenEn = `tomorrow (${nextDayEn[0]!.toUpperCase() + nextDayEn.slice(1)}) at ${Math.floor(nextOpen / 60)}am`;
+  }
+
+  return {
+    isOpen,
+    todayLabel: FR_DAY[dayLabelEn]!,
+    todayHoursFr: hoursFr,
+    todayHoursEn: hoursEn,
+    nowFr: `${hh}h${String(mm).padStart(2, "0")}`,
+    nowEn: timePart,
+    nextOpenFr,
+    nextOpenEn,
+  };
+}
+
+export function tryAnswerRestaurantOpenNow(
+  userMessage: string,
+  locale: string | undefined,
+): { assistantMessage: string; followUpMode: "clarify" } | null {
+  const m = (userMessage ?? "").trim();
+  if (m.length === 0 || m.length > 240) return null;
+  if (!RESTAURANT_CONTEXT_RE.test(m)) return null;
+  if (!REALTIME_OPEN_QUERY_RE.test(m)) return null;
+  // Skip pure menu/reservation queries (handled elsewhere).
+  if (/\b(menu|carte|r[eé]serv(?:er|ation)|booking|book\s+a\s+table)\b/i.test(m) && !REALTIME_OPEN_QUERY_RE.test(m)) return null;
+
+  const status = computeRestaurantStatus();
+  const fr = isFr(locale);
+
+  if (status.isOpen) {
+    return {
+      followUpMode: "clarify",
+      assistantMessage: fr
+        ? `Oui — selon les horaires affichés, le Restaurant Le 1881 est ouvert en ce moment (${status.todayLabel} ${status.todayHoursFr}). Souhaitez-vous voir le menu ou réserver une table ?`
+        : `Yes — per the posted hours, Restaurant Le 1881 is open right now (${status.todayLabel} ${status.todayHoursEn}). Want to see the menu or book a table?`,
+    };
+  }
+
+  return {
+    followUpMode: "clarify",
+    assistantMessage: fr
+      ? `Selon les horaires affichés, le Restaurant Le 1881 est fermé en ce moment — le ${status.todayLabel}, il est ouvert de ${status.todayHoursFr}. Il rouvre ${status.nextOpenFr}. Voulez-vous que je vous partage le menu ou que je vous aide à réserver une table pour la prochaine ouverture ?`
+      : `Per the posted hours, Restaurant Le 1881 is closed right now — on ${status.todayLabel}, it's open ${status.todayHoursEn}. It reopens ${status.nextOpenEn}. Want me to share the menu or help you book a table for the next opening?`,
+  };
+}
+
+/**
  * Basketball schedule (2026-05-31 schedule stress).
  *
  * WHY: Bot was inventing a fake basketball grid ("Lundi 19h-21h, Vendredi

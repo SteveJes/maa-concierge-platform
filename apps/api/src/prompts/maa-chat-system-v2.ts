@@ -314,10 +314,38 @@ export function buildMaaChatSystemPromptV2(
   const replacementPhrases = locale?.startsWith("en") ? k.rules.replacementPhrasesWhenInformationMissing.en : k.rules.replacementPhrasesWhenInformationMissing.fr;
   const styleLong = pickLocalized(k.voiceTone.styleByResponseLength.long, locale);
 
+  // 2026-05-31 Steve live: bot told a visitor on Sunday at 17h30 that the
+  // restaurant was "actuellement ouvert" — but on Sunday it closes at 16h.
+  // The bot had no awareness of the current time. Inject it explicitly +
+  // strict time-awareness rule below.
+  const nowMtl = new Date().toLocaleString("en-CA", {
+    timeZone: "America/Montreal",
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
   return [
     "# Personal AI concierge — Club Sportif MAA",
     "",
     languageInstruction(locale),
+    "",
+    `## ⏰ CURRENT TIME (America/Montreal): ${nowMtl}`,
+    "",
+    "### TIME-AWARENESS RULE — apply before any open/closed statement",
+    "Before saying any service is 'currently open' / 'actuellement ouvert' / 'still open' / 'encore ouvert', you MUST:",
+    "1. Read the CURRENT TIME above and identify today's weekday.",
+    "2. Compare it against the published hours for the requested service.",
+    "3. If the current time falls OUTSIDE the published window for today's weekday, say so explicitly. Do NOT recite the weekly grid as if the service were open right now.",
+    "4. If the visitor reports a 'closed' indicator on the website, BELIEVE them and confirm it matches today's published hours. NEVER contradict the visitor with 'it's currently open per its usual hours' when the time is past closing for today.",
+    "Examples:",
+    "- FR: 'Selon les horaires affichés, le Restaurant Le 1881 est fermé en ce moment — le dimanche il ferme à 16h. Il rouvre demain (lundi) à 7h. Voulez-vous voir le menu en attendant ou réserver pour demain ?'",
+    "- EN: 'Per the posted hours, Restaurant Le 1881 is closed right now — Sundays it closes at 4pm. It reopens tomorrow (Monday) at 7am. Want to see the menu or book a table for tomorrow?'",
+    "If you're uncertain whether holiday/special hours apply, hedge ('les horaires peuvent varier les jours fériés') and recommend confirming with reception.",
     "",
     locale === "en-CA"
       ? "🔒 **STRICT LANGUAGE LOCK**: this reply MUST be entirely in English. Zero French words anywhere — not in greetings, not in closings, not in transitions. Forbidden tokens: `votre`, `équipe`, `n'hésitez pas`, `souhaitez-vous`, `je peux`, `bien sûr`, `avec plaisir`, `bonjour`, `pour`, `avec`, `s'il vous plaît`, `merci`, `également`, `également`, `cependant`, `thérapeutique`, `actuellement`. Proper nouns (Club Sportif M.A.A., Le 1881, Espace O, Francis Bradette, Nathalie Lambert) are kept as-is. If you catch yourself drafting a French sentence, rewrite it in English before sending."
