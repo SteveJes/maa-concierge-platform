@@ -240,9 +240,22 @@ export function detectCriticalIntent(userMessage: string): CriticalIntent | unde
   if (isExecutiveContact) return "executive_contact";
 
   const isHolidayHours =
-    /(f[eé]ri[eé]s?|holiday|statutory|cong[eé])/i.test(userMessage) &&
+    (
+      // Generic holiday words
+      /(f[eé]ri[eé]s?|holiday|statutory|cong[eé]|f[eê]tes?)/i.test(userMessage) ||
+      // Quebec/Canadian holidays by name
+      /\b(saint[- ]?jean|st[- ]?jean|24\s+juin|canada\s+day|f[eê]te\s+du\s+canada|1er?\s+juillet|july\s+1|action\s+de\s+gr[aâ]ces?|thanksgiving|no[eë]l|christmas|jour\s+de\s+l['']?an|new\s+year['']?s?|p[aâ]ques|easter|halloween|jour\s+du\s+souvenir|remembrance\s+day|f[eê]te\s+du\s+travail|labou?r\s+day|f[eê]te\s+des?\s+(?:m[eè]res?|p[eè]res?)|mother['']?s\s+day|father['']?s\s+day)\b/i.test(userMessage)
+    ) &&
     /(heure|horaire|ouvert|open|schedule|hours|ferm[eé])/i.test(userMessage);
   if (isHolidayHours) return "holiday_hours";
+
+  // "Are you open right now?" / "still open?" — we can't know real-time state.
+  // Route through the holiday-hours hedge flow (same posture: explain hours
+  // vary, recommend reception confirm).
+  const isRealtimeOpenCheck =
+    /\b(right\s+now|right\s+this\s+(?:moment|second)|still\s+open|encore\s+ouvert|en\s+ce\s+moment|maintenant\s+ouvert|currently\s+open)\b/i.test(userMessage) ||
+    (/\b(open|ouvert)\b/i.test(userMessage) && /\b(now|maintenant)\b/i.test(userMessage));
+  if (isRealtimeOpenCheck) return "holiday_hours";
 
   const isPrivacy = /\b(priv[eé]|confidential|donn[eé]es personnelles|informations personnelles|privacy|personal data|personal information)\b/i.test(userMessage);
   if (isPrivacy) return "privacy";
