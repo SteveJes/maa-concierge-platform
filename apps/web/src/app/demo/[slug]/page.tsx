@@ -62,18 +62,16 @@ const DUBUB_NUDGES_EN = [
 ];
 
 const MAA_SUGGESTED_FR = [
-  "Réserver un entraînement privé",
   "Horaire de pickleball",
   "Réserver une visite du club",
-  "Comparer les abonnements",
-  "Services du spa",
+  "Tarifs des massages",
+  "Voir le menu du restaurant",
 ];
 const MAA_SUGGESTED_EN = [
-  "Book a private training session",
   "Pickleball schedule",
   "Book a club visit",
-  "Compare memberships",
-  "Spa services",
+  "Massage prices",
+  "See the restaurant menu",
 ];
 const DUBUB_SUGGESTED_FR = [
   "Quels sont vos plans et tarifs ?",

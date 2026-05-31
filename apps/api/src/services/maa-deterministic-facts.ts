@@ -249,3 +249,116 @@ export function tryAnswerBoutiqueBrand(
       : "The Club Sportif MAA pro shop carries primarily MAA-branded apparel and accessories — the selection of outside brands varies with each shipment, so I'd rather not guess at what's in stock today. Reception at (514) 845-2233 ext. 0 can confirm the current selection with Valérie De Vigne, the boutique manager.",
   };
 }
+
+/**
+ * Dynamic-schedule services (2026-05-31 schedule stress).
+ *
+ * WHY: For services where the schedule lives in a dated PDF (cirque aérien,
+ * PowerWatts, Pilates Reformer, triathlon, pool, group classes), the LLM was
+ * either refusing ("Je n'ai pas l'horaire") or worse, inventing specific
+ * timeslots and instructor names ("HIIT vendredi 18h35 avec Laura"). Both are
+ * wrong: the PDF link IS the authoritative answer. Deliver it cleanly with a
+ * "dated PDF — confirm with reception" hedge, no LLM in the loop.
+ *
+ * NOT covered: basketball (no PDF available from Daphné), squash, FLiiP-only
+ * services. Those still route via the LLM/RAG path.
+ */
+interface ScheduleService {
+  id: string;
+  labelFr: string;
+  labelEn: string;
+  url: string;
+  match: RegExp;
+}
+
+const SCHEDULE_SERVICES: ScheduleService[] = [
+  {
+    id: "cirque_aerien",
+    labelFr: "Cirque aérien — horaire printemps 2026",
+    labelEn: "Aerial circus — Spring 2026 schedule",
+    url: "https://www.clubsportifmaa.com/wp-content/uploads/2026/03/MAA_Aerial-Circus_Spring2026.pdf",
+    match: /\bcirque(?:\s+a[eé]rien)?\b|\baerial\s+circus\b/i,
+  },
+  {
+    id: "powerwatts",
+    labelFr: "PowerWatts — horaire",
+    labelEn: "PowerWatts — schedule",
+    url: "https://www.clubsportifmaa.com/wp-content/uploads/2026/04/MAA_PowerWatts_Hiver-Spring2026.pdf",
+    match: /\bpowerwatts\b|\bpower[- ]?watts\b/i,
+  },
+  {
+    id: "pilates_reformer",
+    labelFr: "Pilates Reformer — horaire",
+    labelEn: "Pilates Reformer — schedule",
+    url: "https://www.clubsportifmaa.com/wp-content/uploads/2026/04/MAA_Pilates_Reformer_Horaire-Schedule_May4-26.pdf",
+    match: /\bpilates(?:\s+(?:reformer|sur\s+appareils|priv[eé]))?\b|\breformer\b/i,
+  },
+  {
+    id: "triathlon",
+    labelFr: "Programmation triathlon",
+    labelEn: "Triathlon program",
+    url: "https://www.clubsportifmaa.com/wp-content/uploads/2026/01/MAA_ClubTriathlon_Programme-Offres-FR_Jan26.pdf",
+    match: /\btriathlon\b/i,
+  },
+  {
+    id: "pool",
+    labelFr: "Horaire piscine — printemps 2026",
+    labelEn: "Pool schedule — Spring 2026",
+    url: "https://www.clubsportifmaa.com/wp-content/uploads/2026/04/MAA_Piscine_Pool_Printemps2026_04-07-26.pdf",
+    match: /\b(piscine|pool|nage\s+libre|espace\s+o)\b/i,
+  },
+];
+
+const SCHEDULE_INTENT_RE =
+  /\b(horaire[s]?|heure[s]?|programme[s]?|session[s]?|s[eé]ance[s]?|cours|classes?|quand|when|schedule|hours?|times?|days?|jours?|semaine|week|aujourd['']?hui|today|demain|tomorrow|ce\s+soir|tonight|ce\s+matin|this\s+morning|tonight|qui\s+(?:donne|enseign)|who\s+teach|instructeur[s]?|instructor[s]?)\b/i;
+
+export function tryAnswerDynamicScheduleService(
+  userMessage: string,
+  locale: string | undefined,
+): { assistantMessage: string; followUpMode: "clarify" } | null {
+  const m = (userMessage ?? "").trim();
+  if (m.length === 0 || m.length > 220) return null;
+  if (!SCHEDULE_INTENT_RE.test(m)) return null;
+
+  const svc = SCHEDULE_SERVICES.find((s) => s.match.test(m));
+  if (!svc) return null;
+
+  // Avoid swallowing tarif/price questions that happen to mention the service.
+  if (/\b(tarif|prix|co[uû]te?|combien|cost|price|how\s+much)\b/i.test(m)) return null;
+
+  const fr = isFr(locale);
+  return {
+    followUpMode: "clarify",
+    assistantMessage: fr
+      ? `L'horaire ${svc.id === "triathlon" ? "et la programmation" : "officiel"} se trouve dans le document du Club — je vous le partage directement : [${svc.labelFr}](${svc.url}). Ce document est daté ; pour confirmer une plage ou un instructeur précis avant de vous déplacer, la réception (514 845-2233, poste 0) peut le valider en direct. Souhaitez-vous que je vous oriente vers le bon contact pour vous inscrire ?`
+      : `The official ${svc.id === "triathlon" ? "program and schedule" : "schedule"} lives in the Club's reference document — here it is: [${svc.labelEn}](${svc.url}). It's dated; for a specific slot or instructor, reception at (514) 845-2233 ext. 0 can confirm live. Would you like me to point you to the right contact to sign up?`,
+  };
+}
+
+/**
+ * Basketball schedule (2026-05-31 schedule stress).
+ *
+ * WHY: Bot was inventing a fake basketball grid ("Lundi 19h-21h, Vendredi
+ * 19h-21h, Samedi 17h-18h30, Dimanche 15h-18h30") because there is NO
+ * published basketball schedule in the KB. There is no PDF. The honest
+ * answer is to route to Nathalie Lambert (programmation sportive) for the
+ * current schedule and access conditions (members-only sport).
+ */
+export function tryAnswerBasketballSchedule(
+  userMessage: string,
+  locale: string | undefined,
+): { assistantMessage: string; followUpMode: "callback" } | null {
+  const m = (userMessage ?? "").trim();
+  if (m.length === 0 || m.length > 220) return null;
+  if (!/\b(basketball|basket\b)/i.test(m)) return null;
+  if (!SCHEDULE_INTENT_RE.test(m)) return null;
+  if (/\b(tarif|prix|co[uû]te?|combien|cost|price|how\s+much)\b/i.test(m)) return null;
+
+  const fr = isFr(locale);
+  return {
+    followUpMode: "callback",
+    assistantMessage: fr
+      ? "L'horaire détaillé du basketball n'est pas publié en ligne — il évolue selon les sessions et l'affluence des membres. Nathalie Lambert (Programmation sportive) tient l'horaire à jour ; je peux lui transmettre vos coordonnées et votre préférence de moment, et elle vous écrira avec les plages disponibles. C'est un sport réservé aux membres du Club."
+      : "The detailed basketball schedule isn't published online — it shifts with the session and member demand. Nathalie Lambert (Sports programming) keeps the live schedule; I can share your contact and preferred time, and she'll write back with the available slots. Basketball is members-only at the Club.",
+  };
+}

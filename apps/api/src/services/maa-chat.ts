@@ -20,7 +20,7 @@ import {
 import { tryAnswerClinicPricing } from "./maa-deterministic-clinic.js";
 import { resolveActiveContext, buildActiveContextDirective, tryAnswerIncludedServicePricing } from "./maa-conversation-state.js";
 import { tryAnswerSendLink } from "./maa-action-contract.js";
-import { tryAnswerLaundry, tryAnswerRestaurantMenu, tryAnswerExpertsDirectory, tryAnswerVisitForArea, tryAnswerBoutiqueBrand } from "./maa-deterministic-facts.js";
+import { tryAnswerLaundry, tryAnswerRestaurantMenu, tryAnswerExpertsDirectory, tryAnswerVisitForArea, tryAnswerBoutiqueBrand, tryAnswerDynamicScheduleService, tryAnswerBasketballSchedule } from "./maa-deterministic-facts.js";
 import {
   isScheduleQuestion,
   tryAnswerScheduleQuestion,
@@ -2719,7 +2719,12 @@ export async function answerMaaChat(
     /\b(?:m['e]?entra[iî]ner|train\b)/i.test(request.userMessage);
   const userDeclaresMember =
     /\b(je\s+suis\s+(?:déjà\s+)?membre|mon\s+abonnement|i'?m\s+a\s+member|my\s+membership|en\s+tant\s+que\s+membre)\b/i.test(request.userMessage);
-  const isGymAccessMembershipUnknown = mentionsGymAccess && !userDeclaresMember;
+  // 2026-05-31 Steve live: "how much is the gym?" was getting the access
+  // hedge prepended ("If you are a member, you have access...") because gym +
+  // no-membership-declared matched. But the visitor's intent is PRICING, not
+  // access. If pricing wins, skip the access hedge.
+  const isGymAccessMembershipUnknown =
+    mentionsGymAccess && !userDeclaresMember && !isPricingQuestion(request.userMessage);
 
   // Daphné seventh-pass #1: vague topic requests ("j'ai une demande concernant
   // X") were answered with a generic fiche. We need to clarify first.
@@ -2878,7 +2883,9 @@ export async function answerMaaChat(
         tryAnswerRestaurantMenu(request.userMessage, activeContext.activeService, request.locale) ??
         tryAnswerExpertsDirectory(request.userMessage, request.locale) ??
         tryAnswerVisitForArea(request.userMessage, lastAssistantText, request.locale) ??
-        tryAnswerBoutiqueBrand(request.userMessage, request.locale)
+        tryAnswerBoutiqueBrand(request.userMessage, request.locale) ??
+        tryAnswerBasketballSchedule(request.userMessage, request.locale) ??
+        tryAnswerDynamicScheduleService(request.userMessage, request.locale)
       : null;
   if (deterministicFact) {
     return {
