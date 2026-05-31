@@ -355,7 +355,8 @@ const REALTIME_OPEN_QUERY_RE =
 
 interface RestaurantStatus {
   isOpen: boolean;
-  todayLabel: string;
+  todayLabelFr: string;
+  todayLabelEn: string;
   todayHoursFr: string;
   todayHoursEn: string;
   nowFr: string;
@@ -418,7 +419,8 @@ function computeRestaurantStatus(nowOverride?: Date): RestaurantStatus {
 
   return {
     isOpen,
-    todayLabel: FR_DAY[dayLabelEn] ?? dayLabelEn,
+    todayLabelFr: FR_DAY[dayLabelEn] ?? dayLabelEn,
+    todayLabelEn: dayLabelEn[0]!.toUpperCase() + dayLabelEn.slice(1),
     todayHoursFr: hoursFr,
     todayHoursEn: hoursEn,
     nowFr: `${hh}h${String(mm).padStart(2, "0")}`,
@@ -446,16 +448,16 @@ export function tryAnswerRestaurantOpenNow(
     return {
       followUpMode: "clarify",
       assistantMessage: fr
-        ? `Oui — selon les horaires affichés, le Restaurant Le 1881 est ouvert en ce moment (${status.todayLabel} ${status.todayHoursFr}). Souhaitez-vous voir le menu ou réserver une table ?`
-        : `Yes — per the posted hours, Restaurant Le 1881 is open right now (${status.todayLabel} ${status.todayHoursEn}). Want to see the menu or book a table?`,
+        ? `Oui — selon les horaires affichés, le Restaurant Le 1881 est ouvert en ce moment (${status.todayLabelFr} ${status.todayHoursFr}). Souhaitez-vous voir le menu ou réserver une table ?`
+        : `Yes — per the posted hours, Restaurant Le 1881 is open right now (${status.todayLabelEn} ${status.todayHoursEn}). Want to see the menu or book a table?`,
     };
   }
 
   return {
     followUpMode: "clarify",
     assistantMessage: fr
-      ? `Selon les horaires affichés, le Restaurant Le 1881 est fermé en ce moment — le ${status.todayLabel}, il est ouvert de ${status.todayHoursFr}. Il rouvre ${status.nextOpenFr}. Voulez-vous que je vous partage le menu ou que je vous aide à réserver une table pour la prochaine ouverture ?`
-      : `Per the posted hours, Restaurant Le 1881 is closed right now — on ${status.todayLabel}, it's open ${status.todayHoursEn}. It reopens ${status.nextOpenEn}. Want me to share the menu or help you book a table for the next opening?`,
+      ? `Selon les horaires affichés, le Restaurant Le 1881 est fermé en ce moment — le ${status.todayLabelFr}, il est ouvert de ${status.todayHoursFr}. Il rouvre ${status.nextOpenFr}. Voulez-vous que je vous partage le menu ou que je vous aide à réserver une table pour la prochaine ouverture ?`
+      : `Per the posted hours, Restaurant Le 1881 is closed right now — on ${status.todayLabelEn}, it's open ${status.todayHoursEn}. It reopens ${status.nextOpenEn}. Want me to share the menu or help you book a table for the next opening?`,
   };
 }
 
