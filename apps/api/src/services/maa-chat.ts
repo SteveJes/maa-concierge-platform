@@ -1204,8 +1204,16 @@ function applyPostProcessGuards(
   //    Scoped to massage context ONLY — sports therapy / physio legitimately
   //    DO have a member/guest split, so we must not touch those. Strip any
   //    guest-price clause and the now-redundant "pour les membres" qualifier.
-  const isMassageContext = /\b(massage|massoth[eé]rapie|su[eé]dois|ashiatsu|tha[iï]|tissus\s+profonds?|deep\s+tissue)\b/i.test(out) &&
-    !/\b(th[eé]rapie\s+sportive|physioth[eé]rapie|physio\b)\b/i.test(out);
+  // Massage context: the reply mentions a massage term AND either (a) doesn't
+  // mention sports therapy / physio at all, OR (b) ALSO includes the canonical
+  // massage prices (60min/120 $, 90min/170 $, 120min/230 $). Case (b) is the
+  // 2026-05-31 Angie bug: the LLM mixed massage prices with Angie's name and
+  // invented "65/85/120 $ pour les invités". The presence of sports-therapy
+  // terms shouldn't shield the massage prices from the guest-split strip.
+  const mentionsMassageWord = /\b(massage|massoth[eé]rapie|su[eé]dois|ashiatsu|tha[iï]|tissus\s+profonds?|deep\s+tissue)\b/i.test(out);
+  const hasCanonicalMassagePrices = /\b(?:60\s*minutes?|60\s*min)\b[^.!?]{0,40}\b120\s*\$|\b120\s*\$[^.!?]{0,40}\b(?:60\s*minutes?|60\s*min)\b|\b(?:90\s*minutes?|90\s*min)\b[^.!?]{0,40}\b170\s*\$/i.test(out);
+  const mentionsSportsTherapy = /\b(th[eé]rapie\s+sportive|th[eé]rapie\s+du\s+sport|sports?\s+therapy|physioth[eé]rapie|physio\b)\b/i.test(out);
+  const isMassageContext = mentionsMassageWord && (!mentionsSportsTherapy || hasCanonicalMassagePrices);
   if (isMassageContext && /(?:\binvit[ée]s?\b|\bpour\s+les\s+membres\b|\$\s+for\s+(?:members?|guests?))/i.test(out)) {
     out = out
       .replace(/[,;]?\s*(?:et\s+)?\d{2,3}\s*\$\s*(?:pour\s+)?(?:les\s+)?invit[ée]s?\b/gi, "")
@@ -1273,8 +1281,50 @@ function applyPostProcessGuards(
   out = out
     .replace(/Cliquez\s+sur\s+le\s+bouton\s+ci[- ]?dessous\s+pour\s+planifier\s+votre\s+visite[^.!?]*[.!?]/giu, "")
     .replace(/Click\s+(?:the\s+)?button\s+below\s+to\s+(?:plan|schedule)\s+(?:your\s+)?(?:visit|tour)[^.!?]*[.!?]/giu, "")
+    // 2026-05-31 (Steve live): the LLM emitted "Prochaine étape ? → Planifier
+    // une visite" as a UI-label trailer on clinic/massage answers. Strip every
+    // arrow/label variant ending in "planifier une visite" / "schedule a tour".
+    .replace(/\s*(?:[\n\r]+)?(?:[•◆▸▶→\->]+\s*)?(?:Prochaine?\s+[eé]tape\s*[?:]?\s*[→\->]+|Next\s+step\s*[?:]?\s*[→\->]+)\s*Planifier\s+une?\s+visite[^.!?]*[.!?]?/giu, "")
+    .replace(/\s*(?:[\n\r]+)?(?:[•◆▸▶→\->]+\s*)?(?:Next\s+step\s*[?:]?\s*[→\->]+)\s*Schedule\s+a\s+(?:visit|tour)[^.!?]*[.!?]?/giu, "")
     .replace(/\s{2,}/g, " ")
     .trim();
+
+  // 6f. Clinic-hours hallucination (Steve 2026-05-31 schedule stress). The KB
+  //     has NO published clinic-sportive hours; bot kept inventing "lundi-
+  //     vendredi 9h-19h, week-end 11h-15h". Mirror of the spa-hours guard but
+  //     scoped to clinic / sports therapy / physio / nutrition context.
+  const isClinicContext = /\b(clinique\s+(?:sportive|m[eé]dicale)|th[eé]rapie\s+sportive|sports?\s+therapy|physioth[eé]rapie|physio\b|nutritionniste|naturopath)\b/i.test(out) &&
+    !/\b(massoth[eé]rapie|massage|spa|sauna|salle\s+de\s+d[eé]tente|soins?\s+infirmiers?|mobile\s+mediq)\b/i.test(out);
+  const hasClinicWeeklyGrid =
+    /\b(?:du\s+)?(?:lundi|monday)\s+(?:au|to)\s+(?:vendredi|friday)\s+(?:de\s+)?\d{1,2}\s*h/i.test(out) ||
+    /\b\d{1,2}\s*h\s*(?:à|to|-)\s*\d{1,2}\s*h\s+(?:en\s+semaine|on\s+weekdays?)/i.test(out) ||
+    /\b\d{1,2}(?:am|pm|:\d{2})\s*(?:-|to)\s*\d{1,2}(?:am|pm|:\d{2})\s+(?:Monday|on\s+weekdays?)/i.test(out);
+  if (isClinicContext && hasClinicWeeklyGrid) {
+    out = out
+      .split(/(?<=[.!?])\s+/)
+      .map((s) => (/\b(?:du\s+)?(?:lundi|monday)\s+(?:au|to)\s+(?:vendredi|friday)\s+(?:de\s+)?\d{1,2}\s*h|\b\d{1,2}\s*h\s*(?:à|to|-)\s*\d{1,2}\s*h\s+(?:en\s+semaine|on\s+weekdays?|le\s+(?:week-?end|weekend)|les?\s+fins?\s+de\s+semaine)|\b\d{1,2}(?:am|pm|:\d{2})\s*(?:-|to)\s*\d{1,2}(?:am|pm)/i.test(s) ? "" : s))
+      .filter((s) => s.length > 0)
+      .join(" ")
+      .trim();
+    out += fr
+      ? " Les horaires précis de la clinique ne sont pas publiés — la prise de rendez-vous se fait via la page du service ou en appelant la clinique sportive au 514 845-2233, poste 234."
+      : " Specific clinic hours aren't published — booking is via the service page or the sports clinic at (514) 845-2233, ext. 234.";
+  }
+
+  // 6g. Spa-hours guard — EN pattern (Steve 2026-05-31 schedule stress edge-6).
+  //     My FR-only pattern missed "Spa: Monday–Friday 9am–7pm, Saturday–Sunday
+  //     11am–3pm" in EN replies. Extend the existing strip to EN am/pm format.
+  const mentionsSpaEn = /\b(spa|sauna|hammam|jacuzzi|hot\s+tub|steam\s+room|relaxation\s+room)\b/i.test(out);
+  const hasSpaHoursEn = /\b\d{1,2}(?:am|pm|:\d{2})\s*(?:-|to|–|—)\s*\d{1,2}(?:am|pm|:\d{2})\b/.test(out);
+  if (mentionsSpaEn && hasSpaHoursEn) {
+    out = out
+      .split(/(?<=[.!?])\s+/)
+      .map((s) => /\b\d{1,2}(?:am|pm|:\d{2})\s*(?:-|to|–|—)\s*\d{1,2}(?:am|pm|:\d{2})\b/.test(s) && /\b(spa|sauna|hammam)/i.test(s) ? "" : s)
+      .filter((s) => s.length > 0)
+      .join(" ")
+      .trim();
+    out += " Specific spa hours aren't published — Club reception ((514) 845-2233, ext. 0) can confirm today's opening times.";
+  }
 
   // 6d. Nutrition: the LLM keeps inventing "formulaire de santé obligatoire" and
   //     "préavis de 24 heures" for nutrition appointments (Daphné review #18:

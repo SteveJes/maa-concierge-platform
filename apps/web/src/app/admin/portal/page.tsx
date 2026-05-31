@@ -1,11 +1,11 @@
 "use client";
 import { useState } from "react";
-import { Sidebar } from "../../../components/ui/Sidebar.js";
-import { TopBar } from "../../../components/ui/TopBar.js";
-import { Card, CardHeader } from "../../../components/ui/Card.js";
-import { Stat } from "../../../components/ui/Stat.js";
-import { Button } from "../../../components/ui/Button.js";
-import { LeadsAreaChart, IntentBarChart, LanguagePieChart } from "../../../components/ui/charts.js";
+import { Sidebar } from "../../../components/ui/Sidebar";
+import { TopBar } from "../../../components/ui/TopBar";
+import { Card, CardHeader } from "../../../components/ui/Card";
+import { Stat } from "../../../components/ui/Stat";
+import { Button } from "../../../components/ui/Button";
+import { LeadsAreaChart, IntentBarChart, LanguagePieChart } from "../../../components/ui/charts";
 import {
   LayoutDashboard, MessageSquare, Users, Sparkles, Settings as SettingsIcon,
   Phone, Mail, TrendingUp, Activity, Globe, Zap, ExternalLink,

@@ -1,5 +1,5 @@
 "use client";
-import { cn } from "../../lib/cn.js";
+import { cn } from "../../lib/cn";
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";

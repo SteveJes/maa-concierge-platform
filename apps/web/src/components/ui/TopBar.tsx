@@ -1,6 +1,6 @@
 "use client";
 import type { ReactNode } from "react";
-import { Button } from "./Button.js";
+import { Button } from "./Button";
 import { ChevronDown } from "lucide-react";
 
 interface TopBarProps {
