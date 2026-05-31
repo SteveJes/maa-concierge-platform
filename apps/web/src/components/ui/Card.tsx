@@ -7,6 +7,8 @@ interface CardProps extends HTMLAttributes<HTMLDivElement> {
   pad?: "none" | "sm" | "md" | "lg";
   /** Elevation level. Default: subtle. */
   elev?: "flat" | "sm" | "md" | "lg";
+  /** Use the premium glassmorphic surface (DUBUB gold border + blur). */
+  glass?: boolean;
 }
 
 const padMap = { none: "p-0", sm: "p-3", md: "p-5", lg: "p-7" } as const;
@@ -17,14 +19,18 @@ const elevMap = {
   lg: "shadow-[var(--shadow-lg)]",
 } as const;
 
-export function Card({ children, pad = "md", elev = "sm", className, ...rest }: CardProps) {
+export function Card({ children, pad = "md", elev = "sm", glass, className, ...rest }: CardProps) {
   return (
     <div
       className={cn(
-        "rounded-[var(--radius-lg)] bg-[var(--bg-elev)] border border-[var(--border)]",
-        "transition-shadow hover:shadow-[var(--shadow-md)]",
+        "rounded-[var(--radius-lg)]",
+        glass
+          ? "glass-card"
+          : cn(
+              "bg-[var(--bg-elev)] border border-[var(--border)] transition-shadow hover:shadow-[var(--shadow-md)]",
+              elevMap[elev],
+            ),
         padMap[pad],
-        elevMap[elev],
         className,
       )}
       {...rest}
@@ -44,4 +50,17 @@ export function CardHeader({ title, subtitle, action }: { title: string; subtitl
       {action ? <div className="shrink-0">{action}</div> : null}
     </div>
   );
+}
+
+/** Status pill — concise label with a tone. Used in activity feed + lead table. */
+export function Pill({
+  children,
+  tone = "neutral",
+  className,
+}: {
+  children: ReactNode;
+  tone?: "success" | "warning" | "danger" | "info" | "gold" | "neutral";
+  className?: string;
+}) {
+  return <span className={cn("pill", `pill-${tone}`, className)}>{children}</span>;
 }

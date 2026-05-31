@@ -76,9 +76,69 @@ body {
 /* LIGHT PORTAL — opt-in scope for /admin/* and /dashboard pages. */
 .light-portal {
   color-scheme: light;
-  background: var(--bg);
+  /* Premium gold-on-ivory: soft warm gradient with a discreet gold halo */
+  background:
+    radial-gradient(900px 600px at 0% -10%, rgba(212, 175, 95, 0.10), transparent 60%),
+    radial-gradient(700px 500px at 100% 110%, rgba(76, 121, 176, 0.06), transparent 55%),
+    linear-gradient(180deg, #fbfaf6 0%, #f6f4ee 100%);
+  background-attachment: fixed;
   color: var(--text);
   min-height: 100vh;
+}
+
+/* Glass card — translucent surface with a soft gold border + blur. */
+.glass-card {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: saturate(140%) blur(14px);
+  -webkit-backdrop-filter: saturate(140%) blur(14px);
+  border: 1px solid rgba(212, 175, 95, 0.18);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 8px 24px rgba(15, 23, 42, 0.05),
+    0 1px 3px rgba(15, 23, 42, 0.04);
+  transition: transform 200ms ease, box-shadow 250ms ease, border-color 200ms ease;
+}
+.glass-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(212, 175, 95, 0.32);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 14px 32px rgba(15, 23, 42, 0.08),
+    0 2px 6px rgba(15, 23, 42, 0.05);
+}
+
+/* Status pill — used in activity feed + lead status. */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  border: 1px solid;
+}
+.pill-success { background: rgba(20, 160, 117, 0.10); color: #0e8a64; border-color: rgba(20, 160, 117, 0.22); }
+.pill-warning { background: rgba(212, 165, 44, 0.12); color: #966c00; border-color: rgba(212, 165, 44, 0.28); }
+.pill-danger  { background: rgba(208, 74, 74, 0.10); color: #b53939; border-color: rgba(208, 74, 74, 0.22); }
+.pill-info    { background: rgba(76, 121, 176, 0.10); color: #2f5d8e; border-color: rgba(76, 121, 176, 0.22); }
+.pill-gold    { background: rgba(212, 175, 95, 0.12); color: #8a6e2a; border-color: rgba(212, 175, 95, 0.28); }
+.pill-neutral { background: rgba(15, 23, 42, 0.05); color: #475569; border-color: rgba(15, 23, 42, 0.08); }
+
+/* KPI number — gold-gradient on hover for emphasis */
+.kpi-number {
+  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.kpi-gold {
+  background: linear-gradient(180deg, #b8923f 0%, #d4af5f 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 * {

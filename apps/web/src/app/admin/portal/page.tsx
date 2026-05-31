@@ -2,14 +2,14 @@
 import { useState } from "react";
 import { Sidebar } from "../../../components/ui/Sidebar";
 import { TopBar } from "../../../components/ui/TopBar";
-import { Card, CardHeader } from "../../../components/ui/Card";
+import { Card, CardHeader, Pill } from "../../../components/ui/Card";
 import { Stat } from "../../../components/ui/Stat";
 import { Button } from "../../../components/ui/Button";
 import { LeadsAreaChart, IntentBarChart, LanguagePieChart } from "../../../components/ui/charts";
 import {
   LayoutDashboard, MessageSquare, Users, Sparkles, Settings as SettingsIcon,
-  Phone, Mail, TrendingUp, Activity, Globe, Zap, ExternalLink,
-  DollarSign, Clock, Target, PhoneCall,
+  Phone, Mail, TrendingUp, Activity, Globe, Zap, ExternalLink, Share2, Download,
+  DollarSign, Clock, Target, PhoneCall, ChevronDown, Calendar,
 } from "lucide-react";
 
 const NAV = [
@@ -43,9 +43,23 @@ const LANGUAGES = [
   { name: "Français", value: 71 },
   { name: "English",  value: 29 },
 ];
+const LEAD_TYPE_BY_AMOUNT = [
+  { name: "Visite club",     value: 18 },
+  { name: "Membership",      value: 14 },
+  { name: "Clinique / spa",  value: 8 },
+  { name: "Restaurant",      value: 6 },
+];
+
+const TABS = ["Overview", "Conversations", "Leads", "Qualité"] as const;
+type Tab = typeof TABS[number];
+
+const RANGES = ["7 derniers jours", "30 derniers jours", "Ce mois", "Ce trimestre"] as const;
 
 export default function PortalOverview() {
   const [tenant, setTenant] = useState("maa");
+  const [tab, setTab] = useState<Tab>("Overview");
+  const [range, setRange] = useState<typeof RANGES[number]>("7 derniers jours");
+  const [rangeOpen, setRangeOpen] = useState(false);
   const tenantName = TENANTS.find((t) => t.id === tenant)?.label ?? tenant;
 
   return (
@@ -78,48 +92,129 @@ export default function PortalOverview() {
           }
         />
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* KPI row — primary */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Stat label="Conversations 7j" value="248" delta={{ value: "+18 %", direction: "up" }} icon={<MessageSquare size={18} />} />
-            <Stat label="Nouveaux leads" value="46"  delta={{ value: "+9 %",  direction: "up" }} icon={<Users size={18} />} />
-            <Stat label="Valeur pipeline" value="11 040 $" delta={{ value: "+2 160 $", direction: "up" }} icon={<DollarSign size={18} />} />
-            <Stat label="Valeur moy. par lead" value="240 $" delta={{ value: "+12 $", direction: "up" }} icon={<Target size={18} />} />
+          {/* Tabs + action row */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-1 bg-white/60 backdrop-blur border border-[var(--border)] rounded-full p-1">
+              {TABS.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTab(t)}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-full transition-colors ${
+                    tab === t
+                      ? "bg-[var(--brand-gold-soft)] text-[var(--brand-gold-strong)]"
+                      : "text-[var(--text-muted)] hover:text-[var(--text)]"
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <button
+                  onClick={() => setRangeOpen((v) => !v)}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-white/70 backdrop-blur border border-[var(--border)] text-[var(--text)] hover:border-[var(--brand-gold)]/40 transition-colors"
+                >
+                  <Calendar size={14} className="text-[var(--brand-gold-strong)]" />
+                  {range}
+                  <ChevronDown size={14} className="text-[var(--text-subtle)]" />
+                </button>
+                {rangeOpen ? (
+                  <div className="absolute right-0 mt-1 w-56 rounded-xl glass-card p-1 z-20">
+                    {RANGES.map((r) => (
+                      <button
+                        key={r}
+                        onClick={() => { setRange(r); setRangeOpen(false); }}
+                        className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                          r === range
+                            ? "bg-[var(--brand-gold-soft)] text-[var(--brand-gold-strong)] font-medium"
+                            : "text-[var(--text)] hover:bg-black/[0.03]"
+                        }`}
+                      >{r}</button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+              <Button size="sm" variant="ghost" iconLeft={<Share2 size={14} />}>Partager</Button>
+              <Button size="sm" variant="outline" iconLeft={<Download size={14} />}>Exporter</Button>
+            </div>
           </div>
 
-          {/* KPI row — secondary */}
+          {/* Primary KPI row — glass cards, gold-gradient numbers on the money stats */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Stat label="Qualité Sentinel" value="94 %" delta={{ value: "+2 pts", direction: "up" }} icon={<Activity size={18} />} />
-            <Stat label="Réponse moyenne" value="1.4 s" delta={{ value: "-0.3 s", direction: "up" }} icon={<TrendingUp size={18} />} />
-            <Stat label="Appels VAPI 7j" value="38" delta={{ value: "+6", direction: "up" }} icon={<PhoneCall size={18} />} />
-            <Stat label="Heures économisées" value="62 h" delta={{ value: "+9 h", direction: "up" }} icon={<Clock size={18} />} />
+            <Stat glass label="Conversations 7j" value="248" delta={{ value: "+18 %", direction: "up" }} icon={<MessageSquare size={16} />} />
+            <Stat glass label="Nouveaux leads"   value="46"  delta={{ value: "+9 %",  direction: "up" }} icon={<Users size={16} />} />
+            <Stat glass gold label="Valeur pipeline" value="11 040 $" delta={{ value: "+2 160 $", direction: "up" }} icon={<DollarSign size={16} />} />
+            <Stat glass gold label="Valeur moy. par lead" value="240 $" delta={{ value: "+12 $", direction: "up" }} icon={<Target size={16} />} />
           </div>
 
-          {/* Charts row */}
+          {/* Secondary KPI row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Stat glass label="Qualité Sentinel" value="94 %" delta={{ value: "+2 pts", direction: "up" }} icon={<Activity size={16} />} />
+            <Stat glass label="Réponse moyenne" value="1.4 s" delta={{ value: "-0.3 s", direction: "up" }} icon={<TrendingUp size={16} />} />
+            <Stat glass label="Appels VAPI 7j"  value="38"   delta={{ value: "+6",     direction: "up" }} icon={<PhoneCall size={16} />} />
+            <Stat glass label="Heures économisées" value="62 h" delta={{ value: "+9 h", direction: "up" }} icon={<Clock size={16} />} />
+          </div>
+
+          {/* Leads + language */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <Card className="lg:col-span-2">
+            <Card glass className="lg:col-span-2">
               <CardHeader title="Leads des 7 derniers jours" subtitle="Demandes de rappel + courriel" />
               <LeadsAreaChart data={LEADS_BY_DAY} />
             </Card>
-            <Card>
+            <Card glass>
               <CardHeader title="Langues" subtitle="Conversations 7j" />
               <LanguagePieChart data={LANGUAGES} />
             </Card>
           </div>
 
+          {/* Intents + activity */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <Card className="lg:col-span-2">
+            <Card glass className="lg:col-span-2">
               <CardHeader title="Intentions les plus fréquentes" subtitle="Sujets demandés par les visiteurs" />
               <IntentBarChart data={INTENTS} />
             </Card>
-            <Card>
-              <CardHeader title="Activité récente" />
+            <Card glass>
+              <CardHeader title="Activité récente" action={<Pill tone="gold">Live</Pill>} />
               <ul className="space-y-3 text-sm">
-                <ActivityLine icon={<Mail size={14} />}        text="Nouveau lead — Sophie L. (FR)"        time="il y a 12 min" />
-                <ActivityLine icon={<Sparkles size={14} />}    text="Sentinel : 45/45 sur la canary"      time="il y a 1 h"   tone="success" />
-                <ActivityLine icon={<MessageSquare size={14} />}text="42 conversations aujourd'hui"        time="depuis 0 h"   />
-                <ActivityLine icon={<Phone size={14} />}       text="Appel VAPI — 2 min 14 s"             time="il y a 3 h"   />
-                <ActivityLine icon={<Sparkles size={14} />}    text="Sim adversariale : 23/24 personas"   time="hier"        tone="success" />
+                <ActivityLine icon={<Mail size={14} />}        text="Nouveau lead — Sophie L."          time="il y a 12 min" pill={{ tone: "gold", label: "FR" }} />
+                <ActivityLine icon={<Sparkles size={14} />}    text="Sentinel — 45/45 sur la canary"    time="il y a 1 h"    pill={{ tone: "success", label: "PASS" }} />
+                <ActivityLine icon={<MessageSquare size={14} />}text="42 conversations aujourd'hui"      time="depuis 0 h" />
+                <ActivityLine icon={<Phone size={14} />}       text="Appel VAPI — 2 min 14 s"           time="il y a 3 h"    pill={{ tone: "info", label: "VAPI" }} />
+                <ActivityLine icon={<Sparkles size={14} />}    text="Sim adversariale — 23/24 personas" time="hier"          pill={{ tone: "success", label: "PASS" }} />
               </ul>
+            </Card>
+          </div>
+
+          {/* Lead type by amount + recent leads */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <Card glass>
+              <CardHeader title="Type de leads" subtitle="Distribution 7j" />
+              <LanguagePieChart data={LEAD_TYPE_BY_AMOUNT} />
+            </Card>
+            <Card glass className="lg:col-span-2">
+              <CardHeader title="Derniers leads" subtitle="Capturés via le concierge" action={
+                <button className="text-sm text-[var(--brand-gold-strong)] hover:underline">Tout voir →</button>
+              } />
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-[11px] uppercase tracking-[0.08em] text-[var(--text-subtle)]">
+                      <th className="pb-3 font-medium">Visiteur</th>
+                      <th className="pb-3 font-medium">Intention</th>
+                      <th className="pb-3 font-medium">Statut</th>
+                      <th className="pb-3 font-medium text-right">Quand</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <LeadRow name="Sophie L."   intent="Visite club"        status="Nouveau" tone="gold"    when="12 min" />
+                    <LeadRow name="Marc D."     intent="Cours en groupe"    status="Traité"  tone="success" when="1 h"    />
+                    <LeadRow name="Julie B."    intent="Massothérapie"      status="Suivi"   tone="info"    when="2 h"    />
+                    <LeadRow name="Patrick G."  intent="Abonnement"         status="Nouveau" tone="gold"    when="4 h"    />
+                    <LeadRow name="Marie-J. R." intent="Restaurant Le 1881" status="Traité"  tone="success" when="hier"   />
+                  </tbody>
+                </table>
+              </div>
             </Card>
           </div>
         </div>
@@ -128,18 +223,45 @@ export default function PortalOverview() {
   );
 }
 
-function ActivityLine({ icon, text, time, tone }: { icon: React.ReactNode; text: string; time: string; tone?: "success" }) {
+function ActivityLine({
+  icon, text, time, pill,
+}: {
+  icon: React.ReactNode;
+  text: string;
+  time: string;
+  pill?: { tone: "success" | "warning" | "danger" | "info" | "gold" | "neutral"; label: string };
+}) {
   return (
     <li className="flex items-start gap-3">
-      <span className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center ${
-        tone === "success"
-          ? "bg-[rgba(20,160,117,0.12)] text-[var(--success)]"
-          : "bg-[var(--brand-gold-soft)] text-[var(--brand-gold-strong)]"
-      }`}>{icon}</span>
-      <div className="min-w-0 flex-1">
-        <div className="text-[var(--text)] leading-tight">{text}</div>
-        <div className="text-xs text-[var(--text-subtle)] mt-0.5">{time}</div>
+      <span className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center bg-[var(--brand-gold-soft)] text-[var(--brand-gold-strong)]">
+        {icon}
+      </span>
+      <div className="min-w-0 flex-1 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[var(--text)] leading-tight truncate">{text}</div>
+          <div className="text-xs text-[var(--text-subtle)] mt-0.5">{time}</div>
+        </div>
+        {pill ? <Pill tone={pill.tone}>{pill.label}</Pill> : null}
       </div>
     </li>
+  );
+}
+
+function LeadRow({
+  name, intent, status, tone, when,
+}: {
+  name: string;
+  intent: string;
+  status: string;
+  tone: "success" | "warning" | "danger" | "info" | "gold" | "neutral";
+  when: string;
+}) {
+  return (
+    <tr className="border-t border-[var(--border)] hover:bg-black/[0.02] transition-colors">
+      <td className="py-3 font-medium text-[var(--text)]">{name}</td>
+      <td className="py-3 text-[var(--text-muted)]">{intent}</td>
+      <td className="py-3"><Pill tone={tone}>{status}</Pill></td>
+      <td className="py-3 text-right text-[var(--text-subtle)]">{when}</td>
+    </tr>
   );
 }
