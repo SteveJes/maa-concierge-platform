@@ -1078,22 +1078,27 @@ function applyPostProcessGuards(
   // 2026-05-31 Steve live: LLM sometimes emits bare domain URLs in parens
   // — "Réservation via FLiiP (clubsportifmaa.fliipapp.com) ou clinique poste 234"
   // — which the UI renders as plain text, not a clickable link. Auto-wrap
-  // bare domains for our known endpoints so the visitor can click. We're
-  // conservative: only wrap fliipapp + clubsportifmaa + mywellness domains,
-  // only when not already inside a markdown link [..](..), and only for
-  // standalone tokens (parens or whitespace boundaries).
-  out = out.replace(
-    /(?<!\]\()((?:https?:\/\/)?(?:clubsportifmaa\.fliipapp\.com|widgets\.mywellness\.com|clubsportifmaa\.com|clubsportifmaa\.clusterpos\.com)(?:\/[^\s)]*)?)(?!\))/gi,
-    (match, url) => {
-      const href = url.startsWith("http") ? url : `https://${url}`;
-      // Heuristic label — short and clear.
-      const labelMatch = url.match(/fliipapp\.com/) ? (fr ? "FLiiP" : "FLiiP")
-        : url.match(/mywellness/) ? (fr ? "MyWellness" : "MyWellness")
-        : url.match(/clusterpos/) ? (fr ? "Commander en ligne" : "Order online")
-        : (fr ? "Site MAA" : "MAA website");
-      return `[${labelMatch}](${href})`;
-    },
-  );
+  // bare domains for our known endpoints. CRITICAL: never touch URLs that
+  // are already inside a markdown link, so we protect existing links first.
+  {
+    const protectedLinks: string[] = [];
+    const protectedOut = out.replace(/\[[^\]]+\]\([^)]+\)/g, (m) => {
+      protectedLinks.push(m);
+      return "@@LK#" + (protectedLinks.length - 1) + "#LK@@";
+    });
+    const wrapped = protectedOut.replace(
+      /(?<![\w/])((?:https?:\/\/)?(?:clubsportifmaa\.fliipapp\.com|widgets\.mywellness\.com|clubsportifmaa\.com|clubsportifmaa\.clusterpos\.com)(?:\/[^\s) ,;]*)?)/gi,
+      (match, url) => {
+        const href = url.startsWith("http") ? url : `https://${url}`;
+        const label = /fliipapp\.com/i.test(url) ? "FLiiP"
+          : /mywellness/i.test(url) ? "MyWellness"
+          : /clusterpos/i.test(url) ? (fr ? "Commander en ligne" : "Order online")
+          : (fr ? "Site MAA" : "MAA website");
+        return `[${label}](${href})`;
+      },
+    );
+    out = wrapped.replace(/@@LK#(\d+)#LK@@/g, (_, i) => protectedLinks[Number(i)]!);
+  }
 
   // 0. MAAgazine forbidden phrasing — Sentinel maa-10.1 failure. The phrase
   //    "publication exclusive du Club" feels stiff/brochure-like and was
