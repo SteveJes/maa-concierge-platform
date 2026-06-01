@@ -659,6 +659,14 @@ export function tryAnswerDynamicScheduleService(
 ): { assistantMessage: string; followUpMode: "clarify" } | null {
   const m = (userMessage ?? "").trim();
   if (m.length === 0 || m.length > 220) return null;
+  // 2026-06-01 gauntlet R5-M1: "I'm not a member — can I use the pool today?"
+  // hit this handler and got the PDF link, when the right answer is to
+  // route to Francis Bradette (membership/visit). Bail when the visitor
+  // explicitly declares non-member status — let the LLM/state machine
+  // route to sales.
+  if (/\b(?:i['']?m\s+not\s+(?:a\s+)?member|i\s+am\s+not\s+(?:a\s+)?member|non[- ]?member|not\s+(?:yet\s+)?a\s+member|je\s+ne\s+suis\s+pas\s+(?:encore\s+)?membre|pas\s+(?:encore\s+)?membre|non[- ]?membre|chu\s+pas\s+membre)\b/i.test(m)) {
+    return null;
+  }
   if (!SCHEDULE_INTENT_RE.test(m)) return null;
 
   const svc = SCHEDULE_SERVICES.find((s) => s.match.test(m));

@@ -464,6 +464,16 @@ function looksLikeCallMeRequest(userMessage: string, locale: string | null): boo
   const tokens = tokenize(normalized);
   const hasExactToken = (target: string) => tokens.includes(target);
 
+  // 2026-06-01 gauntlet R5-I1: "Are you a real person or a bot?" / "T'es-tu
+  // un humain ou une IA?" was fuzzy-matching "parler à une personne" and
+  // routing to the call-me-back widget. Identity questions must NEVER hit
+  // the callback deflection — the bot must answer transparently.
+  const isIdentityQuestion =
+    /\b(es[- ]?tu\s+(?:un\s+|une\s+)?(?:humain|humaine|robot|bot|ia|ai|personne\s+r[ée]elle)|t['']?es[- ]?tu\s+(?:un\s+|une\s+)?(?:humain|humaine|robot|bot|ia|ai|vrai|r[eé]el)|are\s+you\s+(?:a\s+)?(?:real\s+person|human|bot|ai|robot)|are\s+you\s+real|c['']?est[- ]?tu\s+un\s+robot|chu[- ]?tu\s+(?:parle?\s+)?avec\s+(?:un|une)\s+(?:humain|robot|ia))\b/.test(normalized);
+  if (isIdentityQuestion) {
+    return false;
+  }
+
   if (isFrenchLocale(locale)) {
     // Guard: short clarifying questions about names/services must never trip
     // the call-me detector. "comment ca s appelle" shouldn't fuzzy-match "appelez moi".

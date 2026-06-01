@@ -1362,6 +1362,36 @@ function applyPostProcessGuards(
       : " Specific clinic hours aren't published — booking is via the service page or the sports clinic at (514) 845-2233, ext. 234.";
   }
 
+  // 6f-sexies. Invented staff names in ANY context (2026-06-01 gauntlet
+  //              RW2: bot invented "Harry Brown, locker rooms manager"
+  //              when asked about lost AirPods). When the reply names a
+  //              First Last who isn't in our verified staff directory AND
+  //              attaches a role/title, strip the offending sentence.
+  {
+    const VERIFIED_STAFF_NAMES = /\b(Francis\s+Bradette|Nathalie\s+Lambert|Elisabeth\s+Boutin|Yvon\s+Proven[çc]al|Val[eé]rie\s+De\s+Vigne|Pierre\s+Blanchet|Elizabeth\s+Bitar|Claude\s+B[eé]langer|Gary\s+Rizk|Kevin\s+Geyson|Daniela\s+Solis|Angie\s+West|Caroline|Pierre|Janika|Hannah|Isabelle|Jennifer|Manon|Frank|Laura|Sophie\b(?!\s+L\.))\b/g;
+    // First Last + role pattern (English + French roles). Matches things
+    // like "Harry Brown, locker rooms manager" or "Ingre Tamara, certified
+    // physiotherapist".
+    const namePlusRoleRe = /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\s*(?:,\s*(?:our|notre|the|la|le|a|un|une)?\s*)?(?:(?:locker\s+rooms?|locker[- ]room|spa|clinic|pool|piscine|fitness|aerial|cirque|squash|membership|sales|reception)\s+(?:manager|director|lead|coach|instructor|trainer|head|specialist|coordinator)|(?:certified|qualified)\s+(?:trainer|coach|physiotherapist|therapist|instructor)|(?:directeur|directrice|gestionnaire|responsable|coach|entra[iî]neur|instructeur|sp[eé]cialiste|coordinateur)\s+(?:de|du|de\s+la|des))/g;
+    const matches = Array.from(out.matchAll(namePlusRoleRe));
+    if (matches.length > 0) {
+      const verified: string[] = out.match(VERIFIED_STAFF_NAMES) ?? [];
+      const invented: string[] = [];
+      for (const m of matches) {
+        const name = m[1]!;
+        if (!verified.some((v) => v.includes(name) || name.includes(v))) invented.push(name);
+      }
+      if (invented.length > 0) {
+        out = out.split(/(?<=[.!?])\s+/).filter((s) => {
+          return !invented.some((n) => s.includes(n));
+        }).join(" ").trim();
+        out += fr
+          ? " Pour cette demande spécifique, la réception du Club ((514) 845-2233, poste 0) peut vous orienter vers la bonne personne."
+          : " For this specific request, Club reception ((514) 845-2233, ext. 0) can point you to the right person.";
+      }
+    }
+  }
+
   // 6f-quinquies. Invented staff/specialist names for medical/health questions
   //                (2026-06-01 gauntlet OOS4). Bot replied to "I'm pregnant,
   //                is exercise safe?" with "Ingre Tamara, certified
