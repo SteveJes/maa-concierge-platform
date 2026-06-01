@@ -1075,6 +1075,26 @@ function applyPostProcessGuards(
   let out = message;
   const fr = isFrenchLocale(locale);
 
+  // 2026-05-31 Steve live: LLM sometimes emits bare domain URLs in parens
+  // — "Réservation via FLiiP (clubsportifmaa.fliipapp.com) ou clinique poste 234"
+  // — which the UI renders as plain text, not a clickable link. Auto-wrap
+  // bare domains for our known endpoints so the visitor can click. We're
+  // conservative: only wrap fliipapp + clubsportifmaa + mywellness domains,
+  // only when not already inside a markdown link [..](..), and only for
+  // standalone tokens (parens or whitespace boundaries).
+  out = out.replace(
+    /(?<!\]\()((?:https?:\/\/)?(?:clubsportifmaa\.fliipapp\.com|widgets\.mywellness\.com|clubsportifmaa\.com|clubsportifmaa\.clusterpos\.com)(?:\/[^\s)]*)?)(?!\))/gi,
+    (match, url) => {
+      const href = url.startsWith("http") ? url : `https://${url}`;
+      // Heuristic label — short and clear.
+      const labelMatch = url.match(/fliipapp\.com/) ? (fr ? "FLiiP" : "FLiiP")
+        : url.match(/mywellness/) ? (fr ? "MyWellness" : "MyWellness")
+        : url.match(/clusterpos/) ? (fr ? "Commander en ligne" : "Order online")
+        : (fr ? "Site MAA" : "MAA website");
+      return `[${labelMatch}](${href})`;
+    },
+  );
+
   // 0. MAAgazine forbidden phrasing — Sentinel maa-10.1 failure. The phrase
   //    "publication exclusive du Club" feels stiff/brochure-like and was
   //    explicitly forbidden by Daphné. Rewrite to a warmer description.
@@ -1471,8 +1491,19 @@ export function detectIncludedOrSpecificServiceQuestion(userMessage: string): In
   const otherKnownServices =
     /\b(menus?|buanderie|buandrie|laundry|lavage|pickleball|pickle[- ]?ball|pickball|pickelball|cirque|circus|squash|massages?|massoth[eé]rapie|forfaits?|salles?\s+d['e]?entra[iî]nement|gym\b)\b/i.test(text);
 
+  // 2026-05-31 Steve live: chip "Tarifs des massages" was hitting the gate
+  // via `otherKnownServices` (it matches "massage") which set match=true →
+  // skipDeterministicHandlers=true → tryAnswerClinicPricing was bypassed →
+  // LLM rambled. A pure pricing question should NOT trigger the
+  // included-or-specific-service gate; the deterministic pricing handlers
+  // are exactly what we want for those.
+  const isPurePricingQuestion =
+    /\b(prix|tarif|tarification|co[uû]te?|combien|cost|price|pricing|how\s+much|fee|rate)\b/i.test(text) &&
+    !askedAboutInclusion;
+
   const matchedSpecificService =
-    technogym || spaAmenities || classRules || trainerOrSpecialist || fitnessProgram || otherKnownServices;
+    !isPurePricingQuestion &&
+    (technogym || spaAmenities || classRules || trainerOrSpecialist || fitnessProgram || otherKnownServices);
   const match = askedAboutInclusion || matchedSpecificService;
   if (!match) return { match: false };
 
