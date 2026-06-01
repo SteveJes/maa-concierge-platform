@@ -237,7 +237,14 @@ export function tryAnswerIncludedServicePricing(
   // were asking the price of a specific item (racket rental, ball, equipment,
   // training course, etc.). Skip so the LLM/RAG can answer the actual sub-ask.
   const asksSpecificItem = /\b(louer|location|rental|raquette|balle|équipement|equipement|equipment|chaussure|cadenas|servietes?|t-?shirt|carte|guest\s+pass|invit[eé])/i.test(m);
-  if (!asksPrice || ctx.currentMessageNamesService || asksSpecificItem) return null;
+  // 2026-06-01 Steve live: "C'est combien pour l'âge d'or?" was hijacked by
+  // this handler (pickleball was the active context from earlier turns) and
+  // returned "pickleball est inclus" instead of the senior rate $185. When
+  // the visitor's CURRENT message contains a membership-tier keyword
+  // (senior / âge d'or / étudiant / aîné / corporate / family), bail out so
+  // the LLM/pricing path can answer the actual tier question.
+  const asksMembershipTier = /\b(âge\s+d['']?or|aîn[eé]|senior|seniors?|[eé]tudiant|student|corporate|corporatif|famille|family|jeune|youth|enfant|child)\b/i.test(currentUserMessage);
+  if (!asksPrice || ctx.currentMessageNamesService || asksSpecificItem || asksMembershipTier) return null;
 
   const fr = !locale || locale.startsWith("fr");
   const label: Record<string, { fr: string; en: string }> = {

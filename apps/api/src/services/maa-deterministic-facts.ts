@@ -681,9 +681,13 @@ export function tryAnswerDynamicScheduleService(
   // named day) and the service is the POOL, compute the day's free-swim
   // windows from the encoded PDF data — much more useful than a generic
   // "here's the PDF" reply for a "j'ai le temps?" question.
-  if (svc.id === "pool" && /\b(nage\s+libre|free\s+swim|swim)\b/i.test(m)) {
+  if (svc.id === "pool") {
+    // 2026-06-01 Steve live: 'c'est tu ouvert ce soir?' got the generic PDF
+    // because my trigger required 'nage libre / free swim'. Broaden: any
+    // pool + today/tonight/specific-day query computes the day's windows.
+    const swimKeyword = /\b(nage\s+libre|free\s+swim|swim|ouvert|open|ferm[eé]|close)\b/i.test(m);
     const dayWord = m.match(/\b(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i);
-    const asksToday = /\b(aujourd['']?hui|today|ce\s+matin|this\s+morning|ce\s+soir|tonight|maintenant|right\s+now)\b/i.test(m);
+    const asksToday = /\b(aujourd['']?hui|today|ce\s+matin|this\s+morning|ce\s+soir|tonight|maintenant|right\s+now|en\s+ce\s+moment|currently)\b/i.test(m);
     let dayKey: string | null = null;
     if (dayWord) {
       const raw = dayWord[0].toLowerCase();
@@ -691,13 +695,56 @@ export function tryAnswerDynamicScheduleService(
     } else if (asksToday) {
       dayKey = todayInMontreal();
     }
-    if (dayKey && POOL_FREE_SWIM_BY_DAY[dayKey]) {
-      const dayLine = poolNageLibreForDay(dayKey, fr)!;
+    if (dayKey && POOL_FREE_SWIM_BY_DAY[dayKey] && (swimKeyword || asksToday || dayWord)) {
+      const slots = POOL_FREE_SWIM_BY_DAY[dayKey]!;
+      // If asking about TODAY, filter by current Montreal time + show what's left.
+      const isToday = asksToday && dayKey === todayInMontreal();
+      let body = "";
+      if (isToday) {
+        const fmt = new Intl.DateTimeFormat("en-US", { timeZone: "America/Montreal", hour: "2-digit", minute: "2-digit", hour12: false });
+        const parts = fmt.formatToParts(new Date());
+        const hh = parseInt(parts.find((p) => p.type === "hour")?.value ?? "0", 10);
+        const mm = parseInt(parts.find((p) => p.type === "minute")?.value ?? "0", 10);
+        const nowMin = hh * 60 + mm;
+        // Parse the slot strings (e.g. "6h30–17h25") into minute ranges.
+        const slotRanges = slots.map((s) => {
+          const match = s.match(/^(\d{1,2})h(\d{0,2})[–—-](\d{1,2})h(\d{0,2})/);
+          if (!match) return { label: s, start: 0, end: 0 };
+          return { label: s, start: parseInt(match[1]!, 10) * 60 + parseInt(match[2] || "0", 10), end: parseInt(match[3]!, 10) * 60 + parseInt(match[4] || "0", 10) };
+        });
+        const current = slotRanges.find((r) => nowMin >= r.start && nowMin < r.end);
+        const upcoming = slotRanges.filter((r) => nowMin < r.start);
+        const nowLabel = fr ? `${hh}h${String(mm).padStart(2, "0")}` : `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+        const lines: string[] = [];
+        if (current) {
+          const remaining = current.end - nowMin;
+          lines.push(fr
+            ? `🟢 La piscine est **ouverte en ce moment** (créneau nage libre ${current.label}) — il reste **${remaining} minutes**, vous avez le temps !`
+            : `🟢 The pool is **open right now** (free swim window ${current.label}) — **${remaining} minutes** left, you have time!`);
+        }
+        if (upcoming.length > 0) {
+          lines.push(fr
+            ? `⏰ Prochains créneaux nage libre aujourd'hui : ${upcoming.map((s) => s.label).join(", puis ")}.`
+            : `⏰ Upcoming free-swim windows today: ${upcoming.map((s) => s.label).join(", then ")}.`);
+        }
+        if (!current && upcoming.length === 0) {
+          lines.push(fr
+            ? `La piscine est fermée pour le reste de la journée — les créneaux nage libre de ${dayKey === todayInMontreal() ? "aujourd'hui" : "ce jour"} (${slots.join(", ")}) sont terminés.`
+            : `The pool is closed for the rest of the day — today's free-swim windows (${slots.join(", ")}) have ended.`);
+        }
+        const dayLabel = fr ? ({monday:"lundi", tuesday:"mardi", wednesday:"mercredi", thursday:"jeudi", friday:"vendredi", saturday:"samedi", sunday:"dimanche"} as Record<string,string>)[dayKey] : dayKey;
+        body = fr
+          ? `${dayLabel} (il est actuellement ${nowLabel}).\n\n${lines.join("\n")}`
+          : `${dayLabel} (it's currently ${nowLabel}).\n\n${lines.join("\n")}`;
+      } else {
+        // Non-today (specific day named) → just the day's slots.
+        body = poolNageLibreForDay(dayKey, fr)!;
+      }
       return {
         followUpMode: "clarify",
         assistantMessage: fr
-          ? `${dayLine}. Pour la grille complète et les autres activités aquatiques (Natation maîtres, Aqua-HIIT, Natation adulte), voici le document officiel : [${svc.labelFr}](${svc.url}). Souhaitez-vous que je vous oriente vers l'inscription ou la réception ?`
-          : `${dayLine}. For the full grid and other aquatic activities (master swim, Aqua-HIIT, adult swim lessons), here's the official document: [${svc.labelEn}](${svc.url}). Want me to point you to signup or reception?`,
+          ? `${body}\n\nDocument officiel : [${svc.labelFr}](${svc.url}). Bonnet obligatoire ; inscription via Nathalie Lambert pour les programmes aquatiques.`
+          : `${body}\n\nOfficial document: [${svc.labelEn}](${svc.url}). Swim cap mandatory; registration via Nathalie Lambert for aquatic programs.`,
       };
     }
   }
@@ -707,6 +754,98 @@ export function tryAnswerDynamicScheduleService(
     assistantMessage: fr
       ? `L'horaire ${svc.id === "triathlon" ? "et la programmation" : "officiel"} se trouve dans le document du Club — je vous le partage directement : [${svc.labelFr}](${svc.url}). Ce document est daté ; pour confirmer une plage ou un instructeur précis avant de vous déplacer, la réception (514 845-2233, poste 0) peut le valider en direct. Souhaitez-vous que je vous oriente vers le bon contact pour vous inscrire ?`
       : `The official ${svc.id === "triathlon" ? "program and schedule" : "schedule"} lives in the Club's reference document — here it is: [${svc.labelEn}](${svc.url}). It's dated; for a specific slot or instructor, reception at (514) 845-2233 ext. 0 can confirm live. Would you like me to point you to the right contact to sign up?`,
+  };
+}
+
+/**
+ * Pickleball — today's slots, filtered by current Montreal time.
+ *
+ * 2026-06-01 Steve live: visitor asked "avez-vous du pickleball aujourd'hui?"
+ * at 4:10pm Monday. Bot listed Monday's slots (7-11h + 14-17h) but didn't
+ * filter — the 7-11h was long gone and 14-17h had 50 min left. Smart
+ * concierge should say so.
+ */
+const PICKLEBALL_BY_DAY: Record<string, Array<[string, number, number]>> = {
+  monday:    [["07h00–11h00", 7*60, 11*60], ["14h00–17h00", 14*60, 17*60]],
+  tuesday:   [["07h00–12h00", 7*60, 12*60], ["12h00–14h00", 12*60, 14*60], ["14h00–17h00", 14*60, 17*60]],
+  wednesday: [["07h00–11h00", 7*60, 11*60], ["14h00–17h00", 14*60, 17*60], ["20h00–21h00", 20*60, 21*60]],
+  thursday:  [["07h00–12h00", 7*60, 12*60], ["12h00–14h00", 12*60, 14*60], ["14h00–17h00", 14*60, 17*60], ["20h00–21h00", 20*60, 21*60]],
+  friday:    [["07h00–11h00", 7*60, 11*60], ["14h00–17h00", 14*60, 17*60], ["17h00–19h00", 17*60, 19*60]],
+  saturday:  [["07h00–11h00", 7*60, 11*60], ["11h00–14h00", 11*60, 14*60], ["14h00–17h00", 14*60, 17*60]],
+  sunday:    [["07h00–11h00", 7*60, 11*60], ["11h00–14h00", 11*60, 14*60], ["14h00–15h00", 14*60, 15*60]],
+};
+
+const PICKLEBALL_TODAY_RE = /\b(pickleball|pickle.?ball|pickelball|pickball)\b/i;
+const PICKLEBALL_TODAY_INTENT_RE =
+  /\b(aujourd['']?hui|today|ce\s+soir|tonight|ce\s+matin|this\s+morning|maintenant|right\s+now|en\s+ce\s+moment|now)\b/i;
+
+export function tryAnswerPickleballToday(
+  userMessage: string,
+  locale: string | undefined,
+): { assistantMessage: string; followUpMode: "clarify" } | null {
+  const m = (userMessage ?? "").trim();
+  if (m.length === 0 || m.length > 240) return null;
+  if (!PICKLEBALL_TODAY_RE.test(m)) return null;
+  if (!PICKLEBALL_TODAY_INTENT_RE.test(m)) return null;
+
+  // Compute current weekday + minutes in Montreal.
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Montreal",
+    weekday: "long", hour: "2-digit", minute: "2-digit", hour12: false,
+  });
+  const parts = fmt.formatToParts(new Date());
+  const dayKey = (parts.find((p) => p.type === "weekday")?.value ?? "Monday").toLowerCase();
+  const hh = parseInt(parts.find((p) => p.type === "hour")?.value ?? "0", 10);
+  const mm = parseInt(parts.find((p) => p.type === "minute")?.value ?? "0", 10);
+  const nowMin = hh * 60 + mm;
+
+  const slots = PICKLEBALL_BY_DAY[dayKey];
+  if (!slots) return null;
+
+  const fr = isFr(locale);
+  const DAY_FR: Record<string, string> = { monday:"lundi", tuesday:"mardi", wednesday:"mercredi", thursday:"jeudi", friday:"vendredi", saturday:"samedi", sunday:"dimanche" };
+  const DAY_EN: Record<string, string> = { monday:"Monday", tuesday:"Tuesday", wednesday:"Wednesday", thursday:"Thursday", friday:"Friday", saturday:"Saturday", sunday:"Sunday" };
+  const dayLabel = fr ? DAY_FR[dayKey]! : DAY_EN[dayKey]!;
+  const nowLabel = fr ? `${hh}h${String(mm).padStart(2,"0")}` : `${String(hh).padStart(2,"0")}:${String(mm).padStart(2,"0")}`;
+
+  // Bucket slots: passed, current (with remaining minutes), upcoming
+  const passed = slots.filter(([, , e]) => nowMin >= e);
+  const current = slots.find(([, s, e]) => nowMin >= s && nowMin < e);
+  const upcoming = slots.filter(([, s]) => nowMin < s);
+
+  const lines: string[] = [];
+  if (current) {
+    const remaining = current[2] - nowMin;
+    lines.push(fr
+      ? `🟢 Créneau **en cours** maintenant (${current[0]}) — il reste **${remaining} minutes**, vous avez encore le temps !`
+      : `🟢 Slot running **right now** (${current[0]}) — **${remaining} minutes** left, you can still make it!`);
+  }
+  if (upcoming.length > 0) {
+    lines.push(fr
+      ? `⏰ Prochain créneau aujourd'hui : ${upcoming.map((s) => s[0]).join(", puis ")}.`
+      : `⏰ Upcoming today: ${upcoming.map((s) => s[0]).join(", then ")}.`);
+  }
+  if (!current && upcoming.length === 0) {
+    lines.push(fr
+      ? `Tous les créneaux d'aujourd'hui (${slots.map((s) => s[0]).join(", ")}) sont déjà passés. Le prochain rendez-vous pickleball revient demain.`
+      : `All of today's slots (${slots.map((s) => s[0]).join(", ")}) have ended. The next pickleball session returns tomorrow.`);
+  }
+  if (passed.length > 0 && (current || upcoming.length > 0)) {
+    lines.push(fr
+      ? `(Créneau${passed.length > 1 ? "x" : ""} du matin ${passed.map((s) => s[0]).join(", ")} déjà passé${passed.length > 1 ? "s" : ""}.)`
+      : `(Earlier today's ${passed.length > 1 ? "slots " : "slot "}${passed.map((s) => s[0]).join(", ")} already done.)`);
+  }
+
+  const headerFr = `Pickleball ${dayLabel} (il est actuellement ${nowLabel}) — réservé aux membres, réservation via l'app MAA.`;
+  const headerEn = `Pickleball ${dayLabel} (it's currently ${nowLabel}) — members only, booking via the MAA app.`;
+  const footerFr = `Pour réserver ou pour toute question : Nathalie Lambert (Programmation sportive, poste 231).`;
+  const footerEn = `To book or for any question: Nathalie Lambert (Sports programming, ext. 231).`;
+
+  return {
+    followUpMode: "clarify",
+    assistantMessage: fr
+      ? `${headerFr}\n\n${lines.join("\n")}\n\n${footerFr}`
+      : `${headerEn}\n\n${lines.join("\n")}\n\n${footerEn}`,
   };
 }
 

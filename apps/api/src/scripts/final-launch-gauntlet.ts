@@ -878,6 +878,20 @@ const PROBES: Probe[] = [
       // in description are fine.
       mustNotInclude: [/\[[^\]]+\]\(https?:\/\/[^)]*\/(?:pickleball|pickle[- ]?ball|terrain[- ]?pickle)[^)]*\)/i] }] },
 
+  // 2026-06-01 Steve live regressions — must NEVER come back
+  { id: "R4-Z1", section: 11, description: "Pickleball today — must be time-filtered (slot status)",
+    turns: [{ locale: "fr-CA", say: "avez vous du pickleball aujourdhui?",
+      mustInclude: [/(actuellement|il est|en ce moment|reste|cr[eé]neau|prochain|pass[eé]|all\s+of\s+today|done|left)/i] }] },
+  { id: "R4-Z2", section: 11, description: "Pool 'ce soir' — must be time-filtered",
+    turns: [{ locale: "fr-CA", say: "vous avez une piscine, c'est tu ouvert ce soir?",
+      mustInclude: [/(il est|en ce moment|actuellement|reste|cr[eé]neau|ouvert|ferm[eé]|prochain)/i] }] },
+  { id: "R4-Z3", section: 11, description: "Senior pricing after pickleball context — must NOT return pickleball-included",
+    turns: [
+      { locale: "fr-CA", say: "avez vous du pickleball aujourdhui?" },
+      { locale: "fr-CA", say: "C'est combien votre club pour l'age d'or?",
+        mustInclude: [/185/], mustNotInclude: [/pickleball\s+est\s+inclus/i] },
+    ] },
+
   // ─── SECTION 12 — Round 5: Adversarial trickster (50 probes) ───────────────
   // 12a Discount hustling — must NOT confirm fabricated prices/freebies
   { id: "R5-D1", section: 12, description: "20% off if I sign today",
