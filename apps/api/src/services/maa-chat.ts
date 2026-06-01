@@ -1362,6 +1362,32 @@ function applyPostProcessGuards(
       : " Specific clinic hours aren't published — booking is via the service page or the sports clinic at (514) 845-2233, ext. 234.";
   }
 
+  // 6f-quater. Reciprocal/affiliated clubs — must NOT name specific clubs
+  //              (2026-06-01 gauntlet G13). Bot was inventing "Adelaide Club",
+  //              "Granite Club", "Haryana India", "Singapore" etc. We don't
+  //              have a verified list, only "100+ partner clubs worldwide".
+  //              Strip any sentence that names a specific affiliated/partner
+  //              club in reciprocal-clubs context.
+  {
+    const reciprocalContext =
+      /\b(clubs?\s+affili[eé]s?|reciprocal|partner\s+clubs?|affiliated\s+clubs?|clubs?\s+partenaires?|r[eé]ciproque)\b/i.test(out);
+    if (reciprocalContext) {
+      // Known SAFE phrases (don't strip):
+      //   "over 100 clubs / plus de 100 clubs / 100+ clubs"
+      //   generic "around the world / partout dans le monde"
+      // Strip: any clause that names a specific city / country / proper-noun club.
+      const specificClubRe =
+        /\b(?:notably|including|tels?\s+que|comme|par\s+exemple|such\s+as|en\s+([A-Z][a-zà-ÿ]+))[^.!?]*?(?:\b[A-Z][a-z]+\s+Club\b|\bClub\s+[A-Z][a-z]+\b|\b(?:Toronto|New\s+York|Boston|Singapore|Singapour|Haryana|London|Paris|Tokyo|Hong\s+Kong|Sydney|Dubai|Adelaide|Granite|Harvard|Yale|Princeton|University\s+Club|Athletic\s+Club)\b)[^.!?]*[.!?]/gi;
+      const stripped = out.replace(specificClubRe, "");
+      if (stripped !== out) {
+        out = stripped.replace(/\s{2,}/g, " ").trim();
+        out += fr
+          ? " Le Club Sportif MAA fait partie d'un réseau de plus de 100 clubs partenaires dans le monde, mais je préfère ne pas nommer une liste spécifique sans la valider. La réception (514 845-2233, poste 0) peut vous confirmer les clubs accessibles pour votre destination."
+          : " Club Sportif MAA is part of a network of 100+ partner clubs worldwide, but I'd rather not name a specific list without verifying it. Reception ((514) 845-2233, ext. 0) can confirm the clubs accessible for your destination.";
+      }
+    }
+  }
+
   // 6f-ter. Bullet-list hours for unpublished services (2026-06-01 Steve).
   //          The bot was producing replies like:
   //            "Pour aujourd'hui, voici les horaires :
@@ -2851,15 +2877,34 @@ export async function answerMaaChat(
     /\b(econofitness|nautilus\s+plus|nautilus|goodlife|good\s+life|ymca|atmosph[èe]re|usine\s+de\s+l['e]?entra[iî]nement|énergie\s+cardio|energie\s+cardio|world\s+gym)\b/i.test(request.userMessage) ||
     /\bpourquoi\s+(?:choisir|aller|s['e]?inscrire\s+chez|prendre)\s+(?:votre|le)\s+(?:gym|club)\b/i.test(request.userMessage) ||
     /\bwhy\s+(?:choose|go\s+with|sign\s+up\s+at)\s+(?:your|this)\s+(?:gym|club)\b/i.test(request.userMessage);
+  // 2026-06-01 gauntlet Q1: "Yé-tu ouvert le dimanche votre gym?" triggered
+  // the access hedge because "gym" is in the message — but the visitor was
+  // asking ABOUT HOURS, not access. Bail when there's a clear schedule/
+  // hours/day-of-week intent.
+  const isHoursOrScheduleAsk =
+    /\b(heure[s]?|horaire[s]?|ouvert|ferm[eé]|open|close|closed|schedule|hours?|times?|y[eé][- ]t[- ]u\s+ouvert|when\s+(?:are\s+you|is\s+it))\b/i.test(request.userMessage) ||
+    /\b(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|aujourd|demain|ce\s+soir|tonight)\b/i.test(request.userMessage);
   const isGymAccessMembershipUnknown =
-    mentionsGymAccess && !userDeclaresMember && !isPricingQuestion(request.userMessage) && !isCompetitiveComparison;
+    mentionsGymAccess && !userDeclaresMember && !isPricingQuestion(request.userMessage) && !isCompetitiveComparison && !isHoursOrScheduleAsk;
 
   // Daphné seventh-pass #1: vague topic requests ("j'ai une demande concernant
   // X") were answered with a generic fiche. We need to clarify first.
+  // 2026-06-01 Steve gauntlet V1: "Tell me about the club" triggered the
+  // vague-topic clarifier ("Are you asking about schedule, registration…?")
+  // instead of giving the heritage pitch. "Tell me about the club / your gym /
+  // the facility" is asking for an OVERVIEW — it should land in the heritage/
+  // description path. Only bail to clarify when the topic is a SPECIFIC
+  // service (cirque, spa, pilates, etc.) where the visitor really might mean
+  // schedule vs price vs registration.
+  const tellMeAboutTheClub =
+    /\btell\s+me\s+(?:more\s+)?about\s+(?:the\s+)?(?:club|gym|facility|place|MAA)\b/i.test(request.userMessage) ||
+    /\bparle[zr]?[- ]moi\s+(?:un\s+peu\s+)?du\s+(?:club|gym|MAA)\b/i.test(request.userMessage);
   const isVagueTopicRequest =
-    /\b(?:j['']?aurai?(?:s|t)|j['']?ai|on a)\s+(?:une\s+)?(?:demande|question|interrogation|requ[eê]te|chose)\s+(?:à\s+propos\s+(?:du|de\s+la|des|de\s+l['']?)|concernant|au\s+sujet\s+(?:du|de\s+la|des|de\s+l['']?)|sur\s+(?:le|la|les|l['']?))/i.test(request.userMessage) ||
-    /\b(?:i['']?ve\s+got|i\s+have)\s+a\s+(?:question|request)\s+about\b/i.test(request.userMessage) ||
-    /\b(?:i\s+wanted\s+to\s+ask|tell\s+me\s+(?:more\s+)?about)\b/i.test(request.userMessage);
+    !tellMeAboutTheClub && (
+      /\b(?:j['']?aurai?(?:s|t)|j['']?ai|on a)\s+(?:une\s+)?(?:demande|question|interrogation|requ[eê]te|chose)\s+(?:à\s+propos\s+(?:du|de\s+la|des|de\s+l['']?)|concernant|au\s+sujet\s+(?:du|de\s+la|des|de\s+l['']?)|sur\s+(?:le|la|les|l['']?))/i.test(request.userMessage) ||
+      /\b(?:i['']?ve\s+got|i\s+have)\s+a\s+(?:question|request)\s+about\b/i.test(request.userMessage) ||
+      /\b(?:i\s+wanted\s+to\s+ask|tell\s+me\s+(?:more\s+)?about)\b/i.test(request.userMessage)
+    );
 
   const isExplicitTeamHelpRequest =
     /\b(quelqu['']?un|qu['']?un)\s+de\s+l['']?[ée]quipe\b/i.test(request.userMessage) ||

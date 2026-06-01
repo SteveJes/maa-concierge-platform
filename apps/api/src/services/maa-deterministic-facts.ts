@@ -176,7 +176,10 @@ const STAFF_DIRECTORY: MaaStaff[] = [
     phone: "514 845-2233",
   },
   {
-    match: /\b(francis|bradette)\b/i,
+    // 2026-06-01 gauntlet B4: "Je veux parler à quelqu'un des ventes" must
+    // route to Francis. Match department keywords (ventes / sales /
+    // abonnement / membership / adhésion) in addition to his name.
+    match: /\b(francis|bradette|(?:quelqu['']?un\s+(?:de\s+|des\s+|du\s+))?(?:service\s+des?\s+|d[eé]partement\s+des?\s+)?ventes?\b|\bsales\s+(?:team|person|rep|department|department\s+of\s+sales)\b|\babonnement(?:s)?\s+(?:contact|info|d[eé]partement)|\bmembership\s+(?:team|department|info))\b/i,
     name: "Francis Bradette",
     role: "Directeur des ventes (abonnements et visites)",
     ext: "228",
@@ -210,7 +213,7 @@ const STAFF_DIRECTORY: MaaStaff[] = [
 ];
 
 const STAFF_CONTACT_INTENT_RE =
-  /\b(courriel|e[- ]?mail|email|t[eé]l[eé]phone|phone|num[eé]ro|number|coordonn[eé]es|contact|joindre|reach|how\s+(?:to\s+)?(?:reach|contact))\b/i;
+  /\b(courriel|e[- ]?mail|email|t[eé]l[eé]phone|phone|num[eé]ro|number|coordonn[eé]es|contact|joindre|reach|how\s+(?:to\s+)?(?:reach|contact)|parler\s+(?:à|avec)|speak\s+(?:to|with)|talk\s+(?:to|with))\b/i;
 
 export function tryAnswerStaffContact(
   userMessage: string,
