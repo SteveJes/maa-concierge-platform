@@ -10,17 +10,18 @@ import { Card, CardHeader, Pill } from "../../../../components/ui/Card";
 import {
   LayoutDashboard, Users, Sparkles, Settings as SettingsIcon,
   Globe, Link as LinkIcon, Sparkle, Shield, Brain, BookOpen, PhoneCall,
-  Eye, Layers, Award, Languages, Clock, Lock,
+  Eye, Layers, Award, Languages, Clock, Lock, MessageSquare,
 } from "lucide-react";
 
 const NAV = [
-  { label: "Overview",       href: "/admin/portal",          icon: <LayoutDashboard size={16} /> },
-  { label: "Sentinel",       href: "/admin/portal/sentinel", icon: <Sparkles size={16} /> },
-  { label: "Tenants",        href: "/admin/portal/tenants",  icon: <Globe size={16} /> },
+  { label: "Overview",       href: "/admin/portal",            icon: <LayoutDashboard size={16} /> },
+  { label: "Conversations",  href: "/admin/portal/conversations", icon: <MessageSquare size={16} /> },
+  { label: "Sentinel",       href: "/admin/portal/sentinel",   icon: <Sparkles size={16} /> },
+  { label: "Tenants",        href: "/admin/portal/tenants",    icon: <Globe size={16} /> },
   { label: "Onboarding",     href: "/admin/portal/onboarding", icon: <Users size={16} /> },
-  { label: "Liens utiles",   href: "/admin/portal/links",    icon: <LinkIcon size={16} /> },
-  { label: "Capacités",      href: "/admin/portal/features", icon: <Sparkle size={16} /> },
-  { label: "Réglages",       href: "/admin/settings",        icon: <SettingsIcon size={16} /> },
+  { label: "Liens utiles",   href: "/admin/portal/links",      icon: <LinkIcon size={16} /> },
+  { label: "Capacités",      href: "/admin/portal/features",   icon: <Sparkle size={16} /> },
+  { label: "Réglages",       href: "/admin/settings",          icon: <SettingsIcon size={16} /> },
 ];
 
 interface Feature {

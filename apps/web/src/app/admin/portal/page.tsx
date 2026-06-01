@@ -15,13 +15,14 @@ import {
 } from "lucide-react";
 
 const NAV = [
-  { label: "Overview",       href: "/admin/portal",          icon: <LayoutDashboard size={16} /> },
-  { label: "Sentinel",       href: "/admin/portal/sentinel", icon: <Sparkles size={16} /> },
-  { label: "Tenants",        href: "/admin/portal/tenants",  icon: <Globe size={16} /> },
+  { label: "Overview",       href: "/admin/portal",            icon: <LayoutDashboard size={16} /> },
+  { label: "Conversations",  href: "/admin/portal/conversations", icon: <MessageSquare size={16} /> },
+  { label: "Sentinel",       href: "/admin/portal/sentinel",   icon: <Sparkles size={16} /> },
+  { label: "Tenants",        href: "/admin/portal/tenants",    icon: <Globe size={16} /> },
   { label: "Onboarding",     href: "/admin/portal/onboarding", icon: <Users size={16} /> },
-  { label: "Liens utiles",   href: "/admin/portal/links",    icon: <LinkIcon size={16} /> },
-  { label: "Capacités",      href: "/admin/portal/features", icon: <Sparkle size={16} /> },
-  { label: "Réglages",       href: "/admin/settings",        icon: <SettingsIcon size={16} /> },
+  { label: "Liens utiles",   href: "/admin/portal/links",      icon: <LinkIcon size={16} /> },
+  { label: "Capacités",      href: "/admin/portal/features",   icon: <Sparkle size={16} /> },
+  { label: "Réglages",       href: "/admin/settings",          icon: <SettingsIcon size={16} /> },
 ];
 
 const TENANTS = [
@@ -216,7 +217,29 @@ export default function PortalOverview() {
             </div>
           </div>
 
-          {/* Primary KPI row — glass cards, gold-gradient numbers on the money stats */}
+          {/* HERO ROI banner — the money story, front and center for the demo */}
+          <Card glass className="relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-[var(--brand-gold-soft)] via-transparent to-transparent pointer-events-none" />
+            <div className="relative grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+              <div>
+                <div className="text-[11px] uppercase tracking-[0.12em] text-[var(--brand-gold-strong)] font-semibold mb-2">Valeur générée — 7 derniers jours</div>
+                <div className="kpi-gold text-[44px] font-bold leading-none tracking-tight">11 040&nbsp;$</div>
+                <div className="mt-2 text-sm text-[var(--text-muted)]">Pipeline de leads capturés par Sophie · <span className="font-medium text-[var(--success)]">+2 160 $ vs semaine précédente</span></div>
+              </div>
+              <div className="md:border-l md:border-r border-[var(--brand-gold)]/20 md:px-6 md:py-2">
+                <div className="text-[11px] uppercase tracking-[0.12em] text-[var(--text-subtle)] font-semibold mb-2">Valeur moyenne par lead</div>
+                <div className="kpi-gold text-[36px] font-bold leading-none tracking-tight">240&nbsp;$</div>
+                <div className="mt-2 text-sm text-[var(--text-muted)]">46 leads × 240 $ moy. <span className="font-medium text-[var(--success)]">+12 $ /lead</span></div>
+              </div>
+              <div>
+                <div className="text-[11px] uppercase tracking-[0.12em] text-[var(--text-subtle)] font-semibold mb-2">Économies vs réception</div>
+                <div className="kpi-gold text-[36px] font-bold leading-none tracking-tight">62&nbsp;h</div>
+                <div className="mt-2 text-sm text-[var(--text-muted)]">Heures de réception remplacées par Sophie · <span className="font-medium text-[var(--success)]">≈ 1 860 $/mois</span></div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Primary KPI row — operational metrics */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Stat glass label="Conversations 7j" value="248" delta={{ value: "+18 %", direction: "up" }} icon={<MessageSquare size={16} />} />
             <Stat glass label="Nouveaux leads"   value="46"  delta={{ value: "+9 %",  direction: "up" }} icon={<Users size={16} />} />

@@ -12,7 +12,7 @@ import {
 const NAV = [
   { label: "Overview",       href: "/admin/portal",            icon: <LayoutDashboard size={16} /> },
   { label: "Onboarding",     href: "/admin/portal/onboarding", icon: <Sparkles size={16} /> },
-  { label: "Conversations",  href: "/admin/conversations",     icon: <MessageSquare size={16} /> },
+  { label: "Conversations",  href: "/admin/portal/conversations", icon: <MessageSquare size={16} /> },
   { label: "Leads",          href: "/admin/leads",             icon: <Users size={16} /> },
   { label: "Tenants",        href: "/admin/portal/tenants",    icon: <Globe size={16} /> },
   { label: "Settings",       href: "/admin/settings",          icon: <SettingsIcon size={16} /> },

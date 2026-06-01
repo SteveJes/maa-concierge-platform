@@ -22,6 +22,7 @@ import {
 
 const NAV = [
   { label: "Overview",       href: "/admin/portal",         icon: <LayoutDashboard size={16} /> },
+  { label: "Conversations",  href: "/admin/portal/conversations", icon: <MessageSquare size={16} /> },
   { label: "Conversations",  href: "/admin/conversations",  icon: <MessageSquare size={16} /> },
   { label: "Leads",          href: "/admin/leads",          icon: <Users size={16} /> },
   { label: "Sentinel",       href: "/admin/portal/sentinel", icon: <Sparkles size={16} /> },

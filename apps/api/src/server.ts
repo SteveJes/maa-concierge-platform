@@ -2979,6 +2979,68 @@ export function createServer() {
     };
   });
 
+  // GET /v1/admin/conversations?tenant=maa&days=7&limit=50
+  // Lists recent conversations for the dashboard tracker — Daphné / Steve see
+  // every visitor thread with summary metadata + lead-capture flag.
+  app.get("/v1/admin/conversations", async (request, reply) => {
+    if (!adminAuth(request, reply)) return;
+    const query = request.query as Record<string, string>;
+    const tenantCode = query.tenant ?? "maa";
+    const days = Math.min(Math.max(parseInt(query.days ?? "7", 10) || 7, 1), 90);
+    const limit = Math.min(Math.max(parseInt(query.limit ?? "50", 10) || 50, 1), 200);
+
+    if (!isChatPersistenceConfigured()) {
+      return reply.code(503).send({ error: "persistence_not_configured" });
+    }
+    try {
+      const tenant = await findTenantByCode(tenantCode);
+      const rows = await listConversationsForAnalytics(tenant.uuid, days);
+      const slice = rows.slice(0, limit);
+      return {
+        tenantCode,
+        tenantName: tenant.name,
+        days,
+        total: rows.length,
+        conversations: slice.map((c) => ({
+          uuid: c.uuid,
+          startedAt: c.started_at,
+          locale: c.locale ?? null,
+          language: c.language ?? (c.locale?.startsWith("fr") ? "fr" : "en"),
+          outcome: c.outcome ?? "unknown",
+          messageCount: c.message_count ?? null,
+          summary: c.summary ?? null,
+          leadCaptured: c.outcome === "callback" || c.outcome === "booking",
+        })),
+      };
+    } catch (err) {
+      request.log.error({ err }, "conversations list failed");
+      return reply.code(500).send({ error: "internal", message: String(err) });
+    }
+  });
+
+  // GET /v1/admin/conversations/:uuid — full transcript
+  app.get("/v1/admin/conversations/:uuid", async (request, reply) => {
+    if (!adminAuth(request, reply)) return;
+    const { uuid } = request.params as { uuid: string };
+    if (!isChatPersistenceConfigured()) {
+      return reply.code(503).send({ error: "persistence_not_configured" });
+    }
+    try {
+      const messages = await listMessagesByConversationUuid(uuid, 200);
+      return {
+        uuid,
+        messages: messages.map((m) => ({
+          role: m.role,
+          content: m.content,
+          createdAt: m.created_at ?? null,
+        })),
+      };
+    } catch (err) {
+      request.log.error({ err }, "conversation messages fetch failed");
+      return reply.code(500).send({ error: "internal", message: String(err) });
+    }
+  });
+
   app.get("/v1/tenants/:tenantId/analytics", async (request, reply) => {
     const { tenantId } = request.params as TenantRouteParams;
 
