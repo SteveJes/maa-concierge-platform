@@ -729,9 +729,15 @@ export function createServer() {
   }
 
   function verifyAdminToken(token: string): boolean {
-    const [, username] = token.split(":");
-    if (!username) return false;
-    const expected = signAdminToken(username);
+    // 2026-06-01 fix: tenant-scoped tokens are signed as <hmac>:tenant:user
+    // (3 colon-separated parts); the previous split only kept the second
+    // part as 'username' and re-signed against that, which never matched.
+    // Take EVERYTHING after the first colon as the identity payload.
+    const firstColon = token.indexOf(":");
+    if (firstColon === -1) return false;
+    const identity = token.slice(firstColon + 1);
+    if (!identity) return false;
+    const expected = signAdminToken(identity);
     try {
       return timingSafeEqual(Buffer.from(token), Buffer.from(expected));
     } catch {
