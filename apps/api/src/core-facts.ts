@@ -147,6 +147,14 @@ function looksLikePhoneNumberQuestion(
     /\b(?:m['']?abonner|m['']?inscrire|adherer|adhérer)\b/.test(normalized);
   if (joinIntentSignals) return false;
 
+  // 2026-06-01 Steve live: "téléphone de Nathalie" was firing the canned
+  // "514 845-2233, poste 234" deflection BEFORE tryAnswerStaffContact had a
+  // chance to return Nathalie's correct ext 231. When the user names a
+  // specific staff member, bail out so the staff handler takes over.
+  const namesStaff =
+    /\b(nathalie|lambert|francis|bradette|elisabeth|boutin|yvon|provencal|provençal|valerie|valérie|de\s+vigne|devigne)\b/i.test(userMessage);
+  if (namesStaff) return false;
+
   if (isFrenchLocale(locale)) {
     return (
       hasAnyPhrase(normalized, [
