@@ -3000,13 +3000,25 @@ export function createServer() {
     }
     try {
       const tenant = await findTenantByCode(tenantCode);
-      const rows = await listConversationsForAnalytics(tenant.uuid, days);
+      // 2026-06-01: NocoDB can be slow under load (throttling) — race against
+      // a 6s timeout so the dashboard never hangs. Returns an empty list with
+      // a 'partial' flag instead of timing out the whole page.
+      const rows = await Promise.race([
+        listConversationsForAnalytics(tenant.uuid, days),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("nocodb-timeout")), 6000),
+        ),
+      ]).catch((err: Error) => {
+        request.log.warn({ err: err.message }, "conversations list timed out — returning empty");
+        return [];
+      });
       const slice = rows.slice(0, limit);
       return {
         tenantCode,
         tenantName: tenant.name,
         days,
         total: rows.length,
+        partial: rows.length === 0 && days > 0 ? "timeout-or-empty" : null,
         conversations: slice.map((c) => ({
           uuid: c.uuid,
           startedAt: c.started_at,
@@ -3032,7 +3044,15 @@ export function createServer() {
       return reply.code(503).send({ error: "persistence_not_configured" });
     }
     try {
-      const messages = await listMessagesByConversationUuid(uuid, 200);
+      const messages = await Promise.race([
+        listMessagesByConversationUuid(uuid, 200),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("nocodb-timeout")), 6000),
+        ),
+      ]).catch((err: Error) => {
+        request.log.warn({ err: err.message, uuid }, "messages fetch timed out — returning empty");
+        return [];
+      });
       return {
         uuid,
         messages: messages.map((m) => ({
