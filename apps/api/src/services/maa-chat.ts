@@ -1358,6 +1358,32 @@ function applyPostProcessGuards(
       : " Specific clinic hours aren't published — booking is via the service page or the sports clinic at (514) 845-2233, ext. 234.";
   }
 
+  // 6f-ter. Bullet-list hours for unpublished services (2026-06-01 Steve).
+  //          The bot was producing replies like:
+  //            "Pour aujourd'hui, voici les horaires :
+  //             - Plateaux d'entraînement : 6h à 22h
+  //             - Piscine et terrasse : 7h à 20h     ← INVENTED
+  //             - Restaurant Le 1881 : 7h à 22h
+  //             - Spa / salle de détente : 9h à 19h  ← INVENTED"
+  //          The earlier guards split by .!? so they never saw individual
+  //          bullet items inside a single bulleted sentence. Strip line-by-line
+  //          when an unpublished-hours service is bullet-paired with specific
+  //          hours.
+  {
+    const unpubBulletRe =
+      /^\s*[-•*◆▸▶→]\s*[^\n]*\b(piscine|pool|terrasse|spa|sauna|hammam|salle\s+de\s+d[eé]tente|relaxation\s+room|clinique\s+(?:sportive|m[eé]dicale)|massoth[eé]rapie|massage|soins?\s+infirmiers?|nursing|sports?\s+therapy)\b[^\n]*\b\d{1,2}\s*(?:h|am|pm|:\d{2})/i;
+    if (unpubBulletRe.test(out)) {
+      const lines = out.split(/\r?\n/);
+      const cleaned = lines.filter((l) => !unpubBulletRe.test(l));
+      if (cleaned.length !== lines.length) {
+        out = cleaned.join("\n").trim();
+        out += fr
+          ? " Les horaires précis de la piscine, du spa et de la clinique ne sont pas publiés en grille hebdomadaire — la réception ((514) 845-2233, poste 0) peut confirmer les plages d'ouverture du jour."
+          : " Specific pool, spa, and clinic hours aren't published as a weekly grid — Club reception ((514) 845-2233, ext. 0) can confirm today's opening times.";
+      }
+    }
+  }
+
   // 6f-bis. Sunday-hours-for-unpublished-services guard (2026-06-01 stress).
   //          Bot was inventing "clinique/spa/massothérapie/soins infirmiers
   //          ouverts le dimanche de 11h à 15h" — none of these have published
@@ -2905,8 +2931,11 @@ export async function answerMaaChat(
     !/\b(abonnement|membership|adh[eé]sion|club\s+sportif|maa|piscine|pool|spa|sauna|massage|physio|nutrition|restaurant|menu|salle|gym|m['']?inscrire|devenir\s+membre|join|become\s+a\s+member|visite|tour|fitness\s+room|workout\s+room|reception|front\s+desk)\b/i.test(request.userMessage) &&
     request.userMessage.trim().split(/\s+/).length <= 10;
   const userMessageIsBareTopicQuery =
-    // FR
-    /\b(c['']?est\s+quoi\s+(?:les\s+|le\s+)?(?:tarif|prix)|tarif|prix|horaire|heure|comment\s+(?:on\s+)?r[eé]serv|qui\s+(?:est|je\s+(?:dois\s+)?contact)|et\s+l['']?horaire|et\s+les\s+tarif)\b/i.test(request.userMessage) ||
+    // FR — accept the apostrophe-dropped typo "lhoraire" / "lheure" (Quebec
+    // visitors often skip the apostrophe). 2026-06-01 Steve live: "alors
+    // aujourdhui cest quoi lhoraire?" was missing this pattern entirely so
+    // the TIER1 pickleball-context preservation never fired.
+    /\b(c['']?est\s+quoi\s+(?:les\s+|le\s+)?(?:tarif|prix)|tarif|prix|horaire|heure|comment\s+(?:on\s+)?r[eé]serv|qui\s+(?:est|je\s+(?:dois\s+)?contact)|et\s+l['']?horaire|et\s+les\s+tarif|lhoraire|lheure)\b/i.test(request.userMessage) ||
     // EN
     /\b(what(?:['']?s|\s+are|\s+is)\s+the\s+(?:price|cost|fee|rate|schedule|hours)|how\s+(?:do\s+I|can\s+I|to)\s+(?:book|reserve|register|sign\s+up)|who\s+(?:do\s+I|should\s+I|to)\s+contact|how\s+much|when\s+(?:is|are|does|do))\b/i.test(request.userMessage);
 

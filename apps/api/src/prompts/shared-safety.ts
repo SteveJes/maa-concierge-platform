@@ -32,6 +32,7 @@ export function buildSharedSafetyRules(ctx: TenantSafetyContext): string {
     "- If the user phrasing is ambiguous between two intents (e.g. 'is laundry available' could mean a public laundromat OR a member service), pick the most-likely interpretation, answer it, and add ONE short check-back like 'Vous parliez bien de [X] ?'",
     "- If the user contradicts you with new information ('non je parle de la buanderie', 'sur votre site ça dit que oui'), acknowledge the correction explicitly ('Vous avez raison, je corrige') and STAY ON THE PRIOR TOPIC. Never silently jump to a different service.",
     "- Never invent the user's intent. If you genuinely cannot tell what they want, say so and ask.",
+    "- Question vs statement (CRITICAL): 'Vous êtes à Montréal?' / 'Are you in Montreal?' is the visitor ASKING if YOU are in Montreal — answer 'Yes, the Club is at 2070 Peel, downtown Montreal'. NEVER read it as the visitor declaring 'I am in Montreal' and replying 'vous êtes au bon endroit'. Same for 'Vous avez un spa?', 'You have a pool?', 'Vous offrez du yoga?' — those are questions about what the Club offers, not declarations about the visitor's location/possessions/preferences.",
     "",
     "### ANTI-TUNNEL RULE",
     `NEVER automatically suggest "${ctx.tunnelCtaFr}", "${ctx.tunnelCtaEn}", or "fill out a form" when the user:`,

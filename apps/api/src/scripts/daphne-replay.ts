@@ -362,6 +362,39 @@ const FLOWS: Flow[] = [
     ],
   },
   {
+    // 2026-06-01 Steve live: bot read "Vous êtes à Montréal?" (interrogation)
+    // as "I'm in Montreal" (declaration) and replied "vous êtes au bon endroit".
+    id: "montreal-interrogation",
+    label: "'Vous êtes à Montréal?' must answer YES (we're at 2070 Peel), NOT 'vous êtes au bon endroit'",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "vous etes a montreal?",
+        expect: {
+          mustInclude: [/(2070\s+Peel|Montr[eé]al|downtown|centre[- ]ville)/i],
+          mustNotInclude: [/vous\s+[eê]tes\s+(?:donc\s+)?au\s+bon\s+endroit/i],
+        },
+      },
+    ],
+  },
+  {
+    id: "no-bullet-list-invented-hours",
+    label: "Generic 'horaire du club' must NOT bullet-list invented pool/spa/terrasse hours",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "quel est lhoraire complet du club aujourdhui?",
+        expect: {
+          mustNotInclude: [
+            /piscine[^.\n]{0,40}\d{1,2}\s*h\s+(?:à|to|-)\s*\d{1,2}\s*h/i,
+            /\bspa\b[^.\n]{0,40}\d{1,2}\s*h\s+(?:à|to|-)\s*\d{1,2}\s*h/i,
+            /terrasse[^.\n]{0,40}\d{1,2}\s*h\s+(?:à|to|-)\s*\d{1,2}\s*h/i,
+          ],
+        },
+      },
+    ],
+  },
+  {
     id: "brunch-menu-link",
     label: "Restaurant brunch/déjeuner question — must deliver menu links, NEVER invent dish prices",
     locale: "fr-CA",

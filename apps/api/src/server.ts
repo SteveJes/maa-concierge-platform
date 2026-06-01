@@ -2129,9 +2129,9 @@ export function createServer() {
     }
 
     const body = parsed.data;
-    const hasCallbackPayload = body.callback !== undefined;
+    let hasCallbackPayload = body.callback !== undefined;
     const isDryRunPersistence = body.dryRunPersistence === true;
-    const callbackPhone = body.callback?.phone ?? null;
+    let callbackPhone = body.callback?.phone ?? null;
     const trimmedMessage = body.message.trim();
     const locale = toNullableTrimmedString(body.locale);
     const now = new Date().toISOString();
@@ -2228,6 +2228,49 @@ export function createServer() {
     const lastAssistantTurn = [...(conversationHistory ?? [])]
       .reverse()
       .find((t) => t.role === "assistant");
+
+    // 2026-06-01 Steve live: when the bot asks "préciser vos coordonnées" and
+    // the visitor types name + phone INLINE in the chat (instead of using the
+    // callback form), the LLM just acknowledged textually and no lead was
+    // saved. Detect this pattern and synthesize a callback payload so the
+    // standard persistCallbackRequest path fires (email to staff, persist to
+    // NocoDB, success message).
+    if (!hasCallbackPayload && lastAssistantTurn) {
+      const prior = lastAssistantTurn.content;
+      const priorAsksForContactInfo =
+        /\b(coordonn[eé]es|vos\s+coordonn[eé]es|votre\s+(?:nom|courriel|num[eé]ro|t[eé]l[eé]phone|email)|laissez[- ]moi\s+votre|me\s+pr[eé]ciser|preciser\s+vos|your\s+contact\s+info|share\s+your\s+(?:name|phone|email)|leave\s+(?:me\s+)?your\s+(?:name|phone|email))\b/i.test(prior);
+      // Match common Canadian phone formats: 514-938-3000 / (514) 938-3000 /
+      // 514 938 3000 / 5149383000 / 514.938.3000. Be tolerant of small typos.
+      const phoneMatch = trimmedMessage.match(/(?:\(?\d{3}\)?[\s\-.]*)\d{3}[\s\-.]?\d{4}/);
+      if (priorAsksForContactInfo && phoneMatch) {
+        const phoneRaw = phoneMatch[0];
+        // Name = the rest of the message minus the phone + email + filler words.
+        const emailMatch = trimmedMessage.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/);
+        const cleaned = trimmedMessage
+          .replace(phoneRaw, " ")
+          .replace(emailMatch?.[0] ?? "", " ")
+          .replace(/[,;|]/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+        const name = cleaned.length > 1 && cleaned.length < 100 ? cleaned : null;
+        // Normalize phone digits-only for storage; keep raw for display.
+        const phoneDigits = phoneRaw.replace(/[^\d+]/g, "");
+        const synthCallback = {
+          phone: phoneDigits,
+          name: name ?? undefined,
+          email: emailMatch?.[0] ?? undefined,
+        };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (body as any).callback = synthCallback;
+        hasCallbackPayload = true;
+        callbackPhone = phoneDigits;
+        request.log.info(
+          { name, phoneDigits, email: emailMatch?.[0] ?? null, tenantId },
+          "Inline callback detected from chat — synthesizing callback payload",
+        );
+      }
+    }
+
     const priorWasRestaurantContext = lastAssistantTurn
       ? /\b(restaurant|le\s+1881|resto\s+1881)\b/i.test(lastAssistantTurn.content)
       : false;
