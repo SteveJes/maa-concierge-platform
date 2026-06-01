@@ -139,12 +139,22 @@ function looksLikePhoneNumberQuestion(
   // detector because of the word 'joindre'. But the visitor means JOIN
   // (membership), not CONTACT. Same for prospect-goal phrasings.
   // Bail out before the canned phone-number reply takes over.
+  // 2026-06-01 Steve live (worst yet): "ma femme et moi voudrons joindre le
+  // club" was read as "contact us" instead of "JOIN the club" because my
+  // regex required 'à' between 'joindre' and the noun. In casual Quebec
+  // French, "joindre le club" (sans à) is common. Broaden to catch:
+  //   - "joindre le/la/votre/notre/un/une (gym|club|centre|équipe)"
+  //   - "joindre au club" / "se joindre au club"
+  //   - couple/family signals adjacent to 'joindre/devenir membre' too
   const joinIntentSignals =
-    /\b(?:me\s+)?joindre\s+(?:a|à)\s+(?:votre|le|notre)\s+(?:gym|club|centre)\b/.test(normalized) ||
-    /\bjoin\s+(?:your|the)\s+(?:gym|club)\b/.test(normalized) ||
+    // "joindre le/la/votre/un club", "joindre au club", "se joindre au club"
+    /\b(?:me\s+|se\s+|vous\s+)?joindre\s+(?:au?x?|à\s+(?:la\s+|le\s+|l[' ])?|aux?\s+)?(?:votre|le|la|notre|un|une)?\s*(?:gym|club|centre|[eé]quipe)\b/.test(normalized) ||
+    /\bjoin\s+(?:your|the)\s+(?:gym|club|centre|center|team)\b/.test(normalized) ||
     /\b(?:devenir|deveni)\s+membre\b/.test(normalized) ||
     /\b(?:embonpoint|perdre\s+du\s+poids|remise\s+en\s+forme|me\s+remettre\s+en\s+forme|weight\s+loss|get\s+in\s+shape)\b/.test(normalized) ||
-    /\b(?:m['']?abonner|m['']?inscrire|adherer|adhérer)\b/.test(normalized);
+    /\b(?:m['']?abonner|m['']?inscrire|adherer|adhérer)\b/.test(normalized) ||
+    // 2026-06-01: couple/family + join signal
+    /\b(?:ma\s+femme|mon\s+mari|mon\s+conjoint|ma\s+conjointe|en\s+couple|family|couple)\b.{0,40}\b(?:joindre|join|abonn|inscrire|devenir\s+membre|rabais)\b/.test(normalized);
   if (joinIntentSignals) return false;
 
   // 2026-06-01 Steve live: "téléphone de Nathalie" was firing the canned
@@ -512,10 +522,24 @@ export function resolveDirectCoreFactResponse(args: {
   tenantId: string;
   userMessage: string;
   locale: string | null;
+  lastAssistantText?: string | null;
 }): MaaChatResponse | null {
   const facts = getTenantCoreFacts(args.tenantId);
 
   if (!facts) {
+    return null;
+  }
+
+  // 2026-06-01 Steve live: bot mentioned Nathalie Lambert in a prior turn,
+  // user followed up with "comment la rejoindre?" — no staff name in current
+  // message but the pronoun "la" references the prior turn's Nathalie. Bail
+  // out of the generic phone/location resolver so the LLM (or staff handler
+  // in answerMaaChat) can pick up the contextual reference.
+  const priorTurnNamedStaff = args.lastAssistantText
+    ? /\b(nathalie|lambert|francis|bradette|elisabeth|boutin|yvon|provencal|provençal|valerie|valérie|de\s+vigne|devigne)\b/i.test(args.lastAssistantText)
+    : false;
+  const currentMessagePronoun = /\b(la|le|lui|elle|her|him|them|they|its?)\b/i.test(args.userMessage);
+  if (priorTurnNamedStaff && currentMessagePronoun) {
     return null;
   }
 

@@ -457,6 +457,51 @@ const SCHEDULE_SERVICES: ScheduleService[] = [
 const SCHEDULE_INTENT_RE =
   /\b(horaire[s]?|heure[s]?|programme[s]?|session[s]?|s[eé]ance[s]?|cours|classes?|quand|when|schedule|hours?|times?|days?|jours?|semaine|week|aujourd['']?hui|today|demain|tomorrow|ce\s+soir|tonight|ce\s+matin|this\s+morning|tonight|qui\s+(?:donne|enseign)|who\s+teach|instructeur[s]?|instructor[s]?)\b/i;
 
+/**
+ * Pool free-swim slots encoded from MAA_Piscine_Pool_Printemps2026 PDF
+ * (Steve verified 2026-06-01). Used so "nage libre aujourd'hui?" gets a
+ * SPECIFIC answer with the day's windows instead of just the PDF link.
+ *
+ * Format: list of [startHHMM, endHHMM] free-swim windows per weekday.
+ */
+const POOL_FREE_SWIM_BY_DAY: Record<string, string[]> = {
+  monday:    ["6h30–17h25", "18h30–20h30"],
+  tuesday:   ["6h30–6h55", "8h05–17h25", "18h30–20h30"],
+  wednesday: ["6h30–17h25", "18h30–20h30"],
+  thursday:  ["6h30–6h55", "8h05–11h55", "13h05–20h30"],
+  friday:    ["6h30–20h30"],
+  saturday:  ["7h00–18h00"],
+  sunday:    ["7h00–18h00"],
+};
+
+const DAY_KEY_FR: Record<string, string> = {
+  lundi: "monday", mardi: "tuesday", mercredi: "wednesday", jeudi: "thursday",
+  vendredi: "friday", samedi: "saturday", dimanche: "sunday",
+};
+
+function todayInMontreal(): string {
+  const fmt = new Intl.DateTimeFormat("en-US", { timeZone: "America/Montreal", weekday: "long" });
+  return fmt.format(new Date()).toLowerCase();
+}
+
+function poolNageLibreForDay(dayKeyEn: string, fr: boolean): string | null {
+  const slots = POOL_FREE_SWIM_BY_DAY[dayKeyEn];
+  if (!slots) return null;
+  const FR_LABEL: Record<string, string> = {
+    monday: "lundi", tuesday: "mardi", wednesday: "mercredi", thursday: "jeudi",
+    friday: "vendredi", saturday: "samedi", sunday: "dimanche",
+  };
+  const EN_LABEL: Record<string, string> = {
+    monday: "Monday", tuesday: "Tuesday", wednesday: "Wednesday", thursday: "Thursday",
+    friday: "Friday", saturday: "Saturday", sunday: "Sunday",
+  };
+  const dayLabel = fr ? FR_LABEL[dayKeyEn]! : EN_LABEL[dayKeyEn]!;
+  const joined = slots.join(fr ? " et " : " and ");
+  return fr
+    ? `${dayLabel}, la nage libre est disponible de ${joined}`
+    : `${dayLabel}, free swim runs ${joined}`;
+}
+
 export function tryAnswerDynamicScheduleService(
   userMessage: string,
   locale: string | undefined,
@@ -472,6 +517,32 @@ export function tryAnswerDynamicScheduleService(
   if (/\b(tarif|prix|co[uû]te?|combien|cost|price|how\s+much)\b/i.test(m)) return null;
 
   const fr = isFr(locale);
+
+  // 2026-06-01 Steve live: when the user asks specifically about TODAY (or a
+  // named day) and the service is the POOL, compute the day's free-swim
+  // windows from the encoded PDF data — much more useful than a generic
+  // "here's the PDF" reply for a "j'ai le temps?" question.
+  if (svc.id === "pool" && /\b(nage\s+libre|free\s+swim|swim)\b/i.test(m)) {
+    const dayWord = m.match(/\b(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i);
+    const asksToday = /\b(aujourd['']?hui|today|ce\s+matin|this\s+morning|ce\s+soir|tonight|maintenant|right\s+now)\b/i.test(m);
+    let dayKey: string | null = null;
+    if (dayWord) {
+      const raw = dayWord[0].toLowerCase();
+      dayKey = DAY_KEY_FR[raw] ?? raw;
+    } else if (asksToday) {
+      dayKey = todayInMontreal();
+    }
+    if (dayKey && POOL_FREE_SWIM_BY_DAY[dayKey]) {
+      const dayLine = poolNageLibreForDay(dayKey, fr)!;
+      return {
+        followUpMode: "clarify",
+        assistantMessage: fr
+          ? `${dayLine}. Pour la grille complète et les autres activités aquatiques (Natation maîtres, Aqua-HIIT, Natation adulte), voici le document officiel : [${svc.labelFr}](${svc.url}). Souhaitez-vous que je vous oriente vers l'inscription ou la réception ?`
+          : `${dayLine}. For the full grid and other aquatic activities (master swim, Aqua-HIIT, adult swim lessons), here's the official document: [${svc.labelEn}](${svc.url}). Want me to point you to signup or reception?`,
+      };
+    }
+  }
+
   return {
     followUpMode: "clarify",
     assistantMessage: fr

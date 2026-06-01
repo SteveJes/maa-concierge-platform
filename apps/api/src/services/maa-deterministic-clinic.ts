@@ -37,6 +37,20 @@ function asksPrice(m: string): boolean {
 }
 
 /**
+ * Massage booking/availability intent — "je veux un massage", "vous avez ça?",
+ * "do you offer", "puis-je avoir", "réserver un massage".
+ *
+ * 2026-06-01 Steve live: "je veux un massage suédois, vous avez ça?" landed
+ * in the LLM (no price-intent → tryAnswerClinicPricing didn't fire) → bot
+ * answered with prices but NO LINK to FLiiP. Now fire deterministically on
+ * availability/booking intent for massage so the FLiiP link is always there.
+ */
+function asksMassageBooking(m: string): boolean {
+  if (!/\b(massage|massoth[eé]rapie|su[eé]dois|ashiatsu|tha[iï]|tissus\s+profonds?|deep\s+tissue)\b/i.test(m)) return false;
+  return /\b(je\s+(?:veux|voudrais|aimerais)|i\s+(?:want|would\s+like|need)|do\s+you\s+(?:have|offer)|vous\s+(?:avez|offrez|proposez)|puis[- ]je|can\s+i|disponible|available|r[eé]server|book|booking|c['']?est\s+possible|possible\s+(?:de|d['])|essayer|try)\b/i.test(m);
+}
+
+/**
  * Detect the specific clinic service the user is asking the PRICE of.
  * High-precision: only fires when both a price-intent AND a clinic-service
  * keyword are present, so generic "tarifs" (abonnement) is not captured.
@@ -47,7 +61,9 @@ export function tryAnswerClinicPricing(
   locale: string | undefined,
 ): DeterministicClinicAnswer | null {
   const m = (userMessage ?? "").toLowerCase();
-  if (!asksPrice(m)) return null;
+  // 2026-06-01: also fire on massage availability/booking intent so the
+  // FLiiP link is always delivered, not just for price questions.
+  if (!asksPrice(m) && !asksMassageBooking(m)) return null;
   const fr = isFr(locale);
 
   // ── Massage ────────────────────────────────────────────────────────────────

@@ -1340,8 +1340,12 @@ function applyPostProcessGuards(
   //     has NO published clinic-sportive hours; bot kept inventing "lundi-
   //     vendredi 9h-19h, week-end 11h-15h". Mirror of the spa-hours guard but
   //     scoped to clinic / sports therapy / physio / nutrition context.
-  const isClinicContext = /\b(clinique\s+(?:sportive|m[eé]dicale)|th[eé]rapie\s+sportive|sports?\s+therapy|physioth[eé]rapie|physio\b|nutritionniste|naturopath)\b/i.test(out) &&
-    !/\b(massoth[eé]rapie|massage|spa|sauna|salle\s+de\s+d[eé]tente|soins?\s+infirmiers?|mobile\s+mediq)\b/i.test(out);
+  // 2026-06-01 Steve live: bot invented "Les séances sont offertes du lundi
+  // au vendredi de 11 h à 18 h" for MASSAGE replies — but the earlier guard
+  // EXCLUDED massage context. Massage hours aren't published either; treat
+  // massage the same way as clinic for the hours-strip.
+  const isClinicContext = /\b(clinique\s+(?:sportive|m[eé]dicale)|th[eé]rapie\s+sportive|sports?\s+therapy|physioth[eé]rapie|physio\b|nutritionniste|naturopath|massoth[eé]rapie|massage)\b/i.test(out) &&
+    !/\b(spa|sauna|salle\s+de\s+d[eé]tente|soins?\s+infirmiers?|mobile\s+mediq)\b/i.test(out);
   const hasClinicWeeklyGrid =
     /\b(?:du\s+)?(?:lundi|monday)\s+(?:au|to)\s+(?:vendredi|friday)\s+(?:de\s+)?\d{1,2}\s*h/i.test(out) ||
     /\b\d{1,2}\s*h\s*(?:à|to|-)\s*\d{1,2}\s*h\s+(?:en\s+semaine|on\s+weekdays?)/i.test(out) ||
@@ -2837,8 +2841,18 @@ export async function answerMaaChat(
   // hedge prepended ("If you are a member, you have access...") because gym +
   // no-membership-declared matched. But the visitor's intent is PRICING, not
   // access. If pricing wins, skip the access hedge.
+  // 2026-06-01 Steve live: "pourquoi choisir votre gym au lieu de econofitness?"
+  // triggered the access hedge because "gym" is in the message. But this is a
+  // competitive-positioning / sales question — the bot should pitch MAA's
+  // differentiators, not hedge about access conditions. Bail out when the
+  // visitor compares us to a competitor or asks "why your gym".
+  const isCompetitiveComparison =
+    /\b(au\s+lieu\s+de|plut[oô]t\s+que|compar[eé]\s+à|comparativement|vs\.?|versus|instead\s+of|rather\s+than|compared\s+to)\b/i.test(request.userMessage) ||
+    /\b(econofitness|nautilus\s+plus|nautilus|goodlife|good\s+life|ymca|atmosph[èe]re|usine\s+de\s+l['e]?entra[iî]nement|énergie\s+cardio|energie\s+cardio|world\s+gym)\b/i.test(request.userMessage) ||
+    /\bpourquoi\s+(?:choisir|aller|s['e]?inscrire\s+chez|prendre)\s+(?:votre|le)\s+(?:gym|club)\b/i.test(request.userMessage) ||
+    /\bwhy\s+(?:choose|go\s+with|sign\s+up\s+at)\s+(?:your|this)\s+(?:gym|club)\b/i.test(request.userMessage);
   const isGymAccessMembershipUnknown =
-    mentionsGymAccess && !userDeclaresMember && !isPricingQuestion(request.userMessage);
+    mentionsGymAccess && !userDeclaresMember && !isPricingQuestion(request.userMessage) && !isCompetitiveComparison;
 
   // Daphné seventh-pass #1: vague topic requests ("j'ai une demande concernant
   // X") were answered with a generic fiche. We need to clarify first.

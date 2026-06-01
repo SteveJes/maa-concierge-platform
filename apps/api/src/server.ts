@@ -2291,6 +2291,7 @@ export function createServer() {
       tenantId,
       userMessage: trimmedMessage,
       locale,
+      lastAssistantText: lastAssistantTurn?.content ?? null,
     });
 
     const userName = typeof body.userName === "string" && body.userName.trim() ? body.userName.trim() : null;
