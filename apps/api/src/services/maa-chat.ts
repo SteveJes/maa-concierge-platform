@@ -1376,9 +1376,21 @@ function applyPostProcessGuards(
       //   "over 100 clubs / plus de 100 clubs / 100+ clubs"
       //   generic "around the world / partout dans le monde"
       // Strip: any clause that names a specific city / country / proper-noun club.
+      // 2026-06-01 round 2: bot wrote 'Some notable partner clubs in Canada
+      // include the Adelaide Club...' — 'include' (verb) didn't match my
+      // 'including' (-ing form). Broaden: also catch 'include' as verb +
+      // bare 'in [City]' patterns. Also a fallback: ANY sentence that
+      // names a known invented-club marker word (Adelaide, Granite, etc.)
+      // in reciprocal context gets stripped regardless of trigger phrase.
       const specificClubRe =
-        /\b(?:notably|including|tels?\s+que|comme|par\s+exemple|such\s+as|en\s+([A-Z][a-zà-ÿ]+))[^.!?]*?(?:\b[A-Z][a-z]+\s+Club\b|\bClub\s+[A-Z][a-z]+\b|\b(?:Toronto|New\s+York|Boston|Singapore|Singapour|Haryana|London|Paris|Tokyo|Hong\s+Kong|Sydney|Dubai|Adelaide|Granite|Harvard|Yale|Princeton|University\s+Club|Athletic\s+Club)\b)[^.!?]*[.!?]/gi;
-      const stripped = out.replace(specificClubRe, "");
+        /\b(?:notably|includ(?:e[sd]?|ing)|tels?\s+que|comme|par\s+exemple|such\s+as|en\s+([A-Z][a-zà-ÿ]+)|in\s+(?:Toronto|Calgary|Vancouver|Edmonton|Ottawa|Montreal|Quebec|New\s+York|Boston|London|Paris|Tokyo|Hong\s+Kong|Singapore|Sydney|Dubai|Haryana))[^.!?]*?(?:\b[A-Z][a-z]+\s+Club\b|\bClub\s+[A-Z][a-z]+\b|\b(?:Toronto|New\s+York|Boston|Singapore|Singapour|Haryana|London|Paris|Tokyo|Hong\s+Kong|Sydney|Dubai|Adelaide|Granite|Harvard|Yale|Princeton|Bankers\s+Hall|Calgary\s+Winter|University\s+Club|Athletic\s+Club)\b)[^.!?]*[.!?]/gi;
+      const invented = /\b(Adelaide\s+Club|Granite\s+Club|Bankers?\s+Hall(?:\s+Club)?|Calgary\s+Winter\s+Club|Harvard\s+Club|Yale\s+Club|Princeton\s+Club|University\s+Club\s+of\s+New\s+York|Boston\s+Athletic|Royal\s+Automobile\s+Club|Singapore\s+Cricket\s+Club|Haryana)/gi;
+      let stripped = out.replace(specificClubRe, "");
+      // Belt-and-braces sentence-level strip: any sentence still naming an
+      // invented club gets nuked.
+      stripped = stripped.split(/(?<=[.!?])\s+/)
+        .filter((s) => !invented.test(s))
+        .join(" ");
       if (stripped !== out) {
         out = stripped.replace(/\s{2,}/g, " ").trim();
         out += fr

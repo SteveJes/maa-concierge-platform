@@ -62,7 +62,12 @@ export const MAA_SERVICE_REGISTRY: MaaServiceDef[] = [
   { service: "boutique", department: "valerie_de_vigne", re: /boutique|pro\s+shop|merch|v[eê]tements?\s+(?:du\s+club|maa)/i },
   { service: "clubs_affilies", department: "reception_poste_0", re: /clubs?\s+affili|reciprocal|r[eé]ciproque|club\s+partenaire/i },
   { service: "abonnement", department: "francis_bradette", re: /abonnement|adh[eé]sion|membership|devenir\s+membre|m['e]?abonner/i, allowsVisitCta: true },
-  { service: "visite", department: "francis_bradette", re: /planifier\s+une\s+visite|visite\s+du\s+club|tour\s+of\s+the\s+club|book\s+a\s+visit|d[eé]couvrir\s+le\s+club/i, allowsVisitCta: true },
+  // 2026-06-01 gauntlet MT4/MT6/MT9: long visit-arcs kept losing context on
+  // tangents. Broadened to also catch bare "tour", "book a tour", "that tour",
+  // "this tour", "le tour", and a generic "visite" word.
+  { service: "visite", department: "francis_bradette",
+    re: /planifier\s+une\s+visite|visite\s+du\s+club|visiter\s+le\s+club|tour\s+of\s+the\s+club|book\s+a\s+(?:visit|tour)|d[eé]couvrir\s+le\s+club|(?:about\s+|that\s+|this\s+|the\s+)tour\b|\bbook(?:ing)?\s+(?:a\s+)?tour\b|\babout\s+the\s+tour\b|\bschedule\s+(?:a\s+)?tour\b|\b(?:rejoindre|joindre)\s+(?:le|votre|notre)\s+club\b|\bvisite\b(?!\s+m[eé]dicale)/i,
+    allowsVisitCta: true },
 ];
 
 const DEPARTMENT_LABEL: Record<MaaDepartment, { name: string; label: string }> = {
