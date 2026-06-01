@@ -30,10 +30,12 @@ function LoginForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
-      if (!res.ok) { setError("Invalid credentials."); setLoading(false); return; }
-      const { token } = await res.json() as { token: string };
-      localStorage.setItem("dubub_admin_token", token);
-      router.replace("/admin/dashboard");
+      if (!res.ok) { setError("Identifiants invalides."); setLoading(false); return; }
+      const data = await res.json() as { token: string; tenant?: string };
+      localStorage.setItem("dubub_admin_token", data.token);
+      if (data.tenant) localStorage.setItem("dubub_admin_tenant", data.tenant);
+      else localStorage.removeItem("dubub_admin_tenant");
+      router.replace("/admin/portal");
     } catch {
       setError("Connection error. Is the API running?");
       setLoading(false);

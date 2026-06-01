@@ -746,16 +746,43 @@ export function createServer() {
   }
 
   // POST /v1/admin/login
+  // Two user classes:
+  //   1. Super-admin (DUBUB) — sees all tenants in the portal.
+  //   2. Tenant-scoped — only sees its own tenant. Used to hand a clean
+  //      login to a client (e.g. MAA) so the demo feels owned by them.
+  //
+  // Credentials come from env so they can be rotated without a deploy.
+  // Defaults are set so the demo works even before the env is configured.
   app.post("/v1/admin/login", async (request, reply) => {
     const body = (request.body ?? {}) as { username?: string; password?: string };
     const adminUsername = process.env.ADMIN_USERNAME ?? "admin";
     const adminPassword = process.env.ADMIN_PASSWORD ?? "dubub2025";
 
-    if (body.username !== adminUsername || body.password !== adminPassword) {
-      return reply.code(401).send({ error: "invalid_credentials" });
+    // Per-tenant credentials (Steve 2026-06-01 demo prep). MAA gets a clean
+    // login that lands them in their own portal view with the tenant
+    // switcher locked to MAA.
+    const tenantCredentials: Array<{ username: string; password: string; tenant: string }> = [
+      {
+        username: process.env.MAA_ADMIN_USERNAME ?? "maa",
+        password: process.env.MAA_ADMIN_PASSWORD ?? "maa-concierge-2026",
+        tenant: "maa",
+      },
+    ];
+
+    if (body.username === adminUsername && body.password === adminPassword) {
+      const token = signAdminToken(adminUsername);
+      return { token, username: adminUsername };
     }
-    const token = signAdminToken(adminUsername);
-    return { token, username: adminUsername };
+
+    const tenantMatch = tenantCredentials.find(
+      (c) => c.username === body.username && c.password === body.password,
+    );
+    if (tenantMatch) {
+      const token = signAdminToken(`${tenantMatch.tenant}:${tenantMatch.username}`);
+      return { token, username: tenantMatch.username, tenant: tenantMatch.tenant };
+    }
+
+    return reply.code(401).send({ error: "invalid_credentials" });
   });
 
   // GET /v1/admin/tenants

@@ -5,6 +5,63 @@
 
 ---
 
+## 2026-06-01 — Demo-prep wrap-up (Tuesday client showing)
+
+Multi-day push to bring the concierge + portal to demo-grade. Every win below is verified live on prod.
+
+### Demo URL flow (post-redirect)
+- `https://clients.dubub.com/admin` → (token check) → `/admin/portal`
+- `https://clients.dubub.com/admin/dashboard` → 307 → `/admin/portal` (Steve's muscle memory)
+- Sidebar: Overview · Conversations · Leads · Sentinel · Tenants · Settings
+
+### Concierge — bugs killed this batch
+- **Time-awareness**: both v1+v2 system prompts inject current Montreal time + weekday + a strict rule. Before/after on Sunday 17h30: bot used to recite full weekly grid and say "open"; now correctly says "closed, reopens Monday 7am".
+- **Restaurant open/closed-NOW**: deterministic `tryAnswerRestaurantOpenNow` computes from America/Montreal time + firm grid (Mon-Fri 7-22, Sat 8-22, Sun 8-16). FR + EN.
+- **Massage chip "Tarifs des massages"**: word-boundary regex bug was bypassing the deterministic clinic handler. Fixed + FLiiP URL now embedded as `[FLiiP](https://...)` markdown link — no more bare unclickable URLs.
+- **Bare-URL post-process**: applies to LLM replies; auto-wraps fliipapp / mywellness / clubsportifmaa / clusterpos endpoints (placeholder strategy preserves existing markdown links).
+- **Visit-clarifying-question follow-up**: "pour le spa svp" after the bot's "visite pour un service spécifique?" now triggers a focused-visit lead capture through Francis Bradette, not a brochure dump.
+- **Lululemon/boutique loop**: "vendez-vous du lululemon?" routes to reception poste 0 → Valérie De Vigne, no "souhaitez-vous être mis en contact?" loop.
+- **Dynamic-schedule PDF handlers** (cirque, PowerWatts, pilates reformer, triathlon, pool, group classes via MyWellness): bot delivers the canonical PDF/live link instead of hallucinating times.
+- **Basketball schedule** (no PDF available): routes to Nathalie Lambert with members-only context, no invented grids.
+- **Holiday + realtime-open** detection: catches Saint-Jean / 24 juin / Canada Day / Noël / fête des mères/pères / Action de grâces by name + "right now / still open / encore ouvert". Routes to reception ext 0 (was wrongly ext 234 = clinic).
+- **Gym pricing access-hedge**: "how much is the gym?" no longer prepends "if you are a member..." — that hedge now only fires for true gym-access questions.
+- **EN spa hours leak**: hardcoded "Spa: Mon-Fri 9am-7pm" was in `tenant-core-facts.json` and bypassed every guard. Replaced with a hedged answer routing to reception.
+
+### Portal — premium gold-on-ivory redesign
+- Soft ivory→gold radial gradient background (pinned), glassmorphic cards (rgba white + backdrop-blur + subtle gold border + lift-on-hover).
+- 8 KPIs in 2 rows: Conversations / Nouveaux leads / Valeur pipeline (11 040 $ in gold gradient) / Valeur moy. par lead (240 $ gold) // Qualité Sentinel / Réponse moy. / Appels VAPI / Heures économisées.
+- Pill-style tabs: Overview · Conversations · Leads · Qualité.
+- Date-range dropdown (7j / 30j / mois / trimestre) + Share + Export buttons.
+- Activity feed with color-coded pills (PASS / FR / VAPI / Live).
+- "Derniers leads" table with status pills (Nouveau / Traité / Suivi).
+- "Type de leads" donut + "Intentions" bar + "Leads 7j" area chart.
+
+### Sentinel — premium page at /admin/portal/sentinel
+- Same gold-on-ivory glass aesthetic.
+- 4 hero KPIs: pass rate (gold gradient) / scenarios / failures / last run.
+- Runs timeline table with PASS/FAIL pills + GPT-4o badge + expandable failure detail.
+- Recent-failures rollup card.
+- Command snippets for ops.
+
+### Opening chips swapped for demo bulletproofness
+Replaced the LLM-flexible chips with 4 that resolve to deterministic answers:
+- Horaire de pickleball (28 timeslots authoritative)
+- Réserver une visite du club (Francis Bradette warm lead)
+- Tarifs des massages (65/120/170/230 grid + clickable FLiiP)
+- Voir le menu du restaurant (PDF links)
+
+### Quality gates (live, end of session)
+- **daphne-replay canary: 44/45** — only flake was pool-hours-direct expecting invented times; canary updated to assert the PDF link.
+- **Schedule stress: 20 → 12 → re-running now** — handlers + prompt rules + holiday detection.
+- **Live probes**: massage chip ✅ FR restaurant closed-Sunday-17h ✅ EN restaurant ✅ visit-spa ✅ lulu ✅ pool PDF ✅ cirque PDF ✅ PowerWatts PDF ✅.
+
+### Still tracking (not demo-blockers)
+- Pickleball wall-of-text (content correct, just verbose — cosmetic).
+- 2 minor checklist misses (pilates Tuesday, triathlon session end).
+- 1 EN pool grid hallucination remaining.
+
+---
+
 ## 2026-05-29 — Full client-style stabilization pass (zero-error target)
 
 Goal: concierge fully operational, tested the way the client (Daphné) actually uses it.

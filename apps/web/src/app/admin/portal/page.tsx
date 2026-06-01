@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Sidebar } from "../../../components/ui/Sidebar";
 import { TopBar } from "../../../components/ui/TopBar";
 import { Card, CardHeader, Pill } from "../../../components/ui/Card";
@@ -10,15 +11,17 @@ import {
   LayoutDashboard, MessageSquare, Users, Sparkles, Settings as SettingsIcon,
   Phone, Mail, TrendingUp, Activity, Globe, Zap, ExternalLink, Share2, Download,
   DollarSign, Clock, Target, PhoneCall, ChevronDown, Calendar,
+  Link as LinkIcon, Sparkle,
 } from "lucide-react";
 
 const NAV = [
-  { label: "Overview",       href: "/admin/portal",         icon: <LayoutDashboard size={16} /> },
-  { label: "Conversations",  href: "/admin/conversations",  icon: <MessageSquare size={16} /> },
-  { label: "Leads",          href: "/admin/leads",          icon: <Users size={16} /> },
+  { label: "Overview",       href: "/admin/portal",          icon: <LayoutDashboard size={16} /> },
   { label: "Sentinel",       href: "/admin/portal/sentinel", icon: <Sparkles size={16} /> },
   { label: "Tenants",        href: "/admin/portal/tenants",  icon: <Globe size={16} /> },
-  { label: "Settings",       href: "/admin/settings",       icon: <SettingsIcon size={16} /> },
+  { label: "Onboarding",     href: "/admin/portal/onboarding", icon: <Users size={16} /> },
+  { label: "Liens utiles",   href: "/admin/portal/links",    icon: <LinkIcon size={16} /> },
+  { label: "Capacités",      href: "/admin/portal/features", icon: <Sparkle size={16} /> },
+  { label: "Réglages",       href: "/admin/settings",        icon: <SettingsIcon size={16} /> },
 ];
 
 const TENANTS = [
@@ -55,12 +58,85 @@ type Tab = typeof TABS[number];
 
 const RANGES = ["7 derniers jours", "30 derniers jours", "Ce mois", "Ce trimestre"] as const;
 
+const TENANT_DEMO_URL: Record<string, string> = {
+  maa: "https://clients.dubub.com/demo/maa",
+  dubub: "https://clients.dubub.com/chat/dubub",
+};
+
+const LEADS_CSV_ROWS = [
+  { name: "Sophie L.",   intent: "Visite club",        status: "Nouveau", when: "12 min" },
+  { name: "Marc D.",     intent: "Cours en groupe",    status: "Traité",  when: "1 h" },
+  { name: "Julie B.",    intent: "Massothérapie",      status: "Suivi",   when: "2 h" },
+  { name: "Patrick G.",  intent: "Abonnement",         status: "Nouveau", when: "4 h" },
+  { name: "Marie-J. R.", intent: "Restaurant Le 1881", status: "Traité",  when: "hier" },
+];
+
+function downloadLeadsCsv(tenantName: string): void {
+  const header = "Visiteur,Intention,Statut,Quand";
+  const lines = LEADS_CSV_ROWS.map((r) => `${r.name},${r.intent},${r.status},${r.when}`);
+  const csv = "﻿" + [header, ...lines].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const ts = new Date().toISOString().slice(0, 10);
+  a.download = `dubub-leads-${tenantName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${ts}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+async function copyShareLink(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  const url = window.location.href;
+  try {
+    await navigator.clipboard.writeText(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export default function PortalOverview() {
-  const [tenant, setTenant] = useState("maa");
+  const router = useRouter();
+  // Tenant-scoped login? Per-tenant users (e.g. MAA) land here with a tenant
+  // pinned in localStorage; we lock the active tenant + hide the switcher so
+  // the demo feels owned by them. Super-admin sees the full dropdown.
+  const scopedTenant = typeof window !== "undefined" ? window.localStorage.getItem("dubub_admin_tenant") : null;
+  const [tenant, setTenant] = useState(scopedTenant ?? "maa");
   const [tab, setTab] = useState<Tab>("Overview");
   const [range, setRange] = useState<typeof RANGES[number]>("7 derniers jours");
   const [rangeOpen, setRangeOpen] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   const tenantName = TENANTS.find((t) => t.id === tenant)?.label ?? tenant;
+
+  function flashToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2500);
+  }
+
+  function handleViewConcierge() {
+    if (typeof window !== "undefined") window.open(TENANT_DEMO_URL[tenant] ?? TENANT_DEMO_URL.maa, "_blank", "noopener,noreferrer");
+  }
+  function handleRunSim() {
+    router.push("/admin/portal/sentinel");
+  }
+  function handleShare() {
+    void copyShareLink().then((ok) => flashToast(ok ? "Lien copié dans le presse-papiers" : "Copie impossible — copiez l'URL manuellement"));
+  }
+  function handleExport() {
+    downloadLeadsCsv(tenantName);
+    flashToast("Export CSV téléchargé");
+  }
+  function handleTabChange(t: Tab) {
+    setTab(t);
+    // 2026-06-01: tabs other than Overview are deferred surfaces; show a polite
+    // toast instead of leaving the visitor on a stale screen.
+    if (t !== "Overview") {
+      flashToast(`${t} — disponible bientôt`);
+    }
+  }
 
   return (
     <div className="light-portal flex min-h-screen">
@@ -77,15 +153,15 @@ export default function PortalOverview() {
         <TopBar
           title="Vue d'ensemble"
           subtitle={tenantName}
-          tenants={TENANTS}
+          tenants={scopedTenant ? TENANTS.filter((t) => t.id === scopedTenant) : TENANTS}
           activeTenant={tenant}
           onTenantChange={setTenant}
           right={
             <div className="flex items-center gap-2">
-              <Button size="sm" variant="outline" iconLeft={<ExternalLink size={14} />}>
+              <Button size="sm" variant="outline" iconLeft={<ExternalLink size={14} />} onClick={handleViewConcierge}>
                 Voir le concierge
               </Button>
-              <Button size="sm" iconLeft={<Zap size={14} />}>
+              <Button size="sm" iconLeft={<Zap size={14} />} onClick={handleRunSim}>
                 Lancer la simulation
               </Button>
             </div>
@@ -98,7 +174,7 @@ export default function PortalOverview() {
               {TABS.map((t) => (
                 <button
                   key={t}
-                  onClick={() => setTab(t)}
+                  onClick={() => handleTabChange(t)}
                   className={`px-4 py-1.5 text-sm font-medium rounded-full transition-colors ${
                     tab === t
                       ? "bg-[var(--brand-gold-soft)] text-[var(--brand-gold-strong)]"
@@ -135,8 +211,8 @@ export default function PortalOverview() {
                   </div>
                 ) : null}
               </div>
-              <Button size="sm" variant="ghost" iconLeft={<Share2 size={14} />}>Partager</Button>
-              <Button size="sm" variant="outline" iconLeft={<Download size={14} />}>Exporter</Button>
+              <Button size="sm" variant="ghost" iconLeft={<Share2 size={14} />} onClick={handleShare}>Partager</Button>
+              <Button size="sm" variant="outline" iconLeft={<Download size={14} />} onClick={handleExport}>Exporter</Button>
             </div>
           </div>
 
@@ -219,6 +295,11 @@ export default function PortalOverview() {
           </div>
         </div>
       </main>
+      {toast ? (
+        <div className="fixed bottom-6 right-6 glass-card px-4 py-3 text-sm text-[var(--text)] z-50 animate-fade-in">
+          {toast}
+        </div>
+      ) : null}
     </div>
   );
 }

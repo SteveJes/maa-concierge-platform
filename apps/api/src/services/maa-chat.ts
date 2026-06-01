@@ -20,7 +20,7 @@ import {
 import { tryAnswerClinicPricing } from "./maa-deterministic-clinic.js";
 import { resolveActiveContext, buildActiveContextDirective, tryAnswerIncludedServicePricing } from "./maa-conversation-state.js";
 import { tryAnswerSendLink } from "./maa-action-contract.js";
-import { tryAnswerLaundry, tryAnswerRestaurantMenu, tryAnswerExpertsDirectory, tryAnswerVisitForArea, tryAnswerBoutiqueBrand, tryAnswerDynamicScheduleService, tryAnswerBasketballSchedule, tryAnswerRestaurantOpenNow, tryAnswerGroupClassesSchedule } from "./maa-deterministic-facts.js";
+import { tryAnswerLaundry, tryAnswerRestaurantMenu, tryAnswerExpertsDirectory, tryAnswerVisitForArea, tryAnswerBoutiqueBrand, tryAnswerDynamicScheduleService, tryAnswerBasketballSchedule, tryAnswerRestaurantOpenNow, tryAnswerGroupClassesSchedule, tryAnswerStaffContact } from "./maa-deterministic-facts.js";
 import {
   isScheduleQuestion,
   tryAnswerScheduleQuestion,
@@ -1081,13 +1081,22 @@ function applyPostProcessGuards(
   // bare domains for our known endpoints. CRITICAL: never touch URLs that
   // are already inside a markdown link, so we protect existing links first.
   {
+    // 2026-06-01 CRITICAL fix: previous version only protected existing
+    // markdown links and lacked an `@` in the lookbehind — that turned
+    // 'nlambert@clubsportifmaa.com' into 'nlambert@[Site MAA](...)' and
+    // shipped 'nlambert@Site MAA' to the user. Now we ALSO mask emails
+    // BEFORE the URL wrap, and the wrap regex excludes `@` in lookbehind.
     const protectedLinks: string[] = [];
-    const protectedOut = out.replace(/\[[^\]]+\]\([^)]+\)/g, (m) => {
+    let protectedOut = out.replace(/\[[^\]]+\]\([^)]+\)/g, (m) => {
+      protectedLinks.push(m);
+      return "@@LK#" + (protectedLinks.length - 1) + "#LK@@";
+    });
+    protectedOut = protectedOut.replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, (m) => {
       protectedLinks.push(m);
       return "@@LK#" + (protectedLinks.length - 1) + "#LK@@";
     });
     const wrapped = protectedOut.replace(
-      /(?<![\w/])((?:https?:\/\/)?(?:clubsportifmaa\.fliipapp\.com|widgets\.mywellness\.com|clubsportifmaa\.com|clubsportifmaa\.clusterpos\.com)(?:\/[^\s) ,;]*)?)/gi,
+      /(?<![\w/@])((?:https?:\/\/)?(?:clubsportifmaa\.fliipapp\.com|widgets\.mywellness\.com|clubsportifmaa\.com|clubsportifmaa\.clusterpos\.com)(?:\/[^\s),;]*)?)/gi,
       (match, url) => {
         const href = url.startsWith("http") ? url : `https://${url}`;
         const label = /fliipapp\.com/i.test(url) ? "FLiiP"
@@ -2978,6 +2987,7 @@ export async function answerMaaChat(
   const deterministicFact =
     isMaaTenant && !isDubub && intentSafetyContextEarly === undefined
       ? tryAnswerLaundry(request.userMessage, request.locale) ??
+        tryAnswerStaffContact(request.userMessage, request.locale) ??
         tryAnswerRestaurantMenu(request.userMessage, activeContext.activeService, request.locale) ??
         tryAnswerExpertsDirectory(request.userMessage, request.locale) ??
         tryAnswerVisitForArea(request.userMessage, lastAssistantText, request.locale) ??

@@ -51,7 +51,11 @@ export function tryAnswerRestaurantMenu(
     activeService === "restaurant" || /\b(restaurant|le\s+1881|resto|1881)\b/i.test(m);
   if (!restaurantContext) return null;
 
-  const mentionsMenu = /\bmenus?\b|carte\s+des\s+vins|version\s+pdf/i.test(m);
+  // 2026-06-01 Steve live: "avez-vous un déjeuner ?" / "brunch sunday?" was
+  // hitting the LLM, which then INVENTED dish names and prices ("Le Classique
+  // 19 $", "Chakchouka 20 $") — Daphné's #1 rule violated. Treat any
+  // breakfast/brunch mention in restaurant context as a menu-link request.
+  const mentionsMenu = /\bmenus?\b|carte\s+des\s+vins|version\s+pdf|\bd[eé]jeuner\b|\bbrunch\b|\bpetit[- ]d[eé]jeuner\b/i.test(m);
   // A request to see/receive/select the menu — verbs, delivery words, or a
   // specific menu name. Excludes pure musings ("le menu change-t-il souvent ?").
   const isRequest =
@@ -138,6 +142,125 @@ export function tryAnswerExpertsDirectory(
     assistantMessage: fr
       ? `Avec plaisir — vous pouvez voir tous nos ${noun} et leurs spécialités ici : [${label}](${url}). Cliquez sur une personne pour consulter son profil détaillé. Souhaitez-vous que je vous oriente vers une spécialité en particulier ?`
       : `With pleasure — you can see all our ${noun} and their specialties here: [${label}](${url}). Click on a person to view their detailed profile. Would you like me to point you toward a particular specialty?`,
+  };
+}
+
+/**
+ * Staff contact (2026-06-01, Steve live).
+ *
+ * WHY: When the user asks for a staff member's phone or email by name
+ * ("courriel de Nathalie", "téléphone de Francis"), the LLM was returning
+ * the WRONG extension — defaulting to 234 (clinic) instead of the person's
+ * actual extension. Worse, my URL-wrap guard corrupted nlambert@clubsportifmaa.com
+ * into 'nlambert@Site MAA' (the corruption fix is in maa-chat.ts; this
+ * handler removes the LLM from the loop entirely).
+ *
+ * Returns the verified contact straight from contacts.json data.
+ */
+interface MaaStaff {
+  match: RegExp;
+  name: string;
+  role: string;
+  ext: string | null;
+  email: string | null;
+  phone: string;
+}
+
+const STAFF_DIRECTORY: MaaStaff[] = [
+  {
+    match: /\b(nathalie|lambert)\b/i,
+    name: "Nathalie Lambert",
+    role: "Directrice des programmes sportifs et des communications",
+    ext: "231",
+    email: "nlambert@clubsportifmaa.com",
+    phone: "514 845-2233",
+  },
+  {
+    match: /\b(francis|bradette)\b/i,
+    name: "Francis Bradette",
+    role: "Directeur des ventes (abonnements et visites)",
+    ext: "228",
+    email: "fbradette@clubsportifmaa.com",
+    phone: "514 845-2233",
+  },
+  {
+    match: /\b(elisabeth|boutin)\b/i,
+    name: "Elisabeth Boutin",
+    role: "Espace Pilates",
+    ext: null,
+    email: "eboutin@clubsportifmaa.com",
+    phone: "514 845-2233",
+  },
+  {
+    match: /\b(yvon|provençal|provencal)\b/i,
+    name: "Yvon Provençal",
+    role: "Directeur de squash et pro en chef",
+    ext: null,
+    email: "yprovencal@clubsportifmaa.com",
+    phone: "514 845-2233",
+  },
+  {
+    match: /\b(val[eé]rie|de\s+vigne|devigne)\b/i,
+    name: "Valérie De Vigne",
+    role: "Responsable de la boutique MAA",
+    ext: null,
+    email: null,
+    phone: "514 845-2233",
+  },
+];
+
+const STAFF_CONTACT_INTENT_RE =
+  /\b(courriel|e[- ]?mail|email|t[eé]l[eé]phone|phone|num[eé]ro|number|coordonn[eé]es|contact|joindre|reach|how\s+(?:to\s+)?(?:reach|contact))\b/i;
+
+export function tryAnswerStaffContact(
+  userMessage: string,
+  locale: string | undefined,
+): { assistantMessage: string; followUpMode: "clarify" } | null {
+  const m = (userMessage ?? "").trim();
+  if (m.length === 0 || m.length > 240) return null;
+  if (!STAFF_CONTACT_INTENT_RE.test(m)) return null;
+
+  const staff = STAFF_DIRECTORY.find((s) => s.match.test(m));
+  if (!staff) return null;
+
+  const fr = isFr(locale);
+  const wantsEmail = /\b(courriel|e[- ]?mail|email)\b/i.test(m);
+  const wantsPhone = /\b(t[eé]l[eé]phone|phone|num[eé]ro|number)\b/i.test(m);
+
+  // Format the answer based on what was asked specifically.
+  if (wantsEmail && staff.email) {
+    return {
+      followUpMode: "clarify",
+      assistantMessage: fr
+        ? `Voici le courriel de ${staff.name} (${staff.role}) : ${staff.email}. N'hésitez pas à lui écrire — pour une réponse plus rapide, vous pouvez aussi l'appeler au ${staff.phone}${staff.ext ? `, poste ${staff.ext}` : ""}.`
+        : `Here's ${staff.name}'s email (${staff.role}): ${staff.email}. Feel free to write — for a faster reply, you can also call ${staff.phone}${staff.ext ? `, ext. ${staff.ext}` : ""}.`,
+    };
+  }
+  if (wantsEmail && !staff.email) {
+    return {
+      followUpMode: "clarify",
+      assistantMessage: fr
+        ? `Le courriel direct de ${staff.name} (${staff.role}) n'est pas publié. Le meilleur point de contact est le téléphone : ${staff.phone}${staff.ext ? `, poste ${staff.ext}` : ", poste 0"}.`
+        : `${staff.name}'s direct email (${staff.role}) isn't published. The best way to reach them is by phone: ${staff.phone}${staff.ext ? `, ext. ${staff.ext}` : ", ext. 0"}.`,
+    };
+  }
+  if (wantsPhone) {
+    return {
+      followUpMode: "clarify",
+      assistantMessage: fr
+        ? `Vous pouvez joindre ${staff.name} (${staff.role}) au ${staff.phone}${staff.ext ? `, poste ${staff.ext}` : ", poste 0 — la réception transférera l'appel"}.${staff.email ? ` Son courriel : ${staff.email}.` : ""}`
+        : `You can reach ${staff.name} (${staff.role}) at ${staff.phone}${staff.ext ? `, ext. ${staff.ext}` : ", ext. 0 — reception will transfer the call"}.${staff.email ? ` Their email: ${staff.email}.` : ""}`,
+    };
+  }
+  // Generic "contact / coordonnées" — give both when available.
+  const lines: string[] = [];
+  lines.push(staff.phone + (staff.ext ? (fr ? `, poste ${staff.ext}` : `, ext. ${staff.ext}`) : ""));
+  if (staff.email) lines.push(staff.email);
+  return {
+    followUpMode: "clarify",
+    assistantMessage: fr
+      ? `Voici comment joindre ${staff.name} (${staff.role}) — ${lines.join(" ou ")}.`
+      : `Here's how to reach ${staff.name} (${staff.role}) — ${lines.join(" or ")}.`,
   };
 }
 

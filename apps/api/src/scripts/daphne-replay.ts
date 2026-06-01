@@ -330,6 +330,54 @@ const FLOWS: Flow[] = [
     ],
   },
   {
+    // 2026-06-01 Steve live regression: URL-wrap guard corrupted
+    // 'nlambert@clubsportifmaa.com' into 'nlambert@Site MAA' shipped to user.
+    id: "staff-email-intact",
+    label: "Staff email must NEVER be wrapped/corrupted by URL guard (must contain @clubsportifmaa.com)",
+    locale: "fr-CA",
+    turns: [
+      { say: "courriel de Nathalie Lambert svp" },
+      {
+        say: "merci",
+        expect: {
+          // The email must remain a valid address — never broken by markdown.
+          mustNotInclude: [/@\s*\[?\s*Site\s*MAA/i, /@\s*\(?\s*MAA\s+website/i, /nlambert@(?!clubsportifmaa\.com)/i],
+        },
+      },
+    ],
+  },
+  {
+    id: "staff-email-deterministic",
+    label: "Staff email request — deterministic handler returns full address + correct ext (231 for Nathalie)",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "courriel de Nathalie Lambert svp",
+        expect: {
+          mustInclude: [/nlambert@clubsportifmaa\.com/i, /\b231\b/],
+          // Must NOT return clinic ext (234) which the LLM kept defaulting to.
+          mustNotInclude: [/poste\s+234/i],
+        },
+      },
+    ],
+  },
+  {
+    id: "brunch-menu-link",
+    label: "Restaurant brunch/déjeuner question — must deliver menu links, NEVER invent dish prices",
+    locale: "fr-CA",
+    turns: [
+      {
+        say: "avez vous un dejeuner au resto?",
+        expect: {
+          // Menu PDF link must be present.
+          mustInclude: [/1881_Menu/i],
+          // Must NOT recite invented dish names + prices.
+          mustNotInclude: [/\bclassique\b.*\d+\s*\$/i, /\bchakchouka\b.*\d+\s*\$/i, /\bbagel\b.*\d+\s*\$/i, /sandwich\s+d[eé]jeuner.*\d+\s*\$/i],
+        },
+      },
+    ],
+  },
+  {
     id: "clinique-pain",
     label: "Pain query: NO diagnosis, route to physio/sports therapy",
     locale: "fr-CA",
