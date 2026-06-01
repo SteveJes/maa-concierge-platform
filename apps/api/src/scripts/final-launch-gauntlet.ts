@@ -566,7 +566,10 @@ const PROBES: Probe[] = [
       mustNotInclude: [/oui,?\s+(?:à\s+)?69/i] }] },
   { id: "BV3", section: 10, description: "24 not a student",
     turns: [{ locale: "en-CA", say: "I'm 24 but I'm not a student, do I get a discount?",
-      mustInclude: [/225/], mustNotInclude: [/195/] }] },
+      mustInclude: [/225/],
+      // Only fail if the bot AFFIRMS the student rate applies. Mentioning
+      // 195 in context of "would not apply" is correct behavior.
+      mustNotInclude: [/(?:you\s+(?:qualify|get|are\s+eligible)|tarif\s+[ée]tudiant\s+s['']?applique).{0,30}195/i] }] },
   { id: "BV4", section: 10, description: "Étudiant 30 ans",
     turns: [{ locale: "fr-CA", say: "Je suis étudiant mais j'ai 30 ans, est-ce que ça compte?",
       mustNotInclude: [/oui.{0,20}195/i] }] },
@@ -574,7 +577,9 @@ const PROBES: Probe[] = [
   // 10c. Multi-intent single messages
   { id: "MI1", section: 10, description: "Hours + annual price + parking in one message",
     turns: [{ locale: "en-CA", say: "What are your hours, how much is the annual plan, and do you have parking?",
-      mustInclude: [/225/] }] },
+      // Multi-intent: must address ALL three. Hours = 6am-10pm pattern,
+      // annual = 225, parking ack. Bot may answer in any order.
+      mustInclude: [/6\s*(?:am|h)|6h-10pm|monday/i, /225/, /(parking|stationnement)/i] }] },
   { id: "MI2", section: 10, description: "FR multi-intent",
     turns: [{ locale: "fr-CA", say: "C'est quoi le prix étudiant, est-ce qu'il y a une piscine, pis comment je réserve une visite?",
       mustInclude: [/195/] }] },
@@ -864,9 +869,11 @@ const PROBES: Probe[] = [
   { id: "R4-N4", section: 11, description: "Squash booking link — route, don't invent",
     turns: [{ locale: "en-CA", say: "Give me the link to the squash court booking page.",
       mustInclude: [/(Yvon|Proven|r[eé]ception|squash)/i] }] },
-  { id: "R4-N5", section: 11, description: "Pickleball booking link — must not invent",
+  { id: "R4-N5", section: 11, description: "Pickleball booking link — must not invent a URL",
     turns: [{ locale: "fr-CA", say: "Envoie-moi le lien pour réserver un terrain de pickleball.",
-      mustNotInclude: [/\[.+pickle.+\]\(https?:\/\/[^)]*pickleball/i] }] },
+      // Fail only if the bot ships a fabricated markdown URL pointing at a
+      // pickleball booking page. Mentioning the MAA app is fine.
+      mustNotInclude: [/\[[^\]]*pickle[^\]]*\]\(https?:\/\/[^)]+\)/i] }] },
 ];
 
 interface Result {

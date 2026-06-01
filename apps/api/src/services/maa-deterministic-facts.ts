@@ -198,7 +198,10 @@ const STAFF_DIRECTORY: MaaStaff[] = [
     phone: "514 845-2233",
   },
   {
-    match: /\b(yvon|proven[çc]al|directeur\s+de\s+squash|head\s+pro\s+squash)\b/i,
+    // 2026-06-01 gauntlet R4-C2: 'parler à quelqu'un pour le squash' must
+    // route to Yvon. Match bare 'squash' too, plus 'pro de squash' and
+    // 'cours de squash' booking inquiries.
+    match: /\b(yvon|proven[çc]al|directeur\s+de\s+squash|head\s+pro\s+squash|squash(?:\s+pro)?|squash\s+(?:director|directeur|coach|pro\s+shop))\b/i,
     name: "Yvon Provençal",
     role: "Directeur de squash et pro en chef",
     ext: "227",
@@ -419,7 +422,7 @@ export function tryAnswerTourBookingLink(
 const AERIAL_PDF_URL = "https://www.clubsportifmaa.com/wp-content/uploads/2026/03/MAA_Aerial-Circus_Spring2026.pdf";
 
 const AERIAL_ASK_RE =
-  /\b(cirque(?:\s+a[eé]rien)?|aerial\s+circus|aerial\s+silks?|silks?\s+a[eé]rien|trap[eè]ze)\b/i;
+  /\b(cirque(?:\s+a[eé]rien)?|aerial\s+(?:circus|silks?|class(?:es)?|session|program|schedule)|silks?\s+a[eé]rien|trap[eè]ze)\b/i;
 
 const AERIAL_DETAIL_RE =
   /\b(prix|tarif|co[uû]te?|combien|cost|price|fee|horaire|schedule|when|quand|inscription|register|registrat|s['']?inscrire|qui\s+enseigne|who\s+teach|appareil|discipline|equip|drop[- ]?in|essai|trial|exp[eé]rience|niveau|level|begin|d[eé]butant|interm[eé]diaire|membre|member)\b/i;

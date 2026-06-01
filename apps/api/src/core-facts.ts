@@ -470,6 +470,15 @@ function looksLikeCallMeRequest(userMessage: string, locale: string | null): boo
     if (/\b(comment ca s appelle|comment ca s appellent|comment ca s appellera|qu est ce que c est)\b/.test(normalized)) {
       return false;
     }
+    // 2026-06-01 gauntlet R4-C2: "parler à quelqu'un POUR LE SQUASH" was
+    // triggering the generic call-me-back widget instead of routing to
+    // Yvon. When the visitor names a specific department/service alongside
+    // "parler à quelqu'un", route to the staff handler instead.
+    const namesDepartment =
+      /\b(squash|ventes|sales|abonnement|membership|adhesion|piscine|pool|cours|class|spa|clinique|clinic|massage|physio|nathalie|francis|yvon|elisabeth|valerie|pierre|claude|gary|elizabeth|bitar|provencal|provencal|bradette|lambert|boutin|de vigne|devigne|blanchet|belanger|rizk|restaurant|1881|boutique|facturation|billing|comptabilite|comms|communications|reception)\b/.test(normalized);
+    if (namesDepartment) {
+      return false;
+    }
 
     return (
       hasAnyPhrase(normalized, [
