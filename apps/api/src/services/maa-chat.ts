@@ -20,7 +20,7 @@ import {
 import { tryAnswerClinicPricing } from "./maa-deterministic-clinic.js";
 import { resolveActiveContext, buildActiveContextDirective, tryAnswerIncludedServicePricing } from "./maa-conversation-state.js";
 import { tryAnswerSendLink } from "./maa-action-contract.js";
-import { tryAnswerLaundry, tryAnswerRestaurantMenu, tryAnswerExpertsDirectory, tryAnswerVisitForArea, tryAnswerBoutiqueBrand, tryAnswerDynamicScheduleService, tryAnswerBasketballSchedule, tryAnswerRestaurantOpenNow, tryAnswerGroupClassesSchedule, tryAnswerStaffContact } from "./maa-deterministic-facts.js";
+import { tryAnswerLaundry, tryAnswerRestaurantMenu, tryAnswerExpertsDirectory, tryAnswerVisitForArea, tryAnswerBoutiqueBrand, tryAnswerDynamicScheduleService, tryAnswerBasketballSchedule, tryAnswerRestaurantOpenNow, tryAnswerGroupClassesSchedule, tryAnswerStaffContact, tryAnswerTourBookingLink, tryAnswerAerialCircusFacts } from "./maa-deterministic-facts.js";
 import {
   isScheduleQuestion,
   tryAnswerScheduleQuestion,
@@ -3118,6 +3118,8 @@ export async function answerMaaChat(
     isMaaTenant && !isDubub && intentSafetyContextEarly === undefined
       ? tryAnswerLaundry(request.userMessage, request.locale) ??
         tryAnswerStaffContact(request.userMessage, request.locale) ??
+        tryAnswerTourBookingLink(request.userMessage, request.locale) ??
+        tryAnswerAerialCircusFacts(request.userMessage, request.locale) ??
         tryAnswerRestaurantMenu(request.userMessage, activeContext.activeService, request.locale) ??
         tryAnswerExpertsDirectory(request.userMessage, request.locale) ??
         tryAnswerVisitForArea(request.userMessage, lastAssistantText, request.locale) ??

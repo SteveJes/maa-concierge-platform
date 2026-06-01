@@ -166,6 +166,9 @@ interface MaaStaff {
   phone: string;
 }
 
+// 2026-06-01 Round 4: extensions + emails verified by Steve against the live
+// MAA staff directory. Francis was previously ext 228 (WRONG); also added
+// Pierre/Elizabeth/Claude/Gary with their verified emails.
 const STAFF_DIRECTORY: MaaStaff[] = [
   {
     match: /\b(nathalie|lambert)\b/i,
@@ -181,33 +184,69 @@ const STAFF_DIRECTORY: MaaStaff[] = [
     // abonnement / membership / adhésion) in addition to his name.
     match: /\b(francis|bradette|(?:quelqu['']?un\s+(?:de\s+|des\s+|du\s+))?(?:service\s+des?\s+|d[eé]partement\s+des?\s+)?ventes?\b|\bsales\s+(?:team|person|rep|department|department\s+of\s+sales)\b|\babonnement(?:s)?\s+(?:contact|info|d[eé]partement)|\bmembership\s+(?:team|department|info))\b/i,
     name: "Francis Bradette",
-    role: "Directeur des ventes (abonnements et visites)",
-    ext: "228",
+    role: "Directeur des ventes et des opérations (abonnements et visites)",
+    ext: "239",
     email: "fbradette@clubsportifmaa.com",
     phone: "514 845-2233",
   },
   {
-    match: /\b(elisabeth|boutin)\b/i,
+    match: /\b(elisabeth\s+boutin|boutin)\b/i,
     name: "Elisabeth Boutin",
-    role: "Espace Pilates",
-    ext: null,
+    role: "Directrice de la réception et du service à la clientèle",
+    ext: "235",
     email: "eboutin@clubsportifmaa.com",
     phone: "514 845-2233",
   },
   {
-    match: /\b(yvon|provençal|provencal)\b/i,
+    match: /\b(yvon|proven[çc]al|directeur\s+de\s+squash|head\s+pro\s+squash)\b/i,
     name: "Yvon Provençal",
     role: "Directeur de squash et pro en chef",
-    ext: null,
+    ext: "227",
     email: "yprovencal@clubsportifmaa.com",
     phone: "514 845-2233",
   },
   {
-    match: /\b(val[eé]rie|de\s+vigne|devigne)\b/i,
+    match: /\b(val[eé]rie\s+de\s+vigne|de\s+vigne|devigne|responsable\s+(?:de\s+la\s+)?boutique)\b/i,
     name: "Valérie De Vigne",
     role: "Responsable de la boutique MAA",
     ext: null,
-    email: null,
+    email: "vdevigne@clubsportifmaa.com",
+    phone: "514 845-2233",
+  },
+  {
+    // Pierre Blanchet — President / GM
+    match: /\b(pierre\s+blanchet|blanchet|pr[eé]sident|directeur\s+g[eé]n[eé]ral|general\s+manager|GM)\b/i,
+    name: "Pierre Blanchet",
+    role: "Président / Directeur général",
+    ext: "233",
+    email: "pblanchet@clubsportifmaa.com",
+    phone: "514 845-2233",
+  },
+  {
+    // Elizabeth Bitar — Communications
+    match: /\b(elizabeth\s+bitar|bitar|communications?|comms\b)\b/i,
+    name: "Elizabeth Bitar",
+    role: "Communications",
+    ext: "230",
+    email: "ebitar@clubsportifmaa.com",
+    phone: "514 845-2233",
+  },
+  {
+    // Claude Bélanger — Controller / Billing
+    match: /\b(claude\s+b[eé]langer|b[eé]langer|controller|contr[oô]leur|facturation|billing|comptabilit[eé]|accounting)\b/i,
+    name: "Claude Bélanger",
+    role: "Contrôleur (facturation / comptabilité)",
+    ext: "238",
+    email: "cbelanger@clubsportifmaa.com",
+    phone: "514 845-2233",
+  },
+  {
+    // Gary Rizk — Chef of Restaurant Le 1881
+    match: /\b(gary\s+rizk|rizk|chef\s+(?:du\s+)?restaurant|chef\s+le\s+1881)\b/i,
+    name: "Gary Rizk",
+    role: "Chef — Restaurant Le 1881",
+    ext: "247",
+    email: "grizk@clubsportifmaa.com",
     phone: "514 845-2233",
   },
 ];
@@ -334,6 +373,112 @@ export function tryAnswerVisitForArea(
       ? `Avec plaisir — je peux organiser une visite axée sur ${labelFr}. Laissez-moi votre nom, votre courriel et un moment qui vous convient, et Francis Bradette (Abonnements / visites) vous écrira pour confirmer le rendez-vous.`
       : `With pleasure — I can arrange a visit focused on ${labelEn}. Share your name, your email, and a time that works for you, and Francis Bradette (Memberships / visits) will write to confirm.`,
   };
+}
+
+/**
+ * Tour-booking link (Round 4, 2026-06-01).
+ *
+ * Direct, verified booking-tour URL. The visit-template gave a generic
+ * "Click the button below" answer; visitors asking specifically for the
+ * LINK should get the URL directly.
+ */
+const TOUR_BOOKING_URL = "https://api.rise.fliipapp.com/widget/bookings/book-a-tour-maa";
+const TOUR_LANDING_URL_FR = "https://www.clubsportifmaa.com/fr/planifier-une-visite-gym-montreal/";
+
+const TOUR_LINK_INTENT_RE =
+  /\b(?:lien|link|url|envoyer?|envoie|send|partage[rz]?|donne[rz]?\s+(?:moi\s+)?(?:le\s+)?(?:lien|link|url))[^.!?]{0,40}\b(?:visite|tour|book\s+a\s+tour)\b/i;
+const TOUR_LINK_REVERSE_RE =
+  /\b(?:visite|tour|book\s+a\s+tour)[^.!?]{0,40}\b(?:lien|link|url|envoyer?|envoie|send|partage[rz]?|donne[rz]?)\b/i;
+
+export function tryAnswerTourBookingLink(
+  userMessage: string,
+  locale: string | undefined,
+): { assistantMessage: string; followUpMode: "clarify" } | null {
+  const m = (userMessage ?? "").trim();
+  if (m.length === 0 || m.length > 240) return null;
+  if (!TOUR_LINK_INTENT_RE.test(m) && !TOUR_LINK_REVERSE_RE.test(m)) return null;
+
+  const fr = isFr(locale);
+  return {
+    followUpMode: "clarify",
+    assistantMessage: fr
+      ? `Avec plaisir — voici le lien direct pour réserver votre visite : [Planifier une visite — Club Sportif MAA](${TOUR_LANDING_URL_FR}) (ou directement la fenêtre de réservation : [Réserver un créneau](${TOUR_BOOKING_URL})). Francis Bradette (Directeur des ventes, poste 239) vous attend.`
+      : `With pleasure — here's the direct link to book your visit: [Plan a visit — Club Sportif MAA](${TOUR_LANDING_URL_FR}) (or directly the booking widget: [Book a slot](${TOUR_BOOKING_URL})). Francis Bradette (Director of Sales, ext. 239) will welcome you.`,
+  };
+}
+
+/**
+ * Aerial circus — verified Spring 2026 facts (Round 4, Steve 2026-06-01).
+ *
+ * Session: April 7 → June 19, 2026. 11 weeks. ACTIVE right now (ends ~18 days).
+ * Schedule: Tue 17h30–19h00 intermediate (Janika) · Tue 19h00–20h30 all levels
+ * (Janika) · Thu 17h30–18h30 all levels (Hannah). No aerial on Mondays.
+ * Price (plus tax): member $220 (=$20/class) · non-member $330 ($30) · drop-in $40.
+ * Disciplines: silk, rope, hammock, trapeze, hoop, straps. Registration: Nathalie Lambert.
+ */
+const AERIAL_PDF_URL = "https://www.clubsportifmaa.com/wp-content/uploads/2026/03/MAA_Aerial-Circus_Spring2026.pdf";
+
+const AERIAL_ASK_RE =
+  /\b(cirque(?:\s+a[eé]rien)?|aerial\s+circus|aerial\s+silks?|silks?\s+a[eé]rien|trap[eè]ze)\b/i;
+
+const AERIAL_DETAIL_RE =
+  /\b(prix|tarif|co[uû]te?|combien|cost|price|fee|horaire|schedule|when|quand|inscription|register|registrat|s['']?inscrire|qui\s+enseigne|who\s+teach|appareil|discipline|equip|drop[- ]?in|essai|trial|exp[eé]rience|niveau|level|begin|d[eé]butant|interm[eé]diaire|membre|member)\b/i;
+
+export function tryAnswerAerialCircusFacts(
+  userMessage: string,
+  locale: string | undefined,
+): { assistantMessage: string; followUpMode: "clarify" } | null {
+  const m = (userMessage ?? "").trim();
+  if (m.length === 0 || m.length > 240) return null;
+  if (!AERIAL_ASK_RE.test(m)) return null;
+  if (!AERIAL_DETAIL_RE.test(m)) return null;
+
+  const fr = isFr(locale);
+  // Detect specific sub-intent and tailor the answer.
+  const askPrice = /\b(prix|tarif|co[uû]te?|combien|cost|price|fee|drop[- ]?in|essai|membre|member|non[- ]membre)\b/i.test(m);
+  const askSchedule = /\b(horaire|schedule|when|quand|tomorrow|demain|today|aujourd|cette\s+semaine|this\s+week)\b/i.test(m);
+  const askInstructor = /\b(qui\s+enseigne|who\s+teach|qui\s+donne|instructeur|instructor|prof)\b/i.test(m);
+  const askDiscipline = /\b(appareil|discipline|equip|silk|soie|trap|hammock|hamac|hoop|cerceau|rope|corde|strap|sangle)\b/i.test(m);
+  const askExperience = /\b(exp[eé]rience|niveau|level|begin|d[eé]butant|interm[eé]diaire|first[- ]time)\b/i.test(m);
+
+  const parts: string[] = [];
+  if (askPrice) {
+    parts.push(fr
+      ? "Tarifs (taxes en sus) pour la session du 7 avril au 19 juin 2026 : membre 220 $ pour la session (≈ 20 $/cours) · non-membre 330 $ (≈ 30 $/cours) · essai à la carte 40 $."
+      : "Rates (taxes extra) for the April 7 – June 19, 2026 session: members $220/session (≈$20/class) · non-members $330 (≈$30/class) · drop-in $40.");
+  }
+  if (askSchedule) {
+    parts.push(fr
+      ? "Horaire actuel : mardi 17h30–19h00 (intermédiaire, avec Janika) · mardi 19h00–20h30 (tous niveaux, Janika) · jeudi 17h30–18h30 (tous niveaux, Hannah). Aucun cours le lundi."
+      : "Current schedule: Tuesday 17h30–19h00 (intermediate, with Janika) · Tuesday 19h00–20h30 (all levels, Janika) · Thursday 17h30–18h30 (all levels, Hannah). No Monday classes.");
+  }
+  if (askInstructor && !askSchedule) {
+    parts.push(fr
+      ? "Janika enseigne les cours du mardi (intermédiaire 17h30–19h00 et tous niveaux 19h00–20h30) ; Hannah enseigne le jeudi 17h30–18h30 (tous niveaux)."
+      : "Janika teaches the Tuesday classes (intermediate 17h30–19h00 and all-levels 19h00–20h30); Hannah teaches Thursday 17h30–18h30 (all-levels).");
+  }
+  if (askDiscipline) {
+    parts.push(fr
+      ? "Disciplines enseignées : soie, corde, hamac, trapèze, cerceau et sangles."
+      : "Disciplines taught: silk, rope, hammock, trapeze, hoop and straps.");
+  }
+  if (askExperience) {
+    parts.push(fr
+      ? "Le cours intermédiaire du mardi 17h30 demande une expérience préalable du cirque aérien ; les cours « tous niveaux » (mardi 19h et jeudi 17h30) sont ouverts aux débutants."
+      : "The Tuesday 17h30 intermediate class requires prior aerial experience; the 'all levels' classes (Tuesday 19h and Thursday 17h30) are open to beginners.");
+  }
+  if (parts.length === 0) {
+    // Generic — give the headline + link.
+    parts.push(fr
+      ? "Le cirque aérien au Club Sportif MAA propose 3 cours par semaine durant la session du 7 avril au 19 juin 2026 (mardi 17h30 + 19h, jeudi 17h30). Disciplines : soie, corde, hamac, trapèze, cerceau, sangles."
+      : "Aerial circus at Club Sportif MAA: 3 classes per week during the April 7 – June 19, 2026 session (Tuesday 17h30 + 19h, Thursday 17h30). Disciplines: silk, rope, hammock, trapeze, hoop, straps.");
+  }
+
+  parts.push(fr
+    ? `Document officiel : [Cirque aérien — printemps 2026](${AERIAL_PDF_URL}). Inscription via Nathalie Lambert (Programmation sportive, poste 231, nlambert@clubsportifmaa.com).`
+    : `Official document: [Aerial circus — Spring 2026](${AERIAL_PDF_URL}). Registration via Nathalie Lambert (Sports programming, ext. 231, nlambert@clubsportifmaa.com).`);
+
+  return { followUpMode: "clarify", assistantMessage: parts.join(" ") };
 }
 
 /**
@@ -712,8 +857,8 @@ export function tryAnswerGroupClassesSchedule(
   return {
     followUpMode: "clarify",
     assistantMessage: fr
-      ? "L'horaire des cours en groupe vit en temps réel sur MyWellness — c'est la source la plus fiable pour vérifier un cours précis, un instructeur ou un moment, et pour réserver sa place. Voici les deux liens : [Horaire MyWellness — temps réel](https://widgets.mywellness.com/facility/ac1088953) et [Horaire des cours en groupe PDF](https://www.clubsportifmaa.com/wp-content/uploads/2026/05/MAA_CoursEnGroupe_HoraireClassifications_2070Peel_May05-26.pdf). Souhaitez-vous que je vous oriente vers Nathalie Lambert (Programmation sportive) pour une question précise ?"
-      : "The group-class schedule lives in real time on MyWellness — that's the most reliable source for a specific class, instructor, or time, and for booking your spot. Two links: [MyWellness — real-time schedule](https://widgets.mywellness.com/facility/ac1088953) and [Group-class schedule PDF](https://www.clubsportifmaa.com/wp-content/uploads/2026/05/MAA_CoursEnGroupe_HoraireClassifications_2070Peel_May05-26.pdf). Want me to connect you with Nathalie Lambert (Sports programming) for a specific question?",
+      ? "L'horaire des cours en groupe vit en temps réel sur MyWellness — c'est la source la plus fiable pour vérifier un cours précis, un instructeur ou un moment, et pour réserver sa place. Voici les deux liens : [Horaire MyWellness — temps réel](https://widgets.mywellness.com/facility/ac1088953) et [Horaire des cours en groupe PDF](https://www.clubsportifmaa.com/wp-content/uploads/2026/05/MAA_CoursEnGroupe_HoraireClassifications_2070Peel_May19-26.pdf). Souhaitez-vous que je vous oriente vers Nathalie Lambert (Programmation sportive) pour une question précise ?"
+      : "The group-class schedule lives in real time on MyWellness — that's the most reliable source for a specific class, instructor, or time, and for booking your spot. Two links: [MyWellness — real-time schedule](https://widgets.mywellness.com/facility/ac1088953) and [Group-class schedule PDF](https://www.clubsportifmaa.com/wp-content/uploads/2026/05/MAA_CoursEnGroupe_HoraireClassifications_2070Peel_May19-26.pdf). Want me to connect you with Nathalie Lambert (Sports programming) for a specific question?",
   };
 }
 
