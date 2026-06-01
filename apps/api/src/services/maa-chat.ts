@@ -1362,6 +1362,36 @@ function applyPostProcessGuards(
       : " Specific clinic hours aren't published — booking is via the service page or the sports clinic at (514) 845-2233, ext. 234.";
   }
 
+  // 6f-quinquies. Invented staff/specialist names for medical/health questions
+  //                (2026-06-01 gauntlet OOS4). Bot replied to "I'm pregnant,
+  //                is exercise safe?" with "Ingre Tamara, certified
+  //                physiotherapist" — fabricated person. Strip any
+  //                first-name + role pair in medical/health context unless
+  //                the name is in our verified staff list.
+  {
+    const isHealthMedicalContext =
+      /\b(enceinte|pregnan|grossesse|m[eé]decin|doctor|sant[eé]\s+(?:cardiaque|m[eé]dicale)|tension|blood\s+pressure|diab[eè]te|diabet|cancer|sciatique|hernie|symptom|sympt[oô]me|douleur|pain|blessure|injury|chronique|chronic|condition)\b/i.test(out);
+    if (isHealthMedicalContext) {
+      const VERIFIED_STAFF = /\b(Francis\s+Bradette|Nathalie\s+Lambert|Elisabeth\s+Boutin|Yvon\s+Proven[çc]al|Val[eé]rie\s+De\s+Vigne|Kevin\s+Geyson|Daniela\s+Solis|Angie\s+West|Caroline|Pierre|Janika|Isabelle|Jennifer|Manon|Frank|Laura)\b/g;
+      // Find capitalized first-name patterns NOT in the verified list.
+      const inventedStaffRe = /\b(?:[A-Z][a-zàâéèêëïîôöùûüç]+\s+(?:Tamara|Smith|Johnson|Lee|Tremblay|Gagnon|Roy|Cot[eé]|Bouchard|Martin)|(?:Tamara|Smith|Johnson|Lee|Tremblay|Gagnon|Roy|Cot[eé]|Bouchard|Martin)\s+[A-Z][a-zàâéèêëïîôöùûüç]+|Ingre[a-z]*\s+\w+)\b/g;
+      const matches = out.match(inventedStaffRe);
+      if (matches) {
+        const verified: string[] = out.match(VERIFIED_STAFF) ?? [];
+        const invented: string[] = matches.filter((m) => !verified.includes(m));
+        if (invented.length > 0) {
+          // Strip whole sentences containing invented names.
+          out = out.split(/(?<=[.!?])\s+/).filter((s) => {
+            return !invented.some((name) => s.includes(name));
+          }).join(" ").trim();
+          out += fr
+            ? " Pour des conseils adaptés à votre santé, je vous recommande de consulter un médecin ou un professionnel de la santé qualifié. La clinique sportive du Club Sportif MAA (514 845-2233, poste 234) peut aussi vous orienter vers un thérapeute ou un physiothérapeute approprié."
+            : " For guidance tailored to your health, I recommend consulting a doctor or qualified healthcare professional. The Club Sportif MAA sports clinic ((514) 845-2233, ext. 234) can also point you to the right therapist or physiotherapist.";
+        }
+      }
+    }
+  }
+
   // 6f-quater. Reciprocal/affiliated clubs — must NOT name specific clubs
   //              (2026-06-01 gauntlet G13). Bot was inventing "Adelaide Club",
   //              "Granite Club", "Haryana India", "Singapore" etc. We don't

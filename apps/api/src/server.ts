@@ -506,15 +506,18 @@ function buildPopupBookingSuccessMessage(
   _bookingUrl: string,
   allowCallbackFallback: boolean,
 ): string {
+  // 2026-06-01 gauntlet B4/MT6: the visit booking template never named the
+  // sales contact. Naming Francis Bradette by name turns a generic CTA into
+  // a warm handoff and unblocks the 'who do I confirm with?' follow-up.
   if (isFrenchLocale(locale)) {
     return allowCallbackFallback
-      ? "Avec plaisir. Cliquez sur le bouton ci-dessous pour planifier votre visite. Vous préférez qu'on vous contacte ? Je peux aussi prendre vos coordonnées ici."
-      : "Avec plaisir. Cliquez sur le bouton ci-dessous pour planifier votre visite.";
+      ? "Avec plaisir. Francis Bradette, notre Directeur des ventes, s'occupe des visites du Club Sportif MAA. Cliquez sur le bouton ci-dessous pour planifier votre visite, ou laissez-moi vos coordonnées ici et il vous contactera directement."
+      : "Avec plaisir. Francis Bradette, notre Directeur des ventes, s'occupe des visites du Club. Cliquez sur le bouton ci-dessous pour planifier la vôtre.";
   }
 
   return allowCallbackFallback
-    ? "Happy to help. Click the button below to visit our booking page and schedule your visit. Prefer to have us reach out instead? I can capture your contact info here."
-    : "Happy to help. Click the button below to visit our booking page and schedule your visit.";
+    ? "Happy to help. Francis Bradette, our Director of Sales, handles Club tours. Click the button below to schedule your visit, or share your contact info here and he'll reach out directly."
+    : "Happy to help. Francis Bradette, our Director of Sales, handles Club tours. Click the button below to schedule yours.";
 }
 function buildBookingUnavailableMessage(
   locale: string | null,
