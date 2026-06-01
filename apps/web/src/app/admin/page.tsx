@@ -6,7 +6,7 @@ export default function AdminRoot() {
   const router = useRouter();
   useEffect(() => {
     const token = typeof window !== "undefined" ? localStorage.getItem("dubub_admin_token") : null;
-    router.replace(token ? "/admin/dashboard" : "/admin/login");
+    router.replace(token ? "/admin/portal" : "/admin/login");
   }, [router]);
   return null;
 }
