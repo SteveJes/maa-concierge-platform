@@ -1349,6 +1349,36 @@ function applyPostProcessGuards(
       : " Specific clinic hours aren't published — booking is via the service page or the sports clinic at (514) 845-2233, ext. 234.";
   }
 
+  // 6f-bis. Sunday-hours-for-unpublished-services guard (2026-06-01 stress).
+  //          Bot was inventing "clinique/spa/massothérapie/soins infirmiers
+  //          ouverts le dimanche de 11h à 15h" — none of these have published
+  //          Sunday hours. The earlier clinic-hours guard EXCLUDED spa+massage+
+  //          nursing context (so multi-service groupings slipped through), and
+  //          checked only "lundi au vendredi" patterns, not "le dimanche".
+  //          Strip any sentence that combines an unpublished-hours service with
+  //          a specific Sunday/weekend timestamp.
+  {
+    const unpubHourServicesRe =
+      /\b(clinique\s+(?:sportive|m[eé]dicale)|spa|sauna|hammam|massoth[eé]rapie|massage|soins?\s+infirmiers?|mobile\s+mediq|salle\s+de\s+d[eé]tente|relaxation\s+room|nursing|sports?\s+therapy|clinic)\b/i;
+    const sundayWeekendHoursRe =
+      /\b(le\s+dimanche|on\s+sunday|le\s+(?:week-?end|weekend)|on\s+weekends?|saturday[- ]sunday|samedi[- ]dimanche|sam[- ]dim)\b[^.!?]{0,80}\b\d{1,2}\s*(?:h|am|pm|:\d{2})/i;
+    const hasSundayHoursForUnpub = sundayWeekendHoursRe.test(out) && unpubHourServicesRe.test(out);
+    if (hasSundayHoursForUnpub) {
+      out = out
+        .split(/(?<=[.!?])\s+/)
+        .map((s) => {
+          if (sundayWeekendHoursRe.test(s) && unpubHourServicesRe.test(s)) return "";
+          return s;
+        })
+        .filter((s) => s.length > 0)
+        .join(" ")
+        .trim();
+      out += fr
+        ? " Les horaires précis du spa, de la clinique et des soins infirmiers ne sont pas publiés en grille hebdomadaire — la réception ((514) 845-2233, poste 0) peut confirmer les plages d'ouverture du jour."
+        : " Specific spa, clinic, and nursing hours aren't published as a weekly grid — Club reception ((514) 845-2233, ext. 0) can confirm today's opening times.";
+    }
+  }
+
   // 6g. Spa-hours guard — EN pattern (Steve 2026-05-31 schedule stress edge-6).
   //     My FR-only pattern missed "Spa: Monday–Friday 9am–7pm, Saturday–Sunday
   //     11am–3pm" in EN replies. Extend the existing strip to EN am/pm format.

@@ -458,6 +458,14 @@ export function tryAnswerRestaurantOpenNow(
   if (!REALTIME_OPEN_QUERY_RE.test(m)) return null;
   // Skip pure menu/reservation queries (handled elsewhere).
   if (/\b(menu|carte|r[eé]serv(?:er|ation)|booking|book\s+a\s+table)\b/i.test(m) && !REALTIME_OPEN_QUERY_RE.test(m)) return null;
+  // 2026-06-01 schedule-stress: bot was answering "ouvert en ce moment
+  // (lundi 7h à 22h)" when the user asked about Saturday evening or Sunday
+  // at 17h. Those are SPECIFIC-DIFFERENT-DAY questions, not realtime —
+  // don't fire the realtime handler. Let the LLM (armed with the time-
+  // awareness rule) compute the correct answer for the asked day.
+  const namesSpecificDay =
+    /\b(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|monday|tuesday|wednesday|thursday|friday|saturday|sunday|demain|tomorrow|hier|yesterday)\b/i.test(m);
+  if (namesSpecificDay) return null;
 
   const status = computeRestaurantStatus();
   const fr = isFr(locale);
@@ -515,7 +523,9 @@ export function tryAnswerBasketballSchedule(
   const m = (userMessage ?? "").trim();
   if (m.length === 0 || m.length > 220) return null;
   if (!/\b(basketball|basket\b)/i.test(m)) return null;
-  if (!SCHEDULE_INTENT_RE.test(m)) return null;
+  // Schedule intent OR a specific day-of-week (otherwise the LLM invents a
+  // grid for "basketball le dimanche?").
+  if (!SCHEDULE_INTENT_RE.test(m) && !SPECIFIC_DAY_OR_TIME_RE.test(m)) return null;
   if (/\b(tarif|prix|co[uû]te?|combien|cost|price|how\s+much)\b/i.test(m)) return null;
 
   const fr = isFr(locale);
