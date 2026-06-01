@@ -355,7 +355,7 @@ const BOUTIQUE_CLUB_LOGO_RE =
 export function tryAnswerBoutiqueBrand(
   userMessage: string,
   locale: string | undefined,
-): { assistantMessage: string; followUpMode: "callback" } | null {
+): { assistantMessage: string; followUpMode: "clarify" } | null {
   const m = (userMessage ?? "").trim();
   if (m.length === 0 || m.length > 220) return null;
   if (!BOUTIQUE_QUERY_RE.test(m)) return null;
@@ -366,7 +366,11 @@ export function tryAnswerBoutiqueBrand(
 
   const fr = isFr(locale);
   return {
-    followUpMode: "callback",
+    // 2026-06-01 Steve live: was "callback" → callback form auto-popped after
+    // the answer, which is confusing UX for a complete info reply (we gave
+    // the phone). Use "clarify" so the form stays hidden; the user can still
+    // click "Être recontacté" if they want a callback.
+    followUpMode: "clarify",
     assistantMessage: fr
       ? "Le pro shop du Club Sportif MAA propose surtout des articles aux couleurs du club (vêtements et accessoires logotés MAA) — la sélection des marques externes change selon les arrivages, je préfère ne pas inventer ce qui s'y trouve aujourd'hui. La réception au (514) 845-2233, poste 0, peut confirmer la sélection actuelle avec Valérie De Vigne, responsable de la boutique."
       : "The Club Sportif MAA pro shop carries primarily MAA-branded apparel and accessories — the selection of outside brands varies with each shipment, so I'd rather not guess at what's in stock today. Reception at (514) 845-2233 ext. 0 can confirm the current selection with Valérie De Vigne, the boutique manager.",
