@@ -57,8 +57,8 @@ export function tryAnswerClinicPricing(
       followUpMode: "clarify",
       usedCitations: [],
       assistantMessage: fr
-        ? "Pour la massothérapie au Club Sportif MAA, les tarifs (taxes en sus) sont les mêmes pour tous selon la durée : 30 minutes — 65 $, 60 minutes — 120 $, 90 minutes — 170 $, 120 minutes — 230 $. Plusieurs techniques sont offertes (suédois, Ashiatsu, thaï, tissus profonds). La réservation se fait via FLiiP (clubsportifmaa.fliipapp.com/user/register/buy_service/1) ou la clinique au 514 845-2233, poste 234. Un formulaire de santé est requis à la première visite; préavis de 24 h pour annuler sans frais."
-        : "For massage therapy at Club Sportif MAA, rates (taxes extra) are the same for everyone by duration: 30 minutes — $65, 60 minutes — $120, 90 minutes — $170, 120 minutes — $230. Several techniques are offered (Swedish, Ashiatsu, Thai, deep tissue). Booking is via FLiiP (clubsportifmaa.fliipapp.com/user/register/buy_service/1) or the clinic at 514 845-2233, ext. 234. A health form is required on the first visit; 24 h notice to cancel free of charge.",
+        ? "Pour la massothérapie au Club Sportif MAA, les tarifs (taxes en sus) sont les mêmes pour tous selon la durée : 30 minutes — 65 $, 60 minutes — 120 $, 90 minutes — 170 $, 120 minutes — 230 $. Plusieurs techniques sont offertes (suédois, Ashiatsu, thaï, tissus profonds). Réservation via [FLiiP](https://clubsportifmaa.fliipapp.com/user/register/buy_service/1) ou la clinique au 514 845-2233, poste 234. Un formulaire de santé est requis à la première visite ; préavis de 24 h pour annuler sans frais."
+        : "For massage therapy at Club Sportif MAA, rates (taxes extra) are the same for everyone by duration: 30 minutes — $65, 60 minutes — $120, 90 minutes — $170, 120 minutes — $230. Several techniques are offered (Swedish, Ashiatsu, Thai, deep tissue). Booking is via [FLiiP](https://clubsportifmaa.fliipapp.com/user/register/buy_service/1) or the clinic at 514 845-2233, ext. 234. A health form is required on the first visit; 24 h notice to cancel free of charge.",
     };
   }
 

@@ -212,13 +212,17 @@ const FLOWS: Flow[] = [
   },
   {
     id: "pool-hours-direct",
-    label: "Pool hours: autonomous answer with confirmed schedule, no '514 845-2233' trailer",
+    label: "Pool hours: must hand over the official PDF link (no invented weekly grid)",
     locale: "fr-CA",
     turns: [
       {
+        // 2026-06-01 Steve schedule-stress: bot was inventing weekly pool grids
+        // ("6h30-20h30 lun-ven, 7h-17h fin de semaine") that aren't in the KB.
+        // The honest answer is the dated PDF + reception fallback. We assert
+        // the link is present and that we don't invent specific weekday hours.
         say: "quels sont les horaires de la piscine ?",
         expect: {
-          mustInclude: [/\b(7|6h30|7h)|\b(20h30|20h|18h)\b/i],
+          mustInclude: [/MAA_Piscine_Pool|Horaire piscine/i],
           mustNotInclude: [/Je\s+vous\s+recommande\s+de\s+valider/i],
         },
       },

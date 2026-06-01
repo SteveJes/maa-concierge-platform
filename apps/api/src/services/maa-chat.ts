@@ -1503,7 +1503,7 @@ export function detectIncludedOrSpecificServiceQuestion(userMessage: string): In
   // included-or-specific-service gate; the deterministic pricing handlers
   // are exactly what we want for those.
   const isPurePricingQuestion =
-    /\b(prix|tarif|tarification|co[uû]te?|combien|cost|price|pricing|how\s+much|fee|rate)\b/i.test(text) &&
+    /(prix|tarifs?|tarification|co[uû]te?|combien|cost|prices?|pricing|how\s+much|fee|rate)/i.test(text) &&
     !askedAboutInclusion;
 
   const matchedSpecificService =
